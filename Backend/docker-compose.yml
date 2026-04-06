@@ -17,5 +17,29 @@ services:
       timeout: 5s
       retries: 5
 
+  # Applies ./sql/*.sql in sorted order after Postgres is ready (safe to re-run if DDL uses IF NOT EXISTS).
+  db-migrate:
+    image: postgres:16-alpine
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${SQL_PSWRD}
+      PGDATABASE: ${POSTGRES_DB:-mirror_image}
+      PGUSER: ${POSTGRES_USER:-postgres}
+    volumes:
+      - ./sql:/sql:ro
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        for f in $$(ls /sql/*.sql 2>/dev/null | sort); do
+          echo "Applying $$f ..."
+          psql -h db -U "$$PGUSER" -d "$$PGDATABASE" -v ON_ERROR_STOP=1 -f "$$f"
+        done
+        echo "Migrations finished."
+    restart: "no"
+
 volumes:
   postgres_data:
