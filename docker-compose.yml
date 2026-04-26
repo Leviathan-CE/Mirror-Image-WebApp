@@ -48,11 +48,11 @@ services:
       db-migrate:
         condition: service_completed_successfully
     environment:
-      SQL_HOST: db
-      SQL_PORT: 5432
-      SQL_USER: ${POSTGRES_USER:-postgres}
-      SQL_PSWRD: ${SQL_PSWRD:-postgres}
-      SQL_DB: ${POSTGRES_DB:-mirror_image}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${SQL_PSWRD:-postgres}
+      DB_NAME: ${POSTGRES_DB:-mirror_image}
     ports:
       - "8000:8000"
     restart: unless-stopped
