@@ -93,18 +93,10 @@ def _slugify(value: str) -> str:
 
 @router.post("/", response_model=CardCreated, status_code=201)
 def create_card(body: CardCreate):
-    artwork_data = _b64_to_bytes(body.artwork_base64)
-    thumb_data = _b64_to_bytes(body.artwork_thumbnail_base64)
-
     insert_cols = {
         "is_deprecated": body.is_deprecated,
         "card_set_name": body.card_set_name,
         "card_name": body.card_name,
-        "artwork_data": artwork_data,
-        "artwork_thumbnail_data": thumb_data,
-        "artwork_thumbnail_mime_type": body.artwork_thumbnail_mime_type,
-        "artwork_thumbnail_width_px": body.artwork_thumbnail_width_px,
-        "artwork_thumbnail_height_px": body.artwork_thumbnail_height_px,
         "cost": Json(body.cost),
         "invoke_cost": body.invoke_cost,
         "super_types": Json(body.super_types),
@@ -118,7 +110,7 @@ def create_card(body: CardCreate):
         "card_number": body.card_number,
         "card_count": body.card_count,
         "legal_info": body.legal_info,
-        "card_set": body.card_set_name,
+        "card_set_name": body.card_set_name,
         "is_summon": body.is_summon,
         "atk": body.atk,
         "def": body.def_,
@@ -154,6 +146,9 @@ def create_card(body: CardCreate):
     except OperationalError as e:
         logger.warning("db error on card insert: %s", e)
         raise HTTPException(status_code=503, detail="database_unavailable") from e
+    except Exception as e:
+        logger.exception("unexpected error on card insert: %s", e)
+        raise HTTPException(status_code=500, detail="card_insert_failed") from e
 
     return CardCreated(id=row[0], card_name=row[1])
 
