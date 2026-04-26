@@ -1,6 +1,24 @@
 # Mirror-Image-WebApp
 The Mirror Image Everything app for sellers, buyer stats, meta, and card catalogue
 
+## Run with Docker Compose
+
+From the repository root:
+
+```bash
+docker compose up --build
+```
+
+App URLs:
+- Frontend: `http://localhost:3000`
+- API: `http://localhost:8000`
+
+Optional environment variables:
+- `SQL_PSWRD` (defaults to `postgres`)
+- `POSTGRES_USER` (defaults to `postgres`)
+- `POSTGRES_DB` (defaults to `mirror_image`)
+- `POSTGRES_PORT` (defaults to `5433`)
+
 ## specifications 
 ## card catalogue and search
 - The primary purpose of the website is to be able to search for cards

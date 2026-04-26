@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS decks(
+    id BIGSERIAL PRIMARY KEY,
+
+    name TEXT DEFAULT NULL,
+    description TEXT DEFAULT NULL,
+
+);
