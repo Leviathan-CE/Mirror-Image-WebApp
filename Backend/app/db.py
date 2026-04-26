@@ -5,8 +5,9 @@ from pathlib import Path
 import psycopg2
 from dotenv import load_dotenv
 
-# override=True: .env wins over inherited shell/IDE vars (e.g. DB_PORT=5432 breaks Docker on 5433).
-load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=True)
+# Keep environment variables from Docker/host as source of truth.
+# Use the repository root .env as the single shared config source.
+load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
 
 
 def _strip_env(value: str | None) -> str:
