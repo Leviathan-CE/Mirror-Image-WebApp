@@ -11,12 +11,25 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
 
 
 def _strip_env(value: str | None) -> str:
+    """
+    Args:
+        value (str | None): envirmeont varable
+
+    Returns:
+        str: stripped " " around env var
+    """
     if value is None:
         return ""
     return value.strip().strip('"')
 
 
 def _db_config() -> dict[str, str]:
+    """
+    Gets the required varaibles from env 
+    and returns them in a dictionary
+    Returns:
+        dict[str, str]: Envirment varaibles
+    """
     port_raw = os.environ.get("DB_PORT") or os.environ.get("PORT") or "5432"
     password = _strip_env(
         os.environ.get("SQL_PSWRD") or os.environ.get("DB_PASSWORD")
