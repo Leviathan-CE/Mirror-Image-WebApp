@@ -55,6 +55,9 @@ services:
       DB_NAME: ${POSTGRES_DB:-mirror_image}
     ports:
       - "8000:8000"
+    #use to change downloads from docker to project folder
+    # volumes:
+    #   - ./Backend/app/thumbnails:/app/app/thumbnails
     restart: unless-stopped
 
   frontend:

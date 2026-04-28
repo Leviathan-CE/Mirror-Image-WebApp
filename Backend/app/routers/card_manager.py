@@ -1,3 +1,5 @@
+"""Card creation and thumbnail upload API routes."""
+
 import base64
 import binascii
 import logging
@@ -19,6 +21,8 @@ router = APIRouter(prefix="/cards", tags=["cards"])
 
 
 class CardCreate(BaseModel):
+    """Payload used to create a new card record."""
+
     model_config = ConfigDict(populate_by_name=True)
 
     is_deprecated: bool = False
@@ -67,17 +71,59 @@ class CardCreate(BaseModel):
 
 
 class CardCreated(BaseModel):
+    """Response returned after a card is inserted successfully."""
+
     id: int
     card_name: str
 
 
 class CardThumbnailUploaded(BaseModel):
+    """Response returned after a thumbnail is stored and linked."""
+
     id: int
     thumbnail_path: str
     thumbnail_size_bytes: int
 
 
+class CardByNameResponse(BaseModel):
+    """Full card payload returned when querying by card name."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: int
+    is_deprecated: bool
+    card_set_name: str
+    card_name: str
+    cost: list[Any]
+    invoke_cost: int
+    super_types: list[Any]
+    sub_types: list[Any]
+    types_line: str
+    keywords: list[Any]
+    show_help_text: bool
+    description: str
+    rarity: str
+    artist_name: str
+    card_number: int
+    card_count: int
+    legal_info: str
+    is_summon: bool
+    atk: int
+    def_: int = Field(alias="def")
+    is_pilot: bool
+    ram_capacity: int
+    pow_capacity: int
+    met_capacity: int
+    lif_capacity: int
+    hand_size: int
+    lagality: str
+    card_art_path: str | None = None
+    card_art_mime_type: str | None = None
+
+
 def _b64_to_bytes(raw: str | None) -> bytes | None:
+    """Decode optional base64 input and raise a 400 error if invalid."""
+
     if raw is None or raw == "":
         return None
     try:
@@ -87,12 +133,16 @@ def _b64_to_bytes(raw: str | None) -> bytes | None:
 
 
 def _slugify(value: str) -> str:
+    """Convert a string into a filesystem-safe lowercase slug."""
+
     slug = re.sub(r"[^a-zA-Z0-9_-]+", "_", value.strip().lower())
     return slug.strip("_") or "unassigned"
 
 
 @router.post("/", response_model=CardCreated, status_code=201)
 def create_card(body: CardCreate):
+    """Create a card row in Postgres and return its id and name."""
+
     insert_cols = {
         "is_deprecated": body.is_deprecated,
         "card_set_name": body.card_set_name,
@@ -153,8 +203,73 @@ def create_card(body: CardCreate):
     return CardCreated(id=row[0], card_name=row[1])
 
 
+@router.get("/by-name/{card_name}", response_model=CardByNameResponse)
+def get_card_by_name(card_name: str):
+    """Fetch a single card by exact card name (case-insensitive)."""
+    normalized_name = card_name.replace("+", " ").strip()
+
+    sql = """
+        SELECT id, is_deprecated, card_set_name, card_name, cost, invoke_cost,
+               super_types, sub_types, types_line, keywords, show_help_text,
+               description, rarity, artist_name, card_number, card_count,
+               legal_info, is_summon, atk, def, is_pilot, ram_capacity,
+               pow_capacity, met_capacity, lif_capacity, hand_size, lagality
+               
+          FROM cards
+         WHERE LOWER(card_name) = LOWER(%(card_name)s)
+         ORDER BY id DESC
+         LIMIT 1
+    """
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, {"card_name": normalized_name})
+                row = cur.fetchone()
+    except OperationalError as e:
+        logger.warning("db error on card by-name query: %s", e)
+        raise HTTPException(status_code=503, detail="database_unavailable") from e
+    except Exception as e:
+        logger.exception("unexpected error on card by-name query: %s", e)
+        raise HTTPException(status_code=500, detail="card_fetch_failed") from e
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="card_not_found")
+
+    return CardByNameResponse(
+        id=row[0],
+        is_deprecated=row[1],
+        card_set_name=row[2],
+        card_name=row[3],
+        cost=row[4],
+        invoke_cost=row[5],
+        super_types=row[6],
+        sub_types=row[7],
+        types_line=row[8],
+        keywords=row[9],
+        show_help_text=row[10],
+        description=row[11],
+        rarity=row[12],
+        artist_name=row[13],
+        card_number=row[14],
+        card_count=row[15],
+        legal_info=row[16],
+        is_summon=row[17],
+        atk=row[18],
+        def_=row[19],
+        is_pilot=row[20],
+        ram_capacity=row[21],
+        pow_capacity=row[22],
+        met_capacity=row[23],
+        lif_capacity=row[24],
+        hand_size=row[25],
+        lagality=row[26],
+    )
+
+
 @router.post("/{card_id}/thumbnail", response_model=CardThumbnailUploaded)
 async def upload_card_thumbnail(card_id: int, file: UploadFile = File(...)):
+    """Upload a card thumbnail, persist it on disk, and store its path."""
+
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="thumbnail_must_be_image")
 
@@ -162,7 +277,7 @@ async def upload_card_thumbnail(card_id: int, file: UploadFile = File(...)):
     if not data:
         raise HTTPException(status_code=400, detail="empty_thumbnail_file")
 
-    max_size = 5 * 1024 * 1024
+    max_size = 2 * 1024 * 1024
     if len(data) > max_size:
         raise HTTPException(status_code=413, detail="thumbnail_too_large")
 
