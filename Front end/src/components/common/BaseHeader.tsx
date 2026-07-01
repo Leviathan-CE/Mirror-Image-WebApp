@@ -13,7 +13,7 @@ export function BaseHeader() {
           to="/"
           className="font-glitch text-xl text-cyan-300"
         >
-          MIRRIRIMAGE
+          MIRRORIMAGE
         </Link>
         <nav className="flex justify-center  text-sm text-muted-foreground">
           <Button className={navButtonClassName}>HOME</Button>

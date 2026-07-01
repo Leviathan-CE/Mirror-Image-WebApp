@@ -16,23 +16,24 @@ export function HomePage() {
 
       <div className=" font-buahs93 text-cyan-300 relative z-10 mx-auto flex w-full max-w-5xl flex-col gap-8">
         <PageHeader
-          title="MIRRORIMGE THE CRPCG"
+          title="MIRRORIMAGE THE CRPCG"
           description={
             <>
-              In the <span className="italic">MIRRORIMAGE</span> Collectable Role
-              playing Card Game, you will iether choose or create a pilot
-               character and equip them with augments to enhance yourself
-                of your squad of units, cyberpsells and thuamatechnolgies, and enter
-                into the fight an opposing pilot(s) and monsters, to fight for freedom
-                , tyriny, or to the highest bidder, at the end of the world. Featuring 
-                a blend of artwork and real horrors only a machine can think of
-                 the <span className="italic">MIRRORIMAGE</span> is designed for trading card players,
-                 respecable collectors, roleplaying RPG enthusiats, and 
-                 those intrested in new ideas and fresh unique look on a 
-                 fantasypunk genre. Set on a planet ravenged by thousands of years of war now
-                 on the brink of destruction, by a resurgence of a feared rouge AI shadow goverment, once
-                 defeated at great cost returns to finished its ruthless conquest for control.
-
+              In the <span className="italic">MIRRORIMAGE</span> Collectible
+              Role-Playing Card Game, you will either choose or create a pilot
+              character and equip them with augments to enhance yourself or your
+              squad of units, cyberspells, and thaumatechnologies, then enter
+              the fight against opposing pilots and monsters—to fight for
+              freedom, tyranny, or the highest bidder at the end of the world.
+              Featuring a blend of artwork and real horrors only a machine can
+              imagine, <span className="italic">MIRRORIMAGE</span> is designed
+              for trading card players, respectable collectors, role-playing
+              enthusiasts, and those interested in new ideas and a fresh,
+              unique take on the fantasy-punk genre. Set on a planet ravaged by
+              thousands of years of war and now on the brink of destruction by
+              the resurgence of a feared rogue AI shadow government—once
+              defeated at great cost—it returns to finish its ruthless conquest
+              for control.
             </>
           }
         />
