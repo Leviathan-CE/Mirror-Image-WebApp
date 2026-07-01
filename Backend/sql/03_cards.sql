@@ -3,16 +3,18 @@
 -- Lists (cost, superTypes, subTypes, keyWords) → JSONB.
 
 CREATE TABLE IF NOT EXISTS cards (
-    id BIGSERIAL PRIMARY KEY,
+
+    -- Unity barcode id (CardData.ID, uint32); requires BIGINT not INTEGER.
+    id BIGINT PRIMARY KEY,
 
     is_deprecated   BOOLEAN NOT NULL DEFAULT FALSE,
     card_name       TEXT NOT NULL DEFAULT '',
 
     cost         JSONB NOT NULL DEFAULT '[]'::jsonb,
     invoke_cost INTEGER NOT NULL DEFAULT 0,
+
     super_types  JSONB NOT NULL DEFAULT '[]'::jsonb,
     sub_types    JSONB NOT NULL DEFAULT '[]'::jsonb,
-
     types_line   TEXT NOT NULL DEFAULT '',
 
     card_art_path TEXT DEFAULT NULL,
@@ -30,28 +32,31 @@ CREATE TABLE IF NOT EXISTS cards (
     card_count   INTEGER NOT NULL DEFAULT -1,
     legal_info   TEXT NOT NULL DEFAULT '© 2026 Leviathan Creative Entertiament.',
     card_set_name     TEXT NOT NULL DEFAULT 'unassigned',
+    card_printing TEXT NOT NULL DEFAULT 'standard',
 
     is_summon    BOOLEAN NOT NULL DEFAULT FALSE,
-    atk          INTEGER NOT NULL DEFAULT 0,
-    def          INTEGER NOT NULL DEFAULT 0,
-
+    is_augment BOOLEAN NOT NULL DEFAULT FALSE,
     is_pilot     BOOLEAN NOT NULL DEFAULT FALSE,
 
+    threat_level          TEXT NOT NULL DEFAULT '0',    
+
     ram_capacity INTEGER NOT NULL DEFAULT 0,
-    pow_capacity INTEGER NOT NULL DEFAULT 0,
-    met_capacity INTEGER NOT NULL DEFAULT 0,
+    power_capacity INTEGER NOT NULL DEFAULT 0,
+    metal_capacity INTEGER NOT NULL DEFAULT 0,
+    spirit_capacity INTEGER NOT NULL DEFAULT 0,
+    steel_capacity INTEGER NOT NULL DEFAULT 0,
+
     lif_capacity INTEGER NOT NULL DEFAULT 0,
     hand_size    INTEGER NOT NULL DEFAULT 0,
 
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    Lagality TEXT NOT NULL DEFAULT 'Legal'
+    lagality TEXT NOT NULL DEFAULT 'Legal',
 
-    CONSTRAINT cards_atk_non_negative CHECK (atk >= 0),
-    CONSTRAINT cards_def_non_negative CHECK (def >= 0),
     CONSTRAINT cards_capacities_non_negative CHECK (
-        ram_capacity >= 0 AND pow_capacity >= 0 AND met_capacity >= 0
+        ram_capacity >= 0 AND power_capacity >= 0 AND metal_capacity >= 0
+        AND spirit_capacity >= 0 AND steel_capacity >= 0
         AND lif_capacity >= 0 AND hand_size >= 0
     )
 );
@@ -72,6 +77,4 @@ COMMENT ON COLUMN cards.sub_types IS 'List<SubTpye> as JSON array';
 COMMENT ON COLUMN cards.keywords IS 'List<KeyWords> as JSON array';
 COMMENT ON COLUMN cards.rarity IS 'CardRarity as string enum name';
 
--- Migration snippets (adjust if your live table differs):
--- ALTER TABLE cards ADD COLUMN IF NOT EXISTS card_art_path TEXT;
--- ALTER TABLE cards ADD COLUMN IF NOT EXISTS card_art_mime_type TEXT;
+

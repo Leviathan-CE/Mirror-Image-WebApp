@@ -2,9 +2,10 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${SQL_PSWRD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-mirror_image}
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
@@ -16,42 +17,17 @@ services:
       timeout: 5s
       retries: 5
 
-  db-migrate:
-    image: postgres:16-alpine
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      PGPASSWORD: ${SQL_PSWRD:-postgres}
-      PGDATABASE: ${POSTGRES_DB:-mirror_image}
-      PGUSER: ${POSTGRES_USER:-postgres}
-    volumes:
-      - ./Backend/sql:/sql:ro
-    command:
-      - sh
-      - -c
-      - |
-        set -e
-        for f in $$(ls /sql/*.sql 2>/dev/null | sort); do
-          echo "Applying $$f ..."
-          psql -h db -U "$$PGUSER" -d "$$PGDATABASE" -v ON_ERROR_STOP=1 -f "$$f"
-        done
-        echo "Migrations finished."
-    restart: "no"
-
   api:
     build:
       context: ./Backend
     depends_on:
       db:
         condition: service_healthy
-      db-migrate:
-        condition: service_completed_successfully
     environment:
       DB_HOST: db
       DB_PORT: 5432
       DB_USER: ${POSTGRES_USER:-postgres}
-      DB_PASSWORD: ${SQL_PSWRD:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       DB_NAME: ${POSTGRES_DB:-mirror_image}
     ports:
       - "8000:8000"
