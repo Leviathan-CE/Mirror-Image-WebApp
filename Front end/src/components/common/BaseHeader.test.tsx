@@ -16,7 +16,7 @@ describe("BaseHeader", () => {
   it("renders the site title and home navigation", () => {
     renderHeader()
 
-    expect(screen.getByRole("link", { name: "MIRRIRIMAGE" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "MIRRORIMAGE" })).toHaveAttribute(
       "href",
       "/"
     )
