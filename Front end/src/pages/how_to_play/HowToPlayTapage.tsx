@@ -32,7 +32,7 @@ const KEYWORDS: { name: string; text: ReactNode }[] = [
     { name: "BLOCK X", text: "When you block with a unit, augment, or cyberspell to reduce the damage an asset would deal, reduce it by an additional X." },
     { name: "CORROSIVE BILE", text: "Whenever this entity deals damage to a unit, destroy that unit." },
     { name: "DEGRADE X", text: "The affected player puts the top X cards of their RIG into their trashyard. When card text says a player degrades X, that player is the affected player; if no player is stated, that player is you." },
-    { name: "DURABLE X", text: <>This entity can take X damage more than its <GameIcon name="rating" /> rating before being defeated.</> },
+    { name: "DURABLE X", text: <>This entity can take X damage more than its <GameIcon name="threat_lvl" /> rating before being defeated.</> },
     { name: "PREEMPTIVE STRIKE", text: "When this entity deals damage in a fight, it deals damage first, unless the opposing entity also has Preemptive Strike." },
     { name: "HARDENED X", text: "Whenever this entity takes damage, reduce that damage by X." },
     { name: "HARD POINT", text: "You may have a second copy of this card equipped as an augment for your RIG." },
@@ -416,14 +416,14 @@ export function HowToPlayPage() {
                                         Block incoming damage. You may, in any order:
                                         <ul className="list-disc space-y-1 pl-6 pt-1">
                                             <li>Expend unit(s) and redirect an attacker to the expended unit instead. You can do this even if the unit entered play this turn; when multiple units are part of a single attack, you may only redirect one of them. (Attacks redirected this way do not trigger effects like Stealth.)</li>
-                                            <li>Discard any number of cards in hand with a <GameIcon name="rating" /> rating, add them together, and reduce the damage from an attacker of your choice by that total.</li>
-                                            <li>Expend any number of augments you control, choose an attacker for each, reduce the incoming damage by that augment's <GameIcon name="rating" /> rating, and add a depletion counter to that augment.</li>
+                                            <li>Discard any number of cards in hand with a <GameIcon name="threat_lvl" /> rating, add them together, and reduce the damage from an attacker of your choice by that total.</li>
+                                            <li>Expend any number of augments you control, choose an attacker for each, reduce the incoming damage by that augment's <GameIcon name="threat_lvl" /> rating, and add a depletion counter to that augment.</li>
                                         </ul>
                                     </li>
                                     <li>Before damage is dealt, players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
-                                    <li>Deal Preemptive Strike damage equal to your <GameIcon name="rating" /> + modifiers.</li>
-                                    <li>If you did not already deal Preemptive Strike damage, deal damage equal to your <GameIcon name="rating" /> + modifiers to the target of your attack. If the target is readied, it deals damage equal to its <GameIcon name="rating" /> + modifiers back to the attacker. Damage dealt this way is simultaneous.</li>
-                                    <li>If a unit's damage is greater than or equal to its <GameIcon name="rating" /> rating, it is defeated (the only exception being the Durable keyword), triggering its <GameIcon name="defeated" /> tag if it had one, along with any other triggered abilities that care about being defeated. A defeated unit goes to the trashyard (discard pile).</li>
+                                    <li>Deal Preemptive Strike damage equal to your <GameIcon name="threat_lvl" /> + modifiers.</li>
+                                    <li>If you did not already deal Preemptive Strike damage, deal damage equal to your <GameIcon name="threat_lvl" /> + modifiers to the target of your attack. If the target is readied, it deals damage equal to its <GameIcon name="threat_lvl" /> + modifiers back to the attacker. Damage dealt this way is simultaneous.</li>
+                                    <li>If a unit's damage is greater than or equal to its <GameIcon name="threat_lvl" /> rating, it is defeated (the only exception being the Durable keyword), triggering its <GameIcon name="defeated" /> tag if it had one, along with any other triggered abilities that care about being defeated. A defeated unit goes to the trashyard (discard pile).</li>
                                     <li>Any damage directed at a player that was not blocked or redirected is dealt as loss of life to that player. Then the attack ends.</li>
                                 </ol>
                             </div>
@@ -567,7 +567,7 @@ export function HowToPlayPage() {
                             <p>
                                 <Term>STRIKE [ Cyberspell ]:</Term> This cyberspell can be played any
                                 time during your main phase and counts as making an attack. When you
-                                play this card, choose a target for its <GameIcon name="rating" />{" "}
+                                play this card, choose a target for its <GameIcon name="threat_lvl" />{" "}
                                 damage. Any additional effects it has also target the same target,
                                 unless the card says otherwise. Strikes tend to be special moves,
                                 magic, or other attacks and feats of prowess your pilot can pull off
@@ -601,11 +601,11 @@ export function HowToPlayPage() {
                                 How to Allocate a Resource to a Unit
                             </h3>
                             <p>
-                                This ability can be used any time a Quick Hack can, including{" "}
-                                <GameIcon name="expend" /> while the lock is full&mdash;but only if
+                                This ability can be used any time a Quick Hack can, including {" "}
+                                 while the lock is full&mdash;but only if
                                 you control no units that already have an expended resource allocated
-                                to them. Each resource allocated to a unit gives it a +1 rating for
-                                each resource allocated. To allocate a resource, expend it and choose
+                                to them. Each resource allocated to a unit gives it a +1<GameIcon name="threat_lvl"/> rating for
+                                each resource allocated. To allocate a resource, expend it "<GameIcon name="expend"/>" and choose
                                 a target. This ability does not use the lock and happens immediately.
                             </p>
 
@@ -724,7 +724,7 @@ export function HowToPlayPage() {
                             </p>
                             <ol className="list-decimal space-y-1 pl-6">
                                 <li>Pay costs (resource abilities do not use the lock) but still with the timing restriction of a Quick Hack, meaning you must be the active player.</li>
-                                <li>Allocate a resource to a unit you control. This is also Quick Hack speed, but you can only do so if you control no units that already have expended resources allocated to them. Each resource allocated to a unit gives it a +1 <GameIcon name="rating" /> rating. To allocate a resource, expend it and choose a target. This ability does not use the lock and happens immediately.</li>
+                                <li>Allocate a resource to a unit you control. This is also Quick Hack speed, but you can only do so if you control no units that already have expended resources allocated to them. Each resource allocated to a unit gives it a +1 <GameIcon name="threat_lvl" /> rating. To allocate a resource, expend it and choose a target. This ability does not use the lock and happens immediately.</li>
                                 <li>Activate an activated ability and add it to your queue.</li>
                                 <li>Block an attack.</li>
                             </ol>
