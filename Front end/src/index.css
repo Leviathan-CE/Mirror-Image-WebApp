@@ -148,7 +148,10 @@
     @apply antialiased bg-background text-foreground;
   }
   html {
-    @apply font-sans;
+    @apply scroll-smooth font-sans;
+  }
+  .font-glitch {
+    text-transform: uppercase;
   }
 }
 
@@ -163,6 +166,42 @@
       0 100%,
       0 var(--angle)
     );
+  }
+
+  /* Feather all four edges of an element into transparency so it blends
+     into the background. Control the fade depth with --feather. */
+  .fade-edges {
+    --feather: 15%;
+    -webkit-mask-image: linear-gradient(
+        to right,
+        transparent 0,
+        black var(--feather),
+        black calc(100% - var(--feather)),
+        transparent 100%
+      ),
+      linear-gradient(
+        to bottom,
+        transparent 0,
+        black var(--feather),
+        black calc(100% - var(--feather)),
+        transparent 100%
+      );
+    -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(
+        to right,
+        transparent 0,
+        black var(--feather),
+        black calc(100% - var(--feather)),
+        transparent 100%
+      ),
+      linear-gradient(
+        to bottom,
+        transparent 0,
+        black var(--feather),
+        black calc(100% - var(--feather)),
+        transparent 100%
+      );
+    mask-composite: intersect;
   }
 
   /* Glitch text effect.
