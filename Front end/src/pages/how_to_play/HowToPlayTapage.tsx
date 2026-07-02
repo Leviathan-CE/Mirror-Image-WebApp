@@ -1,26 +1,28 @@
-import type { CSSProperties, ReactNode } from "react"
+import { useState, type CSSProperties, type ReactNode } from "react"
 
 import { GameIcon } from "@/components/common/GameIcon"
 import { GlitchFx } from "@/components/effects/GlitchFx"
+import { cn } from "@/lib/utils"
 
 const HOME_BACKGROUND_IMAGE = "/images/Zone-32B.png"
 const BANNER = "/images/banner2.jpg"
 const CARD_PILOT = "/images/card_pilot.png"
+const PLAY_MAT = "/images/PLAY_MAT.png"
 const CARD_AUGMENT = "/images/card_augment.png"
 
 type TocEntry = { id: string; label: string }
 
 const SECTIONS: TocEntry[] = [
     { id: "story", label: "The Story" },
-    { id: "objective", label: "The Objective" },
     { id: "how-to-win", label: "How to Win" },
     { id: "playmat", label: "Playmat Area" },
+    { id: "how-to-play-basics", label: "Setup & Turns" },
     { id: "reading-cards", label: "Reading Your Cards" },
     { id: "card-types", label: "Card Types" },
+    { id: "how-to-play-actions", label: "Core Actions" },
+    { id: "lock", label: "The Lock & Time Counters" },
     { id: "timing", label: "Timing, Triggers & Keywords" },
     { id: "keywords", label: "Keyword Abilities" },
-    { id: "lock", label: "The Lock & Time Counters" },
-    { id: "how-to-play", label: "How to Play" },
     { id: "deck-building", label: "Deck Building" },
 ]
 
@@ -40,9 +42,9 @@ const KEYWORDS: { name: string; text: ReactNode }[] = [
     { name: "LONG RANGE", text: "This asset can attack units with Airborne." },
     { name: "PEER X", text: "Look at the top X cards of your RIG. You may put any of them into your trashyard, then put the rest back on top of your RIG in any order." },
     { name: "PIERCE", text: "Any excess damage this asset deals to its target is redirected to the target's controller." },
-    { name: "RADAR (Deprecated)", text: "Whenever a unit an opponent controls attacks, if it is the first attack in the main phase, you may redirect that attack to target a unit you control instead." },
+    { name: "RADAR", text: "Whenever a unit an opponent controls attacks, if it is the first attack in the main phase, you may redirect that attack to target a unit you control instead." },
     { name: "RECURSIVE", text: "You may invoke this asset from your trashyard by paying its invoke cost. If you do, allocate the top card of your RIG face down to the invoked card; the next time this asset would go to the trashyard, dismantle it and the face-down card instead." },
-    { name: "REFURBISHED", text: <>Dismantle any number of cards from your trashyard; for each card dismantled this way, pay for one <GameIcon name="steel" /> of this card's costs.</> },
+    { name: "REFURBISHED", text: <>Dismantle any number of cards from your trashyard; for each card dismantled this way, pay for one <GameIcon name="gen1" /> of this card's costs.</> },
     { name: "SPIRIT LINK", text: "Damage this asset deals is gained as life by its controller." },
     { name: "STALWART", text: "When this entity attacks, it does not expend as part of the attack." },
     { name: "STATIONARY", text: "This entity cannot attack." },
@@ -73,7 +75,147 @@ function Section({
 }
 
 function Term({ children }: { children: ReactNode }) {
-    return <span className="font-semibold text-cyan-200">{children}</span>
+  return <span className="font-semibold text-cyan-200">{children}</span>
+}
+
+function Hardcore() {
+  return <span className="font-light text-red-500">[Hardcore]</span>
+}
+
+type PlaymatZone = {
+    id: string
+    label: string
+    description: ReactNode
+    /** Hotspot rectangle as percentages of the image, matching PLAY_MAT.png. */
+    top: string
+    left: string
+    width: string
+    height: string
+}
+
+const PLAYMAT_ZONES: PlaymatZone[] = [
+    {
+        id: "pilot",
+        label: "Pilot",
+        description:
+            "Where you put your pilot card. Play it by paying its cost. When your pilot is defeated or moves zones, you may instead return it here and increase its cost.",
+        top: "5%",
+        left: "3%",
+        width: "11.5%",
+        height: "27%",
+    },
+    {
+        id: "rig",
+        label: "R.I.G",
+        description:
+            "Regressive Integrated Gear — your deck, placed face down and shuffled before the game. It holds the entity and cyberspell cards you assembled.",
+        top: "37%",
+        left: "3%",
+        width: "11.5%",
+        height: "27%",
+    },
+    {
+        id: "trashyard",
+        label: "Trashyard",
+        description:
+            "The discard pile, where cards go when they leave play — for example when a unit is defeated or a cyberspell finishes resolving.",
+        top: "68%",
+        left: "3%",
+        width: "11.5%",
+        height: "28%",
+    },
+    {
+        id: "in-play",
+        label: "In Play",
+        description:
+            "A reference to both the Battlefield and the Stockpile. Anything that affects “in play” affects both zones.",
+        top: "43%",
+        left: "14.5%",
+        width: "3.5%",
+        height: "16%",
+    },
+    {
+        id: "battlefield",
+        label: "Battlefield",
+        description:
+            "Where all your entities go when played from anywhere. The exception: cards paid for with time counters wait in the stockpile until their counters are gone.",
+        top: "5%",
+        left: "16.5%",
+        width: "80.5%",
+        height: "43%",
+    },
+    {
+        id: "stockpile",
+        label: "Stockpile",
+        description:
+            "Where your resources are stored. Expend a resource (turn it 90°) to add its color and pay for cards and abilities. Cards played with time counters also live here.",
+        top: "51%",
+        left: "16.5%",
+        width: "80.5%",
+        height: "45%",
+    },
+]
+
+function InteractivePlaymat() {
+    const [activeId, setActiveId] = useState<string | null>(null)
+    const activeZone = PLAYMAT_ZONES.find((zone) => zone.id === activeId)
+
+    const clearIfActive = (id: string) =>
+        setActiveId((current) => (current === id ? null : current))
+
+    return (
+        <div className="space-y-4">
+            <div className="relative mx-auto w-full max-w-4xl">
+                <img
+                    src={PLAY_MAT}
+                    alt="Mirror Image playmat layout"
+                    className="w-full select-none"
+                />
+                {activeId === "in-play" && (
+                    <div
+                        aria-hidden
+                        className="pointer-events-none absolute rounded-sm border border-cyan-300 bg-cyan-400/20"
+                        style={{ top: "5%", left: "16.5%", width: "80.5%", height: "91%" }}
+                    />
+                )}
+                {PLAYMAT_ZONES.map((zone) => (
+                    <button
+                        key={zone.id}
+                        type="button"
+                        aria-label={zone.label}
+                        onMouseEnter={() => setActiveId(zone.id)}
+                        onFocus={() => setActiveId(zone.id)}
+                        onMouseLeave={() => clearIfActive(zone.id)}
+                        onBlur={() => clearIfActive(zone.id)}
+                        className={cn(
+                            "absolute rounded-sm border transition-colors",
+                            activeId === zone.id
+                                ? "border-cyan-300 bg-cyan-400/20"
+                                : "border-transparent hover:border-cyan-400/60 hover:bg-cyan-400/10"
+                        )}
+                        style={{
+                            top: zone.top,
+                            left: zone.left,
+                            width: zone.width,
+                            height: zone.height,
+                        }}
+                    />
+                ))}
+            </div>
+
+            {activeZone && (
+                <div
+                    className="rounded-md border border-cyan-500/20 bg-black/60 p-4"
+                    aria-live="polite"
+                >
+                    <h3 className="font-glitch mb-1 text-lg text-cyan-300">
+                        {activeZone.label}
+                    </h3>
+                    <p className="text-sm text-gray-300">{activeZone.description}</p>
+                </div>
+            )}
+        </div>
+    )
 }
 
 function TableOfContents() {
@@ -159,23 +301,6 @@ export function HowToPlayPage() {
                             </p>
                         </Section>
 
-                        <Section id="objective" title="The Objective">
-                            <p>
-                                In this game you fight against both the clock and your opponent,
-                                racing to secure victory and survive on the battlefield with
-                                limited resources. The goal is to defeat your opponent before you
-                                run out of resources: either by reducing your opponent's life to 0,
-                                or by outlasting them until they run out of resources in their
-                                stockpile at the start of their turn.
-                            </p>
-                            <p>
-                                To pursue victory, you build a deck of cards consisting of your
-                                pilot, augments, entities, and cyberspells. These let you deal
-                                damage, perform drastic maneuvers to stay alive, and generate the
-                                resources you need to play the cards in your hand.
-                            </p>
-                        </Section>
-
                         <Section id="how-to-win" title="How to Win">
                             <p>
                                 The most straightforward way to victory is to reduce your
@@ -194,52 +319,124 @@ export function HowToPlayPage() {
 
                         <Section id="playmat" title="Playmat Area">
                             <p>
-                                <Term>Battlefield:</Term> The zone where all your entities go when
-                                they are played from anywhere. The only exception is when you use
-                                time counters to pay for part of a card's casting cost&mdash;then it
-                                goes into the stockpile until all the time counters are removed, at
-                                which point it moves to the battlefield.
+                                Hover over each zone of the playmat to see what it does.
+                            </p>
+                            <InteractivePlaymat />
+                            <p>
+                                <Term>Dismantled:</Term> Not shown on the mat&mdash;the dismantled
+                                zone holds cards removed from the game; they stay there, unusable,
+                                until the game ends. It functions like a separate discard pile,
+                                placed wherever you choose so long as it is not part of the main
+                                areas above. Whenever you gain a resource card into your stockpile,
+                                you may instead take one from the dismantled zone&mdash;the same
+                                applies when creating tokens (which resources are).
+                            </p>
+                        </Section>
+
+                        <Section id="how-to-play-basics" title="Setup & Turns">
+                            <h3 className="font-glitch text-lg text-cyan-200">Setting Up</h3>
+                            <p>
+                                For your first time, we recommend using a premade starter deck; it has
+                                everything you need to play:
+                            </p>
+                            <ul className="list-disc space-y-1 pl-6">
+                                <li>A pilot</li>
+                                <li>2 augments</li>
+                                <li>A medium-weight RIG (deck) of 40 cards, with no more than 3 copies of a named card</li>
+                                <li>A D20 health tracker</li>
+                                <li>5 red damage dice</li>
+                                <li>5 green time-counter dice</li>
+                                <li>Resource tokens</li>
+                            </ul>
+
+                            <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
+                                <img
+                                    src={BANNER}
+                                    alt="Mirror Image banner"
+                                    className="fade-edges clip-angled w-full max-w-3xl"
+                                    style={{ "--feather": "20%", "--angle": "75px" } as CSSProperties}
+                                />
+                            </div>
+                            <p>
+                                First, place your pilot in the pilot zone. Then shuffle your deck and
+                                place it in the RIG zone. Next, place your augments on the
+                                battlefield, readied. Finally, grab the starting resource tokens
+                                noted on your pilot and place them in your stockpile readied (vertical,
+                                90 degrees). Set your life total and draw a hand of cards in the same
+                                fashion.
                             </p>
                             <p>
-                                <Term>Stockpile:</Term> The zone where all your resources are
-                                stored for use. To use a resource, turn it 90 degrees from vertical
-                                to horizontal (this is called expending and is represented by the{" "}
-                                <GameIcon name="expend" /> symbol). Expending a resource this way
-                                adds its color to pay for the costs of cards and abilities. Cards
-                                you play using time counters also go in the stockpile zone.
+                                Once all players have done this, randomly determine who goes first;
+                                the winner decides whether they want the first turn. (A setup demo
+                                using the blue/yellow starter is shown below.)
                             </p>
                             <p>
-                                <Term>In Play:</Term> A reference to both the battlefield and the
-                                stockpile. Anything that affects "in play" affects both of these
-                                zones.
+                                Once players know who is going first, they may look at their hand.
+                                Each player has one chance to mulligan unwanted cards from their
+                                opening hand; this happens only once. The player going first mulligans
+                                first. To mulligan, choose any number of cards from your hand, put them
+                                on the bottom of your deck (RIG), and draw that many cards from the top
+                                of your deck (RIG). Once all players have decided, the player going
+                                first begins the first turn. Once the game starts, there is no maximum
+                                hand size.
                             </p>
+
+                            <h3 className="font-glitch pt-2 text-lg text-cyan-200">Turn Phases</h3>
                             <p>
-                                <Term>Pilot:</Term> The pilot zone is where you put your pilot card.
-                                You may play your pilot from this zone by paying its cost. Whenever
-                                your pilot is defeated or moves from one zone to another, you may
-                                instead return it to your pilot zone and increase its cost.
+                                There are three phases: the maintenance phase (start of turn), the
+                                main phase, and the end-of-turn phase. Take them in order on your
+                                turn. For a more challenging game mode, include the steps marked with
+                                the <Hardcore /> tag.
                             </p>
-                            <p>
-                                <Term>RIG:</Term> The zone where you place your deck, face down and
-                                shuffled, before the game starts. Your deck is called your RIG,
-                                which stands for Regressive Integrated Gear, and is filled with the
-                                entity and cyberspell cards you put together to create your deck.
-                            </p>
-                            <p>
-                                <Term>Trashyard:</Term> The trashyard zone (a.k.a. the discard pile)
-                                is where cards go when they leave play through various effects or
-                                abilities&mdash;for example, when a unit is defeated or when you
-                                complete the effect of playing a cyberspell.
-                            </p>
-                            <p>
-                                <Term>Dismantled:</Term> The dismantled zone holds cards that are
-                                removed from the game; they stay there, unusable, until the game
-                                ends. It functions like a separate discard pile, placed wherever you
-                                choose so long as it is not part of the main areas listed above.
-                                Whenever you gain a resource card into your stockpile, you may
-                                instead take one from the dismantled zone&mdash;the same applies when
-                                creating tokens (which resources are).
-                            </p>
+                            <div className="space-y-1">
+                                <p className="flex items-center gap-2 font-semibold text-cyan-200">
+                                    Maintenance Phase
+                                </p>
+                                <ol className="list-decimal space-y-1 pl-6">
+                                    <li>Ready all entities you control.</li>
+                                    <li> Trigger any Ability with the <GameIcon name="start"/> tag.</li>
+                                    <li>Remove a time counter from each card you control in play, and resolve any effect triggered when the last time counter is removed from a card in your stockpile.</li>
+                                    <li><Hardcore /> Dismantle a resource you control.</li>
+                                    <li>Draw a card, except the player going first on the first turn of the game.</li>
+                                    <li><Hardcore /> Draw an additional card.</li>
+                                </ol>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="font-semibold text-cyan-200">Main Phase</p>
+                                <p>
+                                    You may play (invoke) cards, activate abilities, make attacks,
+                                    allocate a resource to a unit you control, or accumulate resources,
+                                    in any order.
+                                </p>
+                                <p>To make an attack:</p>
+                                <ol className="list-decimal space-y-1 pl-6">
+                                    <li>Choose unit(s) that did not enter play this turn (units with Blitz qualify), play a cyberspell strike card, or activate an augment that says it makes an attack. When attacking with multiple units, the group is considered a single attack and must share the same target, but each attacker is treated separately for blocking purposes.</li>
+                                    <li>Expend the chosen unit(s), declare an attack target (another unit or an opponent), and trigger the <GameIcon name="attack" /> abilities of the attacking units.</li>
+                                    <li>
+                                        Block incoming damage. You may, in any order:
+                                        <ul className="list-disc space-y-1 pl-6 pt-1">
+                                            <li>Expend unit(s) and redirect an attacker to the expended unit instead. You can do this even if the unit entered play this turn; when multiple units are part of a single attack, you may only redirect one of them. (Attacks redirected this way do not trigger effects like Stealth.)</li>
+                                            <li>Discard any number of cards in hand with a <GameIcon name="rating" /> rating, add them together, and reduce the damage from an attacker of your choice by that total.</li>
+                                            <li>Expend any number of augments you control, choose an attacker for each, reduce the incoming damage by that augment's <GameIcon name="rating" /> rating, and add a depletion counter to that augment.</li>
+                                        </ul>
+                                    </li>
+                                    <li>Before damage is dealt, players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
+                                    <li>Deal Preemptive Strike damage equal to your <GameIcon name="rating" /> + modifiers.</li>
+                                    <li>If you did not already deal Preemptive Strike damage, deal damage equal to your <GameIcon name="rating" /> + modifiers to the target of your attack. If the target is readied, it deals damage equal to its <GameIcon name="rating" /> + modifiers back to the attacker. Damage dealt this way is simultaneous.</li>
+                                    <li>If a unit's damage is greater than or equal to its <GameIcon name="rating" /> rating, it is defeated (the only exception being the Durable keyword), triggering its <GameIcon name="defeated" /> tag if it had one, along with any other triggered abilities that care about being defeated. A defeated unit goes to the trashyard (discard pile).</li>
+                                    <li>Any damage directed at a player that was not blocked or redirected is dealt as loss of life to that player. Then the attack ends.</li>
+                                </ol>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="flex items-center gap-2 font-semibold text-cyan-200">
+                                    End-of-Turn Phase
+                                </p>
+                                <ol className="list-decimal space-y-1 pl-6">
+                                    <li>Players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
+                                    <li>Trigger any ability with the <GameIcon name="endTurn" /> tag.</li>
+                                    <li>Lose any unspent resources in your resource pool (not your stockpile).</li>
+                                </ol>
+                            </div>
                         </Section>
 
                         <Section id="reading-cards" title="Reading Your Cards">
@@ -286,7 +483,7 @@ export function HowToPlayPage() {
                                 the word "this," it always refers to the card it is printed on,
                                 regardless of context.
                             </p>
-                          
+
 
                             <h3 className="font-glitch pt-2 text-lg text-cyan-200">Base Types</h3>
                             <p>
@@ -387,130 +584,75 @@ export function HowToPlayPage() {
                             </p>
                         </Section>
 
-                        <Section id="timing" title="Timing, Triggers & Keywords">
-                            <p>
-                                Some cards include highlighted words or keyword abilities. All
-                                abilities except the EFFECT tag and ACTIVATED abilities are displayed
-                                as tags on a card; special keyword text is highlighted in black.
-                                There are two types of tags: STATIC and TRIGGERED. A STATIC tag means
-                                the ability is always in effect while it is in play; a TRIGGERED
-                                ability triggers when a particular condition is met. When two
-                                triggers are side by side, both are in effect in an "and"
-                                relationship. Some tag conditions may be altered; when they are, the
-                                condition is always printed first, followed by a comma and then the
-                                effect, formatted (ignoring the brackets) as [condition], [effect].
-                            </p>
-
-                            <ul className="space-y-3">
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="atomic" className="mt-0.5 shrink-0" />
-                                    <span>Abilities with this tag trigger and/or stay active even while there are time counters on the card.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="entersPlay" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when this card enters play for the first time, whether the battlefield or the stockpile. This ability always has this tag.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="battlefield" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when the card enters the battlefield for the first time.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="stockpile" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when the card enters the stockpile for the first time.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="attack" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when you make an attack with that card.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="endTurn" className="mt-0.5 shrink-0" />
-                                    <span>Triggers on a card at the end of your turn.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="start" className="mt-0.5 shrink-0" />
-                                    <span>Triggers on a card at the start of your turn.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="invoke" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when you play the card this tag is printed on, but before the card goes to the lock; it always resolves as soon as it is triggered.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="conditional" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when a condition is met, formatted (ignoring the brackets) as [condition], [effect].</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="static" className="mt-0.5 shrink-0" />
-                                    <span>This ability is always active while the card is in play.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="effect" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when the played card resolves. Non-activatable abilities without any tag automatically have this one. (Note: effects are also referenced as what an ability does.)</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="defeated" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when the unit it is printed on is defeated, meaning put into the trashyard from play.</span>
-                                </li>
-                            </ul>
-
+                        <Section id="how-to-play-actions" title="Core Actions">
                             <h3 className="font-glitch pt-2 text-lg text-cyan-200">
-                                Activated Abilities
+                                Accumulate Resources
                             </h3>
                             <p>
-                                Activated abilities are formatted (ignoring the brackets) as [cost 1,
-                                cost 2, etc.]: [effect]. Unless they say otherwise, they can be
-                                activated any time you can play a Quick Hack; if you do, add it to
-                                your queue of effects while the lock is full. You must choose legal
-                                targets only when you put the effect into the lock; if no legal
-                                target is found, the ability does nothing. To activate an activated
-                                ability, pay the cost written on the card. Its effect then goes to
-                                the lock and resolves.
+                                You may accumulate resources only once per turn, and only on your
+                                turn. To do so, choose a card in hand, reveal it, and then "gain"
+                                (grab) up to three resource tokens from its listed invoke cost
+                                (ignoring the grey numbered costs) and add them to your stockpile
+                                readied. Then put the revealed card on the bottom of your deck (RIG).
+                                This action does not use the lock.
                             </p>
-                            <p>
-                                Example: the activated ability "<GameIcon name="expend" /> : Draw a
-                                card" means to expend the card the ability is printed on, then pay 1
-                                yellow unit of power and 1 of any color of your choice, to add the
-                                "draw a card" effect to the lock&mdash;after which it resolves.
-                            </p>
-                            <ul className="space-y-3">
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="expend" className="mt-0.5 shrink-0" />
-                                    <span>The Expend ability and symbol. Turn a card in play 90 degrees from vertical to horizontal. If this is printed on a unit, it cannot be used the turn the unit enters play unless it has Blitz. (Note: to ready an entity is the opposite of expending; a readied entity is vertical.)</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="recycle" className="mt-0.5 shrink-0" />
-                                    <span>The Recycle ability and symbol. Discard this card from hand to gain an effect, at any time you can play a Quick Hack, except when the lock is full.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="trash" className="mt-0.5 shrink-0" />
-                                    <span>The Trash ability and symbol. It can only be activated while the card it is printed on is on the battlefield; as part of a cost, put that card into the discard pile (trashyard).</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="dismantle" className="mt-0.5 shrink-0" />
-                                    <span>The Dismantle ability and symbol. It can be activated while in play; as part of a cost, put the card it is printed on into the dismantled zone.</span>
-                                </li>
-                            </ul>
-                        </Section>
 
-                        <Section id="keywords" title="Keyword Abilities">
+                            <h3 className="font-glitch pt-2 text-lg text-cyan-200">
+                                How to Allocate a Resource to a Unit
+                            </h3>
                             <p>
-                                Keyword abilities are STATIC abilities found on many of the cards you
-                                will play. Almost always their ability text is displayed on the card;
-                                if not, here is the full list.
+                                This ability can be used any time a Quick Hack can, including{" "}
+                                <GameIcon name="expend" /> while the lock is full&mdash;but only if
+                                you control no units that already have an expended resource allocated
+                                to them. Each resource allocated to a unit gives it a +1 rating for
+                                each resource allocated. To allocate a resource, expend it and choose
+                                a target. This ability does not use the lock and happens immediately.
                             </p>
-                            <p className="rounded border-l-2 border-red-500/60 bg-red-950/30 p-3 text-sm">
-                                <Term>! Important !</Term> Multiple instances of the same keyword on
-                                one entity do not stack, unless that keyword has a numerical value; in
-                                that case, they add together. Any keyword with X has a numerical
-                                value.
+
+                            <h3 className="font-glitch pt-2 text-lg text-cyan-200">
+                                How to Play (Invoke) a Card
+                            </h3>
+                            <p>
+                                Each card has an invoke cost, which is what lets it be played; a card
+                                without an invoke cost in the upper-left corner cannot be played. To
+                                pay the cost, you must have the required resources in your resource
+                                pool&mdash;an imaginary area where resources go when a card says to
+                                "add" a resource of the color you need; they stay there until the end
+                                of the turn. Most resource tokens have two abilities that "add" 1 or 2
+                                resources of their color to your pool, which you then spend on the cost
+                                to play a card.
                             </p>
-                            <dl className="space-y-3">
-                                {KEYWORDS.map((keyword) => (
-                                    <div key={keyword.name} className="grid gap-1 sm:grid-cols-[200px_1fr]">
-                                        <dt className="font-semibold text-cyan-200">{keyword.name}</dt>
-                                        <dd>{keyword.text}</dd>
-                                    </div>
-                                ))}
-                            </dl>
+                            <p>
+                                For example, say I want to play the Flame Kin Elementalist. I need a
+                                RAM (blue) and Spirit Power (red) in my pool to invoke the card. I
+                                already have a RAM and a Spirit Power readied in my stockpile, and each
+                                has abilities: the first adds a resource of its respective color to my
+                                pool when I expend the resource card as a cost; the second makes me
+                                lose 1 life and dismantle the resource, then adds 2 of its respective
+                                color.
+                            </p>
+                            <p>
+                                Because I have what I need, I'll expend both the RAM and Spirit Power
+                                resources, which adds resources of the respective color when I expend
+                                them, as shown in the image below.
+                            </p>
+                            <p>
+                                Once you have paid the cost&mdash;and if the card says to target, you
+                                must have legal targets before you invoke the asset, or you cannot play
+                                it&mdash;reveal the card you intend to play. It goes to the lock;
+                                declare its legal targets, then trigger any{" "}
+                                <GameIcon name="invoke" /> tags printed on the card and resolve it right
+                                away. If it is not overwritten by an opponent's Quick Hack while it's
+                                in the lock, the card resolves: first, put the card in its respective
+                                zone (the battlefield for entities, the trashyard/discard pile for
+                                cyberspells), then resolve its effects (<GameIcon name="effect" /> see
+                                this tag for details), then resolve any other triggers such as the{" "}
+                                <GameIcon name="entersPlay" /> tag. The card has now finished being
+                                played. If your card's invoke cost has colorless symbols, you can use
+                                any color of resource in your pool to pay for 1 of the cost it requires,
+                                and/or reduce that cost by one for each time counter. See The Lock &
+                                Time Counters for more details.
+                            </p>
                         </Section>
 
                         <Section id="lock" title="The Lock & Time Counters">
@@ -590,7 +732,7 @@ export function HowToPlayPage() {
                             <h3 className="font-glitch pt-2 text-lg text-cyan-200">Time Counters</h3>
                             <p>
                                 Time counters shape how you interact with the lock: you can reduce a
-                                card's invoke cost by one for each counter you place on it after you
+                                card's invoke cost by <GameIcon name="gen1" /> for each counter you place on it after you
                                 play it. You can only reduce grey numbered-value costs this way. When
                                 you do, instead of putting the card into the lock, you ignore the lock
                                 entirely&mdash;protecting your asset&mdash;and place it in your
@@ -609,168 +751,130 @@ export function HowToPlayPage() {
                             </p>
                         </Section>
 
-                        <Section id="how-to-play" title="How to Play">
-                            <h3 className="font-glitch text-lg text-cyan-200">Setting Up</h3>
+                        <Section id="timing" title="Timing, Triggers & Keywords">
                             <p>
-                                For your first time, we recommend using a premade starter deck; it has
-                                everything you need to play:
+                                Some cards include highlighted words or keyword abilities. All
+                                abilities except the EFFECT tag and ACTIVATED abilities are displayed
+                                as tags on a card; special keyword text is highlighted in black.
+                                There are two types of tags: STATIC and TRIGGERED. A STATIC tag means
+                                the ability is always in effect while it is in play; a TRIGGERED
+                                ability triggers when a particular condition is met. When two
+                                triggers are side by side, both are in effect in an "and"
+                                relationship. Some tag conditions may be altered; when they are, the
+                                condition is always printed first, followed by a comma and then the
+                                effect, formatted (ignoring the brackets) as [condition], [effect].
                             </p>
-                            <ul className="list-disc space-y-1 pl-6">
-                                <li>A pilot</li>
-                                <li>2 augments</li>
-                                <li>A medium-weight RIG (deck) of 40 cards, with no more than 3 copies of a named card</li>
-                                <li>A D20 health tracker</li>
-                                <li>5 red damage dice</li>
-                                <li>5 green time-counter dice</li>
-                                <li>Resource tokens</li>
+
+                            <ul className="space-y-3">
+                                <li className="flex items-start gap-3">
+                                    <GameIcon name="atomic" className="mt-0.5 shrink-0" />
+                                    <span>Abilities with this tag trigger and/or stay active even while there are time counters on the card.</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <GameIcon name="entersPlay" className="mt-0.5 shrink-0" />
+                                    <span>Triggers when this card enters play for the first time, whether the battlefield or the stockpile. This ability always has this tag.</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <GameIcon name="battlefield" className="mt-0.5 shrink-0" />
+                                    <span>Triggers when the card enters the battlefield for the first time.</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <GameIcon name="stockpile" className="mt-0.5 shrink-0" />
+                                    <span>Triggers when the card enters the stockpile for the first time.</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <GameIcon name="attack" className="mt-0.5 shrink-0" />
+                                    <span>Triggers when you make an attack with that card.</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <GameIcon name="endTurn" className="mt-0.5 shrink-0" />
+                                    <span>Triggers on a card at the end of your turn.</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <GameIcon name="start" className="mt-0.5 shrink-0" />
+                                    <span>Triggers on a card at the start of your turn.</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <GameIcon name="invoke" className="mt-0.5 shrink-0" />
+                                    <span>Triggers when you play the card this tag is printed on, but before the card goes to the lock; it always resolves as soon as it is triggered.</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <GameIcon name="conditional" className="mt-0.5 shrink-0" />
+                                    <span>Triggers when a condition is met, formatted (ignoring the brackets) as [condition], [effect].</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <GameIcon name="static" className="mt-0.5 shrink-0" />
+                                    <span>This ability is always active while the card is in play.</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <GameIcon name="effect" className="mt-0.5 shrink-0" />
+                                    <span>Triggers when the played card resolves. Non-activatable abilities without any tag automatically have this one. (Note: effects are also referenced as what an ability does.)</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <GameIcon name="defeated" className="mt-0.5 shrink-0" />
+                                    <span>Triggers when the unit it is printed on is defeated, meaning put into the trashyard from play.</span>
+                                </li>
                             </ul>
-                            <p>
-                                First, place your pilot in the pilot zone. Then shuffle your deck and
-                                place it in the RIG zone. Next, place your augments on the
-                                battlefield, readied. Finally, grab the starting resource tokens
-                                noted on your pilot and place them in your stockpile readied (vertical,
-                                90 degrees). Set your life total and draw a hand of cards in the same
-                                fashion.
-                            </p>
-                            <p>
-                                Once all players have done this, randomly determine who goes first;
-                                the winner decides whether they want the first turn. (A setup demo
-                                using the blue/yellow starter is shown below.)
-                            </p>
-                            <p>
-                                Once players know who is going first, they may look at their hand.
-                                Each player has one chance to mulligan unwanted cards from their
-                                opening hand; this happens only once. The player going first mulligans
-                                first. To mulligan, choose any number of cards from your hand, put them
-                                on the bottom of your deck (RIG), and draw that many cards from the top
-                                of your deck (RIG). Once all players have decided, the player going
-                                first begins the first turn. Once the game starts, there is no maximum
-                                hand size.
-                            </p>
-
-                            <h3 className="font-glitch pt-2 text-lg text-cyan-200">Turn Phases</h3>
-                            <p>
-                                There are three phases: the maintenance phase (start of turn), the
-                                main phase, and the end-of-turn phase. Take them in order on your
-                                turn. For a more challenging game mode, include the steps marked with
-                                the [Hardcore] tag.
-                            </p>
-                            <div className="space-y-1">
-                                <p className="flex items-center gap-2 font-semibold text-cyan-200">
-                                    <GameIcon name="start" /> Maintenance Phase
-                                </p>
-                                <ol className="list-decimal space-y-1 pl-6">
-                                    <li>Ready all entities you control.</li>
-                                    <li>Remove a time counter from each card you control in play, and resolve any effect triggered when the last time counter is removed from a card in your stockpile.</li>
-                                    <li>[Hardcore] Dismantle a resource you control.</li>
-                                    <li>Draw a card, except the player going first on the first turn of the game.</li>
-                                    <li>[Hardcore] Draw an additional card.</li>
-                                </ol>
-                            </div>
-                            <div className="space-y-1">
-                                <p className="font-semibold text-cyan-200">Main Phase</p>
-                                <p>
-                                    You may play (invoke) cards, activate abilities, make attacks,
-                                    allocate a resource to a unit you control, or accumulate resources,
-                                    in any order.
-                                </p>
-                                <p>To make an attack:</p>
-                                <ol className="list-decimal space-y-1 pl-6">
-                                    <li>Choose unit(s) that did not enter play this turn (units with Blitz qualify), play a cyberspell strike card, or activate an augment that says it makes an attack. When attacking with multiple units, the group is considered a single attack and must share the same target, but each attacker is treated separately for blocking purposes.</li>
-                                    <li>Expend the chosen unit(s), declare an attack target (another unit or an opponent), and trigger the <GameIcon name="attack" /> abilities of the attacking units.</li>
-                                    <li>
-                                        Block incoming damage. You may, in any order:
-                                        <ul className="list-disc space-y-1 pl-6 pt-1">
-                                            <li>Expend unit(s) and redirect an attacker to the expended unit instead. You can do this even if the unit entered play this turn; when multiple units are part of a single attack, you may only redirect one of them. (Attacks redirected this way do not trigger effects like Stealth.)</li>
-                                            <li>Discard any number of cards in hand with a <GameIcon name="rating" /> rating, add them together, and reduce the damage from an attacker of your choice by that total.</li>
-                                            <li>Expend any number of augments you control, choose an attacker for each, reduce the incoming damage by that augment's <GameIcon name="rating" /> rating, and add a depletion counter to that augment.</li>
-                                        </ul>
-                                    </li>
-                                    <li>Before damage is dealt, players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
-                                    <li>Deal Preemptive Strike damage equal to your <GameIcon name="rating" /> + modifiers.</li>
-                                    <li>If you did not already deal Preemptive Strike damage, deal damage equal to your <GameIcon name="rating" /> + modifiers to the target of your attack. If the target is readied, it deals damage equal to its <GameIcon name="rating" /> + modifiers back to the attacker. Damage dealt this way is simultaneous.</li>
-                                    <li>If a unit's damage is greater than or equal to its <GameIcon name="rating" /> rating, it is defeated (the only exception being the Durable keyword), triggering its <GameIcon name="defeated" /> tag if it had one, along with any other triggered abilities that care about being defeated. A defeated unit goes to the trashyard (discard pile).</li>
-                                    <li>Any damage directed at a player that was not blocked or redirected is dealt as loss of life to that player. Then the attack ends.</li>
-                                </ol>
-                            </div>
-                            <div className="space-y-1">
-                                <p className="flex items-center gap-2 font-semibold text-cyan-200">
-                                    <GameIcon name="endTurn" /> End-of-Turn Phase
-                                </p>
-                                <ol className="list-decimal space-y-1 pl-6">
-                                    <li>Players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
-                                    <li>Lose any unspent resources in your resource pool (not your stockpile).</li>
-                                </ol>
-                            </div>
 
                             <h3 className="font-glitch pt-2 text-lg text-cyan-200">
-                                Accumulate Resources
+                                Activated Abilities
                             </h3>
                             <p>
-                                You may accumulate resources only once per turn, and only on your
-                                turn. To do so, choose a card in hand, reveal it, and then "gain"
-                                (grab) up to three resource tokens from its listed invoke cost
-                                (ignoring the grey numbered costs) and add them to your stockpile
-                                readied. Then put the revealed card on the bottom of your deck (RIG).
-                                This action does not use the lock.
+                                Activated abilities are formatted (ignoring the brackets) as [cost 1,
+                                cost 2, etc.]: [effect]. Unless they say otherwise, they can be
+                                activated any time you can play a Quick Hack; if you do, add it to
+                                your queue of effects while the lock is full. You must choose legal
+                                targets only when you put the effect into the lock; if no legal
+                                target is found, the ability does nothing. To activate an activated
+                                ability, pay the cost written on the card. Its effect then goes to
+                                the lock and resolves.
                             </p>
+                            <p>
+                                Example: the activated ability "<GameIcon name="expend" />, <GameIcon name="power" /> <GameIcon name="gen1" /> : Draw a
+                                card" means to expend the card the ability is printed on, then pay 1
+                                yellow unit of power and 1 of any color of your choice, to add the
+                                "draw a card" effect to the lock&mdash;after which it resolves.
+                            </p>
+                            <ul className="space-y-3">
+                                <li className="flex items-start gap-3">
+                                    <GameIcon name="expend" className="mt-0.5 shrink-0" />
+                                    <span>The Expend ability and symbol. Turn a card in play 90 degrees from vertical to horizontal. If this is printed on a unit, it cannot be used the turn the unit enters play unless it has Blitz. (Note: to ready an entity is the opposite of expending; a readied entity is vertical.)</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <GameIcon name="recycle" className="mt-0.5 shrink-0" />
+                                    <span>The Recycle ability and symbol. Discard this card from hand to gain an effect, at any time you can play a Quick Hack, except when the lock is full.</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <GameIcon name="trash" className="mt-0.5 shrink-0" />
+                                    <span>The Trash ability and symbol. It can only be activated while the card it is printed on is on the battlefield; as part of a cost, put that card into the discard pile (trashyard).</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <GameIcon name="dismantle" className="mt-0.5 shrink-0" />
+                                    <span>The Dismantle ability and symbol. It can be activated while in play; as part of a cost, put the card it is printed on into the dismantled zone.</span>
+                                </li>
+                            </ul>
+                        </Section>
 
-                            <h3 className="font-glitch pt-2 text-lg text-cyan-200">
-                                How to Allocate a Resource to a Unit
-                            </h3>
+                        <Section id="keywords" title="Keyword Abilities">
                             <p>
-                                This ability can be used any time a Quick Hack can, including{" "}
-                                <GameIcon name="expend" /> while the lock is full&mdash;but only if
-                                you control no units that already have an expended resource allocated
-                                to them. Each resource allocated to a unit gives it a +1 rating for
-                                each resource allocated. To allocate a resource, expend it and choose
-                                a target. This ability does not use the lock and happens immediately.
+                                Keyword abilities are STATIC abilities found on many of the cards you
+                                will play. Almost always their ability text is displayed on the card;
+                                if not, here is the full list.
                             </p>
-
-                            <h3 className="font-glitch pt-2 text-lg text-cyan-200">
-                                How to Play (Invoke) a Card
-                            </h3>
-                            <p>
-                                Each card has an invoke cost, which is what lets it be played; a card
-                                without an invoke cost in the upper-left corner cannot be played. To
-                                pay the cost, you must have the required resources in your resource
-                                pool&mdash;an imaginary area where resources go when a card says to
-                                "add" a resource of the color you need; they stay there until the end
-                                of the turn. Most resource tokens have two abilities that "add" 1 or 2
-                                resources of their color to your pool, which you then spend on the cost
-                                to play a card.
+                            <p className="rounded border-l-2 border-red-500/60 bg-red-950/30 p-3 text-sm">
+                                <Term>! Important !</Term> Multiple instances of the same keyword on
+                                one entity do not stack, unless that keyword has a numerical value; in
+                                that case, they add together. Any keyword with X has a numerical
+                                value.
                             </p>
-                            <p>
-                                For example, say I want to play the Flame Kin Elementalist. I need a
-                                RAM (blue) and Spirit Power (red) in my pool to invoke the card. I
-                                already have a RAM and a Spirit Power readied in my stockpile, and each
-                                has abilities: the first adds a resource of its respective color to my
-                                pool when I expend the resource card as a cost; the second makes me
-                                lose 1 life and dismantle the resource, then adds 2 of its respective
-                                color.
-                            </p>
-                            <p>
-                                Because I have what I need, I'll expend both the RAM and Spirit Power
-                                resources, which adds resources of the respective color when I expend
-                                them, as shown in the image below.
-                            </p>
-                            <p>
-                                Once you have paid the cost&mdash;and if the card says to target, you
-                                must have legal targets before you invoke the asset, or you cannot play
-                                it&mdash;reveal the card you intend to play. It goes to the lock;
-                                declare its legal targets, then trigger any{" "}
-                                <GameIcon name="invoke" /> tags printed on the card and resolve it right
-                                away. If it is not overwritten by an opponent's Quick Hack while it's
-                                in the lock, the card resolves: first, put the card in its respective
-                                zone (the battlefield for entities, the trashyard/discard pile for
-                                cyberspells), then resolve its effects (<GameIcon name="effect" /> see
-                                this tag for details), then resolve any other triggers such as the{" "}
-                                <GameIcon name="entersPlay" /> tag. The card has now finished being
-                                played. If your card's invoke cost has colorless symbols, you can use
-                                any color of resource in your pool to pay for 1 of the cost it requires,
-                                and/or reduce that cost by one for each time counter. See The Lock &
-                                Time Counters for more details.
-                            </p>
+                            <dl className="space-y-3">
+                                {KEYWORDS.map((keyword) => (
+                                    <div key={keyword.name} className="grid gap-1 sm:grid-cols-[200px_1fr]">
+                                        <dt className="font-semibold text-cyan-200">{keyword.name}</dt>
+                                        <dd>{keyword.text}</dd>
+                                    </div>
+                                ))}
+                            </dl>
                         </Section>
 
                         <Section id="deck-building" title="Deck Building">
