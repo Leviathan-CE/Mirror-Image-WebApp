@@ -151,3 +151,223 @@
     @apply font-sans;
   }
 }
+
+@layer components {
+  .clip-angled {
+    --angle: 10px;
+    clip-path: polygon(
+      var(--angle) 0,
+      100% 0,
+      100% calc(100% - var(--angle)),
+      calc(100% - var(--angle)) 100%,
+      0 100%,
+      0 var(--angle)
+    );
+  }
+
+  /* Glitch text effect.
+     Uses two colored copies (::before / ::after) that jitter out of
+     alignment, giving a chromatic "broken signal" look. */
+  .glitch {
+    position: relative;
+    display: inline-block;
+    color: inherit;
+  }
+
+  .glitch::before,
+  .glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  /* Cyan copy, nudged left */
+  .glitch::before {
+    color: #22d3ee;
+    transform: translateX(-2px);
+    animation: glitch-shift 2s infinite linear alternate;
+  }
+
+  /* Magenta copy, nudged right
+  .glitch::after {
+    color: #f0f;
+    transform: translateX(2px);
+    animation: glitch-shift 1.5s infinite linear alternate-reverse;
+  } */
+
+  /* Only glitch while hovered */
+  .glitch-hover::before,
+  .glitch-hover::after {
+    animation-play-state: paused;
+    opacity: 0;
+  }
+  .glitch-hover:hover::before,
+  .glitch-hover:hover::after {
+    animation-play-state: running;
+    opacity: 1;
+  }
+
+  /* Slice-based glitch button.
+     A ::after copy of the label (via data-text) sits on top of the button
+     and shifts through horizontal "slices" on hover, like a torn signal. */
+  .glitch-btn {
+    position: relative;
+    isolation: isolate;
+    /* Glitch colors default to the button's own text color.
+       Override per-button with --glitch-1 / --glitch-2 if you want. */
+    --glitch-1: currentColor;
+    --glitch-2: currentColor;
+  }
+
+  .glitch-btn::after {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: currentColor;
+    /* diagonal streak using the inherited color */
+    background: linear-gradient(
+      45deg,
+      transparent 3%,
+      var(--glitch-1) 3%,
+      var(--glitch-1) 5%,
+      var(--glitch-2) 5%
+    );
+    text-shadow: -2px -2px 0 var(--glitch-2), 2px 2px 0 var(--glitch-1);
+    clip-path: inset(50% 50% 50% 50%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .glitch-btn:hover::after {
+    opacity: 1;
+    animation: glitch-btn-slice 0.9s steps(2, end) infinite;
+  }
+
+  /* Drop-in glitch effect: add `glitch-fx` + `data-text="LABEL"` to any button.
+     The ::after copy reads data-text and shatters into slices on hover.
+     Colors default to the button's own text/background; override the two
+     accent colors per-button with --glitch-a / --glitch-b if you want. */
+  .glitch-fx {
+    position: relative;
+    display: inline-flex;
+    --glitch-a: #00e6f6;
+    --glitch-b: currentColor;
+  }
+
+  /* Neon glow on the inner (possibly clipped) button. drop-shadow follows the
+     clip-path silhouette, unlike box-shadow which would be rectangular. */
+  .glitch-fx > * {
+    filter: drop-shadow(0 0 12px var(--glitch-a));
+    transition: filter 0.2s ease;
+  }
+
+  .glitch-fx:hover > * {
+    filter: drop-shadow(0 0 22px var(--glitch-a));
+  }
+
+  .glitch-fx::after {
+    --slice-0: inset(50% 50% 50% 50%);
+    --slice-1: inset(80% -6px 0 0);
+    --slice-2: inset(50% -6px 30% 0);
+    --slice-3: inset(10% -6px 85% 0);
+    --slice-4: inset(40% -6px 43% 0);
+    --slice-5: inset(80% -6px 5% 0);
+
+    content: attr(data-text);
+    display: grid;
+    place-items: center;
+    position: absolute;
+    inset: 0;
+    font: inherit;
+    color: currentColor;
+    background: transparent;
+    text-shadow:
+      -3px -3px 0px var(--glitch-a),
+      3px 3px 0px var(--glitch-b);
+    clip-path: var(--slice-0);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .glitch-fx:hover::after {
+    opacity: .5;
+    animation: glitch-fx 0.2s steps(10, end);
+  }
+}
+
+@keyframes glitch-shift {
+  0% {
+    clip-path: inset(0 0 85% 0);
+    transform: translateX(-2px);
+  }
+  20% {
+    clip-path: inset(30% 0 50% 0);
+    transform: translateX(2px);
+  }
+  40% {
+    clip-path: inset(60% 0 20% 0);
+    transform: translateX(-1px);
+  }
+  60% {
+    clip-path: inset(10% 0 70% 0);
+    transform: translateX(1px);
+  }
+  80% {
+    clip-path: inset(50% 0 30% 0);
+    transform: translateX(-2px);
+  }
+  100% {
+    clip-path: inset(70% 0 10% 0);
+    transform: translateX(2px);
+  }
+}
+
+@keyframes glitch-fx {
+  0% {
+    clip-path: inset(80% -30px 0 -30px);
+    transform: translate(-24px, -12px);
+  }
+  10% {
+    clip-path: inset(10% -30px 85% -30px);
+    transform: translate(14px, 12px);
+  }
+  20% {
+    clip-path: inset(80% -30px 0 -30px);
+    transform: translate(-14px, 12px);
+  }
+  30% {
+    clip-path: inset(10% -30px 85% -30px);
+    transform: translate(0px, 6px);
+  }
+  40% {
+    clip-path: inset(50% -30px 30% -30px);
+    transform: translate(-8px, 0px);
+  }
+  50% {
+    clip-path: inset(10% -30px 85% -30px);
+    transform: translate(8px, 0px);
+  }
+  60% {
+    clip-path: inset(40% -30px 43% -30px);
+    transform: translate(8px, 12px);
+  }
+  70% {
+    clip-path: inset(50% -30px 30% -30px);
+    transform: translate(-14px, 12px);
+  }
+  80% {
+    clip-path: inset(80% -30px 5% -30px);
+    transform: translate(26px, -12px);
+  }
+  90% {
+    clip-path: inset(80% -30px 0 -30px);
+    transform: translate(-14px, 0px);
+  }
+  100% {
+    clip-path: inset(80% -30px 0 -30px);
+    transform: translate(0);
+  }
+}
