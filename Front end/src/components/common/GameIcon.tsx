@@ -9,6 +9,12 @@ const ICON_SOURCES = {
   steel: { src: "/images/icons/STL.png", label: "Steel (STL)", shape: "token" },
   time: { src: "/images/icons/TIM.png", label: "Time (TIM)", shape: "token" },
   ram: { src: "/images/icons/RAM.png", label: "RAM", shape: "token" },
+  // Generic / colorless numbered costs (grey).
+  gen0: { src: "/images/icons/GEN-0.png", label: "Generic 0", shape: "token" },
+  gen1: { src: "/images/icons/GEN-1.png", label: "Generic 1", shape: "token" },
+  gen2: { src: "/images/icons/GEN-2.png", label: "Generic 2", shape: "token" },
+  gen10: { src: "/images/icons/GEN-10.png", label: "Generic 10", shape: "token" },
+  genX: { src: "/images/icons/GEN-X.png", label: "Generic X", shape: "token" },
   // Card stat: power rating.
   rating: { src: "/images/icons/TLV.png", label: "Power rating", shape: "token" },
   // Card actions.
