@@ -16,7 +16,7 @@ const ICON_SOURCES = {
   gen10: { src: "/images/icons/GEN-10.png", label: "Generic 10", shape: "token" },
   genX: { src: "/images/icons/GEN-X.png", label: "Generic X", shape: "token" },
   // Card stat: power rating.
-  rating: { src: "/images/icons/TLV.png", label: "Power rating", shape: "token" },
+  threat_lvl: { src: "/images/icons/TLV.png", label: "threat-level", shape: "token" },
   // Card actions.
   recycle: { src: "/images/icons/RE.png", label: "Recycle", shape: "token" },
   expend: { src: "/images/icons/EX.png", label: "Expend", shape: "token" },
