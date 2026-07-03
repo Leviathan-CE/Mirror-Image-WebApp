@@ -9,6 +9,13 @@ const BANNER = "/images/banner2.jpg"
 const CARD_PILOT = "/images/card_pilot.png"
 const PLAY_MAT = "/images/PLAY_MAT.png"
 const CARD_AUGMENT = "/images/card_augment.png"
+const IMG_SETUP = "/images/Setup.png"
+const IMG_GAIN_RESOURCE = "/images/gain_resources.png"
+const IMG_PLAY_CARD_1 = "/images/playing_card_1.png"
+const IMG_PLAY_CARD_2 = "/images/playing_card_2.png"
+const IMG_PLAY_CARD_3 = "/images/playing_card_3.png"
+const IMG_PLAY_CARD_4 = "/images/playing_card_4.png"
+const IMG_PLAY_CARD_5 = "/images/playing_card_5.png"
 
 type TocEntry = { id: string; label: string }
 
@@ -55,6 +62,14 @@ const KEYWORDS: { name: string; text: ReactNode }[] = [
     { name: "WEAKENED X", text: "Whenever this asset deals damage, it deals X less damage." },
 ]
 
+/**
+ * Renders a titled rulebook section with consistent heading styling and an
+ * anchor `id` used by the table of contents and scroll-spy.
+ *
+ * @param id - Anchor id for deep-linking and TOC highlighting (matches an entry in `SECTIONS`).
+ * @param title - Section heading text.
+ * @param children - Section body content.
+ */
 function Section({
     id,
     title,
@@ -76,12 +91,57 @@ function Section({
     )
 }
 
+/**
+ * Inline emphasis for a defined game term, styled in the accent cyan color.
+ *
+ * @param children - The term text to emphasize.
+ */
 function Term({ children }: { children: ReactNode }) {
-  return <span className="font-semibold text-cyan-200">{children}</span>
+    return <span className="font-semibold text-cyan-200">{children}</span>
 }
 
+/**
+ * Inline "[Hardcore]" marker used to flag optional advanced-mode rules steps,
+ * styled in red to stand out from standard rules text.
+ */
 function Hardcore() {
-  return <span className="font-light text-red-500">[Hardcore]</span>
+    return <span className="font-light text-red-500">[Hardcore]</span>
+}
+
+/** Green check icon used to mark eligible/allowed symbols in rules legends. */
+function CheckMark() {
+    return (
+        <svg
+            aria-hidden
+            viewBox="0 0 24 24"
+            className="h-6 w-6 shrink-0 text-green-400 lg:h-7 lg:w-7"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={3}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M20 6L9 17l-5-5" />
+        </svg>
+    )
+}
+
+/** Red cross icon used to mark ineligible/ignored symbols in rules legends. */
+function CrossMark() {
+    return (
+        <svg
+            aria-hidden
+            viewBox="0 0 24 24"
+            className="h-6 w-6 shrink-0 text-red-500 lg:h-7 lg:w-7"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={3}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M18 6L6 18M6 6l12 12" />
+        </svg>
+    )
 }
 
 type PlaymatZone = {
@@ -158,6 +218,15 @@ const PLAYMAT_ZONES: PlaymatZone[] = [
     },
 ]
 
+
+
+/**
+ * Interactive playmat diagram. Renders the playmat image with invisible
+ * hotspot buttons layered on top (positioned via percentage coordinates from
+ * `PLAYMAT_ZONES`). Hovering or focusing a zone highlights it and shows its
+ * description below; the "In Play" zone additionally highlights the combined
+ * battlefield + stockpile area. The description box is hidden when no zone is active.
+ */
 function InteractivePlaymat() {
     const [activeId, setActiveId] = useState<string | null>(null)
     const activeZone = PLAYMAT_ZONES.find((zone) => zone.id === activeId)
@@ -220,6 +289,17 @@ function InteractivePlaymat() {
     )
 }
 
+/**
+ * Scroll-spy hook. Observes the DOM elements matching the given section ids and
+ * returns the id of the topmost section currently in view, so the table of
+ * contents can highlight the reader's current location.
+ *
+ * The observer uses a `rootMargin` offset to account for the sticky header and
+ * to bias activation toward a section's heading reaching the top of the viewport.
+ *
+ * @param ids - Section anchor ids to track (should be a stable reference to avoid re-subscribing).
+ * @returns The id of the active section, or `null` if none are resolved yet.
+ */
 function useActiveSection(ids: string[]) {
     const [activeId, setActiveId] = useState<string | null>(ids[0] ?? null)
 
@@ -266,6 +346,11 @@ function useActiveSection(ids: string[]) {
 
 const SECTION_IDS = SECTIONS.map((section) => section.id)
 
+/**
+ * Sticky table of contents listing every rulebook section. Highlights the
+ * section currently in view (via `useActiveSection`) and provides anchor links
+ * for quick navigation.
+ */
 function TableOfContents() {
     const activeId = useActiveSection(SECTION_IDS)
 
@@ -309,6 +394,11 @@ function TableOfContents() {
     )
 }
 
+/**
+ * Floating "Contents" button shown only on smaller screens (`lg:hidden`), where
+ * the sidebar table of contents is not sticky. It appears after the user scrolls
+ * past a threshold and smooth-scrolls back to the table of contents when clicked.
+ */
 function BackToTocButton() {
     const [visible, setVisible] = useState(false)
 
@@ -335,12 +425,15 @@ function BackToTocButton() {
                     : "pointer-events-none translate-y-4 opacity-0"
             )}
         >
-           
+
             TOC
         </button>
     )
 }
 
+/**
+ * The Page 
+ */
 export function HowToPlayPage() {
     return (
         <section
@@ -441,33 +534,42 @@ export function HowToPlayPage() {
                                 <li>A pilot</li>
                                 <li>2 augments</li>
                                 <li>A medium-weight RIG (deck) of 40 cards, with no more than 3 copies of a named card</li>
-                                <li>A D20 health tracker</li>
-                                <li>5 red damage dice</li>
-                                <li>5 green time-counter dice</li>
-                                <li>Resource tokens</li>
+                                <li>A 20-sided dice health tracker or other way to track life totals</li>
+                                <li>5  or more red damage 6-sided dice</li>
+                                <li>5 or more green time-counter 6-sided dice</li>
+                                <li>Resource and other tokens</li>
                             </ul>
 
-                            <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
-                                <img
-                                    src={BANNER}
-                                    alt="Mirror Image banner"
-                                    className="fade-edges clip-angled w-full max-w-3xl"
-                                    style={{ "--feather": "20%", "--angle": "75px" } as CSSProperties}
-                                />
-                            </div>
+
                             <p>
                                 First, place your pilot in the pilot zone. Then shuffle your deck and
                                 place it in the RIG zone. Next, place your augments on the
                                 battlefield, readied. Finally, grab the starting resource tokens
                                 noted on your pilot and place them in your stockpile readied (vertical,
-                                90 degrees). Set your life total and draw a hand of cards in the same
+                                90 degrees). Set your life total and draw a hand of cards based on your pilots starting values in the same
                                 fashion.
                             </p>
+
                             <p>
                                 Once all players have done this, randomly determine who goes first;
                                 the winner decides whether they want the first turn. (A setup demo
                                 using the blue/yellow starter is shown below.)
                             </p>
+                            <p className="border-l-2 border-cyan-500/40 pl-4 text-base italic text-gray-400 lg:text-lg 2xl:text-xl">
+                                Note: You may change which side you perfer to have your RIG pilot zone and trashyard
+                                for convience when designing the game it was defaulted to the left, you may have them
+                                on the right if that is more comfortable.
+
+                            </p>
+
+                            <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
+                                <img
+                                    src={IMG_SETUP}
+                                    alt="Setting up the starting game board for a player"
+
+                                />
+                            </div>
+
                             <p>
                                 Once players know who is going first, they may look at their hand.
                                 Each player has one chance to mulligan unwanted cards from their
@@ -493,7 +595,7 @@ export function HowToPlayPage() {
                                 <div className="border-l-2 border-cyan-500/0 pl-4">
                                     <ol className="list-decimal space-y-1 pl-6">
                                         <li>Ready all entities you control.</li>
-                                        <li> Trigger any Ability with the <GameIcon name="start"/> tag.</li>
+                                        <li> Trigger all Abilities with the <GameIcon name="start" /> tag.</li>
                                         <li>Remove a time counter from each card you control in play, and resolve any effect triggered when the last time counter is removed from a card in your stockpile.</li>
                                         <li><Hardcore /> Dismantle a resource you control.</li>
                                         <li>Draw a card, except the player going first on the first turn of the game.</li>
@@ -522,8 +624,8 @@ export function HowToPlayPage() {
                                             </ul>
                                         </li>
                                         <li>Before damage is dealt, players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
-                                        <li>Deal Preemptive Strike damage equal to your <GameIcon name="threat_lvl" /> + modifiers.</li>
-                                        <li>If you did not already deal Preemptive Strike damage, deal damage equal to your <GameIcon name="threat_lvl" /> + modifiers to the target of your attack. If the target is readied, it deals damage equal to its <GameIcon name="threat_lvl" /> + modifiers back to the attacker. Damage dealt this way is simultaneous.</li>
+                                        <li>Deal Preemptive Strike damage equal to your <GameIcon name="threat_lvl" />.</li>
+                                        <li>If you did not already deal Preemptive Strike damage, deal damage equal to your <GameIcon name="threat_lvl" /> to the target of your attack. If the target is readied, it deals damage equal to its <GameIcon name="threat_lvl" /> back to the attacker. Damage dealt this way is simultaneous.</li>
                                         <li>If a unit's damage is greater than or equal to its <GameIcon name="threat_lvl" /> rating, it is defeated (the only exception being the Durable keyword), triggering its <GameIcon name="defeated" /> tag if it had one, along with any other triggered abilities that care about being defeated. A defeated unit goes to the trashyard (discard pile).</li>
                                         <li>Any damage directed at a player that was not blocked or redirected is dealt as loss of life to that player. Then the attack ends.</li>
                                     </ol>
@@ -622,7 +724,7 @@ export function HowToPlayPage() {
                                 to see whether your opponent overwrites it with a Quick Hack. If they
                                 don't, it goes directly to the battlefield&mdash;provided you chose
                                 not to use time as part of its cost (see Time Counters for how the
-                                time resource works). Units cannot attack the turn they are played.
+                                time resource works). Units cannot attack the turn they enter the battlefield.
                             </p>
                             <p>
                                 <Term>PROGRAM [ Entity ]:</Term> A type of card that tends to be
@@ -658,7 +760,8 @@ export function HowToPlayPage() {
                                 <Term>TOKEN [ Entity ]:</Term> Usually created by an effect; tokens
                                 do not go to the discard pile when defeated or trashed. You may use
                                 your own objects as tokens, so long as it is clear which token they
-                                represent and whether they are expended.
+                                represent and whether they are expended. You cannot use non-token MIRRORIMAGE
+                                cards as tokens.
                             </p>
 
                             <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Sub Types</h3>
@@ -672,8 +775,7 @@ export function HowToPlayPage() {
                                 <Term>STRIKE [ Cyberspell ]:</Term> This cyberspell can be played any
                                 time during your main phase and counts as making an attack. When you
                                 play this card, choose a target for its <GameIcon name="threat_lvl" />{" "}
-                                damage. Any additional effects it has also target the same target,
-                                unless the card says otherwise. Strikes tend to be special moves,
+                                damage. Strikes tend to be special moves,
                                 magic, or other attacks and feats of prowess your pilot can pull off
                                 in the spur of the moment.
                             </p>
@@ -701,16 +803,57 @@ export function HowToPlayPage() {
                                 This action does not use the lock.
                             </p>
 
+                            <div className="space-y-3 rounded-md border border-cyan-500/20 bg-black/40 p-4">
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                                    <CheckMark />
+                                    <span className="flex flex-wrap items-center gap-1.5">
+                                        <GameIcon name="ram" />
+                                        <GameIcon name="steel" />
+                                        <GameIcon name="time" />
+                                        <GameIcon name="life" />
+                                        <GameIcon name="power" />
+                                        <GameIcon name="met" />
+                                    </span>
+                                    <span className="text-base text-gray-300 lg:text-lg">
+                                        Colored resource symbols can be gained.
+                                    </span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                                    <CrossMark />
+                                    <span className="flex flex-wrap items-center gap-1.5">
+                                        <GameIcon name="gen0" />
+                                        <GameIcon name="gen1" />
+                                        <GameIcon name="gen2" />
+                                        <span className="px-1 text-gray-400">. . . . .</span>
+                                        <GameIcon name="gen10" />
+                                        <GameIcon name="genX" />
+                                    </span>
+                                    <span className="text-base text-gray-300 lg:text-lg">
+                                        Grey numbered (generic) costs are ignored.
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
+                                <img
+                                    src={IMG_GAIN_RESOURCE}
+                                    alt="Mirror Image banner"
+
+                                />
+                            </div>
+
+
+
                             <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
                                 How to Allocate a Resource to a Unit
                             </h3>
                             <p>
                                 This ability can be used any time a Quick Hack can, including {" "}
-                                 while the lock is full&mdash;but only if
+                                while the lock is full&mdash;but only if
                                 you control no units that already have an expended resource allocated
-                                to them. Each resource allocated to a unit gives it a +1<GameIcon name="threat_lvl"/> rating for
-                                each resource allocated. To allocate a resource, expend it "<GameIcon name="expend"/>" and choose
-                                a target. This ability does not use the lock and happens immediately.
+                                to them. Each resource allocated to a unit gives it a +1<GameIcon name="threat_lvl" /> rating for
+                                each resource allocated. To allocate a resource, expend it "<GameIcon name="expend" />" and choose
+                                a target. This ability does not use the lock and thus happens immediately.
                             </p>
 
                             <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
@@ -725,12 +868,21 @@ export function HowToPlayPage() {
                                 of the turn. Most resource tokens have two abilities that "add" 1 or 2
                                 resources of their color to your pool, which you then spend on the cost
                                 to play a card.
+
+                                <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
+                                    <img
+                                        src={IMG_PLAY_CARD_1}
+                                        alt="Mirror Image banner"
+
+                                    />
+                                </div>
+
                             </p>
                             <p>
-                                For example, say I want to play the Flame Kin Elementalist. I need a
-                                RAM (blue) and Spirit Power (red) in my pool to invoke the card. I
-                                already have a RAM and a Spirit Power readied in my stockpile, and each
-                                has abilities: the first adds a resource of its respective color to my
+                                For example, say I want to play the Needle Jet card. I need a
+                                RAM (blue) and Unit of Power (yellow) in my resource pool to invoke the card. I
+                                already have a RAM and a unit of Power readied in my stockpile, and each
+                                has two abilities: the first adds a resource of its respective color to my
                                 pool when I expend the resource card as a cost; the second makes me
                                 lose 1 life and dismantle the resource, then adds 2 of its respective
                                 color.
@@ -739,17 +891,47 @@ export function HowToPlayPage() {
                                 Because I have what I need, I'll expend both the RAM and Spirit Power
                                 resources, which adds resources of the respective color when I expend
                                 them, as shown in the image below.
+
+                                <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
+                                    <img
+                                        src={IMG_PLAY_CARD_2}
+                                        alt="Mirror Image banner"
+
+                                    />
+                                </div>
+                                Resources in Resource pool: <GameIcon name="ram" />
+                                <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
+                                    <img
+                                        src={IMG_PLAY_CARD_3}
+                                        alt="Mirror Image banner"
+
+                                    />
+                                </div>
+                                Resources in Resource pool: <GameIcon name="ram" /><GameIcon name="power" />
                             </p>
                             <p>
-                                Once you have paid the cost&mdash;and if the card says to target, you
+                                Once you have paid the cost by removing the reousrces in your reousrce pool euqal to the invoke cost&mdash;and if the card says to target, you
                                 must have legal targets before you invoke the asset, or you cannot play
-                                it&mdash;reveal the card you intend to play. It goes to the lock;
-                                declare its legal targets, then trigger any{" "}
-                                <GameIcon name="invoke" /> tags printed on the card and resolve it right
-                                away. If it is not overwritten by an opponent's Quick Hack while it's
+                                it&mdash;reveal the card you intend to play. Reveal the card and it goes to the lock; declare its legal targets, then trigger any{" "}
+                                <GameIcon name="invoke" /> tags printed on the card and resolve those tags immediately.
+                            </p>
+
+
+                            <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
+                                <img
+                                    src={IMG_PLAY_CARD_4}
+                                    alt="Mirror Image banner"
+
+                                />
+                            </div>
+                            <p> Resources in Resource pool: empty</p>
+
+
+                            <p>
+                                If it is not overwritten by an opponent's Quick Hack while it's
                                 in the lock, the card resolves: first, put the card in its respective
                                 zone (the battlefield for entities, the trashyard/discard pile for
-                                cyberspells), then resolve its effects (<GameIcon name="effect" /> see
+                                cyberspells), then resolve its effects in order as written on the card (<GameIcon name="effect" /> see
                                 this tag for details), then resolve any other triggers such as the{" "}
                                 <GameIcon name="entersPlay" /> tag. The card has now finished being
                                 played. If your card's invoke cost has colorless symbols, you can use
@@ -757,6 +939,13 @@ export function HowToPlayPage() {
                                 and/or reduce that cost by one for each time counter. See The Lock &
                                 Time Counters for more details.
                             </p>
+                            <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
+                                <img
+                                    src={IMG_PLAY_CARD_5}
+                                    alt="Mirror Image banner"
+
+                                />
+                            </div>
                         </Section>
 
                         <Section id="lock" title="The Lock & Time Counters">
@@ -783,7 +972,7 @@ export function HowToPlayPage() {
                                 lock. Then whoever controls that asset or ability becomes the
                                 non-active player, and their opponent becomes the active player. (If
                                 two abilities trigger at the same time, the active player chooses one
-                                of theirs to add first.)
+                                of theirs to add to the Lock first.)
                             </p>
                             <p>
                                 There are two scenarios, depending on whether the effect in the lock
@@ -836,11 +1025,11 @@ export function HowToPlayPage() {
                             <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Time Counters</h3>
                             <p>
                                 Time counters shape how you interact with the lock: you can reduce a
-                                card's invoke cost by <GameIcon name="gen1" /> for each counter you place on it after you
+                                card's invoke cost by <GameIcon name="gen1" /> for each time counter you place on it after you
                                 play it. You can only reduce grey numbered-value costs this way. When
                                 you do, instead of putting the card into the lock, you ignore the lock
                                 entirely&mdash;protecting your asset&mdash;and place it in your
-                                stockpile with the number of time counters you used to reduce its
+                                stockpile revealed with the number of time counters you used to reduce its
                                 cost. However, you do not get any of the card's effects right away,
                                 since cards with time counters on them have no abilities. At the start
                                 of each of your turns, you may remove 1 counter from each card you
@@ -900,7 +1089,7 @@ export function HowToPlayPage() {
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="invoke" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when you play the card this tag is printed on, but before the card goes to the lock; it always resolves as soon as it is triggered.</span>
+                                    <span>Triggers when you play the card this tag is printed on, as the card goes to the lock; it always resolves as soon as it is triggered.</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="conditional" className="mt-0.5 shrink-0" />
