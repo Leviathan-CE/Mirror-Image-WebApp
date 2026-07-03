@@ -271,8 +271,9 @@ function TableOfContents() {
 
     return (
         <nav
+            id="toc"
             aria-label="Table of contents"
-            className="rounded-md border border-cyan-500/20 bg-black/60 p-4 lg:sticky lg:top-24"
+            className="scroll-mt-24 rounded-md border border-cyan-500/20 bg-black/60 p-4 lg:sticky lg:top-24"
         >
             <h2 className="font-glitch mb-3 text-lg text-cyan-300 2xl:text-xl">Contents</h2>
             <ol className="space-y-1 text-sm 2xl:text-base">
@@ -308,6 +309,38 @@ function TableOfContents() {
     )
 }
 
+function BackToTocButton() {
+    const [visible, setVisible] = useState(false)
+
+    useEffect(() => {
+        const onScroll = () => setVisible(window.scrollY > 600)
+        onScroll()
+        window.addEventListener("scroll", onScroll, { passive: true })
+        return () => window.removeEventListener("scroll", onScroll)
+    }, [])
+
+    const scrollToToc = () => {
+        document.getElementById("toc")?.scrollIntoView({ behavior: "smooth" })
+    }
+
+    return (
+        <button
+            type="button"
+            onClick={scrollToToc}
+            aria-label="Jump to table of contents"
+            className={cn(
+                "font-glitch fixed bottom-6 right-6 z-50 flex items-center gap-2 clip-angled border border-cyan-400/60 bg-cyan-700/90 px-3 py-2 text-sm text-cyan-50 shadow-lg shadow-cyan-500/20 backdrop-blur transition-all hover:bg-cyan-600 active:bg-cyan-500 lg:hidden",
+                visible
+                    ? "translate-y-0 opacity-100"
+                    : "pointer-events-none translate-y-4 opacity-0"
+            )}
+        >
+           
+            TOC
+        </button>
+    )
+}
+
 export function HowToPlayPage() {
     return (
         <section
@@ -315,6 +348,7 @@ export function HowToPlayPage() {
             style={{ backgroundImage: `url(${HOME_BACKGROUND_IMAGE})` }}
         >
             <div className="absolute inset-0 bg-black/60" aria-hidden />
+            <BackToTocButton />
 
             <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-6 xl:max-w-7xl 2xl:max-w-[110rem]">
                 <img
