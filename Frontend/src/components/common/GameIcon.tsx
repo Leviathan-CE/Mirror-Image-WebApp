@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 const ICON_SOURCES = {
   // Resources used to play cards.
   life: { src: "/images/icons/LIF.png", label: "Life (LIF)", shape: "token" },
-  met: { src: "/images/icons/MET.png", label: "MET", shape: "token" },
+  metal: { src: "/images/icons/MET.png", label: "MET", shape: "token" },
   power: { src: "/images/icons/POW.png", label: "Power (POW)", shape: "token" },
   steel: { src: "/images/icons/STL.png", label: "Steel (STL)", shape: "token" },
   time: { src: "/images/icons/TIM.png", label: "Time (TIM)", shape: "token" },
