@@ -18,6 +18,7 @@ const IMG_PLAY_CARD_4 = "/images/playing_card_4.png"
 const IMG_PLAY_CARD_5 = "/images/playing_card_5.png"
 const IMG_DECKBUILDING_1 = "/images/deckbuilding.png"
 const IMG_DECKBUILDING_2 = "/images/deckbuilding_2.png"
+const IMG_ALLOCATION = "/images/allocation.png"
 
 type TocEntry = { id: string; label: string }
 
@@ -133,6 +134,30 @@ function Note({
     >
       {children}
     </p>
+  )
+}
+
+/**
+ * Inline anchor link to another section/subsection on the page, styled in the
+ * accent cyan with an underline so it reads as a cross-reference.
+ *
+ * @param href - Anchor target (e.g. "#how-to-attack").
+ * @param children - Link text.
+ */
+function SectionLink({
+  href,
+  children,
+}: {
+  href: string
+  children: ReactNode
+}) {
+  return (
+    <a
+      href={href}
+      className="font-semibold text-cyan-300 underline decoration-cyan-500/40 underline-offset-2 transition-colors hover:text-cyan-200"
+    >
+      {children}
+    </a>
   )
 }
 
@@ -638,24 +663,17 @@ export function HowToPlayPage() {
                                         allocate a resource to a unit you control, or accumulate resources,
                                         in any order.
                                     </p>
-                                    <p>To make an attack:</p>
+                                    <p>To make an attack, in brief:</p>
                                     <ol className="list-decimal space-y-1 pl-6">
-                                        <li>Choose unit(s) that did not enter play this turn (units with Blitz qualify), play a cyberspell strike card, or activate an augment that says it makes an attack. When attacking with multiple units, the group is considered a single attack and must share the same target, but each attacker is treated separately for blocking purposes.</li>
-                                        <li>Expend the chosen unit(s), declare an attack target (another unit or an opponent), and trigger the <GameIcon name="attack" /> abilities of the attacking units.</li>
-                                        <li>
-                                            Block incoming damage. You may, in any order:
-                                            <ul className="list-disc space-y-1 pl-6 pt-1">
-                                                <li>Expend unit(s) and redirect an attacker to the expended unit instead. You can do this even if the unit entered play this turn; when multiple units are part of a single attack, you may only redirect one of them. (Attacks redirected this way do not trigger effects like Stealth.)</li>
-                                                <li>Discard any number of cards in hand with a <GameIcon name="threat_lvl" /> rating, add them together, and reduce the damage from an attacker of your choice by that total.</li>
-                                                <li>Expend any number of augments you control, choose an attacker for each, reduce the incoming damage by that augment's <GameIcon name="threat_lvl" /> rating, and add a depletion counter to that augment.</li>
-                                            </ul>
-                                        </li>
-                                        <li>Before damage is dealt, players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
-                                        <li>Deal Preemptive Strike damage equal to your <GameIcon name="threat_lvl" />.</li>
-                                        <li>If you did not already deal Preemptive Strike damage, deal damage equal to your <GameIcon name="threat_lvl" /> to the target of your attack. If the target is readied, it deals damage equal to its <GameIcon name="threat_lvl" /> back to the attacker. Damage dealt this way is simultaneous.</li>
-                                        <li>If a unit's damage is greater than or equal to its <GameIcon name="threat_lvl" /> rating, it is defeated (the only exception being the Durable keyword), triggering its <GameIcon name="defeated" /> tag if it had one, along with any other triggered abilities that care about being defeated. A defeated unit goes to the trashyard (discard pile).</li>
-                                        <li>Any damage directed at a player that was not blocked or redirected is dealt as loss of life to that player. Then the attack ends.</li>
+                                        <li>Choose and expend your attacker(s), then declare a target.</li>
+                                        <li>Players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
+                                        <li>The defender may block, redirect, or reduce the incoming damage.</li>
+                                        <li>Deal damage (Preemptive Strike first, then simultaneous). Defeated units go to the trashyard; unblocked damage to a player becomes loss of life.</li>
                                     </ol>
+                                    <p>
+                                        See <SectionLink href="#how-to-attack">How to Attack</SectionLink>{" "}
+                                        under Core Actions for the full step-by-step.
+                                    </p>
                                 </div>
                             </div>
                             <div className="space-y-1">
@@ -880,9 +898,17 @@ export function HowToPlayPage() {
                                 you control no units that already have an expended resource allocated
                                 to them. Each resource allocated to a unit gives it a +1<GameIcon name="threat_lvl" /> rating for
                                 each resource allocated. To allocate a resource, expend it "<GameIcon name="expend" />" and choose
-                                a target. This ability does not use the lock and thus happens immediately.
-                            </p>
+                                a target. This ability does not use the lock and thus happens immediately. An 
+                                Example of what a unit looks like with a resource allocated to it found below:
 
+                            </p>
+<div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
+                                <img
+                                    src={IMG_ALLOCATION}
+                                    alt="Mirror Image banner"
+
+                                />
+                            </div>
                             <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
                                 How to Play (Invoke) a Card
                             </h3>
@@ -973,6 +999,30 @@ export function HowToPlayPage() {
 
                                 />
                             </div>
+
+                            <h3
+                                id="how-to-attack"
+                                className="font-glitch scroll-mt-24 pt-2 text-xl text-cyan-200 lg:text-2xl"
+                            >
+                                How to Attack
+                            </h3>
+                            <ol className="list-decimal space-y-1 pl-6">
+                                <li>Choose unit(s) that did not enter play this turn (units with Blitz qualify), play a cyberspell strike card, or activate an augment that says it makes an attack. When attacking with multiple units, the group is considered a single attack and must share the same target, but each attacker is treated separately for blocking purposes.</li>
+                                <li>Expend the chosen unit(s), declare an attack target (another unit or an opponent), and trigger the <GameIcon name="attack" /> abilities of the attacking units.</li>
+                                <li>Players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
+                                <li>
+                                    Block incoming damage. You may, in any order:
+                                    <ul className="list-disc space-y-1 pl-6 pt-1">
+                                        <li>Expend unit(s) and redirect an attacker to the expended unit instead. You can do this even if the unit entered play this turn; when multiple units are part of a single attack, you may only redirect one of them. (Attacks redirected this way do not trigger effects like Stealth.)</li>
+                                        <li>Discard any number of cards in hand with a <GameIcon name="threat_lvl" /> rating, add them together, and reduce the damage from an attacker of your choice by that total.</li>
+                                        <li>Expend any number of augments you control, choose an attacker for each, reduce the incoming damage by that augment's <GameIcon name="threat_lvl" /> rating, and add a depletion counter to that augment.</li>
+                                    </ul>
+                                </li>
+                                <li>Deal Preemptive Strike damage equal to your <GameIcon name="threat_lvl" />.</li>
+                                <li>If you did not already deal Preemptive Strike damage, deal damage equal to your <GameIcon name="threat_lvl" /> to the target of your attack. If the target is readied, it deals damage equal to its <GameIcon name="threat_lvl" /> back to the attacker. Damage dealt this way is simultaneous.</li>
+                                <li>If a unit's damage is greater than or equal to its <GameIcon name="threat_lvl" /> rating, it is defeated (the only exception being the Durable keyword), triggering its <GameIcon name="defeated" /> tag if it had one, along with any other triggered abilities that care about being defeated. A defeated unit goes to the trashyard (discard pile).</li>
+                                <li>Any damage directed at a player that was not blocked or redirected is dealt as loss of life to that player. Then the attack ends.</li>
+                            </ol>
                         </Section>
 
                         <Section id="lock" title="The Lock & Time Counters">
