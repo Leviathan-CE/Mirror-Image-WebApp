@@ -97,7 +97,7 @@ export function GameIcon({ name, className }: GameIconProps) {
     return (
       <span
         className={cn(
-          "inline-flex h-6 items-center overflow-hidden align-text-bottom",
+          "inline-flex h-6 items-center overflow-hidden align-text-bottom lg:h-7 2xl:h-8",
           className
         )}
       >
@@ -105,7 +105,7 @@ export function GameIcon({ name, className }: GameIconProps) {
           src={icon.src}
           alt={icon.label}
           title={icon.label}
-          className="h-20 w-auto max-w-none object-contain"
+          className="h-20 w-auto max-w-none object-contain lg:h-24 2xl:h-28"
         />
       </span>
     )
@@ -116,7 +116,7 @@ export function GameIcon({ name, className }: GameIconProps) {
       src={icon.src}
       alt={icon.label}
       title={icon.label}
-      className={cn("inline-block h-5 w-auto align-text-bottom", className)}
+      className={cn("inline-block h-5 w-auto align-text-bottom lg:h-6 2xl:h-7", className)}
     />
   )
 }

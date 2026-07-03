@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from "react"
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react"
 
 import { GameIcon } from "@/components/common/GameIcon"
 import { GlitchFx } from "@/components/effects/GlitchFx"
@@ -66,10 +66,12 @@ function Section({
 }) {
     return (
         <section id={id} className="scroll-mt-24 space-y-4">
-            <h2 className="font-glitch border-b border-cyan-500/30 pb-2 text-2xl text-cyan-300">
+            <h2 className="font-glitch border-b border-cyan-500/30 pb-2 text-3xl text-cyan-300 lg:text-4xl 2xl:text-5xl">
                 {title}
             </h2>
-            <div className="space-y-4 leading-relaxed text-gray-300">{children}</div>
+            <div className="space-y-4 text-lg leading-relaxed text-gray-300 lg:text-xl 2xl:text-2xl">
+                {children}
+            </div>
         </section>
     )
 }
@@ -165,7 +167,7 @@ function InteractivePlaymat() {
 
     return (
         <div className="space-y-4">
-            <div className="relative mx-auto w-full max-w-4xl">
+            <div className="relative mx-auto w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl">
                 <img
                     src={PLAY_MAT}
                     alt="Mirror Image playmat layout"
@@ -208,37 +210,99 @@ function InteractivePlaymat() {
                     className="rounded-md border border-cyan-500/20 bg-black/60 p-4"
                     aria-live="polite"
                 >
-                    <h3 className="font-glitch mb-1 text-lg text-cyan-300">
+                    <h3 className="font-glitch mb-1 text-xl text-cyan-300 lg:text-2xl 2xl:text-3xl">
                         {activeZone.label}
                     </h3>
-                    <p className="text-sm text-gray-300">{activeZone.description}</p>
+                    <p className="text-base text-gray-300 lg:text-lg 2xl:text-xl">{activeZone.description}</p>
                 </div>
             )}
         </div>
     )
 }
 
+function useActiveSection(ids: string[]) {
+    const [activeId, setActiveId] = useState<string | null>(ids[0] ?? null)
+
+    useEffect(() => {
+        const elements = ids
+            .map((id) => document.getElementById(id))
+            .filter((el): el is HTMLElement => el !== null)
+
+        if (elements.length === 0) return
+
+        const visible = new Map<string, number>()
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                for (const entry of entries) {
+                    if (entry.isIntersecting) {
+                        visible.set(entry.target.id, entry.intersectionRatio)
+                    } else {
+                        visible.delete(entry.target.id)
+                    }
+                }
+
+                let topId: string | null = null
+                for (const id of ids) {
+                    if (visible.has(id)) {
+                        topId = id
+                        break
+                    }
+                }
+                if (topId) setActiveId(topId)
+            },
+            {
+                rootMargin: "-96px 0px -60% 0px",
+                threshold: [0, 0.1, 0.5, 1],
+            }
+        )
+
+        elements.forEach((el) => observer.observe(el))
+        return () => observer.disconnect()
+    }, [ids])
+
+    return activeId
+}
+
+const SECTION_IDS = SECTIONS.map((section) => section.id)
+
 function TableOfContents() {
+    const activeId = useActiveSection(SECTION_IDS)
+
     return (
         <nav
             aria-label="Table of contents"
             className="rounded-md border border-cyan-500/20 bg-black/60 p-4 lg:sticky lg:top-24"
         >
-            <h2 className="font-glitch mb-3 text-lg text-cyan-300">Contents</h2>
-            <ol className="space-y-1 text-sm">
-                {SECTIONS.map((section, index) => (
-                    <li key={section.id}>
-                        <a
-                            href={`#${section.id}`}
-                            className="text-gray-400 transition-colors hover:text-cyan-200"
-                        >
-                            <span className="mr-2 text-cyan-500/60">
-                                {String(index + 1).padStart(2, "0")}
-                            </span>
-                            {section.label}
-                        </a>
-                    </li>
-                ))}
+            <h2 className="font-glitch mb-3 text-lg text-cyan-300 2xl:text-xl">Contents</h2>
+            <ol className="space-y-1 text-sm 2xl:text-base">
+                {SECTIONS.map((section, index) => {
+                    const isActive = section.id === activeId
+                    return (
+                        <li key={section.id}>
+                            <a
+                                href={`#${section.id}`}
+                                aria-current={isActive ? "location" : undefined}
+                                className={cn(
+                                    "flex items-center rounded border-l-2 py-0.5 pl-2 transition-colors",
+                                    isActive
+                                        ? "border-cyan-300 bg-cyan-400/10 text-cyan-200"
+                                        : "border-transparent text-gray-400 hover:text-cyan-200"
+                                )}
+                            >
+                                <span
+                                    className={cn(
+                                        "mr-2",
+                                        isActive ? "text-cyan-300" : "text-cyan-500/60"
+                                    )}
+                                >
+                                    {String(index + 1).padStart(2, "0")}
+                                </span>
+                                {section.label}
+                            </a>
+                        </li>
+                    )
+                })}
             </ol>
         </nav>
     )
@@ -252,11 +316,11 @@ export function HowToPlayPage() {
         >
             <div className="absolute inset-0 bg-black/60" aria-hidden />
 
-            <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-6">
+            <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-6 xl:max-w-7xl 2xl:max-w-[110rem]">
                 <img
                     src={BANNER}
                     alt="Mirror Image banner"
-                    className="clip-angled w-full max-w-3xl"
+                    className="clip-angled w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl"
                     style={{ "--angle": "50px" } as CSSProperties}
                 />
 
@@ -273,13 +337,13 @@ export function HowToPlayPage() {
                     />
                 </div>
 
-                <div className="grid w-full gap-8 lg:grid-cols-[240px_1fr]">
+                <div className="grid w-full gap-8 lg:grid-cols-[260px_1fr] lg:gap-12 2xl:grid-cols-[320px_1fr] 2xl:gap-16">
                     <aside>
                         <TableOfContents />
                     </aside>
 
-                    <div className="space-y-12">
-                        <Section id="story" title="MIRRORIMAGE">
+                    <div className="space-y-12 2xl:space-y-16">
+                        <Section id="story" title="INTRODUCTION">
                             <p>
                                 On the planet Aerathea, its people find themselves in the middle of
                                 a war to end all wars. Two factions wage combat with might, magic,
@@ -334,7 +398,7 @@ export function HowToPlayPage() {
                         </Section>
 
                         <Section id="how-to-play-basics" title="Setup & Turns">
-                            <h3 className="font-glitch text-lg text-cyan-200">Setting Up</h3>
+                            <h3 className="font-glitch text-xl text-cyan-200 lg:text-2xl">Setting Up</h3>
                             <p>
                                 For your first time, we recommend using a premade starter deck; it has
                                 everything you need to play:
@@ -381,7 +445,7 @@ export function HowToPlayPage() {
                                 hand size.
                             </p>
 
-                            <h3 className="font-glitch pt-2 text-lg text-cyan-200">Turn Phases</h3>
+                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Turn Phases</h3>
                             <p>
                                 There are three phases: the maintenance phase (start of turn), the
                                 main phase, and the end-of-turn phase. Take them in order on your
@@ -392,56 +456,62 @@ export function HowToPlayPage() {
                                 <p className="flex items-center gap-2 font-semibold text-cyan-200">
                                     Maintenance Phase
                                 </p>
-                                <ol className="list-decimal space-y-1 pl-6">
-                                    <li>Ready all entities you control.</li>
-                                    <li> Trigger any Ability with the <GameIcon name="start"/> tag.</li>
-                                    <li>Remove a time counter from each card you control in play, and resolve any effect triggered when the last time counter is removed from a card in your stockpile.</li>
-                                    <li><Hardcore /> Dismantle a resource you control.</li>
-                                    <li>Draw a card, except the player going first on the first turn of the game.</li>
-                                    <li><Hardcore /> Draw an additional card.</li>
-                                </ol>
+                                <div className="border-l-2 border-cyan-500/0 pl-4">
+                                    <ol className="list-decimal space-y-1 pl-6">
+                                        <li>Ready all entities you control.</li>
+                                        <li> Trigger any Ability with the <GameIcon name="start"/> tag.</li>
+                                        <li>Remove a time counter from each card you control in play, and resolve any effect triggered when the last time counter is removed from a card in your stockpile.</li>
+                                        <li><Hardcore /> Dismantle a resource you control.</li>
+                                        <li>Draw a card, except the player going first on the first turn of the game.</li>
+                                        <li><Hardcore /> Draw an additional card.</li>
+                                    </ol>
+                                </div>
                             </div>
                             <div className="space-y-1">
                                 <p className="font-semibold text-cyan-200">Main Phase</p>
-                                <p>
-                                    You may play (invoke) cards, activate abilities, make attacks,
-                                    allocate a resource to a unit you control, or accumulate resources,
-                                    in any order.
-                                </p>
-                                <p>To make an attack:</p>
-                                <ol className="list-decimal space-y-1 pl-6">
-                                    <li>Choose unit(s) that did not enter play this turn (units with Blitz qualify), play a cyberspell strike card, or activate an augment that says it makes an attack. When attacking with multiple units, the group is considered a single attack and must share the same target, but each attacker is treated separately for blocking purposes.</li>
-                                    <li>Expend the chosen unit(s), declare an attack target (another unit or an opponent), and trigger the <GameIcon name="attack" /> abilities of the attacking units.</li>
-                                    <li>
-                                        Block incoming damage. You may, in any order:
-                                        <ul className="list-disc space-y-1 pl-6 pt-1">
-                                            <li>Expend unit(s) and redirect an attacker to the expended unit instead. You can do this even if the unit entered play this turn; when multiple units are part of a single attack, you may only redirect one of them. (Attacks redirected this way do not trigger effects like Stealth.)</li>
-                                            <li>Discard any number of cards in hand with a <GameIcon name="threat_lvl" /> rating, add them together, and reduce the damage from an attacker of your choice by that total.</li>
-                                            <li>Expend any number of augments you control, choose an attacker for each, reduce the incoming damage by that augment's <GameIcon name="threat_lvl" /> rating, and add a depletion counter to that augment.</li>
-                                        </ul>
-                                    </li>
-                                    <li>Before damage is dealt, players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
-                                    <li>Deal Preemptive Strike damage equal to your <GameIcon name="threat_lvl" /> + modifiers.</li>
-                                    <li>If you did not already deal Preemptive Strike damage, deal damage equal to your <GameIcon name="threat_lvl" /> + modifiers to the target of your attack. If the target is readied, it deals damage equal to its <GameIcon name="threat_lvl" /> + modifiers back to the attacker. Damage dealt this way is simultaneous.</li>
-                                    <li>If a unit's damage is greater than or equal to its <GameIcon name="threat_lvl" /> rating, it is defeated (the only exception being the Durable keyword), triggering its <GameIcon name="defeated" /> tag if it had one, along with any other triggered abilities that care about being defeated. A defeated unit goes to the trashyard (discard pile).</li>
-                                    <li>Any damage directed at a player that was not blocked or redirected is dealt as loss of life to that player. Then the attack ends.</li>
-                                </ol>
+                                <div className="space-y-1 border-l-2 border-cyan-500/0 pl-4">
+                                    <p>
+                                        You may play (invoke) cards, activate abilities, make attacks,
+                                        allocate a resource to a unit you control, or accumulate resources,
+                                        in any order.
+                                    </p>
+                                    <p>To make an attack:</p>
+                                    <ol className="list-decimal space-y-1 pl-6">
+                                        <li>Choose unit(s) that did not enter play this turn (units with Blitz qualify), play a cyberspell strike card, or activate an augment that says it makes an attack. When attacking with multiple units, the group is considered a single attack and must share the same target, but each attacker is treated separately for blocking purposes.</li>
+                                        <li>Expend the chosen unit(s), declare an attack target (another unit or an opponent), and trigger the <GameIcon name="attack" /> abilities of the attacking units.</li>
+                                        <li>
+                                            Block incoming damage. You may, in any order:
+                                            <ul className="list-disc space-y-1 pl-6 pt-1">
+                                                <li>Expend unit(s) and redirect an attacker to the expended unit instead. You can do this even if the unit entered play this turn; when multiple units are part of a single attack, you may only redirect one of them. (Attacks redirected this way do not trigger effects like Stealth.)</li>
+                                                <li>Discard any number of cards in hand with a <GameIcon name="threat_lvl" /> rating, add them together, and reduce the damage from an attacker of your choice by that total.</li>
+                                                <li>Expend any number of augments you control, choose an attacker for each, reduce the incoming damage by that augment's <GameIcon name="threat_lvl" /> rating, and add a depletion counter to that augment.</li>
+                                            </ul>
+                                        </li>
+                                        <li>Before damage is dealt, players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
+                                        <li>Deal Preemptive Strike damage equal to your <GameIcon name="threat_lvl" /> + modifiers.</li>
+                                        <li>If you did not already deal Preemptive Strike damage, deal damage equal to your <GameIcon name="threat_lvl" /> + modifiers to the target of your attack. If the target is readied, it deals damage equal to its <GameIcon name="threat_lvl" /> + modifiers back to the attacker. Damage dealt this way is simultaneous.</li>
+                                        <li>If a unit's damage is greater than or equal to its <GameIcon name="threat_lvl" /> rating, it is defeated (the only exception being the Durable keyword), triggering its <GameIcon name="defeated" /> tag if it had one, along with any other triggered abilities that care about being defeated. A defeated unit goes to the trashyard (discard pile).</li>
+                                        <li>Any damage directed at a player that was not blocked or redirected is dealt as loss of life to that player. Then the attack ends.</li>
+                                    </ol>
+                                </div>
                             </div>
                             <div className="space-y-1">
                                 <p className="flex items-center gap-2 font-semibold text-cyan-200">
                                     End-of-Turn Phase
                                 </p>
-                                <ol className="list-decimal space-y-1 pl-6">
-                                    <li>Players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
-                                    <li>Trigger any ability with the <GameIcon name="endTurn" /> tag.</li>
-                                    <li>Lose any unspent resources in your resource pool (not your stockpile).</li>
-                                </ol>
+                                <div className="border-l-2 border-cyan-500/0 pl-4">
+                                    <ol className="list-decimal space-y-1 pl-6">
+                                        <li>Players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
+                                        <li>Trigger any ability with the <GameIcon name="endTurn" /> tag.</li>
+                                        <li>Lose any unspent resources in your resource pool (not your stockpile).</li>
+                                    </ol>
+                                </div>
                             </div>
                         </Section>
 
                         <Section id="reading-cards" title="Reading Your Cards">
 
-                            <p className="rounded border-l-2 border-red-500/60 bg-red-950/30 p-3 text-sm">
+                            <p className="rounded border-l-2 border-red-400 bg-red-900/40 px-3 py-6 text-base lg:text-lg 2xl:text-xl">
                                 <Term>! Important !</Term> If there is a conflict between a card's
                                 text and this rulebook, follow the text on the card. Cards often
                                 have abilities that get around the rules to make things exciting,
@@ -478,14 +548,14 @@ export function HowToPlayPage() {
                                 corresponding base type shown in [ ]. Many cards also have subtypes,
                                 which can affect what the card does as well.
                             </p>
-                            <p className="rounded border-l-2 border-red-500/60 bg-red-950/30 p-3 text-sm">
+                            <p className="rounded border-l-2 border-red-400 bg-red-900/40 px-3 py-6 text-base lg:text-lg 2xl:text-xl">
                                 <Term>! Important !</Term> Whenever an ability, effect, or text uses
                                 the word "this," it always refers to the card it is printed on,
                                 regardless of context.
                             </p>
 
 
-                            <h3 className="font-glitch pt-2 text-lg text-cyan-200">Base Types</h3>
+                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Base Types</h3>
                             <p>
                                 <Term>Cyberspell:</Term> When you play a card with this type, it
                                 goes to the discard pile after its effect resolves or is
@@ -498,7 +568,7 @@ export function HowToPlayPage() {
                                 it is overwritten, it goes to the discard pile.
                             </p>
 
-                            <h3 className="font-glitch pt-2 text-lg text-cyan-200">Super Types</h3>
+                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Super Types</h3>
                             <p>
                                 <Term>PILOT [ Entity ]:</Term> Your pilot is the center of
                                 attention, commanding drones, mechs, hacks, spells, and other
@@ -557,7 +627,7 @@ export function HowToPlayPage() {
                                 represent and whether they are expended.
                             </p>
 
-                            <h3 className="font-glitch pt-2 text-lg text-cyan-200">Sub Types</h3>
+                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Sub Types</h3>
                             <p>
                                 <Term>PROCESS [ Cyberspell ]:</Term> This cyberspell can be played
                                 any time during your main phase. Processes represent a combination of
@@ -585,7 +655,7 @@ export function HowToPlayPage() {
                         </Section>
 
                         <Section id="how-to-play-actions" title="Core Actions">
-                            <h3 className="font-glitch pt-2 text-lg text-cyan-200">
+                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
                                 Accumulate Resources
                             </h3>
                             <p>
@@ -597,7 +667,7 @@ export function HowToPlayPage() {
                                 This action does not use the lock.
                             </p>
 
-                            <h3 className="font-glitch pt-2 text-lg text-cyan-200">
+                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
                                 How to Allocate a Resource to a Unit
                             </h3>
                             <p>
@@ -609,7 +679,7 @@ export function HowToPlayPage() {
                                 a target. This ability does not use the lock and happens immediately.
                             </p>
 
-                            <h3 className="font-glitch pt-2 text-lg text-cyan-200">
+                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
                                 How to Play (Invoke) a Card
                             </h3>
                             <p>
@@ -688,7 +758,7 @@ export function HowToPlayPage() {
                             </p>
                             <p>Note: the active player is the only one able to take actions.</p>
 
-                            <h3 className="font-glitch pt-2 text-lg text-cyan-200">
+                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
                                 Scenario 1 &mdash; Assets and Quick Hacks
                             </h3>
                             <p>
@@ -709,7 +779,7 @@ export function HowToPlayPage() {
                                 empty but players have abilities in their queues, move to Scenario 2.
                             </p>
 
-                            <h3 className="font-glitch pt-2 text-lg text-cyan-200">
+                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
                                 Scenario 2 &mdash; Ability Effects and the Queue
                             </h3>
                             <p>
@@ -729,7 +799,7 @@ export function HowToPlayPage() {
                                 <li>Block an attack.</li>
                             </ol>
 
-                            <h3 className="font-glitch pt-2 text-lg text-cyan-200">Time Counters</h3>
+                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Time Counters</h3>
                             <p>
                                 Time counters shape how you interact with the lock: you can reduce a
                                 card's invoke cost by <GameIcon name="gen1" /> for each counter you place on it after you
@@ -816,7 +886,7 @@ export function HowToPlayPage() {
                                 </li>
                             </ul>
 
-                            <h3 className="font-glitch pt-2 text-lg text-cyan-200">
+                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
                                 Activated Abilities
                             </h3>
                             <p>
@@ -861,7 +931,7 @@ export function HowToPlayPage() {
                                 will play. Almost always their ability text is displayed on the card;
                                 if not, here is the full list.
                             </p>
-                            <p className="rounded border-l-2 border-red-500/60 bg-red-950/30 p-3 text-sm">
+                            <p className="rounded border-l-2 border-red-400 bg-red-900/40 px-3 py-6 text-base lg:text-lg 2xl:text-xl">
                                 <Term>! Important !</Term> Multiple instances of the same keyword on
                                 one entity do not stack, unless that keyword has a numerical value; in
                                 that case, they add together. Any keyword with X has a numerical
@@ -890,7 +960,7 @@ export function HowToPlayPage() {
                                 augments you can equip.
                             </p>
                             <div className="overflow-x-auto">
-                                <table className="w-full border-collapse text-sm">
+                                <table className="w-full border-collapse text-base lg:text-lg 2xl:text-xl">
                                     <thead>
                                         <tr className="border-b border-cyan-500/30 text-left text-cyan-200">
                                             <th className="py-2 pr-4">R.I.G. (deck)</th>
@@ -926,7 +996,7 @@ export function HowToPlayPage() {
                                 <li>You cannot put cards in your deck that are not supported by your pilot's and augments' color combination.</li>
                             </ol>
 
-                            <h3 className="font-glitch pt-2 text-lg text-cyan-200">
+                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
                                 Your Deck's Color Combination
                             </h3>
                             <p>
@@ -992,7 +1062,7 @@ export function HowToPlayPage() {
                                 perfect RIG, the heat of battle, or creative self-expression with your
                                 resources, pilot, and augments. Good luck and have fun!
                             </p>
-                            <p className="border-l-2 border-cyan-500/40 pl-4 text-sm italic text-gray-400">
+                            <p className="border-l-2 border-cyan-500/40 pl-4 text-base italic text-gray-400 lg:text-lg 2xl:text-xl">
                                 "He forgot to mention HAIs, man. I'm kind of a big deal&mdash;being
                                 attached to a pilot and all... yeah... oh, right, for the next batch...
                                 got it. Well then, log complete for the new pilot, I guess. Until we
