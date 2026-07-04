@@ -557,7 +557,7 @@ export function HowToPlayPage() {
                             <p>
                                 Another way to win is to run your opponent out of cards in their
                                 deck. This doesn't end the game immediately, but each card they try
-                                to draw from an empty deck causes them to lose 1 life (or concede).
+                                to draw from an empty deck causes them to lose 1 life.
                                 The final way to win is if your opponent starts their turn with 0
                                 resources in their stockpile zone.
                             </p>
