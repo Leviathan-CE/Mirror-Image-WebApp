@@ -1,0 +1,56 @@
+import os
+from contextlib import contextmanager
+from pathlib import Path
+
+import psycopg2
+from dotenv import load_dotenv
+
+# Keep environment variables from Docker/host as source of truth.
+# Use the repository root .env as the single shared config source.
+load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
+
+
+def _strip_env(value: str | None) -> str:
+    """
+    Args:
+        value (str | None): envirmeont varable
+
+    Returns:
+        str: stripped " " around env var
+    """
+    if value is None:
+        return ""
+    return value.strip().strip('"')
+
+
+def _db_config() -> dict[str, str]:
+    """
+    Gets the required varaibles from env 
+    and returns them in a dictionary
+    Returns:
+        dict[str, str]: Envirment varaibles
+    """
+    port_raw = os.environ.get("DB_PORT") or os.environ.get("PORT") or "5432"
+    password = _strip_env(
+        os.environ.get("SQL_PSWRD") or os.environ.get("DB_PASSWORD")
+    )
+    return {
+        "host": _strip_env(os.environ.get("DB_HOST")) or "127.0.0.1",
+        "port": str(port_raw).strip(),
+        "dbname": _strip_env(os.environ.get("POSTGRES_DB"))
+        or _strip_env(os.environ.get("DB_NAME"))
+        or "mirror_image",
+        "user": _strip_env(os.environ.get("POSTGRES_USER"))
+        or _strip_env(os.environ.get("DB_USER"))
+        or "postgres",
+        "password": password,
+    }
+
+
+@contextmanager
+def get_connection():
+    conn = psycopg2.connect(**_db_config())
+    try:
+        yield conn
+    finally:
+        conn.close()

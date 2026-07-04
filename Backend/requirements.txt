@@ -1,0 +1,5 @@
+psycopg2-binary>=2.9
+python-dotenv>=1.0
+fastapi>=0.115
+uvicorn[standard]>=0.32
+python-multipart>=0.0.9

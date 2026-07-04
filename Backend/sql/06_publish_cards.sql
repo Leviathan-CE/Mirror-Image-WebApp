@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS publish_cards (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    card_id BIGINT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+    is_public BOOLEAN NOT NULL DEFAULT TRUE,
+    PRIMARY KEY (user_id, card_id)
+);
