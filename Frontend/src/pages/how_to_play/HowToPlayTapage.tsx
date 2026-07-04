@@ -216,26 +216,26 @@ const PLAYMAT_ZONES: PlaymatZone[] = [
             "Where you put your pilot card. Play it by paying its cost. When your pilot is defeated or moves zones, you may instead return it here and increase its cost.",
         top: "5%",
         left: "3%",
-        width: "11.5%",
-        height: "27%",
+        width: "11%",
+        height: "28%",
     },
     {
         id: "rig",
         label: "R.I.G",
         description:
             "Regressive Integrated Gear — your deck, placed face down and shuffled before the game. It holds the entity and cyberspell cards you assembled.",
-        top: "37%",
-        left: "3%",
+        top: "35%",
+        left: "2.8%",
         width: "11.5%",
-        height: "27%",
+        height: "29%",
     },
     {
         id: "trashyard",
         label: "Trashyard",
         description:
             "The discard pile, where cards go when they leave play — for example when a unit is defeated or a cyberspell finishes resolving.",
-        top: "68%",
-        left: "3%",
+        top: "65%",
+        left: "2.8%",
         width: "11.5%",
         height: "28%",
     },
@@ -244,10 +244,10 @@ const PLAYMAT_ZONES: PlaymatZone[] = [
         label: "In Play",
         description:
             "A reference to both the Battlefield and the Stockpile. Anything that affects “in play” affects both zones.",
-        top: "43%",
+        top: "41%",
         left: "14.5%",
         width: "3.5%",
-        height: "16%",
+        height: "18%",
     },
     {
         id: "battlefield",
@@ -267,7 +267,7 @@ const PLAYMAT_ZONES: PlaymatZone[] = [
         top: "51%",
         left: "16.5%",
         width: "80.5%",
-        height: "45%",
+        height: "43.5%",
     },
 ]
 
