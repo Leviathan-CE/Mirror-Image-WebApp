@@ -237,7 +237,7 @@ const PLAYMAT_ZONES: PlaymatZone[] = [
         top: "65%",
         left: "2.8%",
         width: "11.5%",
-        height: "28%",
+        height: "29%",
     },
     {
         id: "in-play",
