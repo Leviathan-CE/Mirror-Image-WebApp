@@ -243,7 +243,7 @@ const PLAYMAT_ZONES: PlaymatZone[] = [
         id: "in-play",
         label: "In Play",
         description:
-            "A reference to both the Battlefield and the Stockpile. Anything that affects “in play” affects both zones.",
+            "A reference to both the Battlefield and the Stockpile. Anything that affects “in play” affects both zones. If a card does not specify a zone it defaults to both.",
         top: "41%",
         left: "14.5%",
         width: "3.5%",
