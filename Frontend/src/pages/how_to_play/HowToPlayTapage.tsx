@@ -1,26 +1,19 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react"
+import { useState, type CSSProperties, type ReactNode } from "react"
 
+import { Link } from "react-router-dom"
+import {
+    BackToTocButton,
+    Note,
+    Section,
+    SectionLink,
+    TableOfContents,
+    Term,
+    type TocEntry,
+} from "@/components/docs"
 import { GameIcon } from "@/components/common/GameIcon"
 import { GlitchFx } from "@/components/effects/GlitchFx"
+import { howToPlayImages, sharedImages } from "@/assets"
 import { cn } from "@/lib/utils"
-
-const HOME_BACKGROUND_IMAGE = "/images/Zone-32B.png"
-const BANNER = "/images/banner2.jpg"
-const CARD_PILOT = "/images/card_pilot.png"
-const PLAY_MAT = "/images/PLAY_MAT.png"
-const CARD_AUGMENT = "/images/card_augment.png"
-const IMG_SETUP = "/images/Setup.png"
-const IMG_GAIN_RESOURCE = "/images/gain_resources.png"
-const IMG_PLAY_CARD_1 = "/images/playing_card_1.png"
-const IMG_PLAY_CARD_2 = "/images/playing_card_2.png"
-const IMG_PLAY_CARD_3 = "/images/playing_card_3.png"
-const IMG_PLAY_CARD_4 = "/images/playing_card_4.png"
-const IMG_PLAY_CARD_5 = "/images/playing_card_5.png"
-const IMG_DECKBUILDING_1 = "/images/deckbuilding.png"
-const IMG_DECKBUILDING_2 = "/images/deckbuilding_2.png"
-const IMG_ALLOCATION = "/images/allocation.png"
-
-type TocEntry = { id: string; label: string }
 
 const SECTIONS: TocEntry[] = [
     { id: "story", label: "The Story" },
@@ -65,100 +58,9 @@ const KEYWORDS: { name: string; text: ReactNode }[] = [
     { name: "WEAKENED X", text: "Whenever this asset deals damage, it deals X less damage." },
 ]
 
-/**
- * Renders a titled rulebook section with consistent heading styling and an
- * anchor `id` used by the table of contents and scroll-spy.
- *
- * @param id - Anchor id for deep-linking and TOC highlighting (matches an entry in `SECTIONS`).
- * @param title - Section heading text.
- * @param children - Section body content.
- */
-function Section({
-    id,
-    title,
-    children,
-}: {
-    id: string
-    title: string
-    children: ReactNode
-}) {
-    return (
-        <section id={id} className="scroll-mt-24 space-y-4">
-            <h2 className="font-glitch border-b border-cyan-500/30 pb-2 text-3xl text-cyan-300 lg:text-4xl 2xl:text-5xl">
-                {title}
-            </h2>
-            <div className="space-y-4 text-lg leading-relaxed text-gray-300 lg:text-xl 2xl:text-2xl">
-                {children}
-            </div>
-        </section>
-    )
-}
-
-/**
- * Inline emphasis for a defined game term, styled in the accent cyan color.
- *
- * @param children - The term text to emphasize.
- */
-function Term({ children }: { children: ReactNode }) {
-    return <span className="font-semibold text-cyan-200">{children}</span>
-}
-
-/**
- * Inline "[Hardcore]" marker used to flag optional advanced-mode rules steps,
- * styled in red to stand out from standard rules text.
- */
+/** Inline "[Hardcore]" marker used to flag optional advanced-mode rules steps. */
 function Hardcore() {
     return <span className="font-light text-red-500">[Hardcore]</span>
-}
-
-/**
- * Italic, cyan-accented aside for supplementary notes, flavor text, or quotes.
- * Renders as a left-bordered blockquote-style paragraph.
- *
- * @param children - The note content.
- * @param className - Optional extra classes merged onto the paragraph.
- */
-function Note({
-  children,
-  className,
-}: {
-  children: ReactNode
-  className?: string
-}) {
-  return (
-    <p
-      className={cn(
-        "border-l-2 border-cyan-500/40 pl-4 text-base italic text-gray-400 lg:text-lg 2xl:text-xl",
-        className
-      )}
-    >
-      {children}
-    </p>
-  )
-}
-
-/**
- * Inline anchor link to another section/subsection on the page, styled in the
- * accent cyan with an underline so it reads as a cross-reference.
- *
- * @param href - Anchor target (e.g. "#how-to-attack").
- * @param children - Link text.
- */
-function SectionLink({
-  href,
-  children,
-}: {
-  href: string
-  children: ReactNode
-}) {
-  return (
-    <a
-      href={href}
-      className="font-semibold text-cyan-300 underline decoration-cyan-500/40 underline-offset-2 transition-colors hover:text-cyan-200"
-    >
-      {children}
-    </a>
-  )
 }
 
 /** Green check icon used to mark eligible/allowed symbols in rules legends. */
@@ -291,7 +193,7 @@ function InteractivePlaymat() {
         <div className="space-y-4">
             <div className="relative mx-auto w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl">
                 <img
-                    src={PLAY_MAT}
+                    src={howToPlayImages.PLAY_MAT}
                     alt="Mirror Image playmat layout"
                     className="w-full select-none"
                 />
@@ -343,162 +245,20 @@ function InteractivePlaymat() {
 }
 
 /**
- * Scroll-spy hook. Observes the DOM elements matching the given section ids and
- * returns the id of the topmost section currently in view, so the table of
- * contents can highlight the reader's current location.
- *
- * The observer uses a `rootMargin` offset to account for the sticky header and
- * to bias activation toward a section's heading reaching the top of the viewport.
- *
- * @param ids - Section anchor ids to track (should be a stable reference to avoid re-subscribing).
- * @returns The id of the active section, or `null` if none are resolved yet.
- */
-function useActiveSection(ids: string[]) {
-    const [activeId, setActiveId] = useState<string | null>(ids[0] ?? null)
-
-    useEffect(() => {
-        const elements = ids
-            .map((id) => document.getElementById(id))
-            .filter((el): el is HTMLElement => el !== null)
-
-        if (elements.length === 0) return
-
-        const visible = new Map<string, number>()
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                for (const entry of entries) {
-                    if (entry.isIntersecting) {
-                        visible.set(entry.target.id, entry.intersectionRatio)
-                    } else {
-                        visible.delete(entry.target.id)
-                    }
-                }
-
-                let topId: string | null = null
-                for (const id of ids) {
-                    if (visible.has(id)) {
-                        topId = id
-                        break
-                    }
-                }
-                if (topId) setActiveId(topId)
-            },
-            {
-                rootMargin: "-96px 0px -60% 0px",
-                threshold: [0, 0.1, 0.5, 1],
-            }
-        )
-
-        elements.forEach((el) => observer.observe(el))
-        return () => observer.disconnect()
-    }, [ids])
-
-    return activeId
-}
-
-const SECTION_IDS = SECTIONS.map((section) => section.id)
-
-/**
- * Sticky table of contents listing every rulebook section. Highlights the
- * section currently in view (via `useActiveSection`) and provides anchor links
- * for quick navigation.
- */
-function TableOfContents() {
-    const activeId = useActiveSection(SECTION_IDS)
-
-    return (
-        <nav
-            id="toc"
-            aria-label="Table of contents"
-            className="scroll-mt-24 rounded-md border border-cyan-500/20 bg-black/60 p-4 lg:sticky lg:top-24"
-        >
-            <h2 className="font-glitch mb-3 text-lg text-cyan-300 2xl:text-xl">Contents</h2>
-            <ol className="space-y-1 text-sm 2xl:text-base">
-                {SECTIONS.map((section, index) => {
-                    const isActive = section.id === activeId
-                    return (
-                        <li key={section.id}>
-                            <a
-                                href={`#${section.id}`}
-                                aria-current={isActive ? "location" : undefined}
-                                className={cn(
-                                    "flex items-center rounded border-l-2 py-0.5 pl-2 transition-colors",
-                                    isActive
-                                        ? "border-cyan-300 bg-cyan-400/10 text-cyan-200"
-                                        : "border-transparent text-gray-400 hover:text-cyan-200"
-                                )}
-                            >
-                                <span
-                                    className={cn(
-                                        "mr-2",
-                                        isActive ? "text-cyan-300" : "text-cyan-500/60"
-                                    )}
-                                >
-                                    {String(index + 1).padStart(2, "0")}
-                                </span>
-                                {section.label}
-                            </a>
-                        </li>
-                    )
-                })}
-            </ol>
-        </nav>
-    )
-}
-
-/**
- * Floating "Contents" button shown only on smaller screens (`lg:hidden`), where
- * the sidebar table of contents is not sticky. It appears after the user scrolls
- * past a threshold and smooth-scrolls back to the table of contents when clicked.
- */
-function BackToTocButton() {
-    const [visible, setVisible] = useState(false)
-
-    useEffect(() => {
-        const onScroll = () => setVisible(window.scrollY > 600)
-        onScroll()
-        window.addEventListener("scroll", onScroll, { passive: true })
-        return () => window.removeEventListener("scroll", onScroll)
-    }, [])
-
-    const scrollToToc = () => {
-        document.getElementById("toc")?.scrollIntoView({ behavior: "smooth" })
-    }
-
-    return (
-        <button
-            type="button"
-            onClick={scrollToToc}
-            aria-label="Jump to table of contents"
-            className={cn(
-                "font-glitch fixed bottom-6 right-6 z-50 flex items-center gap-2 clip-angled border border-cyan-400/60 bg-cyan-700/90 px-3 py-2 text-sm text-cyan-50 shadow-lg shadow-cyan-500/20 backdrop-blur transition-all hover:bg-cyan-600 active:bg-cyan-500 lg:hidden",
-                visible
-                    ? "translate-y-0 opacity-100"
-                    : "pointer-events-none translate-y-4 opacity-0"
-            )}
-        >
-
-            TOC
-        </button>
-    )
-}
-
-/**
  * The Page 
  */
 export function HowToPlayPage() {
     return (
         <section
             className="relative min-h-screen bg-cover bg-center bg-no-repeat px-6 py-12"
-            style={{ backgroundImage: `url(${HOME_BACKGROUND_IMAGE})` }}
+            style={{ backgroundImage: `url(${sharedImages.ZONE_BACKGROUND})` }}
         >
             <div className="absolute inset-0 bg-black/60" aria-hidden />
             <BackToTocButton />
 
             <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-6 xl:max-w-7xl 2xl:max-w-[110rem]">
                 <img
-                    src={BANNER}
+                    src={howToPlayImages.BANNER}
                     alt="Mirror Image banner"
                     className="clip-angled w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl"
                     style={{ "--angle": "50px" } as CSSProperties}
@@ -521,7 +281,7 @@ export function HowToPlayPage() {
 
                 <div className="grid w-full gap-8 lg:grid-cols-[260px_1fr] lg:gap-12 2xl:grid-cols-[320px_1fr] 2xl:gap-16">
                     <aside>
-                        <TableOfContents />
+                        <TableOfContents sections={SECTIONS} />
                     </aside>
 
                     <div className="space-y-12 2xl:space-y-16">
@@ -543,7 +303,14 @@ export function HowToPlayPage() {
                                 pilots: cybernetically enhanced soldiers armed to the teeth and
                                 aided by a Human Augmented Intelligence (HAI). You can fight for
                                 freedom, serve tyranny, or sell your skills to the highest bidder.
-                                The choice is yours.
+                                The choice is yours. To learn more, see our{" "}
+                                <Link
+                                    to="/lore"
+                                    className="text-cyan-300 underline hover:text-cyan-200"
+                                >
+                                    LORE
+                                </Link>
+                                .
                             </p>
                         </Section>
 
@@ -618,7 +385,7 @@ export function HowToPlayPage() {
 
                             <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                 <img
-                                    src={IMG_SETUP}
+                                    src={howToPlayImages.SETUP}
                                     alt="Setting up the starting game board for a player"
 
                                 />
@@ -667,7 +434,7 @@ export function HowToPlayPage() {
                                     </p>
                                     <p>To make an attack, in brief:</p>
                                     <ol className="list-decimal space-y-1 pl-6">
-                                        <li>Choose and expend your attacker(s), then declare a target.</li>
+                                        <li>Choose and expend your attacker(s), then declare a target. Then trigger any units attacking with a <GameIcon name="attack"/> tag.</li>
                                         <li>Players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
                                         <li>The defender may block, redirect, or reduce the incoming damage.</li>
                                         <li>Deal damage (Preemptive Strike first, then simultaneous). Defeated units go to the trashyard; unblocked damage to a player becomes loss of life.</li>
@@ -702,7 +469,7 @@ export function HowToPlayPage() {
                             </p>
                             <div className="mx-auto flex w-full max-w justify-center">
                                 <img
-                                    src={CARD_PILOT}
+                                    src={howToPlayImages.CARD_PILOT}
                                     alt="Example pilot card"
                                     className="w-full"
                                 />
@@ -710,7 +477,7 @@ export function HowToPlayPage() {
 
                             <div className="mx-auto flex w-full max-w justify-center">
                                 <img
-                                    src={CARD_AUGMENT}
+                                    src={howToPlayImages.CARD_AUGMENT}
                                     alt="Example pilot card"
                                     className="w-full"
                                 />
@@ -758,16 +525,17 @@ export function HowToPlayPage() {
                                 effects from your deck in the pilot zone. You can also have them join
                                 the heat of battle if you choose, to show off why you picked this
                                 pilot. The pilot is a unit that starts in your pilot zone and can be
-                                played from that zone by paying its invoke cost. In addition to
-                                paying that cost, your pilot's invoke cost&mdash;combined with your
-                                augments&mdash;determines the colors of cards you can put into your
+                                played from that zone by paying its invoke cost. Whenever your pilot
+                                moves zones you may instead of moving the pilot to that zone back to the pilot
+                                zone instead increasing the pilots cost for the rest of the game by {" "} <GameIcon name="gen2" />. Lastly, your pilot's invoke cost&mdash;combined with your
+                                augments&mdash;determines the colors and total invoke cost of cards you can put into your
                                 deck. (See Deck Building for more details.)
                             </p>
                             <p>
                                 <Term>UNIT [ Entity ]:</Term> Units are call-ins that back up your
                                 pilot, ranging from drones, turrets, and tanks to spacecraft,
                                 helping you eliminate your opponent tactfully or with overwhelming
-                                force. To play a unit, pay its invoke cost and place it into the lock
+                                force. All Units have a <GameIcon name="threat_lvl" /> number this is both thier health and damage value. To play a unit, pay its invoke cost and place it into the lock
                                 to see whether your opponent overwrites it with a Quick Hack. If they
                                 don't, it goes directly to the battlefield&mdash;provided you chose
                                 not to use time as part of its cost (see Time Counters for how the
@@ -883,7 +651,7 @@ export function HowToPlayPage() {
 
                             <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                 <img
-                                    src={IMG_GAIN_RESOURCE}
+                                    src={howToPlayImages.GAIN_RESOURCE}
                                     alt="Mirror Image banner"
 
                                 />
@@ -900,13 +668,13 @@ export function HowToPlayPage() {
                                 you control no units that already have an expended resource allocated
                                 to them. Each resource allocated to a unit gives it a +1<GameIcon name="threat_lvl" /> rating for
                                 each resource allocated. To allocate a resource, expend it "<GameIcon name="expend" />" and choose
-                                a target. This ability does not use the lock and thus happens immediately. An 
+                                a target. This ability does not use the lock and thus happens immediately. An
                                 Example of what a unit looks like with a resource allocated to it found below:
 
                             </p>
-<div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
+                            <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                 <img
-                                    src={IMG_ALLOCATION}
+                                    src={howToPlayImages.ALLOCATION}
                                     alt="Mirror Image banner"
 
                                 />
@@ -926,7 +694,7 @@ export function HowToPlayPage() {
 
                                 <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                     <img
-                                        src={IMG_PLAY_CARD_1}
+                                        src={howToPlayImages.PLAYING_CARD_1}
                                         alt="Mirror Image banner"
 
                                     />
@@ -949,7 +717,7 @@ export function HowToPlayPage() {
 
                                 <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                     <img
-                                        src={IMG_PLAY_CARD_2}
+                                        src={howToPlayImages.PLAYING_CARD_2}
                                         alt="Mirror Image banner"
 
                                     />
@@ -957,7 +725,7 @@ export function HowToPlayPage() {
                                 Resources in Resource pool: <GameIcon name="ram" />
                                 <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                     <img
-                                        src={IMG_PLAY_CARD_3}
+                                        src={howToPlayImages.PLAYING_CARD_3}
                                         alt="Mirror Image banner"
 
                                     />
@@ -974,7 +742,7 @@ export function HowToPlayPage() {
 
                             <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                 <img
-                                    src={IMG_PLAY_CARD_4}
+                                    src={howToPlayImages.PLAYING_CARD_4}
                                     alt="Mirror Image banner"
 
                                 />
@@ -996,7 +764,7 @@ export function HowToPlayPage() {
                             </p>
                             <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                 <img
-                                    src={IMG_PLAY_CARD_5}
+                                    src={howToPlayImages.PLAYING_CARD_5}
                                     alt="Mirror Image banner"
 
                                 />
@@ -1312,21 +1080,21 @@ export function HowToPlayPage() {
                                 <li>The total invoke cost of the card must be less than the total invoke cost provided by the colored symbols across your augments and pilot, where each colored symbol on your pilot and augments counts as 2 toward the total.</li>
                             </ol>
                             <Note>
-                                Note: grey numbered-value symbols are disregarded for colored 
-                                <GameIcon name="ram" /><GameIcon name="power"/><GameIcon name="metal" />
+                                Note: grey numbered-value symbols are disregarded for colored
+                                <GameIcon name="ram" /><GameIcon name="power" /><GameIcon name="metal" />
                                 <GameIcon name="time" /><GameIcon name="life" /> total invoke costs but still
                                 count as 2 toward colorless and steel <GameIcon name="steel" /> total
                                 invoke costs.
                             </Note>
                             <p>
-                                For this starter deck, your total color combination of: <GameIcon name="ram"/><GameIcon name="ram"/><GameIcon name="ram"/><GameIcon name="power"/><GameIcon name="power"/><GameIcon name="power"/><GameIcon name="steel"/> allows you to play
+                                For this starter deck, your total color combination of: <GameIcon name="ram" /><GameIcon name="ram" /><GameIcon name="ram" /><GameIcon name="power" /><GameIcon name="power" /><GameIcon name="power" /><GameIcon name="steel" /> allows you to play
                                 any card costing up to 3 blue, 3 yellow, and 1 steel or colorless&mdash;
                                 with a total invoke-cost budget of 2 for colorless and steel costs, 6
                                 for blue, 6 for yellow, and 12 for blue and yellow combined.
                             </p>
                             <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                 <img
-                                    src={IMG_DECKBUILDING_1}
+                                    src={howToPlayImages.DECKBUILDING_1}
                                     alt="Mirror Image banner"
 
                                 />
@@ -1355,7 +1123,7 @@ export function HowToPlayPage() {
 
                             <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                 <img
-                                    src={IMG_DECKBUILDING_2}
+                                    src={howToPlayImages.DECKBUILDING_2}
                                     alt="Mirror Image banner"
 
                                 />
