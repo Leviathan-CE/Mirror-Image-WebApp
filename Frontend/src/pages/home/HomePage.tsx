@@ -1,18 +1,13 @@
 import { PageHeader } from "@/components/common/PageHeader"
 import { GlitchFx } from "@/components/effects/GlitchFx"
+import { sharedImages } from "@/assets"
 import type { CSSProperties } from "react"
-
-// Edit only this line to change the home background.
-//do not edit directly will break you keyboard don't know why
-// Files live in: Front end/public/images/
-const HOME_BACKGROUND_IMAGE = "/images/Zone-32B.png"
-const BANNER = "/images/banner.jpg"
 
 export function HomePage() {
   return (
     <section
       className="relative min-h-screen bg-cover bg-center bg-no-repeat px-6 py-12"
-      style={{ backgroundImage: `url(${HOME_BACKGROUND_IMAGE})` }}
+      style={{ backgroundImage: `url(${sharedImages.ZONE_BACKGROUND})` }}
     >
      
       <div className=" absolute inset-0 bg-black/40" aria-hidden />
@@ -20,7 +15,7 @@ export function HomePage() {
 
       <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
         <img
-          src={BANNER}
+          src={sharedImages.HOME_BANNER}
           alt="Mirror Image banner"
           className="fade-edges clip-angled w-full max-w-3xl"
           style={{ "--feather": "20%", "--angle": "75px" } as CSSProperties}

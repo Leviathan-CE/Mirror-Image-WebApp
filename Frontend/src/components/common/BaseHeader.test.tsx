@@ -21,8 +21,6 @@ describe("BaseHeader", () => {
       "/"
     )
     expect(screen.getByRole("button", { name: "HOME" })).toBeInTheDocument()
-    expect(
-      screen.getByRole("button", { name: "CREATE ACCOUNT" })
-    ).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "LOGIN" })).toBeInTheDocument()
   })
 })
