@@ -33,11 +33,13 @@ export function LorePage() {
                                         Diana Ugisaki
                                     </h3>
                                     <p>
-                                        Only beign 6 years old in the start of the Quakes began and a survivor with her family, 
-                                        being a single child later became part of the sepcail operation recon agent (S.O.R.A) 
-                                        deparment of the pilot progam dedicated to stleath and retreval missions hunting down PyAi
-                                        true location.
-                             
+                                        Diana Ugisaki was six when the Quakes tore Aerathea apart; one
+                                        of the few in her family to walk away from the wreckage. Raised as an
+                                        only child with you mother and father in the shadow of that catastrophe, she was later recuited for
+                                        S.O.R.A. (Special Operations Recon Agent), a black-ops wing of the Pilot
+                                        Program devoted to stealth insertion and high-risk retrieval. Her orders
+                                        are singular: slip through the war-torn dark, trace the ghost-signal of
+                                        PyAi, and find where the rogue intelligence truly hides.
                                     </p>
                                     <GlitchFx
                         label="DOWNLOAD ORIGIN STORY"
