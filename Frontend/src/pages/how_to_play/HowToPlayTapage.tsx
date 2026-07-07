@@ -169,7 +169,7 @@ const PLAYMAT_ZONES: PlaymatZone[] = [
         top: "51%",
         left: "16.5%",
         width: "80.5%",
-        height: "43.5%",
+        height: "42.5%",
     },
 ]
 
@@ -268,13 +268,13 @@ export function HowToPlayPage() {
                     <GlitchFx
                         label="DOWNLOAD SAMPLE DECK [SPECAIL OPERATIONS]"
                         size="lg"
-                        className="font-buahs93 h-8 rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
+                        className="font-buahs93 w-auto h-auto min-h-8 shrink whitespace-normal rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
                         render={<a href="/docs/deck_samples/Deck_Specail_Operations_BY.pdf" download />}
                     />
                     <GlitchFx
                         label="DOWNLOAD SAMPLE DECK [HUNTER KILLER]"
                         size="lg"
-                        className="font-buahs93 h-8 rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
+                        className="font-buahs93  w-auto h-auto min-h-8 shrink whitespace-normal rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
                         render={<a href="/docs/deck_samples/Deck_Hunter_Killer_GRP.pdf" download />}
                     />
                 </div>
@@ -332,7 +332,7 @@ export function HowToPlayPage() {
 
                         <Section id="playmat" title="Playmat Area">
                             <p>
-                                Hover over each zone of the playmat to see what it does.
+                               <Note>Hover over each zone of the playmat to see what it does.</Note>
                             </p>
                             <InteractivePlaymat />
                             <p>
