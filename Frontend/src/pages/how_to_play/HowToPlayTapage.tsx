@@ -54,7 +54,7 @@ const KEYWORDS: { name: string; text: ReactNode }[] = [
     { name: "STEALTH X", text: "As an additional cost to target or attack this entity, the acting player must pay X for each cyberspell, ability, or attack. If they do not pay it, that action does nothing." },
     { name: "STURDY", text: 'This entity cannot be destroyed by effects that say "destroy."' },
     { name: "SURGE", text: "This card can be invoked any time a Quick Hack can be invoked." },
-    { name: "TAUNT", text: "When an opponent makes an attack, triggers, or activates an ability, it must target this entity if able. If there are multiple units with Taunt, the attacker chooses which to target." },
+    { name: "TAUNT", text: "When an opponent makes an attack that attack must target this unit if able. If there are multiple units with Taunt, the attacker chooses which to target." },
     { name: "WEAKENED X", text: "Whenever this asset deals damage, it deals X less damage." },
 ]
 
@@ -1155,7 +1155,7 @@ export function HowToPlayPage() {
                             </p>
                             <Note>
                                 "He forgot to mention HAIs, man. I'm kind of a big deal&mdash;being
-                                attached to a pilot and all... yeah... oh, right, for the next batch...
+                                attached to a pilot and all... (someone wishipering in the mic) yeah... oh, right, for the next batch...
                                 got it. Well then, log complete for the new pilot, I guess. Until we
                                 meet again on the field of battle, signing off..." &mdash;Svn
                             </Note>
