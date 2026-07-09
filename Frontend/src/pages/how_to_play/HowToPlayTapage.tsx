@@ -53,8 +53,8 @@ const KEYWORDS: { name: string; text: ReactNode }[] = [
     { name: "STATIONARY", text: "This entity cannot attack." },
     { name: "STEALTH X", text: "As an additional cost to target or attack this entity, the acting player must pay X for each cyberspell, ability, or attack. If they do not pay it, that action does nothing." },
     { name: "STURDY", text: 'This entity cannot be destroyed by effects that say "destroy."' },
-    { name: "SURGE", text: "This card can be played any time a Quick Hack can be played." },
-    { name: "TAUNT", text: "When an opponent makes an attack, triggers, or activates an ability, it must target this entity if able. If there are multiple units with Taunt, the attacker chooses which to target." },
+    { name: "SURGE", text: "This card can be invoked any time a Quick Hack can be played." },
+    { name: "TAUNT", text: "When an opponent makes an attack, that attack must target this unit if able. If there are multiple units with Taunt, the attacker chooses which to target." },
     { name: "WEAKENED X", text: "Whenever this asset deals damage, it deals X less damage." },
 ]
 
@@ -169,7 +169,7 @@ const PLAYMAT_ZONES: PlaymatZone[] = [
         top: "51%",
         left: "16.5%",
         width: "80.5%",
-        height: "43.5%",
+        height: "42.5%",
     },
 ]
 
@@ -268,13 +268,13 @@ export function HowToPlayPage() {
                     <GlitchFx
                         label="DOWNLOAD SAMPLE DECK [SPECAIL OPERATIONS]"
                         size="lg"
-                        className="font-buahs93 h-8 rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
+                        className="font-buahs93 w-auto h-auto min-h-8 shrink whitespace-normal rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
                         render={<a href="/docs/deck_samples/Deck_Specail_Operations_BY.pdf" download />}
                     />
                     <GlitchFx
                         label="DOWNLOAD SAMPLE DECK [HUNTER KILLER]"
                         size="lg"
-                        className="font-buahs93 h-8 rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
+                        className="font-buahs93  w-auto h-auto min-h-8 shrink whitespace-normal rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
                         render={<a href="/docs/deck_samples/Deck_Hunter_Killer_GRP.pdf" download />}
                     />
                 </div>
@@ -332,14 +332,7 @@ export function HowToPlayPage() {
 
                         <Section id="playmat" title="Playmat Area">
                             <p>
-                                Hover over each zone of the playmat to see what it does.
-                            </p>
-                            <p className="rounded border-l-2 border-cyan-500/40 bg-cyan-950/30 px-4 py-4 text-base lg:text-lg 2xl:text-xl">
-                                <Term>Words on the mat:</Term> These rules use familiar card-game terms.
-                                Your <Term>deck</Term> is labeled <Term>R.I.G.</Term> (Regressive Integrated Gear) on the mat.
-                                Your <Term>discard pile</Term> is labeled <Term>Trashyard</Term>.
-                                To put a card into effect, you <Term>play</Term> it by paying its{" "}
-                                <Term>invoke cost</Term> (the symbols printed on the card).
+                               <Note>Hover over each zone of the playmat to see what it does.</Note>
                             </p>
                             <InteractivePlaymat />
                             <p>
@@ -1170,7 +1163,7 @@ export function HowToPlayPage() {
                             </p>
                             <Note>
                                 "He forgot to mention HAIs, man. I'm kind of a big deal&mdash;being
-                                attached to a pilot and all... yeah... oh, right, for the next batch...
+                                attached to a pilot and all... (someone wishipering in the mic) yeah... oh, right, for the next batch...
                                 got it. Well then, log complete for the new pilot, I guess. Until we
                                 meet again on the field of battle, signing off..." &mdash;Svn
                             </Note>
