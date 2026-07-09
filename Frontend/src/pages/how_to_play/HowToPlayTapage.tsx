@@ -34,26 +34,26 @@ const KEYWORDS: { name: string; text: ReactNode }[] = [
     { name: "BLITZ", text: "This entity can attack the turn it enters the battlefield." },
     { name: "BLOCK X", text: "When you block with a unit, augment, or cyberspell to reduce the damage an asset would deal, reduce it by an additional X." },
     { name: "CORROSIVE BILE", text: "Whenever this entity deals damage to a unit, destroy that unit." },
-    { name: "DEGRADE X", text: "The affected player puts the top X cards of their RIG into their trashyard. When card text says a player degrades X, that player is the affected player; if no player is stated, that player is you." },
+    { name: "DEGRADE X", text: "The affected player puts the top X cards of their deck into their discard pile. When card text says a player degrades X, that player is the affected player; if no player is stated, that player is you." },
     { name: "DURABLE X", text: <>This entity can take X damage more than its <GameIcon name="threat_lvl" /> rating before being defeated.</> },
     { name: "PREEMPTIVE STRIKE", text: "When this entity deals damage in a fight, it deals damage first, unless the opposing entity also has Preemptive Strike." },
     { name: "HARDENED X", text: "Whenever this entity takes damage, reduce that damage by X." },
-    { name: "HARD POINT", text: "You may have a second copy of this card equipped as an augment for your RIG." },
+    { name: "HARD POINT", text: "You may have a second copy of this card equipped as an augment for your deck." },
     { name: "INSATIABLE HUNGER", text: "Whenever a unit with this keyword attacks, if the defending player controls a unit, that attack must target a unit that player controls." },
     { name: "INVULNERABLE", text: "This entity cannot be dismantled, trashed, or destroyed by effects that say to trash, dismantle, or destroy. Players cannot choose it as a valid target for those effects or costs." },
     { name: "LETHAL X", text: "Whenever this unit, cyberspell, or augment deals damage, it deals X additional damage." },
     { name: "LONG RANGE", text: "This asset can attack units with Airborne." },
-    { name: "PEER X", text: "Look at the top X cards of your RIG. You may put any of them into your trashyard, then put the rest back on top of your RIG in any order." },
+    { name: "PEER X", text: "Look at the top X cards of your deck. You may put any of them into your discard pile, then put the rest back on top of your deck in any order." },
     { name: "PIERCE", text: "Any excess damage this asset deals to its target is redirected to the target's controller." },
     { name: "RADAR", text: "Whenever a unit an opponent controls attacks, if it is the first attack in the main phase, you may redirect that attack to target a unit you control instead." },
-    { name: "RECURSIVE", text: "You may invoke this asset from your trashyard by paying its invoke cost. If you do, allocate the top card of your RIG face down to the invoked card; the next time this asset would go to the trashyard, dismantle it and the face-down card instead." },
-    { name: "REFURBISHED", text: <>Dismantle any number of cards from your trashyard; for each card dismantled this way, pay for one <GameIcon name="gen1" /> of this card's costs.</> },
+    { name: "RECURSIVE", text: "You may play this asset from your discard pile by paying its invoke cost. If you do, allocate the top card of your deck face down to the played card; the next time this asset would go to the discard pile, dismantle it and the face-down card instead." },
+    { name: "REFURBISHED", text: <>Dismantle any number of cards from your discard pile; for each card dismantled this way, pay for one <GameIcon name="gen1" /> of this card's costs.</> },
     { name: "SPIRIT LINK", text: "Damage this asset deals is gained as life by its controller." },
     { name: "STALWART", text: "When this entity attacks, it does not expend as part of the attack." },
     { name: "STATIONARY", text: "This entity cannot attack." },
     { name: "STEALTH X", text: "As an additional cost to target or attack this entity, the acting player must pay X for each cyberspell, ability, or attack. If they do not pay it, that action does nothing." },
     { name: "STURDY", text: 'This entity cannot be destroyed by effects that say "destroy."' },
-    { name: "SURGE", text: "This card can be invoked any time a Quick Hack can be invoked." },
+    { name: "SURGE", text: "This card can be played any time a Quick Hack can be played." },
     { name: "TAUNT", text: "When an opponent makes an attack, triggers, or activates an ability, it must target this entity if able. If there are multiple units with Taunt, the attacker chooses which to target." },
     { name: "WEAKENED X", text: "Whenever this asset deals damage, it deals X less damage." },
 ]
@@ -123,9 +123,9 @@ const PLAYMAT_ZONES: PlaymatZone[] = [
     },
     {
         id: "rig",
-        label: "R.I.G",
+        label: "Deck (R.I.G.)",
         description:
-            "Regressive Integrated Gear — your deck, placed face down and shuffled before the game. It holds the entity and cyberspell cards you assembled.",
+            "Your deck — called a R.I.G. (Regressive Integrated Gear) on the playmat. Place it face down and shuffle it before the game. It holds the entity and cyberspell cards you assembled.",
         top: "35%",
         left: "2.8%",
         width: "11.5%",
@@ -133,9 +133,9 @@ const PLAYMAT_ZONES: PlaymatZone[] = [
     },
     {
         id: "trashyard",
-        label: "Trashyard",
+        label: "Discard pile (Trashyard)",
         description:
-            "The discard pile, where cards go when they leave play — for example when a unit is defeated or a cyberspell finishes resolving.",
+            "Your discard pile — labeled Trashyard on the playmat. Cards go here when they leave play, for example when a unit is defeated or a cyberspell finishes resolving.",
         top: "65%",
         left: "2.8%",
         width: "11.5%",
@@ -334,6 +334,13 @@ export function HowToPlayPage() {
                             <p>
                                 Hover over each zone of the playmat to see what it does.
                             </p>
+                            <p className="rounded border-l-2 border-cyan-500/40 bg-cyan-950/30 px-4 py-4 text-base lg:text-lg 2xl:text-xl">
+                                <Term>Words on the mat:</Term> These rules use familiar card-game terms.
+                                Your <Term>deck</Term> is labeled <Term>R.I.G.</Term> (Regressive Integrated Gear) on the mat.
+                                Your <Term>discard pile</Term> is labeled <Term>Trashyard</Term>.
+                                To put a card into effect, you <Term>play</Term> it by paying its{" "}
+                                <Term>invoke cost</Term> (the symbols printed on the card).
+                            </p>
                             <InteractivePlaymat />
                             <p>
                                 <Term>Dismantled:</Term> Not shown on the mat&mdash;the dismantled
@@ -355,7 +362,7 @@ export function HowToPlayPage() {
                             <ul className="list-disc space-y-1 pl-6">
                                 <li>A pilot</li>
                                 <li>2 augments</li>
-                                <li>A medium-weight RIG (deck) of 40 cards, with no more than 3 copies of a named card</li>
+                                <li>A medium-weight deck of 40 cards, with no more than 3 copies of a named card</li>
                                 <li>A 20-sided dice health tracker or other way to track life totals</li>
                                 <li>5  or more red damage 6-sided dice</li>
                                 <li>5 or more green time-counter 6-sided dice</li>
@@ -365,7 +372,7 @@ export function HowToPlayPage() {
 
                             <p>
                                 First, place your pilot in the pilot zone. Then shuffle your deck and
-                                place it in the RIG zone. Next, place your augments on the
+                                place it in the deck zone (labeled R.I.G. on the mat). Next, place your augments on the
                                 battlefield, readied. Finally, grab the starting resource tokens
                                 noted on your pilot and place them in your stockpile readied (vertical,
                                 90 degrees). Set your life total and draw a hand of cards based on your pilots starting values in the same
@@ -378,8 +385,8 @@ export function HowToPlayPage() {
                                 using the blue/yellow starter is shown below.)
                             </p>
                             <Note>
-                                Note: You may change which side you perfer to have your RIG pilot zone and trashyard
-                                for convience when designing the game it was defaulted to the left, you may have them
+                                Note: You may change which side you prefer to have your deck, pilot zone, and discard pile
+                                for convenience. When designing the game they were defaulted to the left; you may have them
                                 on the right if that is more comfortable.
                             </Note>
 
@@ -396,8 +403,8 @@ export function HowToPlayPage() {
                                 Each player has one chance to mulligan unwanted cards from their
                                 opening hand; this happens only once. The player going first mulligans
                                 first. To mulligan, choose any number of cards from your hand, put them
-                                on the bottom of your deck (RIG), and draw that many cards from the top
-                                of your deck (RIG). Once all players have decided, the player going
+                                on the bottom of your deck, and draw that many cards from the top
+                                of your deck. Once all players have decided, the player going
                                 first begins the first turn. Once the game starts, there is no maximum
                                 hand size.
                             </p>
@@ -428,16 +435,16 @@ export function HowToPlayPage() {
                                 <p className="font-semibold text-cyan-200">Main Phase</p>
                                 <div className="space-y-1 border-l-2 border-cyan-500/0 pl-4">
                                     <p>
-                                        You may play (invoke) cards, activate abilities, make attacks,
+                                        You may play cards, activate abilities, make attacks,
                                         allocate a resource to a unit you control, or accumulate resources,
                                         in any order.
                                     </p>
                                     <p>To make an attack, in brief:</p>
                                     <ol className="list-decimal space-y-1 pl-6">
                                         <li>Choose and expend your attacker(s), then declare a target. Then trigger any units attacking with a <GameIcon name="attack"/> tag.</li>
-                                        <li>Players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
+                                        <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
                                         <li>The defender may block, redirect, or reduce the incoming damage.</li>
-                                        <li>Deal damage (Preemptive Strike first, then simultaneous). Defeated units go to the trashyard; unblocked damage to a player becomes loss of life.</li>
+                                        <li>Deal damage (Preemptive Strike first, then simultaneous). Defeated units go to the discard pile; unblocked damage to a player becomes loss of life.</li>
                                     </ol>
                                     <p>
                                         See <SectionLink href="#how-to-attack">How to Attack</SectionLink>{" "}
@@ -451,7 +458,7 @@ export function HowToPlayPage() {
                                 </p>
                                 <div className="border-l-2 border-cyan-500/0 pl-4">
                                     <ol className="list-decimal space-y-1 pl-6">
-                                        <li>Players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
+                                        <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
                                         <li>Trigger any ability with the <GameIcon name="endTurn" /> tag.</li>
                                         <li>Lose any unspent resources in your resource pool (not your stockpile).</li>
                                     </ol>
@@ -466,6 +473,13 @@ export function HowToPlayPage() {
                                 text and this rulebook, follow the text on the card. Cards often
                                 have abilities that get around the rules to make things exciting,
                                 weird, or interesting.
+                            </p>
+                            <p>
+                                The symbols in the upper-left corner are a card's{" "}
+                                <Term>invoke cost</Term>. To <Term>play</Term> a card, pay its invoke cost
+                                from your resource pool. Card abilities may reference your{" "}
+                                <Term>deck</Term> or <Term>discard pile</Term>&mdash;the playmat labels those zones{" "}
+                                <Term>R.I.G.</Term> and <Term>Trashyard</Term>.
                             </p>
                             <div className="mx-auto flex w-full max-w justify-center">
                                 <img
@@ -561,11 +575,11 @@ export function HowToPlayPage() {
                             <p>
                                 <Term>PROTOTYPE [ ANY ]:</Term> Prototype weapons, spells, and
                                 equipment, often rare in the lore. A card with this type is
-                                restricted to a single copy in your deck (RIG).
+                                restricted to a single copy in your deck.
                             </p>
                             <p>
                                 <Term>RESOURCE [ Entity ]:</Term> Resource tokens you use to play
-                                (invoke) cards (assets) from different zones of play. Whenever a card
+                                cards (assets) from different zones of play. Whenever a card
                                 says to "gain" a resource, create a token of the specified color and
                                 put it into your stockpile readied (90 degrees vertical). You can use
                                 resources as soon as they enter play&mdash;no need to wait as a unit
@@ -584,7 +598,7 @@ export function HowToPlayPage() {
                                 <Term>PROCESS [ Cyberspell ]:</Term> This cyberspell can be played
                                 any time during your main phase. Processes represent a combination of
                                 magic and technology&mdash;complex programs or scripts that take
-                                significant time to invoke in battle.
+                                significant time to play in battle.
                             </p>
                             <p>
                                 <Term>STRIKE [ Cyberspell ]:</Term> This cyberspell can be played any
@@ -600,7 +614,7 @@ export function HowToPlayPage() {
                                 each turn, during an attack, when there is a card in the lock, or
                                 when an effect not controlled by you resolves and the lock becomes
                                 empty. (See Using the Lock for details.) Quick Hacks represent the
-                                fastest scripts you can invoke, letting you disrupt your opponent or
+                                fastest scripts you can play, letting you disrupt your opponent or
                                 protect yourself.
                             </p>
                         </Section>
@@ -614,7 +628,7 @@ export function HowToPlayPage() {
                                 turn. To do so, choose a card in hand, reveal it, and then "gain"
                                 (grab) up to three resource tokens from its listed invoke cost
                                 (ignoring the grey numbered costs) and add them to your stockpile
-                                readied. Then put the revealed card on the bottom of your deck (RIG).
+                                readied. Then put the revealed card on the bottom of your deck.
                                 This action does not use the lock.
                             </p>
 
@@ -680,10 +694,10 @@ export function HowToPlayPage() {
                                 />
                             </div>
                             <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
-                                How to Play (Invoke) a Card
+                                How to Play a Card
                             </h3>
                             <p>
-                                Each card has an invoke cost, which is what lets it be played; a card
+                                Each card has an invoke cost printed on it; pay that cost to play the card. A card
                                 without an invoke cost in the upper-left corner cannot be played. To
                                 pay the cost, you must have the required resources in your resource
                                 pool&mdash;an imaginary area where resources go when a card says to
@@ -703,7 +717,7 @@ export function HowToPlayPage() {
                             </p>
                             <p>
                                 For example, say I want to play the Needle Jet card. I need a
-                                RAM (blue) and Unit of Power (yellow) in my resource pool to invoke the card. I
+                                RAM (blue) and Unit of Power (yellow) in my resource pool to play the card. I
                                 already have a RAM and a unit of Power readied in my stockpile, and each
                                 has two abilities: the first adds a resource of its respective color to my
                                 pool when I expend the resource card as a cost; the second makes me
@@ -733,9 +747,9 @@ export function HowToPlayPage() {
                                 Resources in Resource pool: <GameIcon name="ram" /><GameIcon name="power" />
                             </p>
                             <p>
-                                Once you have paid the cost by removing the reousrces in your reousrce pool euqal to the invoke cost&mdash;and if the card says to target, you
-                                must have legal targets before you invoke the asset, or you cannot play
-                                it&mdash;reveal the card you intend to play. Reveal the card and it goes to the lock; declare its legal targets, then trigger any{" "}
+                                Once you have paid the cost by removing the resources in your resource pool equal to the invoke cost&mdash;and if the card says to target, you
+                                must have legal targets before you play the card, or you cannot play
+                                it&mdash;reveal the card you intend to play. It goes to the lock; declare its legal targets, then trigger any{" "}
                                 <GameIcon name="invoke" /> tags printed on the card and resolve those tags immediately.
                             </p>
 
@@ -753,7 +767,7 @@ export function HowToPlayPage() {
                             <p>
                                 If it is not overwritten by an opponent's Quick Hack while it's
                                 in the lock, the card resolves: first, put the card in its respective
-                                zone (the battlefield for entities, the trashyard/discard pile for
+                                zone (the battlefield for entities, the discard pile for
                                 cyberspells), then resolve its effects in order as written on the card (<GameIcon name="effect" /> see
                                 this tag for details), then resolve any other triggers such as the{" "}
                                 <GameIcon name="entersPlay" /> tag. The card has now finished being
@@ -779,7 +793,7 @@ export function HowToPlayPage() {
                             <ol className="list-decimal space-y-1 pl-6">
                                 <li>Choose unit(s) that did not enter play this turn (units with Blitz qualify), play a cyberspell strike card, or activate an augment that says it makes an attack. When attacking with multiple units, the group is considered a single attack and must share the same target, but each attacker is treated separately for blocking purposes.</li>
                                 <li>Expend the chosen unit(s), declare an attack target (another unit or an opponent), and trigger the <GameIcon name="attack" /> abilities of the attacking units.</li>
-                                <li>Players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
+                                <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
                                 <li>
                                     Block incoming damage. You may, in any order:
                                     <ul className="list-disc space-y-1 pl-6 pt-1">
@@ -790,7 +804,7 @@ export function HowToPlayPage() {
                                 </li>
                                 <li>Deal Preemptive Strike damage equal to your <GameIcon name="threat_lvl" />.</li>
                                 <li>If you did not already deal Preemptive Strike damage, deal damage equal to your <GameIcon name="threat_lvl" /> to the target of your attack. If the target is readied, it deals damage equal to its <GameIcon name="threat_lvl" /> back to the attacker. Damage dealt this way is simultaneous.</li>
-                                <li>If a unit's damage is greater than or equal to its <GameIcon name="threat_lvl" /> rating, it is defeated (the only exception being the Durable keyword), triggering its <GameIcon name="defeated" /> tag if it had one, along with any other triggered abilities that care about being defeated. A defeated unit goes to the trashyard (discard pile).</li>
+                                <li>If a unit's damage is greater than or equal to its <GameIcon name="threat_lvl" /> rating, it is defeated (the only exception being the Durable keyword), triggering its <GameIcon name="defeated" /> tag if it had one, along with any other triggered abilities that care about being defeated. A defeated unit goes to the discard pile.</li>
                                 <li>Any damage directed at a player that was not blocked or redirected is dealt as loss of life to that player. Then the attack ends.</li>
                             </ol>
                         </Section>
@@ -798,7 +812,7 @@ export function HowToPlayPage() {
                         <Section id="lock" title="The Lock & Time Counters">
                             <p>
                                 The lock is a special zone where only one effect or card can be at a
-                                time. Every time you play (invoke) a card without using time
+                                time. Every time you play a card without using time
                                 counters, or activate or trigger an ability, it goes to the lock
                                 before resolving.
                             </p>
@@ -835,9 +849,9 @@ export function HowToPlayPage() {
                                 When the active player adds an asset or effect to the lock, they
                                 become the non-active player, and each player adds their ability
                                 triggers to their queue of effects while the lock is full. The
-                                now-active player may choose to invoke (play) their own Quick Hack and
+                                now-active player may choose to play their own Quick Hack and
                                 overwrite the asset in the lock, preventing it from resolving and
-                                sending it to the discard pile (trashyard). The non-active player is
+                                sending it to the discard pile. The non-active player is
                                 the one who controls the asset or effect in the lock; the active
                                 player is the one who does not. The active player may play a Quick
                                 Hack of their own or let the asset in the lock resolve. If they
@@ -857,7 +871,7 @@ export function HowToPlayPage() {
                                 First, the turn does not continue (whoever's turn it is becomes the
                                 active player) until all players' queues are empty. Second, effects
                                 cannot be overwritten&mdash;only physical cards that are played
-                                (invoked) can be overwritten.
+                                can be overwritten.
                             </p>
                             <p>
                                 While an effect is in the lock, there are a few things you can do:
@@ -936,7 +950,7 @@ export function HowToPlayPage() {
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="invoke" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when you play the card this tag is printed on, as the card goes to the lock; it always resolves as soon as it is triggered.</span>
+                                    <span>Triggers when you play the card this tag is printed on, as the card goes to the lock; it always resolves as soon as it is triggered. (This is the Invoke tag.)</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="conditional" className="mt-0.5 shrink-0" />
@@ -952,7 +966,7 @@ export function HowToPlayPage() {
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="defeated" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when the unit it is printed on is defeated, meaning put into the trashyard from play.</span>
+                                    <span>Triggers when the unit it is printed on is defeated, meaning put into the discard pile from play.</span>
                                 </li>
                             </ul>
 
@@ -986,7 +1000,7 @@ export function HowToPlayPage() {
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="trash" className="mt-0.5 shrink-0" />
-                                    <span>The Trash ability and symbol. It can only be activated while the card it is printed on is on the battlefield; as part of a cost, put that card into the discard pile (trashyard).</span>
+                                    <span>The Trash ability and symbol. It can only be activated while the card it is printed on is on the battlefield; as part of a cost, put that card into the discard pile.</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="dismantle" className="mt-0.5 shrink-0" />
@@ -1020,12 +1034,13 @@ export function HowToPlayPage() {
                         <Section id="deck-building" title="Deck Building">
                             <p>
                                 You now have everything you need to play, so let's finish up by talking
-                                about making your own RIG.
+                                about making your own deck.
                             </p>
                             <p>
-                                Your R.I.G. is your deck of cards for all intents and purposes, but it
-                                also includes your pilot and augments. There are three RIG classes:
-                                light-weight, medium-weight, and heavy-weight. Your RIG choice
+                                Your deck holds the entity and cyberspell cards you bring to battle.
+                                On the playmat it is labeled <Term>R.I.G.</Term> (Regressive Integrated Gear).
+                                Your deck setup also includes your pilot and augments. There are three deck sizes:
+                                light-weight, medium-weight, and heavy-weight. Your deck size
                                 determines the minimum number of cards in your deck and the number of
                                 augments you can equip.
                             </p>
@@ -1033,7 +1048,7 @@ export function HowToPlayPage() {
                                 <table className="w-full border-collapse text-base lg:text-lg 2xl:text-xl">
                                     <thead>
                                         <tr className="border-b border-cyan-500/30 text-left text-cyan-200">
-                                            <th className="py-2 pr-4">R.I.G. (deck)</th>
+                                            <th className="py-2 pr-4">Deck size</th>
                                             <th className="py-2 pr-4">Capacity (# cards)</th>
                                             <th className="py-2">Equip slots (# augments)</th>
                                         </tr>
@@ -1109,8 +1124,8 @@ export function HowToPlayPage() {
                                 steel and colorless cards; for our second example, the Heavy Duty RIG
                                 card has a total invoke cost of 3 and no color, so we would need one
                                 more steel symbol in our suite&mdash;or our pilot would need a grey
-                                numbered symbol. That is why the Heavy Duty RIG card cannot be part of
-                                the deck's capacity.
+                                That is why the Heavy Duty RIG card cannot be part of
+                                the deck.
                             </p>
 
 
@@ -1138,7 +1153,7 @@ export function HowToPlayPage() {
                                 before you can play others in it, so be careful.
                             </p>
                             <p>
-                                Secondly, lighter-weight RIGs have less variance, but they also limit
+                                Secondly, lighter-weight decks have less variance, but they also limit
                                 either the variety of assets you can include or the total power of your
                                 cards, since many higher-cost cards are quite powerful.
                             </p>
@@ -1149,7 +1164,7 @@ export function HowToPlayPage() {
                             </p>
                             <p>
                                 May you find thorough enjoyment in the game, whether it be crafting the
-                                perfect RIG, the heat of battle, or creative self-expression with your
+                                perfect deck, the heat of battle, or creative self-expression with your
                                 resources, pilot, and augments, or collecting cards for themeatic experince.
                                 Good luck and have fun!
                             </p>
