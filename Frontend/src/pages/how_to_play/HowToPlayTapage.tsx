@@ -114,8 +114,13 @@ const PLAYMAT_ZONES: PlaymatZone[] = [
     {
         id: "pilot",
         label: "Pilot",
-        description:
-            "Where you put your pilot card. Play it by paying its cost. When your pilot is defeated or moves zones, you may instead return it here and increase its cost.",
+        description: (
+            <>
+                Where you put your pilot card. Play it by paying its cost. When your pilot is defeated
+                or moves zones, you may instead return it here and increase its cost by{" "}
+                <GameIcon name="gen2" />.
+            </>
+        ),
         top: "5%",
         left: "3%",
         width: "11%",
