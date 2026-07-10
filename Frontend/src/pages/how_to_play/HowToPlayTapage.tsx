@@ -45,13 +45,13 @@ const KEYWORDS: { name: string; text: ReactNode }[] = [
     { name: "LONG RANGE", text: "This asset can attack units with Airborne." },
     { name: "PEER X", text: "Look at the top X cards of your deck. You may put any of them into your discard pile, then put the rest back on top of your deck in any order." },
     { name: "PIERCE", text: "Any excess damage this asset deals to its target is redirected to the target's controller." },
-    { name: "RADAR", text: "Whenever a unit an opponent controls attacks, if it is the first attack in the main phase, you may redirect that attack to target a unit you control instead." },
+    // { name: "RADAR", text: "Whenever a unit an opponent controls attacks, if it is the first attack in the main phase, you may redirect that attack to target a unit you control instead." },
     { name: "RECURSIVE", text: "You may play this asset from your discard pile by paying its invoke cost. If you do, allocate the top card of your deck face down to the played card; the next time this asset would go to the discard pile, dismantle it and the face-down card instead." },
     { name: "REFURBISHED", text: <>Dismantle any number of cards from your discard pile; for each card dismantled this way, pay for one <GameIcon name="gen1" /> of this card's costs.</> },
     { name: "SPIRIT LINK", text: "Damage this asset deals is gained as life by its controller." },
     { name: "STALWART", text: "When this entity attacks, it does not expend as part of the attack." },
     { name: "STATIONARY", text: "This entity cannot attack." },
-    { name: "STEALTH X", text: "As an additional cost to target or attack this entity, the acting player must pay X for each cyberspell, ability, or attack. If they do not pay it, that action does nothing." },
+    { name: "STEALTH X", text: "As an additional cost to target or attack this entity, the controller of the attack or targeted effect must pay X for each cyberspell, ability, or attack. If they do not pay it, that action does nothing." },
     { name: "STURDY", text: 'This entity cannot be destroyed by effects that say "destroy."' },
     { name: "SURGE", text: "This card can be invoked any time a Quick Hack can be played." },
     { name: "TAUNT", text: "When an opponent makes an attack, that attack must target this unit if able. If there are multiple units with Taunt, the attacker chooses which to target." },
@@ -458,7 +458,8 @@ export function HowToPlayPage() {
                                     <ol className="list-decimal space-y-1 pl-6">
                                         <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
                                         <li>Trigger any ability with the <GameIcon name="endTurn" /> tag.</li>
-                                        <li>Lose any unspent resources in your resource pool (not your stockpile).</li>
+                                        <li>Players Lose any unspent resources in your resource pool (not your stockpile).</li>
+                                        <li>You draw cards until you have 3 in hand or would have had three in hand which ever happen first.</li>
                                     </ol>
                                 </div>
                             </div>
@@ -1074,7 +1075,7 @@ export function HowToPlayPage() {
                             <ol className="list-decimal space-y-2 pl-6">
                                 <li>Pilots cannot be part of the deck's capacity, and you are limited to a single pilot card.</li>
                                 <li>Any non-pilot card may have up to three copies with the same name as part of your deck's capacity.</li>
-                                <li>You cannot equip two augments with the same name.</li>
+                                <li>You cannot equip two augments with the same name and do not count toward your deck's capacity.</li>
                                 <li>Any card with the Prototype supertype is limited to a single copy in your deck's capacity.</li>
                                 <li>You cannot put cards in your deck that are not supported by your pilot's and augments' color combination.</li>
                             </ol>
