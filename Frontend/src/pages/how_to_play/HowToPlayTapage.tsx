@@ -472,13 +472,7 @@ export function HowToPlayPage() {
                                 have abilities that get around the rules to make things exciting,
                                 weird, or interesting.
                             </p>
-                            <p>
-                                The symbols in the upper-left corner are a card's{" "}
-                                <Term>invoke cost</Term>. To <Term>play</Term> a card, pay its invoke cost
-                                from your resource pool. Card abilities may reference your{" "}
-                                <Term>deck</Term> or <Term>discard pile</Term>&mdash;the playmat labels those zones{" "}
-                                <Term>R.I.G.</Term> and <Term>Trashyard</Term>.
-                            </p>
+
                             <div className="mx-auto flex w-full max-w justify-center">
                                 <img
                                     src={howToPlayImages.CARD_PILOT}
@@ -789,7 +783,7 @@ export function HowToPlayPage() {
                                 How to Attack
                             </h3>
                             <ol className="list-decimal space-y-1 pl-6">
-                                <li>Choose unit(s) that did not enter play this turn (units with Blitz qualify), play a cyberspell strike card, or activate an augment that says it makes an attack. When attacking with multiple units, the group is considered a single attack and must share the same target, but each attacker is treated separately for blocking purposes.</li>
+                                <li>Choose unit(s) that did not enter play this turn (units with Blitz qualify), play a cyberspell strike card, or activate an augment that says it makes an attack. When attacking with multiple units, the group is considered a single attack and must share the same target, but each attacker is treated separately for blocking purposes. you can combine units, strikes and weapon attacks together, just keep inmind both weapon attacks and strike use the lock so you can only combine one of those at a time with other units.</li>
                                 <li>Expend the chosen unit(s), declare an attack target (another unit or an opponent), and trigger the <GameIcon name="attack" /> abilities of the attacking units.</li>
                                 <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
                                 <li>
