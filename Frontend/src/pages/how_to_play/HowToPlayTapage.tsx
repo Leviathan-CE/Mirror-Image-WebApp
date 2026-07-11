@@ -1034,8 +1034,11 @@ export function HowToPlayPage() {
                                 On the playmat it is labeled <Term>R.I.G.</Term> (Regressive Integrated Gear).
                                 Your deck setup also includes your pilot and augments. There are three deck sizes:
                                 light-weight, medium-weight, and heavy-weight. Your deck size
-                                determines the minimum number of cards in your deck and the number of
-                                augments you can equip.
+                                determines the minimum number of cards in your deck, the number of
+                                augments you can equip, and your starting resource allocation. A lightweight
+                                deck lets you gain one resource of your choice at the start of the game; a
+                                medium-weight deck has no change; a heavy-weight deck requires you to
+                                dismantle one resource of your choice at the start.
                             </p>
                             <div className="overflow-x-auto">
                                 <table className="w-full border-collapse text-base lg:text-lg 2xl:text-xl">
@@ -1044,6 +1047,7 @@ export function HowToPlayPage() {
                                             <th className="py-2 pr-4">Deck size</th>
                                             <th className="py-2 pr-4">Capacity (# cards)</th>
                                             <th className="py-2">Equip slots (# augments)</th>
+                                            <th className="py-2">starting resource allocation</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/10">
@@ -1051,21 +1055,24 @@ export function HowToPlayPage() {
                                             <td className="py-2 pr-4">Light weight</td>
                                             <td className="py-2 pr-4">30&ndash;39</td>
                                             <td className="py-2">1</td>
+                                            <td className="py-2">+1</td>
                                         </tr>
                                         <tr>
                                             <td className="py-2 pr-4">Medium weight</td>
                                             <td className="py-2 pr-4">40&ndash;59</td>
                                             <td className="py-2">2</td>
+                                            <td className="py-2">0</td>
                                         </tr>
                                         <tr>
                                             <td className="py-2 pr-4">Heavy weight</td>
                                             <td className="py-2 pr-4">60&ndash;70</td>
                                             <td className="py-2">3</td>
+                                            <td className="py-2">-1</td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
-                            <p>Once you've chosen a class, keep a few rules in mind when building a deck:</p>
+                            <p>Once you've chosen a R.I.G class, keep a few rules in mind when building a deck:</p>
                             <ol className="list-decimal space-y-2 pl-6">
                                 <li>Pilots cannot be part of the deck's capacity, and you are limited to a single pilot card.</li>
                                 <li>Any non-pilot card may have up to three copies with the same name as part of your deck's capacity.</li>
