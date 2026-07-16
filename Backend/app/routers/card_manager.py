@@ -333,6 +333,9 @@ def get_card_by_name(card_name: str):
     return _card_row_to_response(row)
 
 
+
+
+
 @router.post("/{card_id}/thumbnail", response_model=CardThumbnailUploaded)
 async def upload_card_thumbnail(card_id: int, file: UploadFile = File(...)):
     """Upload a card thumbnail, persist it on disk, and store its path."""
