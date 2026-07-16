@@ -80,3 +80,16 @@ def get_current_user_id(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="invalid_token_subject",
         ) from e
+
+
+def get_optional_user_id(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+) -> int | None:
+    """Return user id when a valid Bearer token is present; otherwise None."""
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        return None
+    payload = decode_access_token(credentials.credentials)
+    try:
+        return int(payload["sub"])
+    except (KeyError, TypeError, ValueError):
+        return None

@@ -21,7 +21,37 @@ export type DeckSummary = {
   name: string | null
   description: string | null
   is_public: boolean
+  author_name: string
+  cover_image_path: string | null
   card_count: number
+}
+
+/** Names seeded on new decks — users can rename/add/remove per deck. */
+export const DEFAULT_DECK_CATEGORY_NAMES = [
+  "Main",
+  "Side",
+  "Maybe",
+  "Extra",
+] as const
+
+export type DeckCategoryOut = {
+  id: number
+  name: string
+  sort_order: number
+}
+
+export type DeckCardEntry = {
+  card_id: number
+  card_name: string
+  quantity: number
+  category_id: number
+  category_name: string
+  sort_order: number
+}
+
+export type DeckDetail = DeckSummary & {
+  categories: DeckCategoryOut[]
+  cards: DeckCardEntry[]
 }
 
 export class ApiError extends Error {
