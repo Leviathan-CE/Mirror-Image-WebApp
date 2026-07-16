@@ -35,9 +35,10 @@ services:
       JWT_EXPIRE_HOURS: ${JWT_EXPIRE_HOURS:-168}
     ports:
       - "8000:8000"
-    # Persist card/deck art on the host so rebuilds don't wipe thumbnails.
+    # Named volume — same idea as production: art lives in the container
+    # filesystem, not a host folder (and stays out of git).
     volumes:
-      - ./Backend/app/thumbnails:/app/app/thumbnails
+      - api_thumbnails:/app/app/thumbnails
     restart: unless-stopped
 
   frontend:
@@ -51,3 +52,4 @@ services:
 
 volumes:
   postgres_data:
+  api_thumbnails:
