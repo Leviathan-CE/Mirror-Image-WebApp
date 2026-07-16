@@ -1,0 +1,123 @@
+/**
+ * Login-boot motion / overlay effects.
+ * Imported only by LoginBootScreen — change boot look here, not in index.css.
+ */
+
+.login-boot {
+  animation: login-boot-fade-in 280ms ease-out;
+}
+
+.login-boot-scan {
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 2px,
+    rgb(0 255 255 / 0.04) 2px,
+    rgb(0 255 255 / 0.04) 4px
+  );
+  animation: login-boot-scan 6s linear infinite;
+  pointer-events: none;
+}
+
+.login-boot-noise {
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: login-boot-noise 0.35s steps(2, end) infinite;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+.login-boot-vignette {
+  background: radial-gradient(
+    ellipse at center,
+    transparent 35%,
+    rgb(0 0 0 / 0.75) 100%
+  );
+  pointer-events: none;
+}
+
+.login-boot-panel {
+  box-shadow:
+    0 0 0 1px rgb(34 211 238 / 0.12),
+    0 0 28px rgb(34 211 238 / 0.08);
+  animation: login-boot-panel-flicker 3.5s steps(1, end) infinite;
+}
+
+.login-boot-line {
+  animation: login-boot-line-in 180ms ease-out;
+}
+
+.login-boot-caret {
+  animation: login-boot-caret-blink 1s steps(1, end) infinite;
+}
+
+.login-boot-bar {
+  transition: width 80ms linear;
+  box-shadow: 0 0 12px rgb(34 211 238 / 0.65);
+}
+
+@keyframes login-boot-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes login-boot-scan {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 40px;
+  }
+}
+
+@keyframes login-boot-noise {
+  0% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-1%, 1%);
+  }
+  100% {
+    transform: translate(1%, -1%);
+  }
+}
+
+@keyframes login-boot-panel-flicker {
+  0%,
+  92%,
+  100% {
+    opacity: 1;
+  }
+  94% {
+    opacity: 0.82;
+  }
+  96% {
+    opacity: 1;
+  }
+}
+
+@keyframes login-boot-line-in {
+  from {
+    opacity: 0;
+    transform: translateX(-0.4rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes login-boot-caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
