@@ -1,3 +1,8 @@
+/**
+ * Guest / marketing header (no session).
+ * Shared `navButtonClassName` is also used by `OperatorHeader`.
+ */
+
 import { Link, useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
@@ -5,7 +10,6 @@ import { Button } from "@/components/ui/button"
 export const navButtonClassName =
   "font-buahs93 h-6 shrink rounded-[4px] bg-card px-1.5 text-[10px] leading-none text-white transition-colors hover:text-cyan-200 sm:h-7 sm:px-2 sm:text-xs md:h-8 md:px-2.5 md:text-sm"
 
-/** Guest / marketing header (not logged in). */
 export function BaseHeader() {
   const navigate = useNavigate()
 

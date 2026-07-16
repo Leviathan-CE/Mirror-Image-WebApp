@@ -1,3 +1,11 @@
+/**
+ * Login route (`/login`).
+ *
+ * 1. User submits identifier + password → `loginRequest`.
+ * 2. On success: `setSession`, then show `LoginBootScreen`.
+ * 3. Boot `onComplete` navigates to `/main` (replace).
+ */
+
 import { useCallback, useState, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
 
@@ -29,13 +37,10 @@ function helpMessageForError(detail: string): string {
   }
 }
 
-/**
- * Login form: identifier + password, with colored help text for result state.
- * On success, plays a boot animation then routes to MainPage.
- */
 export function LoginPage() {
   const navigate = useNavigate()
   const { setSession } = useAuth()
+
   const [identifier, setIdentifier] = useState("")
   const [password, setPassword] = useState("")
   const [helpTone, setHelpTone] = useState<HelpTone>("idle")
@@ -43,6 +48,7 @@ export function LoginPage() {
     "Enter your username or email, then your password."
   )
   const [submitting, setSubmitting] = useState(false)
+  /** When true, the boot overlay covers the form until navigation. */
   const [booting, setBooting] = useState(false)
   const [bootName, setBootName] = useState("")
 
@@ -82,6 +88,8 @@ export function LoginPage() {
     }
   }
 
+  const formLocked = submitting || booting
+
   return (
     <>
       {booting ? (
@@ -113,7 +121,7 @@ export function LoginPage() {
                 placeholder="user name or email"
                 value={identifier}
                 onChange={(event) => setIdentifier(event.target.value)}
-                disabled={submitting || booting}
+                disabled={formLocked}
               />
             </label>
 
@@ -128,7 +136,7 @@ export function LoginPage() {
                 placeholder="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                disabled={submitting || booting}
+                disabled={formLocked}
               />
             </label>
 
@@ -146,7 +154,7 @@ export function LoginPage() {
             <GlitchFx
               type="submit"
               label={submitting ? "LOGGING IN…" : "LOGIN"}
-              disabled={submitting || booting}
+              disabled={formLocked}
               size="lg"
               className="font-buahs93 h-10 w-full rounded-none bg-cyan-700 px-8 hover:bg-cyan-900 active:bg-cyan-400 disabled:opacity-60"
             />
