@@ -1,25 +1,33 @@
 import { Link, useNavigate } from "react-router-dom"
 
+import { useAuth } from "@/app/providers/AuthProvider"
+import { navButtonClassName } from "@/components/common/BaseHeader"
 import { Button } from "@/components/ui/button"
 
-export const navButtonClassName =
-  "font-buahs93 h-6 shrink rounded-[4px] bg-card px-1.5 text-[10px] leading-none text-white transition-colors hover:text-cyan-200 sm:h-7 sm:px-2 sm:text-xs md:h-8 md:px-2.5 md:text-sm"
-
-/** Guest / marketing header (not logged in). */
-export function BaseHeader() {
+/** Authenticated operator header. */
+export function OperatorHeader() {
   const navigate = useNavigate()
+  const { user, clearSession } = useAuth()
+
+  function onLogout() {
+    clearSession()
+    navigate("/", { replace: true })
+  }
 
   return (
     <header className="dark w-full bg-card px-2 py-2 sm:px-4 lg:px-6">
       <div className="mx-auto flex max-w-6xl min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:gap-x-3 lg:gap-4">
         <Link
-          to="/"
+          to="/main"
           className="font-glitch shrink-0 text-xs text-cyan-300 sm:text-sm md:text-base lg:text-xl"
         >
           MIRRORIMAGE
         </Link>
         <nav className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-0.5 sm:gap-1">
-          <Button className={navButtonClassName} onClick={() => navigate("/")}>
+          {/* <Button
+            className={navButtonClassName}
+            onClick={() => navigate("/main")}
+          >
             HOME
           </Button>
           <Button className={navButtonClassName}>CARDS</Button>
@@ -35,16 +43,23 @@ export function BaseHeader() {
             onClick={() => navigate("/lore")}
           >
             LORE
-          </Button>
-          <Button className={navButtonClassName}>UPDATES</Button>
-        </nav>
-
-        <div className="flex shrink-0 justify-end">
+          </Button> */}
           <Button
             className={navButtonClassName}
-            onClick={() => navigate("/login")}
+            onClick={() => navigate("/main")}
           >
-            LOGIN
+            DECKS
+          </Button>
+        </nav>
+
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          {user ? (
+            <span className="hidden max-w-[8rem] truncate font-buahs93 text-[10px] text-cyan-300/90 sm:inline sm:text-xs md:max-w-[12rem]">
+              {user.user_name}
+            </span>
+          ) : null}
+          <Button className={navButtonClassName} onClick={onLogout}>
+            LOGOUT
           </Button>
         </div>
       </div>
