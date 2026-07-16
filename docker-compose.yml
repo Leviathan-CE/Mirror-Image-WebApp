@@ -11,6 +11,8 @@ services:
       - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Runs once on first DB init (empty volume only).
+      - ./Backend/sql:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB:-mirror_image}"]
       interval: 5s
@@ -29,6 +31,8 @@ services:
       DB_USER: ${POSTGRES_USER:-postgres}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       DB_NAME: ${POSTGRES_DB:-mirror_image}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-mirror-image}
+      JWT_EXPIRE_HOURS: ${JWT_EXPIRE_HOURS:-168}
     ports:
       - "8000:8000"
     #use to change downloads from docker to project folder
@@ -38,7 +42,7 @@ services:
 
   frontend:
     build:
-      context: "./Front end"
+      context: ./Frontend
     depends_on:
       - api
     ports:
