@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom"
 import { sharedImages } from "@/assets"
 import { useAuth } from "@/app/providers/AuthProvider"
 import { GlitchFx } from "@/components/effects/GlitchFx"
-import { ApiError, fetchMyDecks, type DeckSummary } from "@/lib/api"
+import { ApiError } from "@/lib/api/client"
+import { fetchMyDecks, type DeckSummary } from "@/lib/api/decks"
 
 /**
  * Logged-in home: operator profile + list of decks they own.
@@ -120,7 +121,7 @@ export function MainPage() {
           <div className="border border-dashed border-cyan-500/30 bg-black/40 px-6 py-12 text-center">
             <p className="font-buahs93 text-lg text-cyan-200/80">NO DECKS YET</p>
             <p className="mt-2 text-sm text-white/50">
-              Build your first list when the deck editor comes online.
+              Create a deck from the API for now, then open it here to edit.
             </p>
           </div>
         )}
@@ -129,7 +130,11 @@ export function MainPage() {
           <ul className="grid gap-4 sm:grid-cols-2">
             {decks.map((deck) => (
               <li key={deck.id}>
-                <article className="h-full border border-cyan-500/25 bg-black/50 p-5 transition-colors hover:border-cyan-400/50">
+                <button
+                  type="button"
+                  className="h-full w-full border border-cyan-500/25 bg-black/50 p-5 text-left transition-colors hover:border-cyan-400/50"
+                  onClick={() => navigate(`/decks/${deck.id}`)}
+                >
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-buahs93 text-lg text-cyan-100">
                       {deck.name ?? `Deck #${deck.id}`}
@@ -152,12 +157,11 @@ export function MainPage() {
                   <p className="mt-4 font-mono text-xs text-cyan-300/60">
                     {deck.card_count} cards
                   </p>
-                </article>
+                </button>
               </li>
             ))}
           </ul>
-        )}
-      </div>
+        )}      </div>
     </section>
   )
 }

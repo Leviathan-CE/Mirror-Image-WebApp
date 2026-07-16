@@ -17,7 +17,7 @@ import {
   type PropsWithChildren,
 } from "react"
 
-import type { AuthUser } from "@/lib/api"
+import type { AuthUser } from "@/lib/api/auth"
 
 const TOKEN_KEY = "mi_access_token"
 const USER_KEY = "mi_user"

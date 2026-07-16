@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { MemoryRouter } from "react-router-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import type { AuthUser } from "@/lib/api"
+import type { AuthUser } from "@/lib/api/auth"
 
 import { AppHeader } from "./AppHeader"
 
