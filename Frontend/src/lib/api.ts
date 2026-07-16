@@ -54,6 +54,12 @@ export type DeckDetail = DeckSummary & {
   cards: DeckCardEntry[]
 }
 
+export type DeckUpdatePayload = {
+  name?: string
+  description?: string | null
+  is_public?: boolean
+}
+
 export class ApiError extends Error {
   status: number
   detail: string
@@ -75,6 +81,20 @@ async function parseErrorDetail(response: Response, fallback: string): Promise<s
   return fallback
 }
 
+function authHeaders(token?: string | null): HeadersInit {
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+async function readJsonOrThrow<T>(
+  response: Response,
+  fallback: string
+): Promise<T> {
+  if (!response.ok) {
+    throw new ApiError(response.status, await parseErrorDetail(response, fallback))
+  }
+  return (await response.json()) as T
+}
+
 export async function loginRequest(
   identifier: string,
   password: string
@@ -84,28 +104,81 @@ export async function loginRequest(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ identifier, password }),
   })
-
-  if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      await parseErrorDetail(response, "login_failed")
-    )
-  }
-
-  return (await response.json()) as LoginResponse
+  return readJsonOrThrow<LoginResponse>(response, "login_failed")
 }
 
 export async function fetchMyDecks(token: string): Promise<DeckSummary[]> {
   const response = await fetch(`${apiBaseUrl()}/decks/me`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: authHeaders(token),
   })
+  return readJsonOrThrow<DeckSummary[]>(response, "decks_fetch_failed")
+}
 
-  if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      await parseErrorDetail(response, "decks_fetch_failed")
-    )
-  }
+/** Public or owned deck detail (send token when logged in). */
+export async function fetchDeckDetail(
+  deckId: number,
+  token?: string | null
+): Promise<DeckDetail> {
+  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}`, {
+    headers: authHeaders(token),
+  })
+  return readJsonOrThrow<DeckDetail>(response, "deck_fetch_failed")
+}
 
-  return (await response.json()) as DeckSummary[]
+export async function updateDeck(
+  deckId: number,
+  token: string,
+  payload: DeckUpdatePayload
+): Promise<DeckSummary> {
+  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(token),
+    },
+    body: JSON.stringify(payload),
+  })
+  return readJsonOrThrow<DeckSummary>(response, "deck_update_failed")
+}
+
+export async function createDeckCategory(
+  deckId: number,
+  token: string,
+  name: string
+): Promise<DeckCategoryOut> {
+  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}/categories`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(token),
+    },
+    body: JSON.stringify({ name }),
+  })
+  return readJsonOrThrow<DeckCategoryOut>(response, "category_create_failed")
+}
+
+export async function updateDeckCategory(
+  deckId: number,
+  categoryId: number,
+  token: string,
+  payload: { name?: string; sort_order?: number }
+): Promise<DeckCategoryOut> {
+  const response = await fetch(
+    `${apiBaseUrl()}/decks/${deckId}/categories/${categoryId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders(token),
+      },
+      body: JSON.stringify(payload),
+    }
+  )
+  return readJsonOrThrow<DeckCategoryOut>(response, "category_update_failed")
+}
+
+export function deckCoverUrl(path: string | null | undefined): string | null {
+  if (!path) return null
+  if (path.startsWith("http")) return path
+  return `${apiBaseUrl()}/thumbnails/${path.replace(/^\//, "")}`
 }

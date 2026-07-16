@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from psycopg2 import OperationalError
 from psycopg2.errors import CheckViolation, DataError, NotNullViolation, UniqueViolation
@@ -281,6 +281,74 @@ def create_card(body: CardCreate):
         raise HTTPException(status_code=500, detail="card_insert_failed") from e
 
     return CardCreated(id=row[0], card_name=row[1])
+
+
+class CardSearchHit(BaseModel):
+    """Compact card row for typeahead search results."""
+
+    id: int
+    card_name: str
+    card_set_name: str
+    rarity: str
+    card_art_path: str | None = None
+
+
+@router.get("/search", response_model=list[CardSearchHit])
+def search_cards(
+    q: str = Query(min_length=1, max_length=80),
+    limit: int = Query(default=12, ge=1, le=40),
+):
+    """
+    Typeahead search by card name.
+
+    Prefers prefix matches, then substring matches. Skips deprecated cards.
+    """
+    needle = q.strip()
+    if not needle:
+        return []
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, card_name, card_set_name, rarity, card_art_path
+                      FROM cards
+                     WHERE is_deprecated = false
+                       AND card_name ILIKE %(pattern)s
+                     ORDER BY
+                       CASE
+                         WHEN card_name ILIKE %(prefix)s THEN 0
+                         ELSE 1
+                       END,
+                       LENGTH(card_name) ASC,
+                       card_name ASC
+                     LIMIT %(limit)s
+                    """,
+                    {
+                        "pattern": f"%{needle}%",
+                        "prefix": f"{needle}%",
+                        "limit": limit,
+                    },
+                )
+                rows = cur.fetchall()
+    except OperationalError as e:
+        logger.warning("db error on card search: %s", e)
+        raise HTTPException(status_code=503, detail="database_unavailable") from e
+    except Exception as e:
+        logger.exception("unexpected error on card search: %s", e)
+        raise HTTPException(status_code=500, detail="card_search_failed") from e
+
+    return [
+        CardSearchHit(
+            id=int(row[0]),
+            card_name=row[1],
+            card_set_name=row[2],
+            rarity=row[3],
+            card_art_path=row[4],
+        )
+        for row in rows
+    ]
 
 
 @router.get("/{card_id}", response_model=CardByNameResponse)

@@ -35,9 +35,9 @@ services:
       JWT_EXPIRE_HOURS: ${JWT_EXPIRE_HOURS:-168}
     ports:
       - "8000:8000"
-    #use to change downloads from docker to project folder
-    # volumes:
-    #   - ./Backend/app/thumbnails:/app/app/thumbnails
+    # Persist card/deck art on the host so rebuilds don't wipe thumbnails.
+    volumes:
+      - ./Backend/app/thumbnails:/app/app/thumbnails
     restart: unless-stopped
 
   frontend:

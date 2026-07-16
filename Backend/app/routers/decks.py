@@ -107,6 +107,9 @@ class DeckCardEntry(BaseModel):
     category_id: int
     category_name: str
     sort_order: int
+    card_art_path: str | None = None
+    invoke_cost: int = 0
+    types_line: str = ""
 
 
 class DeckDetail(DeckSummary):
@@ -327,7 +330,10 @@ def _fetch_deck_cards(
             dhc.quantity,
             dhc.category_id,
             dc.name,
-            dhc.sort_order
+            dhc.sort_order,
+            c.card_art_path,
+            c.invoke_cost,
+            c.types_line
         FROM deck_has_cards dhc
         JOIN cards c ON c.id = dhc.card_id
         JOIN deck_categories dc ON dc.id = dhc.category_id
@@ -348,9 +354,28 @@ def _fetch_deck_cards(
             category_id=int(row[3]),
             category_name=row[4],
             sort_order=int(row[5]),
+            card_art_path=row[6],
+            invoke_cost=int(row[7] or 0),
+            types_line=row[8] or "",
         )
         for row in cur.fetchall()
     ]
+
+
+def _fetch_one_deck_card(
+    cur,
+    deck_id: int,
+    card_id: int,
+    category_id: int,
+) -> DeckCardEntry:
+    cards = [
+        entry
+        for entry in _fetch_deck_cards(cur, deck_id, category_id)
+        if entry.card_id == card_id
+    ]
+    if not cards:
+        raise HTTPException(status_code=404, detail="deck_card_not_found")
+    return cards[0]
 
 
 def _next_card_sort_order(cur, deck_id: int, category_id: int) -> int:
@@ -920,20 +945,16 @@ def add_card_to_deck(
                     },
                 )
                 entry = cur.fetchone()
+                result = _fetch_one_deck_card(
+                    cur, deck_id, int(entry[0]), int(entry[2])
+                )
             conn.commit()
     except ForeignKeyViolation as e:
         raise HTTPException(status_code=404, detail="card_not_found") from e
     except OperationalError as e:
         raise _db_unavailable(e) from e
 
-    return DeckCardEntry(
-        card_id=entry[0],
-        card_name=card_row[0],
-        quantity=int(entry[1]),
-        category_id=int(entry[2]),
-        category_name=category_name,
-        sort_order=int(entry[3]),
-    )
+    return result
 
 
 @router.patch("/{deck_id}/cards/{card_id}", response_model=DeckCardEntry)
@@ -1040,13 +1061,8 @@ def update_deck_card(
                     )
 
                 entry = cur.fetchone()
-                cur.execute(
-                    "SELECT card_name FROM cards WHERE id = %(card_id)s",
-                    {"card_id": card_id},
-                )
-                card_name = cur.fetchone()[0]
-                _, category_name, _ = _require_category_on_deck(
-                    cur, deck_id, int(entry[2])
+                result = _fetch_one_deck_card(
+                    cur, deck_id, int(entry[0]), int(entry[2])
                 )
             conn.commit()
     except UniqueViolation as e:
@@ -1057,14 +1073,7 @@ def update_deck_card(
     except OperationalError as e:
         raise _db_unavailable(e) from e
 
-    return DeckCardEntry(
-        card_id=entry[0],
-        card_name=card_name,
-        quantity=int(entry[1]),
-        category_id=int(entry[2]),
-        category_name=category_name,
-        sort_order=int(entry[3]),
-    )
+    return result
 
 
 @router.delete("/{deck_id}/cards/{card_id}", status_code=status.HTTP_204_NO_CONTENT)
