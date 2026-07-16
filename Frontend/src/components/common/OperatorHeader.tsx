@@ -1,10 +1,14 @@
+/**
+ * Header shown while an operator session is active.
+ * Brand + DECKS point at `/main`; LOGOUT clears the session and returns to `/`.
+ */
+
 import { Link, useNavigate } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
 import { navButtonClassName } from "@/components/common/BaseHeader"
 import { Button } from "@/components/ui/button"
 
-/** Authenticated operator header. */
 export function OperatorHeader() {
   const navigate = useNavigate()
   const { user, clearSession } = useAuth()
@@ -23,27 +27,8 @@ export function OperatorHeader() {
         >
           MIRRORIMAGE
         </Link>
+
         <nav className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-0.5 sm:gap-1">
-          {/* <Button
-            className={navButtonClassName}
-            onClick={() => navigate("/main")}
-          >
-            HOME
-          </Button>
-          <Button className={navButtonClassName}>CARDS</Button>
-          <Button
-            className={navButtonClassName}
-            onClick={() => navigate("/how-to-play")}
-          >
-            <span className="sm:hidden">PLAY</span>
-            <span className="hidden sm:inline">HOW TO PLAY</span>
-          </Button>
-          <Button
-            className={navButtonClassName}
-            onClick={() => navigate("/lore")}
-          >
-            LORE
-          </Button> */}
           <Button
             className={navButtonClassName}
             onClick={() => navigate("/main")}
