@@ -11,7 +11,7 @@ import { useNavigate } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
 import { sharedImages } from "@/assets"
-import { LoginBootScreen } from "@/components/auth/LoginBootScreen"
+import { LoginBootScreen } from "@/components/auth/loginBoot"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { EditBox } from "@/components/ui/EditBox"
 import { ApiError, loginRequest } from "@/lib/api"
