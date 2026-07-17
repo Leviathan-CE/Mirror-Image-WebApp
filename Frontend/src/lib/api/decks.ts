@@ -48,6 +48,8 @@ export type DeckCardEntry = {
   card_art_path: string | null
   invoke_cost?: number
   types_line?: string
+  /** Epoch seconds — changes when card art is re-uploaded. */
+  card_art_version?: number | null
 }
 
 export type DeckDetail = DeckSummary & {
@@ -229,10 +231,16 @@ export function deckCoverUrl(path: string | null | undefined): string | null {
 
 /**
  * Card art is stored as `thumbnails/...` while StaticFiles mounts that folder at `/thumbnails`.
+ * Pass `version` (e.g. card_art_version) so re-uploads bust the browser cache.
  */
-export function cardArtUrl(path: string | null | undefined): string | null {
+export function cardArtUrl(
+  path: string | null | undefined,
+  version?: number | null
+): string | null {
   if (!path) return null
   if (path.startsWith("http")) return path
   const cleaned = path.replace(/^\/?thumbnails\//, "")
-  return `${apiBaseUrl()}/thumbnails/${cleaned}`
+  const base = `${apiBaseUrl()}/thumbnails/${cleaned}`
+  if (version == null) return base
+  return `${base}?v=${version}`
 }

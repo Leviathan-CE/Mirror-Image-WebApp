@@ -167,7 +167,7 @@ export function DeckCardStack({
         onMouseLeave={() => setHoveredIndex(null)}
       >
         {cards.map((card, index) => {
-          const src = cardArtUrl(card.card_art_path)
+          const src = cardArtUrl(card.card_art_path, card.card_art_version)
           const isHovered = hoveredIndex === index
           const isCovering =
             hoveredIndex != null && index > hoveredIndex && !isHovered
@@ -330,9 +330,9 @@ export function DeckCardStack({
 
       {enlarged ? (
         <div className="deck-card-enlarge" role="dialog" aria-label={enlarged.card_name}>
-          {cardArtUrl(enlarged.card_art_path) ? (
+          {cardArtUrl(enlarged.card_art_path, enlarged.card_art_version) ? (
             <img
-              src={cardArtUrl(enlarged.card_art_path)!}
+              src={cardArtUrl(enlarged.card_art_path, enlarged.card_art_version)!}
               alt={enlarged.card_name}
               className="deck-card-enlarge__art clip-angled"
               draggable={false}

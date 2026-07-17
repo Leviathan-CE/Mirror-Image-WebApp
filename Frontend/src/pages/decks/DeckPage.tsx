@@ -292,14 +292,14 @@ export function DeckPage() {
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [canEdit, clearCardSelection])
 
-  const loadDeck = useCallback(async () => {
+  const loadDeck = useCallback(async (opts?: { silent?: boolean }) => {
     if (!Number.isFinite(deckId) || deckId <= 0) {
       setStatus("error")
       setErrorText("Invalid deck id.")
       return
     }
 
-    setStatus("loading")
+    if (!opts?.silent) setStatus("loading")
     try {
       const detail = await fetchDeckDetail(deckId, token)
       setDeck(detail)
@@ -324,6 +324,20 @@ export function DeckPage() {
 
   useEffect(() => {
     void loadDeck()
+  }, [loadDeck])
+
+  // After re-uploading art elsewhere, refresh timestamps so ?v= updates.
+  useEffect(() => {
+    function onReturn() {
+      if (document.visibilityState !== "visible") return
+      void loadDeck({ silent: true })
+    }
+    document.addEventListener("visibilitychange", onReturn)
+    window.addEventListener("focus", onReturn)
+    return () => {
+      document.removeEventListener("visibilitychange", onReturn)
+      window.removeEventListener("focus", onReturn)
+    }
   }, [loadDeck])
 
   async function onSaveMeta() {

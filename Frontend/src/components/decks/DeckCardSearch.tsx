@@ -161,7 +161,7 @@ export function DeckCardSearch({
             </li>
           ) : null}
           {hits.map((hit, index) => {
-            const art = cardArtUrl(hit.card_art_path)
+            const art = cardArtUrl(hit.card_art_path, hit.card_art_version)
             const active = index === activeIndex
             return (
               <li key={hit.id} role="option" aria-selected={active}>

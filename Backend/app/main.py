@@ -41,6 +41,30 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def thumbnail_cache_headers(request, call_next):
+    """Force full thumbnail bodies — StaticFiles 304s if If-None-Match is present."""
+    if request.url.path.startswith("/thumbnails/"):
+        # Drop conditional headers before StaticFiles can answer 304.
+        request.scope["headers"] = [
+            (name, value)
+            for name, value in request.scope["headers"]
+            if name.lower() not in (b"if-none-match", b"if-modified-since")
+        ]
+
+    response = await call_next(request)
+
+    if request.url.path.startswith("/thumbnails/"):
+        response.headers["Cache-Control"] = "no-store"
+        if "etag" in response.headers:
+            del response.headers["etag"]
+        if "last-modified" in response.headers:
+            del response.headers["last-modified"]
+    return response
+
+
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(decks.router)
