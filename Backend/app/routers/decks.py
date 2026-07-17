@@ -110,6 +110,8 @@ class DeckCardEntry(BaseModel):
     card_art_path: str | None = None
     invoke_cost: int = 0
     types_line: str = ""
+    # Epoch seconds from cards.updated_at — used to bust browser image cache.
+    card_art_version: int | None = None
 
 
 class DeckDetail(DeckSummary):
@@ -333,7 +335,8 @@ def _fetch_deck_cards(
             dhc.sort_order,
             c.card_art_path,
             c.invoke_cost,
-            c.types_line
+            c.types_line,
+            EXTRACT(EPOCH FROM c.updated_at)::bigint
         FROM deck_has_cards dhc
         JOIN cards c ON c.id = dhc.card_id
         JOIN deck_categories dc ON dc.id = dhc.category_id
@@ -357,6 +360,7 @@ def _fetch_deck_cards(
             card_art_path=row[6],
             invoke_cost=int(row[7] or 0),
             types_line=row[8] or "",
+            card_art_version=int(row[9]) if row[9] is not None else None,
         )
         for row in cur.fetchall()
     ]

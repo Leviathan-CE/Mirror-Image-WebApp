@@ -102,6 +102,7 @@ class CardThumbnailUploaded(BaseModel):
     id: int
     thumbnail_path: str
     thumbnail_size_bytes: int
+    card_art_version: int | None = None
 
 
 class CardByNameResponse(BaseModel):
@@ -291,6 +292,7 @@ class CardSearchHit(BaseModel):
     card_set_name: str
     rarity: str
     card_art_path: str | None = None
+    card_art_version: int | None = None
 
 
 @router.get("/search", response_model=list[CardSearchHit])
@@ -312,7 +314,13 @@ def search_cards(
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id, card_name, card_set_name, rarity, card_art_path
+                    SELECT
+                        id,
+                        card_name,
+                        card_set_name,
+                        rarity,
+                        card_art_path,
+                        EXTRACT(EPOCH FROM updated_at)::bigint
                       FROM cards
                      WHERE is_deprecated = false
                        AND card_name ILIKE %(pattern)s
@@ -346,6 +354,7 @@ def search_cards(
             card_set_name=row[2],
             rarity=row[3],
             card_art_path=row[4],
+            card_art_version=int(row[5]) if row[5] is not None else None,
         )
         for row in rows
     ]
@@ -415,7 +424,7 @@ async def upload_card_thumbnail(card_id: int, file: UploadFile = File(...)):
     if not data:
         raise HTTPException(status_code=400, detail="empty_thumbnail_file")
 
-    max_size = 2 * 1024 * 1024
+    max_size = 8 * 1024 * 1024  # card art can exceed 2MB (e.g. full lore PNGs)
     if len(data) > max_size:
         raise HTTPException(status_code=413, detail="thumbnail_too_large")
 
@@ -457,9 +466,18 @@ async def upload_card_thumbnail(card_id: int, file: UploadFile = File(...)):
                 set_dir = base_dir / set_slug
                 set_dir.mkdir(parents=True, exist_ok=True)
 
+                # One stable path per card in the DB. The frontend appends
+                # ?v=<updated_at> so browsers fetch again after a re-upload.
                 file_name = f"{card_slug}_thumbnail{extension}"
                 file_path = set_dir / file_name
                 file_path.write_bytes(data)
+
+                # Clean leftover hashed names from an older upload scheme.
+                for old in set_dir.glob(f"{card_slug}_thumbnail_*"):
+                    try:
+                        old.unlink()
+                    except OSError:
+                        pass
 
                 relative_path = f"thumbnails/{set_slug}/{file_name}"
                 cur.execute(
@@ -470,6 +488,15 @@ async def upload_card_thumbnail(card_id: int, file: UploadFile = File(...)):
                         "card_id": card_id,
                     },
                 )
+                cur.execute(
+                    """
+                    SELECT EXTRACT(EPOCH FROM updated_at)::bigint
+                      FROM cards
+                     WHERE id = %(card_id)s
+                    """,
+                    {"card_id": card_id},
+                )
+                version_row = cur.fetchone()
             conn.commit()
     except OperationalError as e:
         logger.warning("db error on thumbnail upload: %s", e)
@@ -482,4 +509,5 @@ async def upload_card_thumbnail(card_id: int, file: UploadFile = File(...)):
         id=card_id,
         thumbnail_path=relative_path,
         thumbnail_size_bytes=len(data),
+        card_art_version=int(version_row[0]) if version_row and version_row[0] is not None else None,
     )

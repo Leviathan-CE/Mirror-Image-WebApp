@@ -10,6 +10,7 @@ export type CardSearchHit = {
   card_set_name: string
   rarity: string
   card_art_path: string | null
+  card_art_version?: number | null
 }
 
 export type CardDetail = {

@@ -32,7 +32,9 @@ export function DeckPilotSlot({
 }: DeckPilotSlotProps) {
   const [dropActive, setDropActive] = useState(false)
   const acceptsDrops = canEdit && !disabled
-  const art = pilot ? cardArtUrl(pilot.card_art_path) : null
+  const art = pilot
+    ? cardArtUrl(pilot.card_art_path, pilot.card_art_version)
+    : null
 
   function isCardDrag(event: DragEvent): boolean {
     return isDeckCardDrag(event)
