@@ -3,46 +3,67 @@ import { useNavigate } from "react-router-dom"
 
 import { sharedImages } from "@/assets"
 import { useAuth } from "@/app/providers/AuthProvider"
+import { Tabs } from "@/components/ui/Tabs"
+import { DeckListCard } from "@/components/decks/DeckListCard"
 import { GlitchFx } from "@/components/effects/GlitchFx"
+import { Button } from "@/components/ui/button"
+import { EditBox } from "@/components/ui/EditBox"
 import { ApiError } from "@/lib/api/client"
-import { fetchMyDecks, type DeckSummary } from "@/lib/api/decks"
+import {
+  createDeck,
+  fetchMyDecks,
+  fetchPublicDecks,
+  type DeckSummary,
+} from "@/lib/api/decks"
+
+type DeckTab = "mine" | "community"
 
 /**
- * Logged-in home: operator profile + list of decks they own.
+ * Logged-in home: operator profile + my decks / community public decks.
  */
 export function MainPage() {
   const navigate = useNavigate()
   const { user, token, isAuthenticated } = useAuth()
-  const [decks, setDecks] = useState<DeckSummary[]>([])
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading")
+  const [tab, setTab] = useState<DeckTab>("mine")
+  const [myDecks, setMyDecks] = useState<DeckSummary[]>([])
+  const [communityDecks, setCommunityDecks] = useState<DeckSummary[]>([])
+  const [myStatus, setMyStatus] = useState<"idle" | "loading" | "ready" | "error">(
+    "idle"
+  )
+  const [communityStatus, setCommunityStatus] = useState<
+    "idle" | "loading" | "ready" | "error"
+  >("idle")
   const [errorText, setErrorText] = useState("")
+  const [creating, setCreating] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [newName, setNewName] = useState("")
+  const [newDescription, setNewDescription] = useState("")
+  const [newIsPublic, setNewIsPublic] = useState(true)
 
   useEffect(() => {
-    if (!isAuthenticated || !token) {
-      setStatus("ready")
-      setDecks([])
-      return
-    }
+    if (!isAuthenticated || !token) return
+    if (tab !== "mine") return
 
     let cancelled = false
-    setStatus("loading")
+    setMyStatus("loading")
+    setErrorText("")
 
     fetchMyDecks(token)
       .then((list) => {
         if (cancelled) return
-        setDecks(list)
-        setStatus("ready")
+        setMyDecks(list)
+        setMyStatus("ready")
       })
       .catch((error: unknown) => {
         if (cancelled) return
-        setStatus("error")
+        setMyStatus("error")
         if (error instanceof ApiError) {
           setErrorText(
             error.detail === "missing_bearer_token" ||
               error.detail === "invalid_token" ||
               error.detail === "token_expired"
               ? "Session expired — please log in again."
-              : "Could not load decks."
+              : "Could not load your decks."
           )
         } else {
           setErrorText("Could not reach the server.")
@@ -52,7 +73,76 @@ export function MainPage() {
     return () => {
       cancelled = true
     }
-  }, [isAuthenticated, token])
+  }, [isAuthenticated, token, tab])
+
+  useEffect(() => {
+    if (tab !== "community") return
+
+    let cancelled = false
+    setCommunityStatus("loading")
+    setErrorText("")
+
+    fetchPublicDecks()
+      .then((list) => {
+        if (cancelled) return
+        setCommunityDecks(list)
+        setCommunityStatus("ready")
+      })
+      .catch(() => {
+        if (cancelled) return
+        setCommunityStatus("error")
+        setErrorText("Could not load community decks.")
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [tab])
+
+  function resetCreateForm() {
+    setCreating(false)
+    setNewName("")
+    setNewDescription("")
+    setNewIsPublic(true)
+  }
+
+  function onTabChange(id: string) {
+    const next = id === "community" ? "community" : "mine"
+    setErrorText("")
+    if (next !== "mine") resetCreateForm()
+    setTab(next)
+  }
+
+  async function onCreateDeck() {
+    if (!token) return
+    const name = newName.trim()
+    if (!name) return
+
+    setSaving(true)
+    setErrorText("")
+    try {
+      const created = await createDeck(token, {
+        name,
+        description: newDescription.trim() || null,
+        is_public: newIsPublic,
+      })
+      setMyDecks((prev) => [created, ...prev])
+      setMyStatus("ready")
+      if (created.is_public && communityStatus === "ready") {
+        setCommunityDecks((prev) => [created, ...prev])
+      }
+      resetCreateForm()
+      navigate(`/decks/${created.id}`)
+    } catch (error) {
+      setErrorText(
+        error instanceof ApiError
+          ? "Could not create deck."
+          : "Create failed."
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
 
   if (!isAuthenticated || !user) {
     return (
@@ -80,6 +170,9 @@ export function MainPage() {
     )
   }
 
+  const activeStatus = tab === "mine" ? myStatus : communityStatus
+  const activeDecks = tab === "mine" ? myDecks : communityDecks
+
   return (
     <section
       className="relative min-h-screen bg-cover bg-center bg-no-repeat px-6 py-12"
@@ -98,70 +191,172 @@ export function MainPage() {
           <p className="mt-2 text-sm text-white/55">{user.email}</p>
         </header>
 
+        <Tabs
+          label="Deck archive views"
+          className="mb-6"
+          value={tab}
+          onValueChange={onTabChange}
+          items={[
+            { id: "mine", label: "MY DECKS" },
+            { id: "community", label: "COMMUNITY" },
+          ]}
+        />
+
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="font-buahs93 text-xl text-white">YOUR DECKS</h2>
+            <h2 className="font-buahs93 text-xl text-white">
+              {tab === "mine" ? "YOUR DECKS" : "COMMUNITY DECKS"}
+            </h2>
             <p className="mt-1 text-sm text-white/50">
-              Decks linked to this account.
+              {tab === "mine"
+                ? "Create, edit, or open a deck to build."
+                : "Browse public decks from other operators."}
             </p>
           </div>
+          {tab === "mine" && !creating ? (
+            <GlitchFx
+              type="button"
+              label="NEW DECK"
+              disabled={saving || activeStatus === "loading"}
+              className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900 disabled:opacity-60"
+              onClick={() => {
+                setErrorText("")
+                setCreating(true)
+              }}
+            />
+          ) : null}
         </div>
 
-        {status === "loading" && (
-          <p className="font-mono text-sm text-cyan-300/70">Loading deck archive…</p>
-        )}
+        {tab === "mine" && creating && token ? (
+          <div className="mb-6 border border-cyan-500/40 bg-black/60 p-5">
+            <h3 className="font-buahs93 mb-3 text-sm tracking-wide text-cyan-200/80">
+              NEW DECK
+            </h3>
+            <div className="flex flex-col gap-3">
+              <EditBox
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="deck name"
+                disabled={saving}
+                autoFocus
+              />
+              <textarea
+                value={newDescription}
+                onChange={(e) => setNewDescription(e.target.value)}
+                placeholder="description (optional)"
+                disabled={saving}
+                rows={3}
+                className="w-full border border-white/40 bg-black/80 px-3 py-2 font-mono text-sm text-white outline-none placeholder:text-white/40 focus-visible:border-white"
+              />
+              <label className="flex items-center gap-2 font-buahs93 text-sm text-cyan-200/80">
+                <input
+                  type="checkbox"
+                  checked={newIsPublic}
+                  onChange={(e) => setNewIsPublic(e.target.checked)}
+                  disabled={saving}
+                  className="accent-cyan-400"
+                />
+                PUBLIC
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <GlitchFx
+                  type="button"
+                  label={saving ? "CREATING…" : "CREATE"}
+                  disabled={saving || !newName.trim()}
+                  className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900 disabled:opacity-60"
+                  onClick={() => void onCreateDeck()}
+                />
+                <Button
+                  className="font-buahs93 h-9 rounded-none bg-card px-4 text-sm text-white"
+                  disabled={saving}
+                  onClick={resetCreateForm}
+                >
+                  CANCEL
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
-        {status === "error" && (
-          <p className="text-sm text-red-400" role="alert">
-            {errorText}
+        {activeStatus === "loading" && (
+          <p className="font-mono text-sm text-cyan-300/70">
+            {tab === "mine"
+              ? "Loading deck archive…"
+              : "Loading community decks…"}
           </p>
         )}
 
-        {status === "ready" && decks.length === 0 && (
-          <div className="border border-dashed border-cyan-500/30 bg-black/40 px-6 py-12 text-center">
-            <p className="font-buahs93 text-lg text-cyan-200/80">NO DECKS YET</p>
-            <p className="mt-2 text-sm text-white/50">
-              Create a deck from the API for now, then open it here to edit.
-            </p>
-          </div>
+        {(activeStatus === "error" || errorText) && (
+          <p className="mb-4 text-sm text-red-400" role="alert">
+            {errorText ||
+              (tab === "mine"
+                ? "Could not load your decks."
+                : "Could not load community decks.")}
+          </p>
         )}
 
-        {status === "ready" && decks.length > 0 && (
+        {activeStatus === "ready" &&
+          activeDecks.length === 0 &&
+          !(tab === "mine" && creating) && (
+            <div className="border border-dashed border-cyan-500/30 bg-black/40 px-6 py-12 text-center">
+              <p className="font-buahs93 text-lg text-cyan-200/80">
+                {tab === "mine" ? "NO DECKS YET" : "NO PUBLIC DECKS"}
+              </p>
+              <p className="mt-2 text-sm text-white/50">
+                {tab === "mine"
+                  ? "Hit NEW DECK to start building."
+                  : "When operators mark a deck public, it shows up here."}
+              </p>
+            </div>
+          )}
+
+        {activeStatus === "ready" && activeDecks.length > 0 ? (
           <ul className="grid gap-4 sm:grid-cols-2">
-            {decks.map((deck) => (
+            {activeDecks.map((deck) => (
               <li key={deck.id}>
-                <button
-                  type="button"
-                  className="h-full w-full border border-cyan-500/25 bg-black/50 p-5 text-left transition-colors hover:border-cyan-400/50"
-                  onClick={() => navigate(`/decks/${deck.id}`)}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-buahs93 text-lg text-cyan-100">
-                      {deck.name ?? `Deck #${deck.id}`}
-                    </h3>
-                    <span
-                      className={
-                        deck.is_public
-                          ? "shrink-0 text-[10px] tracking-wide text-emerald-400/90"
-                          : "shrink-0 text-[10px] tracking-wide text-white/40"
-                      }
-                    >
-                      {deck.is_public ? "PUBLIC" : "PRIVATE"}
-                    </span>
-                  </div>
-                  {deck.description ? (
-                    <p className="mt-2 line-clamp-3 text-sm leading-snug text-white/55">
-                      {deck.description}
-                    </p>
-                  ) : null}
-                  <p className="mt-4 font-mono text-xs text-cyan-300/60">
-                    {deck.card_count} cards
-                  </p>
-                </button>
+                {tab === "mine" && token ? (
+                  <DeckListCard
+                    deck={deck}
+                    token={token}
+                    canManage
+                    locked={saving}
+                    onBusyChange={setSaving}
+                    onError={setErrorText}
+                    onUpdated={(updated) => {
+                      setMyDecks((prev) =>
+                        prev.map((d) => (d.id === updated.id ? updated : d))
+                      )
+                      setCommunityDecks((prev) => {
+                        if (!updated.is_public) {
+                          return prev.filter((d) => d.id !== updated.id)
+                        }
+                        const exists = prev.some((d) => d.id === updated.id)
+                        if (exists) {
+                          return prev.map((d) =>
+                            d.id === updated.id ? updated : d
+                          )
+                        }
+                        if (communityStatus === "ready") {
+                          return [updated, ...prev]
+                        }
+                        return prev
+                      })
+                    }}
+                    onDeleted={(deckId) => {
+                      setMyDecks((prev) => prev.filter((d) => d.id !== deckId))
+                      setCommunityDecks((prev) =>
+                        prev.filter((d) => d.id !== deckId)
+                      )
+                    }}
+                  />
+                ) : (
+                  <DeckListCard deck={deck} showAuthor />
+                )}
               </li>
             ))}
           </ul>
-        )}      </div>
+        ) : null}
+      </div>
     </section>
   )
 }

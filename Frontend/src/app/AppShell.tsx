@@ -4,9 +4,9 @@ import { AppProviders } from "@/app/providers/AppProviders"
 import { AppHeader } from "@/components/common/AppHeader"
 import { HomePage, HowToPlayPage, MainPage } from "@/pages"
 import { LoginPage } from "@/pages/auth/LoginPage"
+import { CardLibraryPage } from "@/pages/cards/CardLibraryPage"
 import { DeckPage } from "@/pages/decks/DeckPage"
 import { LorePage } from "@/pages/lore/LorePage"
-
 
 export function AppShell() {
   return (
@@ -17,10 +17,11 @@ export function AppShell() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/main" element={<MainPage />} />
+            <Route path="/cards" element={<CardLibraryPage />} />
             <Route path="/decks/:deckId" element={<DeckPage />} />
             <Route path="/how-to-play" element={<HowToPlayPage />} />
-            <Route path="/lore" element={<LorePage/>}/>
-            <Route path="/login" element={<LoginPage/>}/>
+            <Route path="/lore" element={<LorePage />} />
+            <Route path="/login" element={<LoginPage />} />
           </Routes>
         </main>
       </BrowserRouter>

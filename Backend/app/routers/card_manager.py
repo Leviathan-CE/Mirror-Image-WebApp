@@ -360,6 +360,313 @@ def search_cards(
     ]
 
 
+class CardLibraryItem(BaseModel):
+    """Card row for the public library browser."""
+
+    id: int
+    card_name: str
+    card_set_name: str
+    rarity: str
+    invoke_cost: int
+    cost: list[Any] = Field(default_factory=list)
+    super_types: list[Any] = Field(default_factory=list)
+    sub_types: list[Any] = Field(default_factory=list)
+    types_line: str = ""
+    description: str = ""
+    keywords: list[Any] = Field(default_factory=list)
+    show_help_text: bool = True
+    threat_level: str = "0"
+    card_art_path: str | None = None
+    card_art_version: int | None = None
+
+
+class CardLibraryResponse(BaseModel):
+    items: list[CardLibraryItem]
+    total: int
+    limit: int
+    offset: int
+
+
+class CardLibraryFacets(BaseModel):
+    colors: list[str]
+    super_types: list[str]
+    sub_types: list[str]
+    types_lines: list[str]
+    invoke_cost_min: int
+    invoke_cost_max: int
+
+
+_COLOR_COST_TOKENS = ("LIF", "MET", "POW", "RAM", "TIM", "STL")
+# Chromatic colours — cards with none of these (only GEN / empty / STL) count as STL.
+_CHROMATIC_COST_TOKENS = ("LIF", "MET", "POW", "RAM", "TIM")
+
+
+def _escape_like(value: str) -> str:
+    """Escape %, _, and \\ for ILIKE patterns."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _sql_card_matches_stl() -> str:
+    """
+    STL identity for library colour filters (resources/tokens excluded):
+    - cost includes an STL symbol (including hybrids like LIF-STL), or
+    - cost has no chromatic colours (empty, GEN-only, and/or STL-only).
+    Resource token cards are a separate catalogue and never match STL here.
+    """
+    chromatic = "|".join(_CHROMATIC_COST_TOKENS)
+    return f"""
+    (
+      NOT (
+        super_types @> '["Resource"]'::jsonb
+        OR super_types @> '["Token"]'::jsonb
+      )
+      AND (
+        EXISTS (
+          SELECT 1
+            FROM jsonb_array_elements_text(cost) AS token(value)
+           WHERE UPPER(BTRIM(token.value)) ~ '(^|[-])STL([-]|$)'
+        )
+        OR NOT EXISTS (
+          SELECT 1
+            FROM jsonb_array_elements_text(cost) AS token(value)
+           WHERE UPPER(BTRIM(token.value)) = 'MULTI'
+              OR UPPER(BTRIM(token.value)) ~ '(^|[-])({chromatic})([-]|$)'
+        )
+      )
+    )
+    """
+
+
+@router.get("/facets", response_model=CardLibraryFacets)
+def card_library_facets():
+    """Distinct filter values for the card library UI."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT MIN(invoke_cost), MAX(invoke_cost)
+                      FROM cards
+                     WHERE is_deprecated = false
+                    """
+                )
+                cost_row = cur.fetchone()
+                invoke_min = int(cost_row[0] or 0)
+                invoke_max = int(cost_row[1] or 0)
+
+                # Always expose the full colour set (even if unused in current data).
+                colors = list(_COLOR_COST_TOKENS)
+
+                cur.execute(
+                    """
+                    SELECT DISTINCT token.value
+                      FROM cards c,
+                           LATERAL jsonb_array_elements_text(c.super_types) AS token(value)
+                     WHERE c.is_deprecated = false
+                       AND BTRIM(token.value) <> ''
+                     ORDER BY 1
+                    """
+                )
+                super_types = [row[0] for row in cur.fetchall()]
+
+                cur.execute(
+                    """
+                    SELECT DISTINCT token.value
+                      FROM cards c,
+                           LATERAL jsonb_array_elements_text(c.sub_types) AS token(value)
+                     WHERE c.is_deprecated = false
+                       AND BTRIM(token.value) <> ''
+                     ORDER BY 1
+                    """
+                )
+                sub_types = [row[0] for row in cur.fetchall()]
+
+                cur.execute(
+                    """
+                    SELECT DISTINCT BTRIM(types_line)
+                      FROM cards
+                     WHERE is_deprecated = false
+                       AND BTRIM(types_line) <> ''
+                     ORDER BY 1
+                    """
+                )
+                types_lines = [row[0] for row in cur.fetchall()]
+    except OperationalError as e:
+        logger.warning("db error on card facets: %s", e)
+        raise HTTPException(status_code=503, detail="database_unavailable") from e
+    except Exception as e:
+        logger.exception("unexpected error on card facets: %s", e)
+        raise HTTPException(status_code=500, detail="card_facets_failed") from e
+
+    return CardLibraryFacets(
+        colors=colors,
+        super_types=super_types,
+        sub_types=sub_types,
+        types_lines=types_lines,
+        invoke_cost_min=invoke_min,
+        invoke_cost_max=invoke_max,
+    )
+
+
+@router.get("/library", response_model=CardLibraryResponse)
+def browse_card_library(
+    q: str | None = Query(default=None, max_length=80),
+    description: str | None = Query(default=None, max_length=200),
+    invoke_cost_min: int | None = Query(default=None, ge=0, le=99),
+    invoke_cost_max: int | None = Query(default=None, ge=0, le=99),
+    color: list[str] | None = Query(default=None),
+    types_line: str | None = Query(default=None, max_length=80),
+    super_type: str | None = Query(default=None, max_length=60),
+    sub_type: str | None = Query(default=None, max_length=60),
+    limit: int = Query(default=48, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    """
+    Browse / filter the card catalogue.
+
+    Name search (`q`) uses the same closest-match ranking as `/cards/search`
+    (prefix first, then substring, shorter names preferred).
+    """
+    where = ["is_deprecated = false"]
+    params: dict[str, Any] = {"limit": limit, "offset": offset}
+
+    needle = (q or "").strip()
+    if needle:
+        escaped = _escape_like(needle)
+        where.append("card_name ILIKE %(name_pattern)s ESCAPE '\\'")
+        params["name_pattern"] = f"%{escaped}%"
+        params["name_prefix"] = f"{escaped}%"
+
+    desc = (description or "").strip()
+    if desc:
+        escaped_desc = _escape_like(desc)
+        where.append("description ILIKE %(desc_pattern)s ESCAPE '\\'")
+        params["desc_pattern"] = f"%{escaped_desc}%"
+
+    if invoke_cost_min is not None:
+        where.append("invoke_cost >= %(invoke_cost_min)s")
+        params["invoke_cost_min"] = invoke_cost_min
+    if invoke_cost_max is not None:
+        where.append("invoke_cost <= %(invoke_cost_max)s")
+        params["invoke_cost_max"] = invoke_cost_max
+
+    colors: list[str] = []
+    for raw in color or []:
+        token = raw.strip().upper()
+        if token and token not in colors:
+            colors.append(token)
+    for index, token in enumerate(colors):
+        if token == "STL":
+            where.append(_sql_card_matches_stl())
+            continue
+        key = f"color_{index}"
+        # Exact token or hybrid that includes this colour (e.g. LIF-STL).
+        where.append(
+            f"""EXISTS (
+              SELECT 1
+                FROM jsonb_array_elements_text(cost) AS token(value)
+               WHERE UPPER(BTRIM(token.value)) = %({key})s
+                  OR UPPER(BTRIM(token.value))
+                     ~ ('(^|[-])' || %({key})s || '([-]|$)')
+            )"""
+        )
+        params[key] = token
+
+    type_line = (types_line or "").strip()
+    if type_line:
+        escaped_type = _escape_like(type_line)
+        where.append("types_line ILIKE %(types_line_pattern)s ESCAPE '\\'")
+        params["types_line_pattern"] = f"%{escaped_type}%"
+
+    super_val = (super_type or "").strip()
+    if super_val:
+        where.append("super_types @> %(super_type_json)s::jsonb")
+        params["super_type_json"] = Json([super_val])
+
+    sub_val = (sub_type or "").strip()
+    if sub_val:
+        where.append("sub_types @> %(sub_type_json)s::jsonb")
+        params["sub_type_json"] = Json([sub_val])
+
+    where_sql = " AND ".join(where)
+    if needle:
+        order_sql = """
+            CASE
+              WHEN card_name ILIKE %(name_prefix)s ESCAPE '\\' THEN 0
+              ELSE 1
+            END,
+            LENGTH(card_name) ASC,
+            card_name ASC
+        """
+    else:
+        order_sql = "card_name ASC"
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"SELECT COUNT(*)::int FROM cards WHERE {where_sql}",
+                    params,
+                )
+                total = int(cur.fetchone()[0])
+
+                cur.execute(
+                    f"""
+                    SELECT
+                        id,
+                        card_name,
+                        card_set_name,
+                        rarity,
+                        invoke_cost,
+                        cost,
+                        super_types,
+                        sub_types,
+                        types_line,
+                        description,
+                        keywords,
+                        show_help_text,
+                        threat_level,
+                        card_art_path,
+                        EXTRACT(EPOCH FROM updated_at)::bigint
+                      FROM cards
+                     WHERE {where_sql}
+                     ORDER BY {order_sql}
+                     LIMIT %(limit)s OFFSET %(offset)s
+                    """,
+                    params,
+                )
+                rows = cur.fetchall()
+    except OperationalError as e:
+        logger.warning("db error on card library: %s", e)
+        raise HTTPException(status_code=503, detail="database_unavailable") from e
+    except Exception as e:
+        logger.exception("unexpected error on card library: %s", e)
+        raise HTTPException(status_code=500, detail="card_library_failed") from e
+
+    items = [
+        CardLibraryItem(
+            id=int(row[0]),
+            card_name=row[1],
+            card_set_name=row[2],
+            rarity=row[3],
+            invoke_cost=int(row[4] or 0),
+            cost=row[5] or [],
+            super_types=row[6] or [],
+            sub_types=row[7] or [],
+            types_line=row[8] or "",
+            description=row[9] or "",
+            keywords=row[10] or [],
+            show_help_text=bool(row[11]),
+            threat_level=str(row[12] if row[12] is not None else "0"),
+            card_art_path=row[13],
+            card_art_version=int(row[14]) if row[14] is not None else None,
+        )
+        for row in rows
+    ]
+    return CardLibraryResponse(items=items, total=total, limit=limit, offset=offset)
+
+
+
 @router.get("/{card_id}", response_model=CardByNameResponse)
 def get_card_by_id(card_id: int):
     """Fetch a single card by primary key (Unity barcode id)."""

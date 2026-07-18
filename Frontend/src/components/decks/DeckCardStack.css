@@ -142,13 +142,14 @@
   top: 0.35rem;
   right: 0.35rem;
   z-index: 2;
-  min-width: 1.6rem;
-  padding: 0.15rem 0.4rem;
+  min-width: 2.1rem;
+  padding: 0.25rem 0.5rem;
   border: 1px solid rgb(34 211 238 / 0.5);
   background: rgb(0 0 0 / 0.85);
   color: #67e8f9;
   font-family: ui-monospace, monospace;
-  font-size: 0.8rem;
+  font-size: 1.15rem;
+  font-weight: 600;
   line-height: 1.2;
   text-align: center;
   pointer-events: none;
