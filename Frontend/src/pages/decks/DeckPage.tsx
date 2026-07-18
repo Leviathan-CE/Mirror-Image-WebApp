@@ -21,12 +21,32 @@ import { DeckPilotSlot } from "@/components/decks/DeckPilotSlot"
 import { NewSectionDropZone } from "@/components/decks/NewSectionDropZone"
 import {
   cardsFromDragPayload,
-  DECK_CARD_MAX_COPIES,
   deckCardSelectionKey,
   type DeckCardDragPayload,
 } from "@/components/decks/DeckCardStack"
 import "@/components/decks/DeckCardStack.css"
+import {
+  applyCardMove,
+  augmentCards,
+  augmentCategory,
+  canAddCopyToMain,
+  cardsByCategory,
+  clampQuantityToMax,
+  deckCardCount,
+  mainCategoryId,
+  maxCopiesForCategory,
+  nextCardQuantity,
+  nextNewSectionName,
+  orderedSelectionKeys,
+  pilotCard,
+  pilotCategory,
+  removeCardEntry,
+  selectionRangeKeys,
+  toggleSelectionKey,
+  withCardEntry,
+} from "@/components/decks/deckLogic"
 import { Button } from "@/components/ui/button"
+import { DropdownMenu } from "@/components/ui/DropdownMenu"
 import { EditBox } from "@/components/ui/EditBox"
 import { ApiError } from "@/lib/api/client"
 import { fetchCardById, type CardSearchHit } from "@/lib/api/cards"
@@ -43,128 +63,9 @@ import {
   updateDeckCard,
   updateDeckCategory,
   type DeckCardEntry,
-  type DeckCategoryOut,
   type DeckDetail,
 } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
-
-function isPilotCategory(category: DeckCategoryOut): boolean {
-  return category.name.trim().toLowerCase() === PILOT_SECTION_NAME.toLowerCase()
-}
-
-function isAugmentCategory(category: DeckCategoryOut): boolean {
-  return (
-    category.name.trim().toLowerCase() === AUGMENT_SECTION_NAME.toLowerCase()
-  )
-}
-
-function isReservedCategory(category: DeckCategoryOut): boolean {
-  return isPilotCategory(category) || isAugmentCategory(category)
-}
-
-function sortDeckCards(
-  cards: DeckCardEntry[],
-  mode: DeckCardSortMode
-): DeckCardEntry[] {
-  return [...cards].sort((a, b) => {
-    if (mode === "invoke") {
-      const byCost = (a.invoke_cost ?? 0) - (b.invoke_cost ?? 0)
-      if (byCost !== 0) return byCost
-      return a.card_name.localeCompare(b.card_name)
-    }
-    if (mode === "type") {
-      const byType = (a.types_line || "").localeCompare(b.types_line || "")
-      if (byType !== 0) return byType
-      return a.card_name.localeCompare(b.card_name)
-    }
-    return a.card_name.localeCompare(b.card_name)
-  })
-}
-
-function cardsByCategory(
-  cards: DeckCardEntry[],
-  categories: DeckCategoryOut[],
-  sortMode: DeckCardSortMode
-): { category: DeckCategoryOut; cards: DeckCardEntry[] }[] {
-  return categories
-    .filter((category) => !isReservedCategory(category))
-    .map((category) => ({
-      category,
-      cards: sortDeckCards(
-        cards.filter((card) => card.category_id === category.id),
-        sortMode
-      ),
-    }))
-}
-
-function mainCategoryId(categories: DeckCategoryOut[]): number | null {
-  const main = categories.find((c) => c.name.trim().toLowerCase() === "main")
-  if (main) return main.id
-  const playable = categories.filter((c) => !isReservedCategory(c))
-  const first = [...playable].sort((a, b) => a.sort_order - b.sort_order)[0]
-  return first?.id ?? null
-}
-
-function pilotCategory(categories: DeckCategoryOut[]): DeckCategoryOut | null {
-  return categories.find(isPilotCategory) ?? null
-}
-
-function augmentCategory(
-  categories: DeckCategoryOut[]
-): DeckCategoryOut | null {
-  return categories.find(isAugmentCategory) ?? null
-}
-
-function pilotCard(
-  cards: DeckCardEntry[],
-  categories: DeckCategoryOut[]
-): DeckCardEntry | null {
-  const cat = pilotCategory(categories)
-  if (!cat) return null
-  return cards.find((card) => card.category_id === cat.id) ?? null
-}
-
-function augmentCards(
-  cards: DeckCardEntry[],
-  categories: DeckCategoryOut[],
-  sortMode: DeckCardSortMode
-): DeckCardEntry[] {
-  const cat = augmentCategory(categories)
-  if (!cat) return []
-  return sortDeckCards(
-    cards.filter((card) => card.category_id === cat.id),
-    sortMode
-  )
-}
-
-/** Visual order used for Shift+click range selection. */
-function selectableCardsInOrder(
-  cards: DeckCardEntry[],
-  categories: DeckCategoryOut[],
-  sortMode: DeckCardSortMode
-): DeckCardEntry[] {
-  return [
-    ...augmentCards(cards, categories, sortMode),
-    ...cardsByCategory(cards, categories, sortMode).flatMap(
-      (group) => group.cards
-    ),
-  ]
-}
-
-function withCardEntry(prev: DeckDetail, entry: DeckCardEntry): DeckDetail {
-  const withoutDup = prev.cards.filter(
-    (card) =>
-      !(
-        card.card_id === entry.card_id && card.category_id === entry.category_id
-      )
-  )
-  const cards = [...withoutDup, entry]
-  return {
-    ...prev,
-    cards,
-    card_count: cards.reduce((sum, card) => sum + card.quantity, 0),
-  }
-}
 
 export function DeckPage() {
   const { deckId: deckIdParam } = useParams()
@@ -182,8 +83,6 @@ export function DeckPage() {
   const [isPublic, setIsPublic] = useState(false)
   const [searchMenuOpen, setSearchMenuOpen] = useState(false)
   const [cardSortMode, setCardSortMode] = useState<DeckCardSortMode>("type")
-  const [detailsMenuOpen, setDetailsMenuOpen] = useState(false)
-  const detailsMenuRef = useRef<HTMLDivElement>(null)
   const [selectedKeys, setSelectedKeys] = useState<ReadonlySet<string>>(
     () => new Set()
   )
@@ -191,27 +90,6 @@ export function DeckPage() {
 
   const canEdit =
     Boolean(deck && user && deck.author_name === user.user_name && token)
-
-  useEffect(() => {
-    if (!detailsMenuOpen) return
-
-    function onPointerDown(event: MouseEvent) {
-      if (!detailsMenuRef.current?.contains(event.target as Node)) {
-        setDetailsMenuOpen(false)
-      }
-    }
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setDetailsMenuOpen(false)
-    }
-
-    document.addEventListener("mousedown", onPointerDown)
-    document.addEventListener("keydown", onKeyDown)
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown)
-      document.removeEventListener("keydown", onKeyDown)
-    }
-  }, [detailsMenuOpen])
 
   const clearCardSelection = useCallback((card?: DeckCardEntry) => {
     setSelectedKeys(new Set())
@@ -229,12 +107,7 @@ export function DeckPage() {
 
       if (mode === "toggle") {
         selectionAnchorKeyRef.current = key
-        setSelectedKeys((prev) => {
-          const next = new Set(prev)
-          if (next.has(key)) next.delete(key)
-          else next.add(key)
-          return next
-        })
+        setSelectedKeys((prev) => toggleSelectionKey(prev, key))
         return
       }
 
@@ -245,34 +118,22 @@ export function DeckPage() {
         return
       }
 
-      const ordered = selectableCardsInOrder(
+      const orderedKeys = orderedSelectionKeys(
         deck.cards,
         deck.categories,
         cardSortMode
       )
-      const orderedKeys = ordered.map((entry) =>
-        deckCardSelectionKey(entry.category_id, entry.card_id)
-      )
-      const targetIndex = orderedKeys.indexOf(key)
       const anchorKey = selectionAnchorKeyRef.current
+      const targetIndex = orderedKeys.indexOf(key)
       const anchorIndex =
         anchorKey != null ? orderedKeys.indexOf(anchorKey) : -1
 
-      if (targetIndex < 0) {
+      if (targetIndex < 0 || anchorIndex < 0) {
         selectionAnchorKeyRef.current = key
-        setSelectedKeys(new Set([key]))
-        return
       }
-
-      if (anchorIndex < 0) {
-        selectionAnchorKeyRef.current = key
-        setSelectedKeys(new Set([key]))
-        return
-      }
-
-      const from = Math.min(anchorIndex, targetIndex)
-      const to = Math.max(anchorIndex, targetIndex)
-      setSelectedKeys(new Set(orderedKeys.slice(from, to + 1)))
+      setSelectedKeys(
+        new Set(selectionRangeKeys(orderedKeys, anchorKey, key))
+      )
     },
     [deck, cardSortMode]
   )
@@ -376,15 +237,7 @@ export function DeckPage() {
     const items = cardsFromDragPayload(payload)
     if (items.length === 0) return
 
-    const existingNames = new Set(
-      deck.categories.map((c) => c.name.trim().toLowerCase())
-    )
-    let name = "New Section"
-    let n = 2
-    while (existingNames.has(name.toLowerCase())) {
-      name = `New Section ${n}`
-      n += 1
-    }
+    const name = nextNewSectionName(deck.categories.map((c) => c.name))
 
     setSaving(true)
     setErrorText("")
@@ -406,21 +259,11 @@ export function DeckPage() {
           token,
           { category_id: created.id }
         )
-        const withoutSource = workingCards.filter(
-          (card) =>
-            !(
-              card.card_id === item.cardId &&
-              card.category_id === item.fromCategoryId
-            )
+        workingCards = applyCardMove(
+          workingCards,
+          item.fromCategoryId,
+          updated
         )
-        const withoutTargetDup = withoutSource.filter(
-          (card) =>
-            !(
-              card.card_id === updated.card_id &&
-              card.category_id === updated.category_id
-            )
-        )
-        workingCards = [...withoutTargetDup, updated]
       }
 
       setDeck((prev) => {
@@ -431,10 +274,7 @@ export function DeckPage() {
             ? prev.categories
             : [...prev.categories, created],
           cards: workingCards,
-          card_count: workingCards.reduce(
-            (sum, card) => sum + card.quantity,
-            0
-          ),
+          card_count: deckCardCount(workingCards),
         }
       })
       clearCardSelection()
@@ -525,31 +365,18 @@ export function DeckPage() {
           token,
           { category_id: toCategoryId }
         )
-        const withoutSource = workingCards.filter(
-          (card) =>
-            !(
-              card.card_id === item.cardId &&
-              card.category_id === item.fromCategoryId
-            )
+        workingCards = applyCardMove(
+          workingCards,
+          item.fromCategoryId,
+          updated
         )
-        const withoutTargetDup = withoutSource.filter(
-          (card) =>
-            !(
-              card.card_id === updated.card_id &&
-              card.category_id === updated.category_id
-            )
-        )
-        workingCards = [...withoutTargetDup, updated]
       }
       setDeck((prev) => {
         if (!prev) return prev
         return {
           ...prev,
           cards: workingCards,
-          card_count: workingCards.reduce(
-            (sum, card) => sum + card.quantity,
-            0
-          ),
+          card_count: deckCardCount(workingCards),
         }
       })
       clearCardSelection()
@@ -575,16 +402,14 @@ export function DeckPage() {
   async function onQuantityDelta(card: DeckCardEntry, delta: 1 | -1) {
     if (!token || !deck || !canEdit || saving) return
 
-    const inAugments = isAugmentCategory(
-      deck.categories.find((c) => c.id === card.category_id) ?? {
-        id: -1,
-        name: "",
-        sort_order: 0,
-      }
-    )
-    const maxCopies = inAugments ? 1 : DECK_CARD_MAX_COPIES
-    const nextQty = card.quantity + delta
-    if (delta > 0 && card.quantity >= maxCopies) return
+    const category = deck.categories.find((c) => c.id === card.category_id) ?? {
+      id: -1,
+      name: "",
+      sort_order: 0,
+    }
+    const maxCopies = maxCopiesForCategory(category)
+    const nextQty = nextCardQuantity(card.quantity, delta, maxCopies)
+    if (nextQty === null) return
 
     setErrorText("")
     try {
@@ -592,17 +417,15 @@ export function DeckPage() {
         await removeDeckCard(deck.id, card.card_id, card.category_id, token)
         setDeck((prev) => {
           if (!prev) return prev
-          const cards = prev.cards.filter(
-            (entry) =>
-              !(
-                entry.card_id === card.card_id &&
-                entry.category_id === card.category_id
-              )
+          const cards = removeCardEntry(
+            prev.cards,
+            card.card_id,
+            card.category_id
           )
           return {
             ...prev,
             cards,
-            card_count: cards.reduce((sum, entry) => sum + entry.quantity, 0),
+            card_count: deckCardCount(cards),
           }
         })
         return
@@ -626,7 +449,7 @@ export function DeckPage() {
         return {
           ...prev,
           cards,
-          card_count: cards.reduce((sum, entry) => sum + entry.quantity, 0),
+          card_count: deckCardCount(cards),
         }
       })
     } catch {
@@ -660,10 +483,9 @@ export function DeckPage() {
       const existing = deck.cards.find(
         (card) => card.card_id === hit.id && card.category_id === categoryId
       )
-      if (existing && existing.quantity >= DECK_CARD_MAX_COPIES) {
-        setErrorText(
-          `Main already has ${DECK_CARD_MAX_COPIES} copies of that card.`
-        )
+      const canAdd = canAddCopyToMain(existing?.quantity)
+      if (!canAdd.ok) {
+        setErrorText(canAdd.message)
         return
       }
 
@@ -672,13 +494,14 @@ export function DeckPage() {
         category_id: categoryId,
         quantity: 1,
       })
-      if (entry.quantity > DECK_CARD_MAX_COPIES) {
+      const clampedQty = clampQuantityToMax(entry.quantity)
+      if (clampedQty < entry.quantity) {
         const clamped = await updateDeckCard(
           deck.id,
           entry.card_id,
           entry.category_id,
           token,
-          { quantity: DECK_CARD_MAX_COPIES }
+          { quantity: clampedQty }
         )
         setDeck((prev) => (prev ? withCardEntry(prev, clamped) : prev))
         return
@@ -1036,43 +859,18 @@ export function DeckPage() {
                             {deck.name ?? `Deck #${deck.id}`}
                           </h1>
                           {canEdit ? (
-                            <div ref={detailsMenuRef} className="relative shrink-0">
-                              <button
-                                type="button"
-                                aria-label="Deck options"
-                                aria-haspopup="menu"
-                                aria-expanded={detailsMenuOpen}
-                                disabled={saving}
-                                className={cn(
-                                  "font-buahs93 flex h-8 w-8 items-center justify-center rounded-none",
-                                  "text-lg leading-none text-cyan-200/80 hover:bg-cyan-500/10 hover:text-white",
-                                  "disabled:opacity-50"
-                                )}
-                                onClick={() =>
-                                  setDetailsMenuOpen((open) => !open)
-                                }
-                              >
-                                ⋯
-                              </button>
-                              {detailsMenuOpen ? (
-                                <div
-                                  role="menu"
-                                  className="absolute left-0 top-full z-20 mt-1 min-w-[9rem] border border-cyan-500/30 bg-black/95 py-1 shadow-lg"
-                                >
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    className="font-buahs93 block w-full px-3 py-2 text-left text-xs text-cyan-100 hover:bg-cyan-500/15"
-                                    onClick={() => {
-                                      setDetailsMenuOpen(false)
-                                      setEditing(true)
-                                    }}
-                                  >
-                                    Edit details
-                                  </button>
-                                </div>
-                              ) : null}
-                            </div>
+                            <DropdownMenu
+                              label="Deck options"
+                              disabled={saving}
+                              className="shrink-0"
+                              items={[
+                                {
+                                  id: "edit-details",
+                                  label: "Edit details",
+                                  onSelect: () => setEditing(true),
+                                },
+                              ]}
+                            />
                           ) : null}
                         </div>
                         <span

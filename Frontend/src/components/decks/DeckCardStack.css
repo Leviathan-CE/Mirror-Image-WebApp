@@ -209,6 +209,36 @@
   }
 }
 
+.deck-pilot-slot__card {
+  transform-origin: center center;
+  transition:
+    transform 280ms ease,
+    filter 280ms ease,
+    border-color 150ms ease,
+    background-color 150ms ease;
+  transform: scale(1);
+  filter: brightness(0.95);
+}
+
+.deck-pilot-slot__card.has-pilot {
+  cursor: pointer;
+  border-style: solid;
+}
+
+.deck-pilot-slot__card.has-pilot.is-hovered {
+  transform: scale(1.07);
+  filter: brightness(1.08);
+  z-index: 5;
+}
+
+.deck-pilot-slot__art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  user-select: none;
+}
+
 @media (max-width: 640px) {
   .deck-board,
   .deck-card-stack,

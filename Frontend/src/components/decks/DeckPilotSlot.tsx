@@ -2,7 +2,7 @@
  * Dedicated visual Pilot slot (uses a "Pilot" deck category under the hood).
  */
 
-import { useState, type DragEvent } from "react"
+import { useEffect, useState, type DragEvent } from "react"
 
 import {
   isDeckCardDrag,
@@ -19,7 +19,6 @@ type DeckPilotSlotProps = {
   disabled?: boolean
   onDropCard: (payload: DeckCardDragPayload) => void | Promise<void>
   onClear?: () => void | Promise<void>
-  onEnlarge?: (card: DeckCardEntry) => void
 }
 
 export function DeckPilotSlot({
@@ -28,13 +27,29 @@ export function DeckPilotSlot({
   disabled = false,
   onDropCard,
   onClear,
-  onEnlarge,
 }: DeckPilotSlotProps) {
   const [dropActive, setDropActive] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const [enlarged, setEnlarged] = useState(false)
   const acceptsDrops = canEdit && !disabled
   const art = pilot
     ? cardArtUrl(pilot.card_art_path, pilot.card_art_version)
     : null
+
+  useEffect(() => {
+    if (!enlarged) return
+
+    function release() {
+      setEnlarged(false)
+    }
+
+    window.addEventListener("mouseup", release)
+    window.addEventListener("blur", release)
+    return () => {
+      window.removeEventListener("mouseup", release)
+      window.removeEventListener("blur", release)
+    }
+  }, [enlarged])
 
   function isCardDrag(event: DragEvent): boolean {
     return isDeckCardDrag(event)
@@ -49,10 +64,11 @@ export function DeckPilotSlot({
       <h2 className="font-buahs93 text-lg tracking-wide text-white">Pilot</h2>
       <div
         className={cn(
-          "deck-card-frame relative flex items-center justify-center border border-dashed border-cyan-500/30 bg-black/30 transition-[border-color,background-color] duration-150",
-          "clip-angled [--angle:15px]",
+          "deck-card-frame deck-pilot-slot__card relative flex items-center justify-center border border-dashed border-cyan-500/30 bg-black/30",
           dropActive && "border-cyan-400/60 bg-cyan-500/10",
-          disabled && "opacity-50"
+          disabled && "opacity-50",
+          pilot && "has-pilot",
+          hovered && pilot && "is-hovered"
         )}
         onDragEnter={(event) => {
           if (!acceptsDrops || !isCardDrag(event)) return
@@ -78,10 +94,17 @@ export function DeckPilotSlot({
           if (!payload) return
           void onDropCard(payload)
         }}
+        onMouseEnter={() => {
+          if (pilot) setHovered(true)
+        }}
+        onMouseLeave={() => setHovered(false)}
         onMouseDown={(event) => {
           if (!pilot || event.button !== 1) return
           event.preventDefault()
-          onEnlarge?.(pilot)
+          setEnlarged(true)
+        }}
+        onAuxClick={(event) => {
+          if (event.button === 1) event.preventDefault()
         }}
         onContextMenu={(event) => {
           if (!canEdit || !pilot || !onClear) return
@@ -92,7 +115,7 @@ export function DeckPilotSlot({
           pilot
             ? canEdit
               ? `${pilot.card_name} — right-click to clear · middle-hold enlarge`
-              : pilot.card_name
+              : `${pilot.card_name} — middle-click hold to enlarge`
             : canEdit
               ? "Drop a pilot card here"
               : "No pilot selected"
@@ -103,7 +126,7 @@ export function DeckPilotSlot({
             <img
               src={art}
               alt={pilot.card_name}
-              className="h-full w-full object-cover"
+              className="deck-pilot-slot__art clip-angled"
               draggable={false}
             />
           ) : (
@@ -117,6 +140,28 @@ export function DeckPilotSlot({
           </p>
         )}
       </div>
+
+      {enlarged && pilot ? (
+        <div
+          className="deck-card-enlarge"
+          role="dialog"
+          aria-label={pilot.card_name}
+        >
+          {art ? (
+            <img
+              src={art}
+              alt={pilot.card_name}
+              className="deck-card-enlarge__art clip-angled"
+              draggable={false}
+            />
+          ) : (
+            <div className="deck-card-enlarge__fallback clip-angled">
+              {pilot.card_name}
+            </div>
+          )}
+          <p className="deck-card-enlarge__caption">{pilot.card_name}</p>
+        </div>
+      ) : null}
     </div>
   )
 }

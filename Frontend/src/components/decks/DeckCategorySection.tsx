@@ -3,7 +3,7 @@
  * Droppable target for moving cards between sections.
  */
 
-import { useEffect, useId, useRef, useState, type DragEvent } from "react"
+import { useEffect, useState, type DragEvent } from "react"
 
 import {
   DeckCardStack,
@@ -12,6 +12,7 @@ import {
   type DeckCardDragPayload,
 } from "@/components/decks/DeckCardStack"
 import { Button } from "@/components/ui/button"
+import { DropdownMenu } from "@/components/ui/DropdownMenu"
 import { EditBox } from "@/components/ui/EditBox"
 import type { DeckCardEntry, DeckCategoryOut } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
@@ -49,9 +50,6 @@ export function DeckCategorySection({
   onClearSelect,
   reserved = false,
 }: DeckCategorySectionProps) {
-  const menuId = useId()
-  const menuRootRef = useRef<HTMLDivElement>(null)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [draftName, setDraftName] = useState(category.name)
   const [busy, setBusy] = useState(false)
@@ -64,27 +62,6 @@ export function DeckCategorySection({
   useEffect(() => {
     setDraftName(category.name)
   }, [category.name])
-
-  useEffect(() => {
-    if (!menuOpen) return
-
-    function onPointerDown(event: MouseEvent) {
-      if (!menuRootRef.current?.contains(event.target as Node)) {
-        setMenuOpen(false)
-      }
-    }
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setMenuOpen(false)
-    }
-
-    document.addEventListener("mousedown", onPointerDown)
-    document.addEventListener("keydown", onKeyDown)
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown)
-      document.removeEventListener("keydown", onKeyDown)
-    }
-  }, [menuOpen])
 
   async function commitRename() {
     const next = draftName.trim()
@@ -103,7 +80,6 @@ export function DeckCategorySection({
   }
 
   async function commitDelete() {
-    setMenuOpen(false)
     setBusy(true)
     try {
       await onDelete()
@@ -215,7 +191,6 @@ export function DeckCategorySection({
               }
               onDoubleClick={() => {
                 if (!canEdit || reserved || locked) return
-                setMenuOpen(false)
                 setDraftName(category.name)
                 setRenaming(true)
               }}
@@ -226,51 +201,30 @@ export function DeckCategorySection({
               {cardTotal} cards
             </span>
             {canEdit && !reserved ? (
-              <div ref={menuRootRef} className="relative ml-auto">
-                <button
-                  type="button"
-                  aria-haspopup="menu"
-                  aria-expanded={menuOpen}
-                  aria-controls={menuId}
-                  disabled={locked}
-                  className={cn(
-                    "font-buahs93 flex h-8 w-8 items-center justify-center rounded-none",
-                    "text-lg leading-none text-cyan-200/80 hover:bg-cyan-500/10 hover:text-white",
-                    "disabled:opacity-50"
-                  )}
-                  onClick={() => setMenuOpen((open) => !open)}
-                >
-                  ⋯
-                </button>
-                {menuOpen ? (
-                  <div
-                    id={menuId}
-                    role="menu"
-                    className="absolute right-0 top-full z-20 mt-1 min-w-[9rem] border border-cyan-500/30 bg-black/95 py-1 shadow-lg"
-                  >
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="font-buahs93 block w-full px-3 py-2 text-left text-xs text-cyan-100 hover:bg-cyan-500/15"
-                      onClick={() => {
-                        setMenuOpen(false)
-                        setDraftName(category.name)
-                        setRenaming(true)
-                      }}
-                    >
-                      Rename
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="font-buahs93 block w-full px-3 py-2 text-left text-xs text-red-300/90 hover:bg-red-500/15"
-                      onClick={() => void commitDelete()}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                ) : null}
-              </div>
+              <DropdownMenu
+                label={`${category.name} options`}
+                disabled={locked}
+                align="right"
+                className="ml-auto"
+                items={[
+                  {
+                    id: "rename",
+                    label: "Rename",
+                    onSelect: () => {
+                      setDraftName(category.name)
+                      setRenaming(true)
+                    },
+                  },
+                  {
+                    id: "delete",
+                    label: "Delete",
+                    tone: "danger",
+                    onSelect: () => {
+                      void commitDelete()
+                    },
+                  },
+                ]}
+              />
             ) : null}
           </>
         )}
