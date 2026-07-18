@@ -57,6 +57,12 @@ export type DeckDetail = DeckSummary & {
   cards: DeckCardEntry[]
 }
 
+export type DeckCreatePayload = {
+  name: string
+  description?: string | null
+  is_public?: boolean
+}
+
 export type DeckUpdatePayload = {
   name?: string
   description?: string | null
@@ -68,6 +74,27 @@ export async function fetchMyDecks(token: string): Promise<DeckSummary[]> {
     headers: authHeaders(token),
   })
   return readJsonOrThrow<DeckSummary[]>(response, "decks_fetch_failed")
+}
+
+/** Public deck catalogue — no auth required. */
+export async function fetchPublicDecks(): Promise<DeckSummary[]> {
+  const response = await fetch(`${apiBaseUrl()}/decks/public`)
+  return readJsonOrThrow<DeckSummary[]>(response, "public_decks_fetch_failed")
+}
+
+export async function createDeck(
+  token: string,
+  payload: DeckCreatePayload
+): Promise<DeckSummary> {
+  const response = await fetch(`${apiBaseUrl()}/decks`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(token),
+    },
+    body: JSON.stringify(payload),
+  })
+  return readJsonOrThrow<DeckSummary>(response, "deck_create_failed")
 }
 
 /** Public or owned deck detail (send token when logged in). */
@@ -95,6 +122,22 @@ export async function updateDeck(
     body: JSON.stringify(payload),
   })
   return readJsonOrThrow<DeckSummary>(response, "deck_update_failed")
+}
+
+export async function deleteDeck(
+  deckId: number,
+  token: string
+): Promise<void> {
+  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  })
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      await parseErrorDetail(response, "deck_delete_failed")
+    )
+  }
 }
 
 export type AddDeckCardPayload = {

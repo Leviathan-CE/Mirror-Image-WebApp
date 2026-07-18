@@ -1,5 +1,5 @@
 /**
- * Card catalog API (search / lookup).
+ * Card catalog API (search / library browse / lookup).
  */
 
 import { apiBaseUrl, readJsonOrThrow } from "@/lib/api/client"
@@ -21,6 +21,53 @@ export type CardDetail = {
   card_art_path: string | null
 }
 
+export type CardLibraryItem = {
+  id: number
+  card_name: string
+  card_set_name: string
+  rarity: string
+  invoke_cost: number
+  cost: string[]
+  super_types: string[]
+  sub_types: string[]
+  types_line: string
+  description: string
+  keywords: string[]
+  show_help_text: boolean
+  threat_level: string
+  card_art_path: string | null
+  card_art_version?: number | null
+}
+
+export type CardLibraryResponse = {
+  items: CardLibraryItem[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export type CardLibraryFacets = {
+  colors: string[]
+  super_types: string[]
+  sub_types: string[]
+  types_lines: string[]
+  invoke_cost_min: number
+  invoke_cost_max: number
+}
+
+export type CardLibraryQuery = {
+  q?: string
+  description?: string
+  invokeCostMin?: number | null
+  invokeCostMax?: number | null
+  colors?: string[]
+  typesLine?: string
+  superType?: string
+  subType?: string
+  limit?: number
+  offset?: number
+}
+
 export async function searchCards(
   query: string,
   limit = 12
@@ -34,6 +81,43 @@ export async function searchCards(
 
   const response = await fetch(url)
   return readJsonOrThrow<CardSearchHit[]>(response, "card_search_failed")
+}
+
+/** Full catalogue browse with filters; name (`q`) uses the same ranking as search. */
+export async function fetchCardLibrary(
+  query: CardLibraryQuery = {}
+): Promise<CardLibraryResponse> {
+  const url = new URL(`${apiBaseUrl()}/cards/library`)
+  const q = query.q?.trim()
+  if (q) url.searchParams.set("q", q)
+  const description = query.description?.trim()
+  if (description) url.searchParams.set("description", description)
+  if (query.invokeCostMin != null) {
+    url.searchParams.set("invoke_cost_min", String(query.invokeCostMin))
+  }
+  if (query.invokeCostMax != null) {
+    url.searchParams.set("invoke_cost_max", String(query.invokeCostMax))
+  }
+  for (const color of query.colors ?? []) {
+    const token = color.trim()
+    if (token) url.searchParams.append("color", token)
+  }
+  const typesLine = query.typesLine?.trim()
+  if (typesLine) url.searchParams.set("types_line", typesLine)
+  const superType = query.superType?.trim()
+  if (superType) url.searchParams.set("super_type", superType)
+  const subType = query.subType?.trim()
+  if (subType) url.searchParams.set("sub_type", subType)
+  url.searchParams.set("limit", String(query.limit ?? 48))
+  url.searchParams.set("offset", String(query.offset ?? 0))
+
+  const response = await fetch(url)
+  return readJsonOrThrow<CardLibraryResponse>(response, "card_library_failed")
+}
+
+export async function fetchCardFacets(): Promise<CardLibraryFacets> {
+  const response = await fetch(`${apiBaseUrl()}/cards/facets`)
+  return readJsonOrThrow<CardLibraryFacets>(response, "card_facets_failed")
 }
 
 /** Card-by-id payload uses serialization alias `ID`. */

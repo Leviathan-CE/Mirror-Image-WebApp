@@ -11,6 +11,7 @@ import {
     type TocEntry,
 } from "@/components/docs"
 import { GameIcon } from "@/components/common/GameIcon"
+import { KEYWORD_ABILITIES } from "@/lib/howToPlay/keywords"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { howToPlayImages, sharedImages } from "@/assets"
 import { cn } from "@/lib/utils"
@@ -29,34 +30,7 @@ const SECTIONS: TocEntry[] = [
     { id: "deck-building", label: "Deck Building" },
 ]
 
-const KEYWORDS: { name: string; text: ReactNode }[] = [
-    { name: "AIRBORNE", text: "Only assets with Airborne or Long Range can attack this entity." },
-    { name: "BLITZ", text: "This entity can attack the turn it enters the battlefield." },
-    { name: "BLOCK X", text: "When you block with a unit, augment, or cyberspell to reduce the damage an asset would deal, reduce it by an additional X." },
-    { name: "CORROSIVE BILE", text: "Whenever this entity deals damage to a unit, destroy that unit." },
-    { name: "DEGRADE X", text: "The affected player puts the top X cards of their deck into their discard pile. When card text says a player degrades X, that player is the affected player; if no player is stated, that player is you." },
-    { name: "DURABLE X", text: <>This entity can take X damage more than its <GameIcon name="threat_lvl" /> rating before being defeated.</> },
-    { name: "PREEMPTIVE STRIKE", text: "When this entity deals damage in a fight, it deals damage first, unless the opposing entity also has Preemptive Strike." },
-    { name: "HARDENED X", text: "Whenever this entity takes damage, reduce that damage by X." },
-    { name: "HARD POINT", text: "You may have a second copy of this card equipped as an augment for your deck." },
-    { name: "INSATIABLE HUNGER", text: "Whenever a unit with this keyword attacks, if the defending player controls a unit, that attack must target a unit that player controls." },
-    { name: "INVULNERABLE", text: "This entity cannot be dismantled, trashed, or destroyed by effects that say to trash, dismantle, or destroy. Players cannot choose it as a valid target for those effects or costs." },
-    { name: "LETHAL X", text: "Whenever this unit, cyberspell, or augment deals damage, it deals X additional damage." },
-    { name: "LONG RANGE", text: "This asset can attack units with Airborne." },
-    { name: "PEER X", text: "Look at the top X cards of your deck. You may put any of them into your discard pile, then put the rest back on top of your deck in any order." },
-    { name: "PIERCE", text: "Any excess damage this asset deals to its target is redirected to the target's controller." },
-    // { name: "RADAR", text: "Whenever a unit an opponent controls attacks, if it is the first attack in the main phase, you may redirect that attack to target a unit you control instead." },
-    { name: "RECURSIVE", text: "You may play this asset from your discard pile by paying its invoke cost. If you do, allocate the top card of your deck face down to the played card; the next time this asset would go to the discard pile, dismantle it and the face-down card instead." },
-    { name: "REFURBISHED", text: <>Dismantle any number of cards from your discard pile; for each card dismantled this way, pay for one <GameIcon name="gen1" /> of this card's costs.</> },
-    { name: "SPIRIT LINK", text: "Damage this asset deals is gained as life by its controller." },
-    { name: "STALWART", text: "When this entity attacks, it does not expend as part of the attack." },
-    { name: "STATIONARY", text: "This entity cannot attack." },
-    { name: "STEALTH X", text: "As an additional cost to target or attack this entity, the controller of the attack or targeted effect must pay X for each cyberspell, ability, or attack. If they do not pay it, that action does nothing." },
-    { name: "STURDY", text: 'This entity cannot be destroyed by effects that say "destroy."' },
-    { name: "SURGE", text: "This card can be invoked any time a Quick Hack can be played." },
-    { name: "TAUNT", text: "When an opponent makes an attack, that attack must target this unit if able. If there are multiple units with Taunt, the attacker chooses which to target." },
-    { name: "WEAKENED X", text: "Whenever this asset deals damage, it deals X less damage." },
-]
+const KEYWORDS = KEYWORD_ABILITIES
 
 /** Inline "[Hardcore]" marker used to flag optional advanced-mode rules steps. */
 function Hardcore() {

@@ -26,12 +26,20 @@ export function OperatorHeader() {
     <HeaderShell
       brandTo="/main"
       nav={
-        <Button
-          className={navButtonClassName}
-          onClick={() => navigate("/main")}
-        >
-          DECKS
-        </Button>
+        <>
+          <Button
+            className={navButtonClassName}
+            onClick={() => navigate("/main")}
+          >
+            DECKS
+          </Button>
+          <Button
+            className={navButtonClassName}
+            onClick={() => navigate("/cards")}
+          >
+            CARDS
+          </Button>
+        </>
       }
       actions={
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">

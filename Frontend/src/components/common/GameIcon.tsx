@@ -1,27 +1,58 @@
 import { cn } from "@/lib/utils"
 
-/** Maps a short name to the icon asset added under public/images/icons. */
+/** Maps a short name to the icon asset under public/images/icons. */
 const ICON_SOURCES = {
-  // Resources used to play cards.
-  life: { src: "/images/icons/LIF.png", label: "Life (LIF)", shape: "token" },
-  metal: { src: "/images/icons/MET.png", label: "MET", shape: "token" },
-  power: { src: "/images/icons/POW.png", label: "Power (POW)", shape: "token" },
-  steel: { src: "/images/icons/STL.png", label: "Steel (STL)", shape: "token" },
-  time: { src: "/images/icons/TIM.png", label: "Time (TIM)", shape: "token" },
-  ram: { src: "/images/icons/RAM.png", label: "RAM", shape: "token" },
-  // Generic / colorless numbered costs (grey).
-  gen0: { src: "/images/icons/GEN-0.png", label: "Generic 0", shape: "token" },
-  gen1: { src: "/images/icons/GEN-1.png", label: "Generic 1", shape: "token" },
-  gen2: { src: "/images/icons/GEN-2.png", label: "Generic 2", shape: "token" },
-  gen10: { src: "/images/icons/GEN-10.png", label: "Generic 10", shape: "token" },
-  genX: { src: "/images/icons/GEN-X.png", label: "Generic X", shape: "token" },
-  // Card stat: power rating.
-  threat_lvl: { src: "/images/icons/TLV.png", label: "threat-level", shape: "token" },
-  // Card actions.
+  // Colored resources (Costs/).
+  life: { src: "/images/icons/Costs/LIF.png", label: "Life (LIF)", shape: "token" },
+  metal: { src: "/images/icons/Costs/MET.png", label: "MET", shape: "token" },
+  power: { src: "/images/icons/Costs/POW.png", label: "Power (POW)", shape: "token" },
+  steel: { src: "/images/icons/Costs/STL.png", label: "Steel (STL)", shape: "token" },
+  time: { src: "/images/icons/Costs/TIM.png", label: "Time (TIM)", shape: "token" },
+  ram: { src: "/images/icons/Costs/RAM.png", label: "RAM", shape: "token" },
+
+  // Hybrid / special costs (Costs/).
+  lifMet: { src: "/images/icons/Costs/LIF-MET.png", label: "LIF/MET", shape: "token" },
+  lifPow: { src: "/images/icons/Costs/LIF-POW.png", label: "LIF/POW", shape: "token" },
+  lifRam: { src: "/images/icons/Costs/LIF-RAM.png", label: "LIF/RAM", shape: "token" },
+  lifStl: { src: "/images/icons/Costs/LIF-STL.png", label: "LIF/STL", shape: "token" },
+  lifTim: { src: "/images/icons/Costs/LIF-TIM.png", label: "LIF/TIM", shape: "token" },
+  metStl: { src: "/images/icons/Costs/MET-STL.png", label: "MET/STL", shape: "token" },
+  metTim: { src: "/images/icons/Costs/MET-TIM.png", label: "MET/TIM", shape: "token" },
+  powMet: { src: "/images/icons/Costs/POW-MET.png", label: "POW/MET", shape: "token" },
+  powRam: { src: "/images/icons/Costs/POW-RAM.png", label: "POW/RAM", shape: "token" },
+  powStl: { src: "/images/icons/Costs/POW-STL.png", label: "POW/STL", shape: "token" },
+  powTim: { src: "/images/icons/Costs/POW-TIM.png", label: "POW/TIM", shape: "token" },
+  ramMet: { src: "/images/icons/Costs/RAM-MET.png", label: "RAM/MET", shape: "token" },
+  ramStl: { src: "/images/icons/Costs/RAM-STL.png", label: "RAM/STL", shape: "token" },
+  ramTim: { src: "/images/icons/Costs/RAM-TIM.png", label: "RAM/TIM", shape: "token" },
+  stlTim: { src: "/images/icons/Costs/STL-TIM.png", label: "STL/TIM", shape: "token" },
+  multi: { src: "/images/icons/Costs/MULTI.png", label: "Multi", shape: "token" },
+
+  // Generic / colorless numbered costs (Costs/).
+  gen0: { src: "/images/icons/Costs/GEN-0.png", label: "Generic 0", shape: "token" },
+  gen1: { src: "/images/icons/Costs/GEN-1.png", label: "Generic 1", shape: "token" },
+  gen2: { src: "/images/icons/Costs/GEN-2.png", label: "Generic 2", shape: "token" },
+  gen3: { src: "/images/icons/Costs/GEN3.png", label: "Generic 3", shape: "token" },
+  gen4: { src: "/images/icons/Costs/GEN4.png", label: "Generic 4", shape: "token" },
+  gen5: { src: "/images/icons/Costs/GEN5.png", label: "Generic 5", shape: "token" },
+  gen6: { src: "/images/icons/Costs/GEN6.png", label: "Generic 6", shape: "token" },
+  gen7: { src: "/images/icons/Costs/GEN7.png", label: "Generic 7", shape: "token" },
+  gen8: { src: "/images/icons/Costs/GEN8.png", label: "Generic 8", shape: "token" },
+  gen10: { src: "/images/icons/Costs/GEN-10.png", label: "Generic 10", shape: "token" },
+  genX: { src: "/images/icons/Costs/GEN-X.png", label: "Generic X", shape: "token" },
+
+  // Card stats (root icons/).
+  threat_lvl: { src: "/images/icons/TLV.png", label: "Threat level", shape: "token" },
+  hand_size: { src: "/images/icons/HS.png", label: "Hand size", shape: "token" },
+  hp: { src: "/images/icons/HP.png", label: "HP", shape: "token" },
+
+  // Card actions (root icons/).
   recycle: { src: "/images/icons/RE.png", label: "Recycle", shape: "token" },
   expend: { src: "/images/icons/EX.png", label: "Expend", shape: "token" },
   trash: { src: "/images/icons/tr.png", label: "Trash", shape: "token" },
   dismantle: { src: "/images/icons/DIS.png", label: "Dismantle", shape: "token" },
+
+  // Keyword / timing tags (keywords/).
   atomic: {
     src: "/images/icons/keywords/ATOMIC.png",
     label: "Atomic",
@@ -38,7 +69,7 @@ const ICON_SOURCES = {
     shape: "tag",
   },
   stockpile: {
-    src: "/images/icons/keywords/stockpile.png",
+    src: "/images/icons/keywords/STOCKPILE.png",
     label: "Enters stockpile",
     shape: "tag",
   },
@@ -53,8 +84,14 @@ const ICON_SOURCES = {
     shape: "tag",
   },
   start: {
-    src: "/images/icons/keywords/miantinace phase.png",
+    src: "/images/icons/keywords/START.png",
     label: "Start of turn",
+    shape: "tag",
+  },
+  /** Legacy maintenance-phase art (kept for docs that want the old banner). */
+  maintenance: {
+    src: "/images/icons/keywords/miantinace phase.png",
+    label: "Maintenance phase",
     shape: "tag",
   },
   defeated: {
@@ -63,7 +100,7 @@ const ICON_SOURCES = {
     shape: "tag",
   },
   static: {
-    src: "/images/icons/keywords/static.png",
+    src: "/images/icons/keywords/STATIC.png",
     label: "Static",
     shape: "tag",
   },
@@ -77,7 +114,11 @@ const ICON_SOURCES = {
     label: "Invoke",
     shape: "tag",
   },
-  conditional: { src: "/images/icons/IF.png", label: "If", shape: "tag" },
+  conditional: {
+    src: "/images/icons/keywords/IF.png",
+    label: "If",
+    shape: "tag",
+  },
 } as const
 
 export type GameIconName = keyof typeof ICON_SOURCES

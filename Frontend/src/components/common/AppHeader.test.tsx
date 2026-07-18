@@ -53,6 +53,7 @@ describe("AppHeader", () => {
     expect(screen.getByRole("button", { name: "LOGIN" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "LOGOUT" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "DECKS" })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "CARDS" })).toBeInTheDocument()
   })
 
   it("renders OperatorHeader when the user is authenticated", () => {
@@ -72,6 +73,7 @@ describe("AppHeader", () => {
     )
     expect(screen.getByText("operator_one")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "DECKS" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "CARDS" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "LOGOUT" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "LOGIN" })).not.toBeInTheDocument()
   })
@@ -90,5 +92,24 @@ describe("AppHeader", () => {
     await user.click(screen.getByRole("button", { name: "LOGOUT" }))
 
     expect(clearSession).toHaveBeenCalledTimes(1)
+  })
+
+  it("renders CardsHeader on /cards", () => {
+    useAuthMock.mockReturnValue({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      setSession: vi.fn(),
+      clearSession,
+    })
+
+    render(
+      <MemoryRouter initialEntries={["/cards"]}>
+        <AppHeader />
+      </MemoryRouter>
+    )
+
+    expect(screen.getByRole("button", { name: "CARDS" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "LOGIN" })).toBeInTheDocument()
   })
 })

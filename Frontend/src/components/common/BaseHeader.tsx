@@ -20,7 +20,12 @@ export function BaseHeader() {
           <Button className={navButtonClassName} onClick={() => navigate("/")}>
             HOME
           </Button>
-          <Button className={navButtonClassName}>CARDS</Button>
+          <Button
+            className={navButtonClassName}
+            onClick={() => navigate("/cards")}
+          >
+            CARDS
+          </Button>
           <Button
             className={navButtonClassName}
             onClick={() => navigate("/how-to-play")}
