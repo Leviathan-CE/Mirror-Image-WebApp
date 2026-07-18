@@ -33,6 +33,10 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
     text: "The affected player puts the top X cards of their deck into their discard pile. When card text says a player degrades X, that player is the affected player; if no player is stated, that player is you.",
   },
   {
+    name: "Desperate Maneuver X",
+    text: "When you draw this card you may reveal it, if you do dismantle X, and play it immediately as though it had surge without paying its invoke cost. Otherwise you may put it into your hand."
+  },
+  {
     name: "DURABLE X",
     text: (
       <>
@@ -86,8 +90,8 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
     text: (
       <>
         Dismantle any number of cards from your discard pile; for each card
-        dismantled this way, pay for one <GameIcon name="gen1" /> of this card's
-        costs.
+        dismantled this way, pay for one <GameIcon name="gen1" /> of this card's invoke 
+        cost.
       </>
     ),
   },
@@ -123,6 +127,7 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
     name: "WEAKENED X",
     text: "Whenever this asset deals damage, it deals X less damage.",
   },
+
 ]
 
 const KEYWORD_ALIASES: Record<string, string> = {

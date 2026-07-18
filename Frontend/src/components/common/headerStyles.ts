@@ -4,7 +4,7 @@
  */
 
 export const headerShellClassName =
-  "dark w-full bg-card px-2 py-2 sm:px-4 lg:px-6"
+  "dark sticky top-0 z-40 w-full border-b border-cyan-500/20 bg-card/95 px-2 py-2 backdrop-blur-sm sm:px-4 lg:px-6"
 
 export const headerInnerClassName =
   "mx-auto flex max-w-6xl min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:gap-x-3 lg:gap-4"
