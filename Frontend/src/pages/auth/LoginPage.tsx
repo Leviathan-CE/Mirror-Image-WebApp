@@ -3,11 +3,11 @@
  *
  * 1. User submits identifier + password → `loginRequest`.
  * 2. On success: `setSession`, then show `LoginBootScreen`.
- * 3. Boot `onComplete` navigates to `/main` (replace).
+ * 3. Boot `onComplete` navigates to the intended page (or `/main`).
  */
 
-import { useCallback, useState, type FormEvent } from "react"
-import { useNavigate } from "react-router-dom"
+import { useCallback, useState, type SubmitEvent } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
 import { sharedImages } from "@/assets"
@@ -16,6 +16,7 @@ import { GlitchFx } from "@/components/effects/GlitchFx"
 import { EditBox } from "@/components/ui/EditBox"
 import { loginRequest } from "@/lib/api/auth"
 import { ApiError } from "@/lib/api/client"
+import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
 
 type HelpTone = "idle" | "error" | "success" | "pending"
@@ -40,7 +41,10 @@ function helpMessageForError(detail: string): string {
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { setSession } = useAuth()
+  const redirectTo =
+    (location.state as { from?: string } | null)?.from || ROUTES.MAIN
 
   const [identifier, setIdentifier] = useState("")
   const [password, setPassword] = useState("")
@@ -54,10 +58,10 @@ export function LoginPage() {
   const [bootName, setBootName] = useState("")
 
   const finishBoot = useCallback(() => {
-    navigate("/main", { replace: true })
-  }, [navigate])
+    navigate(redirectTo, { replace: true })
+  }, [navigate, redirectTo])
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
 
     if (!identifier.trim() || !password) {

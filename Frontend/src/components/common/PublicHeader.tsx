@@ -8,34 +8,44 @@ import { useNavigate } from "react-router-dom"
 import { HeaderShell } from "@/components/common/HeaderShell"
 import { navButtonClassName } from "@/components/common/headerStyles"
 import { Button } from "@/components/ui/button"
+import { ROUTES } from "@/lib/route"
 
-export function BaseHeader() {
+export function PublicHeader() {
   const navigate = useNavigate()
 
   return (
     <HeaderShell
-      brandTo="/"
+      brandTo={ROUTES.HOME}
       nav={
         <>
-          <Button className={navButtonClassName} onClick={() => navigate("/")}>
+          <Button
+            className={navButtonClassName}
+            onClick={() => navigate(ROUTES.HOME)}
+          >
             HOME
           </Button>
           <Button
             className={navButtonClassName}
-            onClick={() => navigate("/cards")}
+            onClick={() => navigate(ROUTES.CARDS)}
           >
             CARDS
           </Button>
           <Button
             className={navButtonClassName}
-            onClick={() => navigate("/how-to-play")}
+            onClick={() => navigate(ROUTES.DECK_COMUNITY)}
+            >
+              DECKS
+            </Button>
+          <Button
+            className={navButtonClassName}
+            onClick={() => navigate(ROUTES.HOW_TO_PLAY)}
           >
             <span className="sm:hidden">PLAY</span>
             <span className="hidden sm:inline">HOW TO PLAY</span>
           </Button>
           <Button
             className={navButtonClassName}
-            onClick={() => navigate("/lore")}
+            onClick={() => navigate(ROUTES.LORE)}
           >
             LORE
           </Button>
@@ -46,7 +56,7 @@ export function BaseHeader() {
         <div className="flex shrink-0 justify-end">
           <Button
             className={navButtonClassName}
-            onClick={() => navigate("/login")}
+            onClick={() => navigate(ROUTES.LOGIN)}
           >
             LOGIN
           </Button>
