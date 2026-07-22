@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { AuthUser } from "@/lib/api/auth"
+import { ROUTES } from "@/lib/route"
 
 import { AppHeader } from "./AppHeader"
 
@@ -21,9 +22,9 @@ vi.mock("@/app/providers/AuthProvider", () => ({
   useAuth: () => useAuthMock(),
 }))
 
-function renderAppHeader() {
+function renderAppHeader(initialEntries?: string[]) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={initialEntries}>
       <AppHeader />
     </MemoryRouter>
   )
@@ -35,7 +36,7 @@ describe("AppHeader", () => {
     useAuthMock.mockReset()
   })
 
-  it("renders BaseHeader when the user is not authenticated", () => {
+  it("renders PublicHeader when the user is not authenticated", () => {
     useAuthMock.mockReturnValue({
       user: null,
       token: null,
@@ -48,7 +49,7 @@ describe("AppHeader", () => {
 
     expect(screen.getByRole("link", { name: "MIRRORIMAGE" })).toHaveAttribute(
       "href",
-      "/"
+      ROUTES.HOME
     )
     expect(screen.getByRole("button", { name: "LOGIN" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "LOGOUT" })).not.toBeInTheDocument()
@@ -56,7 +57,7 @@ describe("AppHeader", () => {
     expect(screen.getByRole("button", { name: "CARDS" })).toBeInTheDocument()
   })
 
-  it("renders OperatorHeader when the user is authenticated", () => {
+  it("renders UserHeader when the user is authenticated", () => {
     useAuthMock.mockReturnValue({
       user: sampleUser,
       token: "test-token",
@@ -69,7 +70,7 @@ describe("AppHeader", () => {
 
     expect(screen.getByRole("link", { name: "MIRRORIMAGE" })).toHaveAttribute(
       "href",
-      "/main"
+      ROUTES.MAIN
     )
     expect(screen.getByText("operator_one")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "DECKS" })).toBeInTheDocument()
@@ -94,7 +95,7 @@ describe("AppHeader", () => {
     expect(clearSession).toHaveBeenCalledTimes(1)
   })
 
-  it("renders CardsHeader on /cards", () => {
+  it("keeps PublicHeader on /cards when logged out", () => {
     useAuthMock.mockReturnValue({
       user: null,
       token: null,
@@ -103,11 +104,7 @@ describe("AppHeader", () => {
       clearSession,
     })
 
-    render(
-      <MemoryRouter initialEntries={["/cards"]}>
-        <AppHeader />
-      </MemoryRouter>
-    )
+    renderAppHeader([ROUTES.CARDS])
 
     expect(screen.getByRole("button", { name: "CARDS" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "LOGIN" })).toBeInTheDocument()

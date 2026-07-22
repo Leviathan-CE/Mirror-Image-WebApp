@@ -14,6 +14,7 @@ import { GameIcon } from "@/components/common/GameIcon"
 import { KEYWORD_ABILITIES } from "@/lib/howToPlay/keywords"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { howToPlayImages, sharedImages } from "@/assets"
+import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
 
 const SECTIONS: TocEntry[] = [
@@ -284,7 +285,7 @@ export function HowToPlayPage() {
                                 freedom, serve tyranny, or sell your skills to the highest bidder.
                                 The choice is yours. To learn more, see our{" "}
                                 <Link
-                                    to="/lore"
+                                    to={ROUTES.LORE}
                                     className="text-cyan-300 underline hover:text-cyan-200"
                                 >
                                     LORE

@@ -16,6 +16,7 @@ import {
   updateDeck,
   type DeckSummary,
 } from "@/lib/api/decks"
+import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
 
 type DeckListCardProps = {
@@ -177,7 +178,7 @@ export function DeckListCard({
           canManage && "pr-12"
         )}
         disabled={locked || saving}
-        onClick={() => navigate(`/decks/${deck.id}`)}
+        onClick={() => navigate(ROUTES.deck(deck.id))}
       >
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-buahs93 text-lg text-cyan-100">

@@ -65,6 +65,7 @@ import {
   type DeckCardEntry,
   type DeckDetail,
 } from "@/lib/api/decks"
+import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
 
 export function DeckPage() {
@@ -752,7 +753,9 @@ export function DeckPage() {
             type="button"
             label="← BACK"
             className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900"
-            onClick={() => navigate(isAuthenticated ? "/main" : "/")}
+            onClick={() =>
+              navigate(isAuthenticated ? ROUTES.MAIN : ROUTES.HOME)
+            }
           />
           {canEdit ? (
             <span className="font-mono text-[10px] tracking-wide text-cyan-400/70">
@@ -775,7 +778,7 @@ export function DeckPage() {
               {errorText}
             </p>
             {!isAuthenticated ? (
-              <Link to="/login" className="mt-4 inline-block">
+              <Link to={ROUTES.LOGIN} className="mt-4 inline-block">
                 <GlitchFx
                   type="button"
                   label="LOGIN"

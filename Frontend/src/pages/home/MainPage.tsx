@@ -15,6 +15,7 @@ import {
   fetchPublicDecks,
   type DeckSummary,
 } from "@/lib/api/decks"
+import { ROUTES } from "@/lib/route"
 
 type DeckTab = "mine" | "community"
 
@@ -132,7 +133,7 @@ export function MainPage() {
         setCommunityDecks((prev) => [created, ...prev])
       }
       resetCreateForm()
-      navigate(`/decks/${created.id}`)
+      navigate(ROUTES.deck(created.id))
     } catch (error) {
       setErrorText(
         error instanceof ApiError
@@ -162,7 +163,7 @@ export function MainPage() {
               label="LOGIN"
               size="lg"
               className="font-buahs93 h-10 rounded-none bg-cyan-700 px-8 hover:bg-cyan-900"
-              onClick={() => navigate("/login")}
+              onClick={() => navigate(ROUTES.LOGIN)}
             />
           </div>
         </div>
