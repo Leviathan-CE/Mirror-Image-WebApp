@@ -1,18 +1,69 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom"
 
+import { RequireAdmin } from "@/app/RequireAdmin"
+import { RequireAuth } from "@/app/RequireAuth"
 import { AppProviders } from "@/app/providers/AppProviders"
-import { BaseHeader } from "@/components/common/BaseHeader"
-import { HomePage, HowToPlayPage } from "@/pages"
+import { AppHeader } from "@/components/common/AppHeader"
+import { HomePage, HowToPlayPage, MainPage } from "@/pages"
+import { LoginPage } from "@/pages/auth/LoginPage"
+import { CreateAccountPage } from "@/pages/auth/CreateAccountPage"
+import { CardLibraryPage } from "@/pages/cards/CardLibraryPage"
+import { DeckPage } from "@/pages/decks/DeckPage"
+import { LorePage } from "@/pages/lore/LorePage"
+import { AdminAnalyticsPage } from "@/pages/admin/AdminAnalyticsPage"
+import { AdminCardsPage } from "@/pages/admin/AdminCardsPage"
+import { AdminUsersPage } from "@/pages/admin/AdminUsersPage"
+import { ComunityDecksPage } from "@/pages/decks/ComunityDecksPage"
+import { ROUTES } from "@/lib/route"
 
 export function AppShell() {
   return (
     <AppProviders>
       <BrowserRouter>
-        <BaseHeader />
+        <AppHeader />
         <main className="min-h-screen">
           <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/how-to-play" element={<HowToPlayPage />} />
+            <Route path={ROUTES.HOME} element={<HomePage />} />
+            <Route
+              path={ROUTES.MAIN}
+              element={
+                <RequireAuth>
+                  <MainPage />
+                </RequireAuth>
+              }
+            />
+            <Route path={ROUTES.CARDS} element={<CardLibraryPage />} />
+            <Route path={ROUTES.DECK_PATTERN} element={<DeckPage />} />
+            <Route path={ROUTES.HOW_TO_PLAY} element={<HowToPlayPage />} />
+            <Route path={ROUTES.LORE} element={<LorePage />} />
+            <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+            <Route path={ROUTES.REGISTER} element={<CreateAccountPage />} />
+            <Route path={ROUTES.DECK_COMUNITY} element={<ComunityDecksPage />} />
+
+            <Route
+              path={ROUTES.ADMIN}
+              element={
+                <RequireAdmin>
+                  <AdminAnalyticsPage />
+                </RequireAdmin>
+              }
+            />
+            <Route
+              path={ROUTES.ADMIN_CARDS}
+              element={
+                <RequireAdmin>
+                  <AdminCardsPage />
+                </RequireAdmin>
+              }
+            />
+            <Route
+              path={ROUTES.ADMIN_USERS}
+              element={
+                <RequireAdmin>
+                  <AdminUsersPage />
+                </RequireAdmin>
+              }
+            />
           </Routes>
         </main>
       </BrowserRouter>
