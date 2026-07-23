@@ -17,6 +17,7 @@ from app.security import (
     hash_password,
     verify_password,
 )
+from app.subscription import is_subscription_entitled
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,9 @@ class UserPublic(BaseModel):
     user_name: str
     email: str
     role: str
+    subscription_status: str = "none"
+    subscription_type: str = ""
+    is_subscribed: bool = False
 
 
 class AuthResponse(BaseModel):
@@ -68,13 +72,38 @@ class RegisterResponse(BaseModel):
     user_name: str
     email: str
     role: str
+    subscription_status: str = "none"
+    subscription_type: str = ""
+    is_subscribed: bool = False
     access_token: str
     token_type: str = "bearer"
 
 
+def _user_public_from_row(row: tuple) -> UserPublic:
+    """
+    Map a users SELECT row:
+    id, user_name, email, role, subscription_status, subscription_type
+    """
+    role = row[3]
+    sub_status = row[4] if len(row) > 4 and row[4] is not None else "none"
+    sub_type = row[5] if len(row) > 5 and row[5] is not None else ""
+    return UserPublic(
+        id=row[0],
+        user_name=row[1],
+        email=row[2],
+        role=role,
+        subscription_status=sub_status,
+        subscription_type=sub_type,
+        is_subscribed=is_subscription_entitled(
+            role=role, subscription_status=sub_status
+        ),
+    )
+
+
 def _fetch_user_by_login(cur, identifier: str) -> tuple | None:
     sql = """
-        SELECT id, user_name, email, password, role
+        SELECT id, user_name, email, password, role,
+               subscription_status, subscription_type
         FROM users
         WHERE lower(email) = lower(%(id)s)
            OR lower(user_name) = lower(%(id)s)
@@ -93,7 +122,7 @@ def register(body: RegisterRequest):
     sql = """
         INSERT INTO users (user_name, email, password)
         VALUES (%(user_name)s, %(email)s, %(password)s)
-        RETURNING id, user_name, email, role
+        RETURNING id, user_name, email, role, subscription_status, subscription_type
     """
     try:
         with get_connection() as conn:
@@ -121,15 +150,21 @@ def register(body: RegisterRequest):
             detail="database_unavailable",
         ) from e
 
-    user_id, user_name, user_email, user_role = row[0], row[1], row[2], row[3]
+    public = _user_public_from_row(row)
     token = create_access_token(
-        user_id=user_id, user_name=user_name, email=user_email, role=user_role
+        user_id=public.id,
+        user_name=public.user_name,
+        email=public.email,
+        role=public.role,
     )
     return RegisterResponse(
-        id=user_id,
-        user_name=user_name,
-        email=user_email,
-        role=user_role,
+        id=public.id,
+        user_name=public.user_name,
+        email=public.email,
+        role=public.role,
+        subscription_status=public.subscription_status,
+        subscription_type=public.subscription_type,
+        is_subscribed=public.is_subscribed,
         access_token=token,
     )
 
@@ -154,7 +189,7 @@ def login(body: LoginRequest):
             detail="invalid_credentials",
         )
 
-    user_id, user_name, email, password_hash, role = row
+    user_id, user_name, email, password_hash, role, sub_status, sub_type = row
     if not password_hash or not verify_password(body.password, password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -164,19 +199,17 @@ def login(body: LoginRequest):
     token = create_access_token(
         user_id=user_id, user_name=user_name, email=email, role=role
     )
-    return AuthResponse(
-        access_token=token,
-        user=UserPublic(
-            id=user_id, user_name=user_name, email=email, role=role
-        ),
+    public = _user_public_from_row(
+        (user_id, user_name, email, role, sub_status or "none", sub_type or "")
     )
+    return AuthResponse(access_token=token, user=public)
 
 
 @router.get("/me", response_model=UserPublic)
 def me(user_id: int = Depends(get_current_user_id)):
     """Return the current user from the Bearer token."""
     sql = """
-        SELECT id, user_name, email, role
+        SELECT id, user_name, email, role, subscription_status, subscription_type
         FROM users
         WHERE id = %(user_id)s
     """
@@ -197,6 +230,4 @@ def me(user_id: int = Depends(get_current_user_id)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="user_not_found",
         )
-    return UserPublic(
-        id=row[0], user_name=row[1], email=row[2], role=row[3]
-    )
+    return _user_public_from_row(row)

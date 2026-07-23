@@ -13,6 +13,7 @@ import { LorePage } from "@/pages/lore/LorePage"
 import { AdminAnalyticsPage } from "@/pages/admin/AdminAnalyticsPage"
 import { AdminCardsPage } from "@/pages/admin/AdminCardsPage"
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage"
+import { SubscribePage } from "@/pages/billing/SubscribePage"
 import { ComunityDecksPage } from "@/pages/decks/ComunityDecksPage"
 import { ROUTES } from "@/lib/route"
 
@@ -39,6 +40,14 @@ export function AppShell() {
             <Route path={ROUTES.LOGIN} element={<LoginPage />} />
             <Route path={ROUTES.REGISTER} element={<CreateAccountPage />} />
             <Route path={ROUTES.DECK_COMUNITY} element={<ComunityDecksPage />} />
+            <Route
+              path={ROUTES.SUBSCRIBE}
+              element={
+                <RequireAuth>
+                  <SubscribePage />
+                </RequireAuth>
+              }
+            />
 
             <Route
               path={ROUTES.ADMIN}
