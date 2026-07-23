@@ -36,7 +36,12 @@ from psycopg2.errors import ForeignKeyViolation, UniqueViolation
 
 from app.db import get_connection
 from app.deck_defaults import DEFAULT_DECK_CATEGORY_NAMES
-from app.security import get_current_user_id, get_optional_user_id
+from app.card_publish import catalogue_visibility_sql
+from app.security import (
+    get_current_user_id,
+    get_optional_is_admin,
+    get_optional_user_id,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -893,11 +898,13 @@ def add_card_to_deck(
     deck_id: int,
     body: AddCardRequest,
     user_id: int = Depends(get_current_user_id),
+    is_admin: bool = Depends(get_optional_is_admin),
 ):
     """
     Add a card to a deck category.
 
     If the same card+category already exists, quantities are summed.
+    Non-admins may only add published cards; admins may add any catalogue card.
     """
     try:
         with get_connection() as conn:
@@ -905,7 +912,12 @@ def add_card_to_deck(
                 _require_owned_deck(cur, user_id=user_id, deck_id=deck_id)
 
                 cur.execute(
-                    "SELECT card_name FROM cards WHERE id = %(card_id)s",
+                    f"""
+                    SELECT card_name
+                      FROM cards
+                     WHERE id = %(card_id)s
+                       AND {catalogue_visibility_sql("cards", bypass=is_admin)}
+                    """,
                     {"card_id": body.card_id},
                 )
                 card_row = cur.fetchone()

@@ -10,12 +10,15 @@ type AdminPageShellProps = {
   title: string
   description: string
   children: ReactNode
+  /** Wider content column (e.g. cards DB table). */
+  wide?: boolean
 }
 
 export function AdminPageShell({
   title,
   description,
   children,
+  wide = false,
 }: AdminPageShellProps) {
   return (
     <section
@@ -23,7 +26,9 @@ export function AdminPageShell({
       style={{ backgroundImage: `url(${sharedImages.ZONE_BACKGROUND})` }}
     >
       <div className="absolute inset-0 bg-black/70" aria-hidden />
-      <div className="relative z-10 mx-auto w-full max-w-5xl pt-14">
+      <div
+        className={`relative z-10 mx-auto w-full pt-14 ${wide ? "max-w-6xl" : "max-w-5xl"}`}
+      >
         <header className="mb-8 border-b border-cyan-500/20 pb-5">
           <p className="font-buahs93 text-xs tracking-widest text-cyan-400/70">
             ADMIN

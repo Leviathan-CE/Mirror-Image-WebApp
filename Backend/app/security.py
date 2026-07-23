@@ -94,3 +94,38 @@ def get_optional_user_id(
         return int(payload["sub"])
     except (KeyError, TypeError, ValueError):
         return None
+
+
+def get_optional_is_admin(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+) -> bool:
+    """True when a valid Bearer JWT has role ``admin``; otherwise False."""
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        return False
+    payload = decode_access_token(credentials.credentials)
+    return payload.get("role") == "admin"
+
+
+def get_current_admin_user_id(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+) -> int:
+    """Require Bearer JWT with role ``admin``; return user id."""
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="missing_bearer_token",
+        )
+    payload = decode_access_token(credentials.credentials)
+    try:
+        user_id = int(payload["sub"])
+    except (KeyError, TypeError, ValueError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid_token_subject",
+        ) from e
+    if payload.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="admin_required",
+        )
+    return user_id

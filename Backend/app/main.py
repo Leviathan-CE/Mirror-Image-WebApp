@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 #from app.schema import ensure_schema
 from app.routers import health
 from app.routers import card_manager
+from app.routers import admin_cards
 from app.routers import auth
 from app.routers import decks
 
@@ -68,6 +69,7 @@ async def thumbnail_cache_headers(request, call_next):
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(decks.router)
+app.include_router(admin_cards.router)
 app.include_router(card_manager.router)
 
 thumbnails_dir = Path(__file__).resolve().parent / "thumbnails"
