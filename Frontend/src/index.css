@@ -168,6 +168,29 @@
     );
   }
 
+  /* Hide the native thin caret; EditBox draws a block caret instead. */
+  .terminal-caret {
+    caret-color: transparent;
+  }
+
+  .terminal-caret-block {
+    width: 0.65em;
+    height: 1.05em;
+    background: #fff;
+    animation: terminal-caret-blink 1s steps(1, end) infinite;
+  }
+
+  @keyframes terminal-caret-blink {
+    0%,
+    49% {
+      opacity: 1;
+    }
+    50%,
+    100% {
+      opacity: 0;
+    }
+  }
+
   /* Feather all four edges of an element into transparency so it blends
      into the background. Control the fade depth with --feather. */
   .fade-edges {
@@ -202,6 +225,21 @@
         transparent 100%
       );
     mask-composite: intersect;
+  }
+
+  /* Feather only the left edge — useful when text sits to the left of an image. */
+  .fade-left {
+    --feather: 30%;
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      black var(--feather)
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      black var(--feather)
+    );
   }
 
   /* Glitch text effect.
@@ -282,44 +320,90 @@
 
   .glitch-btn:hover::after {
     opacity: 1;
-    animation: glitch-btn-slice 0.9s steps(2, end) infinite;
+    animation: glitch-btn-slice 1.9s steps(2, end) infinite;
   }
 
   /* Drop-in glitch effect: add `glitch-fx` + `data-text="LABEL"` to any button.
      The ::after copy reads data-text and shatters into slices on hover.
-     Colors default to the button's own text/background; override the two
-     accent colors per-button with --glitch-a / --glitch-b if you want. */
+     Tune with:
+       --glitch-bleed         ghost canvas padding past the button (travel room only)
+       --glitch-slice-x       horizontal clip expansion (strip width sideways)
+       --glitch-band-height   vertical thickness of each strip (px, not tied to bleed)
+       --glitch-shift-x/y     per-frame jitter distance
+       --glitch-a/b           accent colors; --glitch-bg / --glitch-bg-opacity for bg ghost */
   .glitch-fx {
     position: relative;
     display: inline-flex;
+    overflow: visible;
     --glitch-a: #00e6f6;
     --glitch-b: currentColor;
+    --glitch-bg: #0e7490;
+    --glitch-bg-opacity: .1;
+    /* Ghost layer extends this far past the button — does NOT affect strip thickness. */
+    --glitch-bleed: 10px;
+    /* How far clip-path opens left/right (strip width). */
+    --glitch-slice-x: 2px;
+    /* Fixed pixel height of each glitch strip (decoupled from bleed). */
+    --glitch-band-height: 5px;
+    /* How far each keyframe jumps horizontally / vertically. */
+    --glitch-shift-x: 5px;
+    --glitch-shift-y: 5px;
+    /* One-shot glitch burst length on hover. */
+    --glitch-duration: 0.30s;
+    --slice-0: inset(50% 50% 50% 50%);
+    --slice-1-y: 6%;
+    --slice-1: inset(var(--slice-1-y) calc(-1 * var(--glitch-slice-x)) calc(100% - var(--slice-1-y) - var(--glitch-band-height)) calc(-1 * var(--glitch-slice-x)));
+    --slice-2-y: 22%;
+    --slice-2: inset(var(--slice-2-y) calc(-1 * var(--glitch-slice-x)) calc(100% - var(--slice-2-y) - var(--glitch-band-height)) calc(-1 * var(--glitch-slice-x)));
+    --slice-3-y: 38%;
+    --slice-3: inset(var(--slice-3-y) calc(-1 * var(--glitch-slice-x)) calc(100% - var(--slice-3-y) - var(--glitch-band-height)) calc(-1 * var(--glitch-slice-x)));
+    --slice-4-y: 54%;
+    --slice-4: inset(var(--slice-4-y) calc(-1 * var(--glitch-slice-x)) calc(100% - var(--slice-4-y) - var(--glitch-band-height)) calc(-1 * var(--glitch-slice-x)));
+    --slice-5-y: 70%;
+    --slice-5: inset(var(--slice-5-y) calc(-1 * var(--glitch-slice-x)) calc(100% - var(--slice-5-y) - var(--glitch-band-height)) calc(-1 * var(--glitch-slice-x)));
+    --slice-6-y: 14%;
+    --slice-6: inset(var(--slice-6-y) calc(-1 * var(--glitch-slice-x)) calc(100% - var(--slice-6-y) - var(--glitch-band-height)) calc(-1 * var(--glitch-slice-x)));
+    --slice-7-y: 46%;
+    --slice-7: inset(var(--slice-7-y) calc(-1 * var(--glitch-slice-x)) calc(100% - var(--slice-7-y) - var(--glitch-band-height)) calc(-1 * var(--glitch-slice-x)));
   }
 
   /* Neon glow on the inner (possibly clipped) button. drop-shadow follows the
      clip-path silhouette, unlike box-shadow which would be rectangular. */
   .glitch-fx > * {
+    position: relative;
+    z-index: 1;
     filter: drop-shadow(0 0 12px var(--glitch-a));
-    transition: filter 0.2s ease;
+    transition: filter 1.4s ease;
   }
 
   .glitch-fx:hover > * {
     filter: drop-shadow(0 0 22px var(--glitch-a));
   }
 
-  .glitch-fx::after {
-    --slice-0: inset(50% 50% 50% 50%);
-    --slice-1: inset(80% -6px 0 0);
-    --slice-2: inset(50% -6px 30% 0);
-    --slice-3: inset(10% -6px 85% 0);
-    --slice-4: inset(40% -6px 43% 0);
-    --slice-5: inset(80% -6px 5% 0);
+  /* Ghost background slices — lower opacity, same jitter as the label. */
+  .glitch-fx::before {
+    content: "";
+    position: absolute;
+    inset: calc(-1 * var(--glitch-bleed));
+    z-index: 2;
+    background: var(--glitch-bg);
+    clip-path: var(--slice-0);
+    opacity: 0;
+    pointer-events: none;
+  }
 
+  .glitch-fx:hover::before {
+    opacity: var(--glitch-bg-opacity);
+    animation: glitch-fx var(--glitch-duration) steps(1, end) forwards;
+  }
+
+  .glitch-fx::after {
     content: attr(data-text);
     display: grid;
     place-items: center;
     position: absolute;
-    inset: 0;
+    inset: calc(-1 * var(--glitch-bleed));
+    z-index: 3;
     font: inherit;
     color: currentColor;
     background: transparent;
@@ -332,81 +416,86 @@
   }
 
   .glitch-fx:hover::after {
-    opacity: .5;
-    animation: glitch-fx 0.2s steps(10, end);
+    opacity: 0.55;
+    animation: glitch-fx var(--glitch-duration) steps(1, end) forwards;
   }
 }
 
 @keyframes glitch-shift {
   0% {
     clip-path: inset(0 0 85% 0);
-    transform: translateX(-2px);
+    transform: translateX(-5px);
   }
   20% {
     clip-path: inset(30% 0 50% 0);
-    transform: translateX(2px);
+    transform: translateX(5px);
   }
   40% {
     clip-path: inset(60% 0 20% 0);
-    transform: translateX(-1px);
+    transform: translateX(-3px);
   }
   60% {
     clip-path: inset(10% 0 70% 0);
-    transform: translateX(1px);
+    transform: translateX(3px);
   }
   80% {
     clip-path: inset(50% 0 30% 0);
-    transform: translateX(-2px);
+    transform: translateX(-5px);
   }
   100% {
     clip-path: inset(70% 0 10% 0);
-    transform: translateX(2px);
+    transform: translateX(5px);
   }
 }
 
 @keyframes glitch-fx {
   0% {
-    clip-path: inset(80% -30px 0 -30px);
-    transform: translate(-24px, -12px);
+    clip-path: var(--slice-0);
+    transform: translate(0, 0);
   }
-  10% {
-    clip-path: inset(10% -30px 85% -30px);
-    transform: translate(14px, 12px);
+  9% {
+    clip-path: var(--slice-3);
+    transform: translate(calc(-1.75 * var(--glitch-shift-x)), calc(1 * var(--glitch-shift-y)));
   }
-  20% {
-    clip-path: inset(80% -30px 0 -30px);
-    transform: translate(-14px, 12px);
+  18% {
+    clip-path: var(--slice-1);
+    transform: translate(calc(1.5 * var(--glitch-shift-x)), calc(-1.667 * var(--glitch-shift-y)));
   }
-  30% {
-    clip-path: inset(10% -30px 85% -30px);
-    transform: translate(0px, 6px);
+  27% {
+    clip-path: var(--slice-5);
+    transform: translate(calc(-1.25 * var(--glitch-shift-x)), calc(-1.333 * var(--glitch-shift-y)));
   }
-  40% {
-    clip-path: inset(50% -30px 30% -30px);
-    transform: translate(-8px, 0px);
+  36% {
+    clip-path: var(--slice-2);
+    transform: translate(calc(2 * var(--glitch-shift-x)), calc(0.667 * var(--glitch-shift-y)));
   }
-  50% {
-    clip-path: inset(10% -30px 85% -30px);
-    transform: translate(8px, 0px);
+  45% {
+    clip-path: var(--slice-7);
+    transform: translate(calc(-1.5 * var(--glitch-shift-x)), calc(1.667 * var(--glitch-shift-y)));
   }
-  60% {
-    clip-path: inset(40% -30px 43% -30px);
-    transform: translate(8px, 12px);
+  54% {
+    clip-path: var(--slice-4);
+    transform: translate(calc(1.25 * var(--glitch-shift-x)), calc(-1 * var(--glitch-shift-y)));
   }
-  70% {
-    clip-path: inset(50% -30px 30% -30px);
-    transform: translate(-14px, 12px);
+  63% {
+    clip-path: var(--slice-6);
+    transform: translate(calc(-1 * var(--glitch-shift-x)), calc(-2 * var(--glitch-shift-y)));
   }
-  80% {
-    clip-path: inset(80% -30px 5% -30px);
-    transform: translate(26px, -12px);
+  72% {
+    clip-path: var(--slice-2);
+    transform: translate(calc(1.75 * var(--glitch-shift-x)), calc(1.333 * var(--glitch-shift-y)));
+  }
+  81% {
+    clip-path: var(--slice-5);
+    transform: translate(calc(-2 * var(--glitch-shift-x)), calc(0.333 * var(--glitch-shift-y)));
   }
   90% {
-    clip-path: inset(80% -30px 0 -30px);
-    transform: translate(-14px, 0px);
+    clip-path: var(--slice-1);
+    transform: translate(calc(1 * var(--glitch-shift-x)), calc(-2.333 * var(--glitch-shift-y)));
   }
   100% {
-    clip-path: inset(80% -30px 0 -30px);
-    transform: translate(0);
+    clip-path: var(--slice-0);
+    transform: translate(0, 0);
   }
 }
+

@@ -1,0 +1,16 @@
+export const howToPlayImages = {
+  BANNER: "/images/banner2.jpg",
+  CARD_PILOT: "/images/card_pilot.png",
+  PLAY_MAT: "/images/PLAY_MAT.png",
+  CARD_AUGMENT: "/images/card_augment.png",
+  SETUP: "/images/Setup.png",
+  GAIN_RESOURCE: "/images/gain_resources.png",
+  PLAYING_CARD_1: "/images/playing_card_1.png",
+  PLAYING_CARD_2: "/images/playing_card_2.png",
+  PLAYING_CARD_3: "/images/playing_card_3.png",
+  PLAYING_CARD_4: "/images/playing_card_4.png",
+  PLAYING_CARD_5: "/images/playing_card_5.png",
+  DECKBUILDING_1: "/images/deckbuilding.png",
+  DECKBUILDING_2: "/images/deckbuilding_2.png",
+  ALLOCATION: "/images/allocation.png",
+} as const

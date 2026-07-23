@@ -27,7 +27,9 @@ def health_db():
         return {"status": "ok", "database": True}
     except OperationalError as e:
         cfg = _db_config()
-        safe = {k: v for k, v in cfg.items() if k != "password"}
+        safe: dict[str, str | bool] = {
+            k: v for k, v in cfg.items() if k != "password"
+        }
         safe["password_set"] = bool(cfg.get("password"))
         logger.warning("Postgres connection failed %s: %s", safe, e)
         raise HTTPException(status_code=503, detail="database_unavailable") from e

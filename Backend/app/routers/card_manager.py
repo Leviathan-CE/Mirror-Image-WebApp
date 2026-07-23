@@ -5,13 +5,15 @@ import re
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from psycopg2 import OperationalError
 from psycopg2.errors import CheckViolation, DataError, NotNullViolation, UniqueViolation
 from psycopg2.extras import Json
 
 from app.db import get_connection
+from app.card_publish import catalogue_visibility_sql
+from app.security import get_optional_is_admin
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +104,7 @@ class CardThumbnailUploaded(BaseModel):
     id: int
     thumbnail_path: str
     thumbnail_size_bytes: int
+    card_art_version: int | None = None
 
 
 class CardByNameResponse(BaseModel):
@@ -283,13 +286,421 @@ def create_card(body: CardCreate):
     return CardCreated(id=row[0], card_name=row[1])
 
 
+class CardSearchHit(BaseModel):
+    """Compact card row for typeahead search results."""
+
+    id: int
+    card_name: str
+    card_set_name: str
+    rarity: str
+    card_art_path: str | None = None
+    card_art_version: int | None = None
+
+
+@router.get("/search", response_model=list[CardSearchHit])
+def search_cards(
+    q: str = Query(min_length=1, max_length=80),
+    limit: int = Query(default=12, ge=1, le=40),
+    is_admin: bool = Depends(get_optional_is_admin),
+):
+    """
+    Typeahead search by card name.
+
+    Prefers prefix matches, then substring matches.
+    Skips deprecated cards. Non-admins only see published cards;
+    admins see the full catalogue (including preview / not published).
+    """
+    needle = q.strip()
+    if not needle:
+        return []
+
+    visibility = catalogue_visibility_sql("c", bypass=is_admin)
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""
+                    SELECT
+                        c.id,
+                        c.card_name,
+                        c.card_set_name,
+                        c.rarity,
+                        c.card_art_path,
+                        EXTRACT(EPOCH FROM c.updated_at)::bigint
+                      FROM cards c
+                     WHERE c.is_deprecated = false
+                       AND {visibility}
+                       AND c.card_name ILIKE %(pattern)s
+                     ORDER BY
+                       CASE
+                         WHEN c.card_name ILIKE %(prefix)s THEN 0
+                         ELSE 1
+                       END,
+                       LENGTH(c.card_name) ASC,
+                       c.card_name ASC
+                     LIMIT %(limit)s
+                    """,
+                    {
+                        "pattern": f"%{needle}%",
+                        "prefix": f"{needle}%",
+                        "limit": limit,
+                    },
+                )
+                rows = cur.fetchall()
+    except OperationalError as e:
+        logger.warning("db error on card search: %s", e)
+        raise HTTPException(status_code=503, detail="database_unavailable") from e
+    except Exception as e:
+        logger.exception("unexpected error on card search: %s", e)
+        raise HTTPException(status_code=500, detail="card_search_failed") from e
+
+    return [
+        CardSearchHit(
+            id=int(row[0]),
+            card_name=row[1],
+            card_set_name=row[2],
+            rarity=row[3],
+            card_art_path=row[4],
+            card_art_version=int(row[5]) if row[5] is not None else None,
+        )
+        for row in rows
+    ]
+
+
+class CardLibraryItem(BaseModel):
+    """Card row for the public library browser."""
+
+    id: int
+    card_name: str
+    card_set_name: str
+    rarity: str
+    invoke_cost: int
+    cost: list[Any] = Field(default_factory=list)
+    super_types: list[Any] = Field(default_factory=list)
+    sub_types: list[Any] = Field(default_factory=list)
+    types_line: str = ""
+    description: str = ""
+    keywords: list[Any] = Field(default_factory=list)
+    show_help_text: bool = True
+    threat_level: str = "0"
+    card_art_path: str | None = None
+    card_art_version: int | None = None
+
+
+class CardLibraryResponse(BaseModel):
+    items: list[CardLibraryItem]
+    total: int
+    limit: int
+    offset: int
+
+
+class CardLibraryFacets(BaseModel):
+    colors: list[str]
+    super_types: list[str]
+    sub_types: list[str]
+    types_lines: list[str]
+    invoke_cost_min: int
+    invoke_cost_max: int
+
+
+_COLOR_COST_TOKENS = ("LIF", "MET", "POW", "RAM", "TIM", "STL")
+# Chromatic colours — cards with none of these (only GEN / empty / STL) count as STL.
+_CHROMATIC_COST_TOKENS = ("LIF", "MET", "POW", "RAM", "TIM")
+
+
+def _escape_like(value: str) -> str:
+    """Escape %, _, and \\ for ILIKE patterns."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _sql_card_matches_stl() -> str:
+    """
+    STL identity for library colour filters (resources/tokens excluded):
+    - cost includes an STL symbol (including hybrids like LIF-STL), or
+    - cost has no chromatic colours (empty, GEN-only, and/or STL-only).
+    Resource token cards are a separate catalogue and never match STL here.
+    """
+    chromatic = "|".join(_CHROMATIC_COST_TOKENS)
+    return f"""
+    (
+      NOT (
+        super_types @> '["Resource"]'::jsonb
+        OR super_types @> '["Token"]'::jsonb
+      )
+      AND (
+        EXISTS (
+          SELECT 1
+            FROM jsonb_array_elements_text(cost) AS token(value)
+           WHERE UPPER(BTRIM(token.value)) ~ '(^|[-])STL([-]|$)'
+        )
+        OR NOT EXISTS (
+          SELECT 1
+            FROM jsonb_array_elements_text(cost) AS token(value)
+           WHERE UPPER(BTRIM(token.value)) = 'MULTI'
+              OR UPPER(BTRIM(token.value)) ~ '(^|[-])({chromatic})([-]|$)'
+        )
+      )
+    )
+    """
+
+
+@router.get("/facets", response_model=CardLibraryFacets)
+def card_library_facets(
+    is_admin: bool = Depends(get_optional_is_admin),
+):
+    """Distinct filter values for the card library UI."""
+    visibility = catalogue_visibility_sql("cards", bypass=is_admin)
+    visibility_c = catalogue_visibility_sql("c", bypass=is_admin)
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""
+                    SELECT MIN(invoke_cost), MAX(invoke_cost)
+                      FROM cards
+                     WHERE is_deprecated = false
+                       AND {visibility}
+                    """
+                )
+                cost_row = cur.fetchone()
+                invoke_min = int(cost_row[0] or 0)
+                invoke_max = int(cost_row[1] or 0)
+
+                # Always expose the full colour set (even if unused in current data).
+                colors = list(_COLOR_COST_TOKENS)
+
+                cur.execute(
+                    f"""
+                    SELECT DISTINCT token.value
+                      FROM cards c,
+                           LATERAL jsonb_array_elements_text(c.super_types) AS token(value)
+                     WHERE c.is_deprecated = false
+                       AND {visibility_c}
+                       AND BTRIM(token.value) <> ''
+                     ORDER BY 1
+                    """
+                )
+                super_types = [row[0] for row in cur.fetchall()]
+
+                cur.execute(
+                    f"""
+                    SELECT DISTINCT token.value
+                      FROM cards c,
+                           LATERAL jsonb_array_elements_text(c.sub_types) AS token(value)
+                     WHERE c.is_deprecated = false
+                       AND {visibility_c}
+                       AND BTRIM(token.value) <> ''
+                     ORDER BY 1
+                    """
+                )
+                sub_types = [row[0] for row in cur.fetchall()]
+
+                cur.execute(
+                    f"""
+                    SELECT DISTINCT BTRIM(types_line)
+                      FROM cards
+                     WHERE is_deprecated = false
+                       AND {visibility}
+                       AND BTRIM(types_line) <> ''
+                     ORDER BY 1
+                    """
+                )
+                types_lines = [row[0] for row in cur.fetchall()]
+    except OperationalError as e:
+        logger.warning("db error on card facets: %s", e)
+        raise HTTPException(status_code=503, detail="database_unavailable") from e
+    except Exception as e:
+        logger.exception("unexpected error on card facets: %s", e)
+        raise HTTPException(status_code=500, detail="card_facets_failed") from e
+
+    return CardLibraryFacets(
+        colors=colors,
+        super_types=super_types,
+        sub_types=sub_types,
+        types_lines=types_lines,
+        invoke_cost_min=invoke_min,
+        invoke_cost_max=invoke_max,
+    )
+
+
+@router.get("/library", response_model=CardLibraryResponse)
+def browse_card_library(
+    q: str | None = Query(default=None, max_length=80),
+    description: str | None = Query(default=None, max_length=200),
+    invoke_cost_min: int | None = Query(default=None, ge=0, le=99),
+    invoke_cost_max: int | None = Query(default=None, ge=0, le=99),
+    color: list[str] | None = Query(default=None),
+    types_line: str | None = Query(default=None, max_length=80),
+    super_type: str | None = Query(default=None, max_length=60),
+    sub_type: str | None = Query(default=None, max_length=60),
+    limit: int = Query(default=48, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    is_admin: bool = Depends(get_optional_is_admin),
+):
+    """
+    Browse / filter the card catalogue.
+
+    Name search (`q`) uses the same closest-match ranking as `/cards/search`
+    (prefix first, then substring, shorter names preferred).
+    Non-admins only see published cards; admins see the full catalogue.
+    """
+    where = [
+        "is_deprecated = false",
+        catalogue_visibility_sql("cards", bypass=is_admin),
+    ]
+    params: dict[str, Any] = {"limit": limit, "offset": offset}
+
+    needle = (q or "").strip()
+    if needle:
+        escaped = _escape_like(needle)
+        where.append("card_name ILIKE %(name_pattern)s ESCAPE '\\'")
+        params["name_pattern"] = f"%{escaped}%"
+        params["name_prefix"] = f"{escaped}%"
+
+    desc = (description or "").strip()
+    if desc:
+        escaped_desc = _escape_like(desc)
+        where.append("description ILIKE %(desc_pattern)s ESCAPE '\\'")
+        params["desc_pattern"] = f"%{escaped_desc}%"
+
+    if invoke_cost_min is not None:
+        where.append("invoke_cost >= %(invoke_cost_min)s")
+        params["invoke_cost_min"] = invoke_cost_min
+    if invoke_cost_max is not None:
+        where.append("invoke_cost <= %(invoke_cost_max)s")
+        params["invoke_cost_max"] = invoke_cost_max
+
+    colors: list[str] = []
+    for raw in color or []:
+        token = raw.strip().upper()
+        if token and token not in colors:
+            colors.append(token)
+    for index, token in enumerate(colors):
+        if token == "STL":
+            where.append(_sql_card_matches_stl())
+            continue
+        key = f"color_{index}"
+        # Exact token or hybrid that includes this colour (e.g. LIF-STL).
+        where.append(
+            f"""EXISTS (
+              SELECT 1
+                FROM jsonb_array_elements_text(cost) AS token(value)
+               WHERE UPPER(BTRIM(token.value)) = %({key})s
+                  OR UPPER(BTRIM(token.value))
+                     ~ ('(^|[-])' || %({key})s || '([-]|$)')
+            )"""
+        )
+        params[key] = token
+
+    type_line = (types_line or "").strip()
+    if type_line:
+        escaped_type = _escape_like(type_line)
+        where.append("types_line ILIKE %(types_line_pattern)s ESCAPE '\\'")
+        params["types_line_pattern"] = f"%{escaped_type}%"
+
+    super_val = (super_type or "").strip()
+    if super_val:
+        where.append("super_types @> %(super_type_json)s::jsonb")
+        params["super_type_json"] = Json([super_val])
+
+    sub_val = (sub_type or "").strip()
+    if sub_val:
+        where.append("sub_types @> %(sub_type_json)s::jsonb")
+        params["sub_type_json"] = Json([sub_val])
+
+    where_sql = " AND ".join(where)
+    if needle:
+        order_sql = """
+            CASE
+              WHEN card_name ILIKE %(name_prefix)s ESCAPE '\\' THEN 0
+              ELSE 1
+            END,
+            LENGTH(card_name) ASC,
+            card_name ASC
+        """
+    else:
+        order_sql = "card_name ASC"
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"SELECT COUNT(*)::int FROM cards WHERE {where_sql}",
+                    params,
+                )
+                total = int(cur.fetchone()[0])
+
+                cur.execute(
+                    f"""
+                    SELECT
+                        id,
+                        card_name,
+                        card_set_name,
+                        rarity,
+                        invoke_cost,
+                        cost,
+                        super_types,
+                        sub_types,
+                        types_line,
+                        description,
+                        keywords,
+                        show_help_text,
+                        threat_level,
+                        card_art_path,
+                        EXTRACT(EPOCH FROM updated_at)::bigint
+                      FROM cards
+                     WHERE {where_sql}
+                     ORDER BY {order_sql}
+                     LIMIT %(limit)s OFFSET %(offset)s
+                    """,
+                    params,
+                )
+                rows = cur.fetchall()
+    except OperationalError as e:
+        logger.warning("db error on card library: %s", e)
+        raise HTTPException(status_code=503, detail="database_unavailable") from e
+    except Exception as e:
+        logger.exception("unexpected error on card library: %s", e)
+        raise HTTPException(status_code=500, detail="card_library_failed") from e
+
+    items = [
+        CardLibraryItem(
+            id=int(row[0]),
+            card_name=row[1],
+            card_set_name=row[2],
+            rarity=row[3],
+            invoke_cost=int(row[4] or 0),
+            cost=row[5] or [],
+            super_types=row[6] or [],
+            sub_types=row[7] or [],
+            types_line=row[8] or "",
+            description=row[9] or "",
+            keywords=row[10] or [],
+            show_help_text=bool(row[11]),
+            threat_level=str(row[12] if row[12] is not None else "0"),
+            card_art_path=row[13],
+            card_art_version=int(row[14]) if row[14] is not None else None,
+        )
+        for row in rows
+    ]
+    return CardLibraryResponse(items=items, total=total, limit=limit, offset=offset)
+
+
 @router.get("/{card_id}", response_model=CardByNameResponse)
-def get_card_by_id(card_id: int):
-    """Fetch a single card by primary key (Unity barcode id)."""
+def get_card_by_id(
+    card_id: int,
+    is_admin: bool = Depends(get_optional_is_admin),
+):
+    """Fetch a card by primary key (Unity barcode id)."""
     if card_id <= 0:
         raise HTTPException(status_code=400, detail="invalid_card_id")
 
-    sql = _CARD_SELECT_SQL + " WHERE id = %(card_id)s"
+    sql = (
+        _CARD_SELECT_SQL
+        + " WHERE id = %(card_id)s"
+        + f" AND {catalogue_visibility_sql('cards', bypass=is_admin)}"
+    )
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
@@ -308,13 +719,18 @@ def get_card_by_id(card_id: int):
 
 
 @router.get("/by-name/{card_name}", response_model=CardByNameResponse)
-def get_card_by_name(card_name: str):
-    """Fetch a single card by exact card name (case-insensitive)."""
+def get_card_by_name(
+    card_name: str,
+    is_admin: bool = Depends(get_optional_is_admin),
+):
+    """Fetch a card by exact card name (case-insensitive)."""
     normalized_name = card_name.replace("+", " ").strip()
 
     sql = (
         _CARD_SELECT_SQL
-        + " WHERE LOWER(card_name) = LOWER(%(card_name)s) ORDER BY id DESC LIMIT 1"
+        + " WHERE LOWER(card_name) = LOWER(%(card_name)s)"
+        + f" AND {catalogue_visibility_sql('cards', bypass=is_admin)}"
+        + " ORDER BY id DESC LIMIT 1"
     )
     try:
         with get_connection() as conn:
@@ -333,6 +749,9 @@ def get_card_by_name(card_name: str):
     return _card_row_to_response(row)
 
 
+
+
+
 @router.post("/{card_id}/thumbnail", response_model=CardThumbnailUploaded)
 async def upload_card_thumbnail(card_id: int, file: UploadFile = File(...)):
     """Upload a card thumbnail, persist it on disk, and store its path."""
@@ -344,7 +763,7 @@ async def upload_card_thumbnail(card_id: int, file: UploadFile = File(...)):
     if not data:
         raise HTTPException(status_code=400, detail="empty_thumbnail_file")
 
-    max_size = 2 * 1024 * 1024
+    max_size = 8 * 1024 * 1024  # card art can exceed 2MB (e.g. full lore PNGs)
     if len(data) > max_size:
         raise HTTPException(status_code=413, detail="thumbnail_too_large")
 
@@ -386,9 +805,18 @@ async def upload_card_thumbnail(card_id: int, file: UploadFile = File(...)):
                 set_dir = base_dir / set_slug
                 set_dir.mkdir(parents=True, exist_ok=True)
 
+                # One stable path per card in the DB. The frontend appends
+                # ?v=<updated_at> so browsers fetch again after a re-upload.
                 file_name = f"{card_slug}_thumbnail{extension}"
                 file_path = set_dir / file_name
                 file_path.write_bytes(data)
+
+                # Clean leftover hashed names from an older upload scheme.
+                for old in set_dir.glob(f"{card_slug}_thumbnail_*"):
+                    try:
+                        old.unlink()
+                    except OSError:
+                        pass
 
                 relative_path = f"thumbnails/{set_slug}/{file_name}"
                 cur.execute(
@@ -399,6 +827,15 @@ async def upload_card_thumbnail(card_id: int, file: UploadFile = File(...)):
                         "card_id": card_id,
                     },
                 )
+                cur.execute(
+                    """
+                    SELECT EXTRACT(EPOCH FROM updated_at)::bigint
+                      FROM cards
+                     WHERE id = %(card_id)s
+                    """,
+                    {"card_id": card_id},
+                )
+                version_row = cur.fetchone()
             conn.commit()
     except OperationalError as e:
         logger.warning("db error on thumbnail upload: %s", e)
@@ -411,4 +848,5 @@ async def upload_card_thumbnail(card_id: int, file: UploadFile = File(...)):
         id=card_id,
         thumbnail_path=relative_path,
         thumbnail_size_bytes=len(data),
+        card_art_version=int(version_row[0]) if version_row and version_row[0] is not None else None,
     )
