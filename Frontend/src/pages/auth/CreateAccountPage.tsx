@@ -1,7 +1,7 @@
 /**
- * Login route (`/login`).
+ * Create-account route (`/register`).
  *
- * 1. User submits identifier + password → `loginRequest`.
+ * 1. User submits username + email + password → `createAccount`.
  * 2. On success: `setSession`, then show `LoginBootScreen`.
  * 3. Boot `onComplete` navigates to the intended page (or `/main`).
  */
@@ -18,34 +18,35 @@ import {
 } from "@/components/auth/authFormStyles"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { EditBox } from "@/components/ui/EditBox"
-import { loginRequest } from "@/lib/api/auth"
+import { createAccount } from "@/lib/api/auth"
 import { ApiError } from "@/lib/api/client"
 import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
 
 function helpMessageForError(detail: string): string {
   switch (detail) {
-    case "invalid_credentials":
-      return "Login failed — wrong username/email or password."
+    case "username_or_email_taken":
+      return "That username or email is already registered."
     case "database_unavailable":
       return "Server database is unavailable. Try again in a moment."
     default:
-      return "Login failed. Check your details and try again."
+      return "Could not create account. Check your details and try again."
   }
 }
 
-export function LoginPage() {
+export function CreateAccountPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { setSession } = useAuth()
   const redirectTo =
     (location.state as { from?: string } | null)?.from || ROUTES.MAIN
 
-  const [identifier, setIdentifier] = useState("")
+  const [userName, setUserName] = useState("")
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [helpTone, setHelpTone] = useState<HelpTone>("idle")
   const [helpText, setHelpText] = useState(
-    "Enter your username or email, then your password."
+    "Choose a username, email, and password (8+ characters)."
   )
   const [submitting, setSubmitting] = useState(false)
   /** When true, the boot overlay covers the form until navigation. */
@@ -59,22 +60,36 @@ export function LoginPage() {
   async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!identifier.trim() || !password) {
+    const trimmedName = userName.trim()
+    const trimmedEmail = email.trim()
+
+    if (!trimmedName || !trimmedEmail || !password) {
       setHelpTone("error")
-      setHelpText("Both fields are required.")
+      setHelpText("Username, email, and password are all required.")
+      return
+    }
+
+    if (password.length < 8) {
+      setHelpTone("error")
+      setHelpText("Password must be at least 8 characters.")
       return
     }
 
     setSubmitting(true)
     setHelpTone("pending")
-    setHelpText("Checking credentials…")
+    setHelpText("Creating your account…")
 
     try {
-      const result = await loginRequest(identifier.trim(), password)
-      setSession(result.access_token, result.user)
+      const result = await createAccount(trimmedName, trimmedEmail, password)
+      setSession(result.access_token, {
+        id: result.id,
+        user_name: result.user_name,
+        email: result.email,
+        role: result.role,
+      })
       setHelpTone("success")
-      setHelpText(`Welcome back, ${result.user.user_name}. Login successful.`)
-      setBootName(result.user.user_name)
+      setHelpText(`Welcome, ${result.user_name}. Account created.`)
+      setBootName(result.user_name)
       setBooting(true)
     } catch (error) {
       setHelpTone("error")
@@ -104,7 +119,7 @@ export function LoginPage() {
 
         <div className="relative z-10 mx-auto flex w-full max-w-md flex-col gap-6 pt-16">
           <h1 className="font-glitch text-center text-3xl text-cyan-300 lg:text-4xl">
-            LOGIN
+            CREATE ACCOUNT
           </h1>
 
           <form
@@ -113,14 +128,28 @@ export function LoginPage() {
           >
             <label className="flex flex-col gap-2">
               <span className="font-buahs93 text-sm text-cyan-200/80">
-                USERNAME OR EMAIL
+                USERNAME
               </span>
               <EditBox
-                name="identifier"
+                name="username"
                 autoComplete="username"
-                placeholder="user name or email"
-                value={identifier}
-                onChange={(event) => setIdentifier(event.target.value)}
+                placeholder="username"
+                value={userName}
+                onChange={(event) => setUserName(event.target.value)}
+                disabled={formLocked}
+              />
+            </label>
+
+            <label className="flex flex-col gap-2">
+              <span className="font-buahs93 text-sm text-cyan-200/80">
+                EMAIL
+              </span>
+              <EditBox
+                name="email"
+                autoComplete="email"
+                placeholder="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
                 disabled={formLocked}
               />
             </label>
@@ -132,8 +161,8 @@ export function LoginPage() {
               <EditBox
                 password
                 name="password"
-                autoComplete="current-password"
-                placeholder="password"
+                autoComplete="new-password"
+                placeholder="password (8+ characters)"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 disabled={formLocked}
@@ -153,19 +182,19 @@ export function LoginPage() {
 
             <GlitchFx
               type="submit"
-              label={submitting ? "LOGGING IN…" : "LOGIN"}
+              label={submitting ? "CREATING ACCOUNT…" : "CREATE ACCOUNT"}
               disabled={formLocked}
               size="lg"
               className="font-buahs93 h-10 w-full rounded-none bg-cyan-700 px-8 hover:bg-cyan-900 active:bg-cyan-400 disabled:opacity-60"
             />
 
             <p className="text-center text-sm text-white/50">
-              Need an account?{" "}
+              Already have an account?{" "}
               <Link
-                to={ROUTES.REGISTER}
+                to={ROUTES.LOGIN}
                 className="text-cyan-300 underline hover:text-cyan-200"
               >
-                CREATE ACCOUNT
+                LOGIN
               </Link>
             </p>
           </form>

@@ -2,8 +2,11 @@ import { PageHeader } from "@/components/common/PageHeader"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { sharedImages } from "@/assets"
 import type { CSSProperties } from "react"
+import { useNavigate } from "react-router-dom"
+import {ROUTES} from "@/lib/route"
 
 export function HomePage() {
+  const navigate = useNavigate()
   return (
     <section
       className="relative min-h-screen bg-cover bg-center bg-no-repeat px-6 py-12"
@@ -50,6 +53,7 @@ export function HomePage() {
             label="CREAT ACCOUNT"
             size="lg"
             className="font-buahs93 h-14  rounded-none bg-cyan-700 px-10 text-lg hover:bg-cyan-900 active:bg-cyan-400"
+            onClick={() =>navigate(ROUTES.REGISTER)}
           />
         </div>
       </div>

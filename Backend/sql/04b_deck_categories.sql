@@ -1,3 +1,5 @@
+-- User-defined (or app-seeded) card sections per deck.
+-- Default names (Main/Side/Maybe/Extra) are inserted by the API on deck create.
 CREATE TABLE IF NOT EXISTS deck_categories (
     id BIGSERIAL PRIMARY KEY,
     deck_id BIGINT NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
@@ -8,3 +10,5 @@ CREATE TABLE IF NOT EXISTS deck_categories (
 
 CREATE INDEX IF NOT EXISTS idx_deck_categories_deck_sort
     ON deck_categories (deck_id, sort_order);
+
+COMMENT ON TABLE deck_categories IS 'User-defined (or seeded) card sections per deck.';

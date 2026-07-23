@@ -32,6 +32,10 @@ If your DB volume already exists:
 docker compose exec -T db psql -U postgres -d mirror_image < Backend/sql/09_seed_dev_users.sql
 ```
 
+Schema for new environments comes entirely from `Backend/sql/` init scripts
+(see `Backend/sql/README.md`). For older volumes, apply scripts under
+`Backend/sql/migrations/` (see that folder’s README).
+
 Or wipe and recreate (destroys all data):
 
 ```bash
