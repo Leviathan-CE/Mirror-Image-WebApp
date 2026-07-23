@@ -386,8 +386,7 @@ export function HowToPlayPage() {
                             <p>
                                 There are three phases: the maintenance phase (start of turn), the
                                 main phase, and the end-of-turn phase. Take them in order on your
-                                turn. For a more challenging game mode, include the steps marked with
-                                the <Hardcore /> tag.
+                                turn. 
                             </p>
                             <div className="space-y-1">
                                 <p className="flex items-center gap-2 font-semibold text-cyan-200">
@@ -398,9 +397,6 @@ export function HowToPlayPage() {
                                         <li>Ready all entities you control.</li>
                                         <li> Trigger all Abilities with the <GameIcon name="start" /> tag.</li>
                                         <li>Remove a time counter from each card you control in play, and resolve any effect triggered when the last time counter is removed from a card in your stockpile.</li>
-                                        <li><Hardcore /> Dismantle a resource you control.</li>
-                                        <li>Draw a card, except the player going first on the first turn of the game.</li>
-                                        <li><Hardcore /> Draw an additional card.</li>
                                     </ol>
                                 </div>
                             </div>
@@ -416,7 +412,7 @@ export function HowToPlayPage() {
                                     <ol className="list-decimal space-y-1 pl-6">
                                         <li>Choose and expend your attacker(s), then declare a target. Then trigger any units attacking with a <GameIcon name="attack"/> tag.</li>
                                         <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
-                                        <li>The defender may block, redirect, or reduce the incoming damage.</li>
+                                        <li>The defender may block to reduce the incoming damage.</li>
                                         <li>Deal damage (Preemptive Strike first, then simultaneous). Defeated units go to the discard pile; unblocked damage to a player becomes loss of life.</li>
                                     </ol>
                                     <p>
@@ -434,7 +430,7 @@ export function HowToPlayPage() {
                                         <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
                                         <li>Trigger any ability with the <GameIcon name="endTurn" /> tag.</li>
                                         <li>Players Lose any unspent resources in your resource pool (not your stockpile).</li>
-                                        <li>You draw cards until you have 3 in hand or would have had three in hand which ever happen first.</li>
+                                        <li>You draw cards until you have cards in hand equal to your pilots <GameIcon name="hand_size"/>. if you have no cards left in deck instead loose 1 life for each card you would have drawn to get to your pilots <GameIcon name="hand_size"/></li>
                                     </ol>
                                 </div>
                             </div>
@@ -592,8 +588,7 @@ export function HowToPlayPage() {
                                 Accumulate Resources
                             </h3>
                             <p>
-                                You may accumulate resources only once per turn, and only on your
-                                turn. To do so, choose a card in hand, reveal it, and then "gain"
+                                You may accumulate resources only once on your turn in your main phase, To do so, choose a card in hand, reveal it, and then "gain"
                                 (grab) up to three resource tokens from its listed invoke cost
                                 (ignoring the grey numbered costs) and add them to your stockpile
                                 readied. Then put the revealed card on the bottom of your deck.
@@ -670,9 +665,9 @@ export function HowToPlayPage() {
                                 pay the cost, you must have the required resources in your resource
                                 pool&mdash;an imaginary area where resources go when a card says to
                                 "add" a resource of the color you need; they stay there until the end
-                                of the turn. Most resource tokens have two abilities that "add" 1 or 2
-                                resources of their color to your pool, which you then spend on the cost
-                                to play a card.
+                                of the turn. Most resource tokens have two abilities, the first is always the following
+                                even if it is not printed on the card: "<GameIcon name="expend"/>,<GameIcon name="dismantle"/>: Add one resoruce of its respective colours to
+                                your resource pool".
 
                                 <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                     <img
@@ -765,8 +760,7 @@ export function HowToPlayPage() {
                                 <li>
                                     Block incoming damage. You may, in any order:
                                     <ul className="list-disc space-y-1 pl-6 pt-1">
-                                        <li>Expend unit(s) and redirect an attacker to the expended unit instead. You can do this even if the unit entered play this turn; when multiple units are part of a single attack, you may only redirect one of them. (Attacks redirected this way do not trigger effects like Stealth.)</li>
-                                        <li>Discard any number of cards in hand with a <GameIcon name="threat_lvl" /> rating, add them together, and reduce the damage from an attacker of your choice by that total.</li>
+                                        <li>Discard any number of cards in hand with a <GameIcon name="threat_lvl" /> rating. The maximuim a card can block using its <GameIcon name="threat_lvl" /> is 3, however the block keyword can increase this limit. add the discarded cards together, and reduce the damage from an attacker of your choice by that total.</li>
                                         <li>Expend any number of augments you control, choose an attacker for each, reduce the incoming damage by that augment's <GameIcon name="threat_lvl" /> rating, and add a depletion counter to that augment.</li>
                                     </ul>
                                 </li>
