@@ -4,23 +4,27 @@
 
 import { useEffect, useId, useRef, useState } from "react"
 
-import { EditBox } from "@/components/ui/EditBox"
+import { CardSearchBar } from "@/components/cards/CardSearchBar"
 import { searchCards, type CardSearchHit } from "@/lib/api/cards"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
 type DeckCardSearchProps = {
   disabled?: boolean
+  /** When set (e.g. admin JWT), search can include unpublished cards. */
+  token?: string | null
   onPick: (card: CardSearchHit) => void | Promise<void>
   onOpenChange?: (open: boolean) => void
 }
 
 export function DeckCardSearch({
   disabled = false,
+  token = null,
   onPick,
   onOpenChange,
 }: DeckCardSearchProps) {
   const listId = useId()
+  const inputId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const onOpenChangeRef = useRef(onOpenChange)
   const [query, setQuery] = useState("")
@@ -53,7 +57,7 @@ export function DeckCardSearch({
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
-          const results = await searchCards(q, 12)
+          const results = await searchCards(q, 12, token)
           if (cancelled) return
           setHits(results)
           setActiveIndex(0)
@@ -72,7 +76,7 @@ export function DeckCardSearch({
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [query])
+  }, [query, token])
 
   useEffect(() => {
     if (!open) return
@@ -109,19 +113,16 @@ export function DeckCardSearch({
         open && "z-[100]"
       )}
     >
-      <label className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-        ADD CARD
-      </label>
-      <EditBox
+      <CardSearchBar
+        id={inputId}
+        label="ADD CARD"
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={setQuery}
+        placeholder="Search cards…"
+        disabled={disabled || busyPick}
         onFocus={() => {
           if (hits.length > 0) setMenuOpen(true)
         }}
-        placeholder="Search cards…"
-        size="sm"
-        disabled={disabled || busyPick}
-        autoComplete="off"
         role="combobox"
         aria-expanded={open}
         aria-controls={listId}

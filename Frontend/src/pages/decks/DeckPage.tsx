@@ -465,7 +465,7 @@ export function DeckPage() {
 
     setErrorText("")
     try {
-      const detail = await fetchCardById(hit.id)
+      const detail = await fetchCardById(hit.id, token)
       if (detail.is_pilot) {
         await assignPilot(hit.id, null)
         return
@@ -540,7 +540,7 @@ export function DeckPage() {
   ) {
     if (!token || !deck || !canEdit) return
 
-    const detail = await fetchCardById(cardId)
+    const detail = await fetchCardById(cardId, token)
     if (!detail.is_augment) {
       setErrorText("Only augment cards can go in Augments.")
       return
@@ -630,7 +630,7 @@ export function DeckPage() {
   ) {
     if (!token || !deck || !canEdit) return
 
-    const detail = await fetchCardById(cardId)
+    const detail = await fetchCardById(cardId, token)
     if (!detail.is_pilot) {
       setErrorText("Only pilot cards can go in the Pilot slot.")
       return
@@ -915,6 +915,7 @@ export function DeckPage() {
               <div className="mb-4">
                 <DeckCardSearch
                   disabled={saving}
+                  token={token}
                   onPick={onAddCardFromSearch}
                   onOpenChange={setSearchMenuOpen}
                 />

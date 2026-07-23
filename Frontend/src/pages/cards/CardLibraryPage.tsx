@@ -4,9 +4,11 @@
 
 import { useEffect, useState } from "react"
 
+import { useAuth } from "@/app/providers/AuthProvider"
 import { sharedImages } from "@/assets"
 import { CardCostIcons, costTokenToIcon } from "@/components/cards/CardCostIcons"
 import { CardRulesText } from "@/components/cards/CardRulesText"
+import { CardSearchBar } from "@/components/cards/CardSearchBar"
 import { parseKeyword } from "@/components/cards/keywordHelp"
 import { GameIcon } from "@/components/common/GameIcon"
 import { GlitchFx } from "@/components/effects/GlitchFx"
@@ -44,6 +46,7 @@ const EMPTY_FACETS: CardLibraryFacets = {
 }
 
 export function CardLibraryPage() {
+  const { token } = useAuth()
   const [facets, setFacets] = useState<CardLibraryFacets>(EMPTY_FACETS)
   const [items, setItems] = useState<CardLibraryItem[]>([])
   const [total, setTotal] = useState(0)
@@ -78,7 +81,7 @@ export function CardLibraryPage() {
 
   useEffect(() => {
     let cancelled = false
-    fetchCardFacets()
+    fetchCardFacets(token)
       .then((data) => {
         if (!cancelled) setFacets(data)
       })
@@ -88,7 +91,7 @@ export function CardLibraryPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [token])
 
   useEffect(() => {
     setOffset(0)
@@ -113,18 +116,21 @@ export function CardLibraryPage() {
     const max =
       invokeMax.trim() === "" ? null : Number.parseInt(invokeMax, 10)
 
-    void fetchCardLibrary({
-      q: debouncedName || undefined,
-      description: debouncedDescription || undefined,
-      colors,
-      invokeCostMin: Number.isFinite(min) ? min : null,
-      invokeCostMax: Number.isFinite(max) ? max : null,
-      typesLine: typesLine || undefined,
-      superType: superType || undefined,
-      subType: subType || undefined,
-      limit: PAGE_SIZE,
-      offset,
-    })
+    void fetchCardLibrary(
+      {
+        q: debouncedName || undefined,
+        description: debouncedDescription || undefined,
+        colors,
+        invokeCostMin: Number.isFinite(min) ? min : null,
+        invokeCostMax: Number.isFinite(max) ? max : null,
+        typesLine: typesLine || undefined,
+        superType: superType || undefined,
+        subType: subType || undefined,
+        limit: PAGE_SIZE,
+        offset,
+      },
+      token
+    )
       .then((result) => {
         if (cancelled) return
         setItems(result.items)
@@ -156,6 +162,7 @@ export function CardLibraryPage() {
     superType,
     subType,
     offset,
+    token,
   ])
 
   function toggleColor(color: string) {
@@ -204,18 +211,14 @@ export function CardLibraryPage() {
 
         <div className="mb-6 grid gap-4 border border-cyan-500/25 bg-black/55 p-4 lg:grid-cols-[minmax(0,1fr)_14rem]">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block sm:col-span-2">
-              <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-                NAME
-              </span>
-              <EditBox
+            <div className="sm:col-span-2">
+              <CardSearchBar
+                label="NAME"
                 value={nameQuery}
-                onChange={(e) => setNameQuery(e.target.value)}
+                onChange={setNameQuery}
                 placeholder="Closest name match…"
-                size="sm"
-                autoComplete="off"
               />
-            </label>
+            </div>
 
             <label className="block sm:col-span-2">
               <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">

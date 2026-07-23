@@ -5,13 +5,15 @@ import re
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from psycopg2 import OperationalError
 from psycopg2.errors import CheckViolation, DataError, NotNullViolation, UniqueViolation
 from psycopg2.extras import Json
 
 from app.db import get_connection
+from app.card_publish import catalogue_visibility_sql
+from app.security import get_optional_is_admin
 
 logger = logging.getLogger(__name__)
 
@@ -299,38 +301,44 @@ class CardSearchHit(BaseModel):
 def search_cards(
     q: str = Query(min_length=1, max_length=80),
     limit: int = Query(default=12, ge=1, le=40),
+    is_admin: bool = Depends(get_optional_is_admin),
 ):
     """
     Typeahead search by card name.
 
-    Prefers prefix matches, then substring matches. Skips deprecated cards.
+    Prefers prefix matches, then substring matches.
+    Skips deprecated cards. Non-admins only see published cards;
+    admins see the full catalogue (including preview / not published).
     """
     needle = q.strip()
     if not needle:
         return []
 
+    visibility = catalogue_visibility_sql("c", bypass=is_admin)
+
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    """
+                    f"""
                     SELECT
-                        id,
-                        card_name,
-                        card_set_name,
-                        rarity,
-                        card_art_path,
-                        EXTRACT(EPOCH FROM updated_at)::bigint
-                      FROM cards
-                     WHERE is_deprecated = false
-                       AND card_name ILIKE %(pattern)s
+                        c.id,
+                        c.card_name,
+                        c.card_set_name,
+                        c.rarity,
+                        c.card_art_path,
+                        EXTRACT(EPOCH FROM c.updated_at)::bigint
+                      FROM cards c
+                     WHERE c.is_deprecated = false
+                       AND {visibility}
+                       AND c.card_name ILIKE %(pattern)s
                      ORDER BY
                        CASE
-                         WHEN card_name ILIKE %(prefix)s THEN 0
+                         WHEN c.card_name ILIKE %(prefix)s THEN 0
                          ELSE 1
                        END,
-                       LENGTH(card_name) ASC,
-                       card_name ASC
+                       LENGTH(c.card_name) ASC,
+                       c.card_name ASC
                      LIMIT %(limit)s
                     """,
                     {
@@ -438,16 +446,21 @@ def _sql_card_matches_stl() -> str:
 
 
 @router.get("/facets", response_model=CardLibraryFacets)
-def card_library_facets():
+def card_library_facets(
+    is_admin: bool = Depends(get_optional_is_admin),
+):
     """Distinct filter values for the card library UI."""
+    visibility = catalogue_visibility_sql("cards", bypass=is_admin)
+    visibility_c = catalogue_visibility_sql("c", bypass=is_admin)
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    """
+                    f"""
                     SELECT MIN(invoke_cost), MAX(invoke_cost)
                       FROM cards
                      WHERE is_deprecated = false
+                       AND {visibility}
                     """
                 )
                 cost_row = cur.fetchone()
@@ -458,11 +471,12 @@ def card_library_facets():
                 colors = list(_COLOR_COST_TOKENS)
 
                 cur.execute(
-                    """
+                    f"""
                     SELECT DISTINCT token.value
                       FROM cards c,
                            LATERAL jsonb_array_elements_text(c.super_types) AS token(value)
                      WHERE c.is_deprecated = false
+                       AND {visibility_c}
                        AND BTRIM(token.value) <> ''
                      ORDER BY 1
                     """
@@ -470,11 +484,12 @@ def card_library_facets():
                 super_types = [row[0] for row in cur.fetchall()]
 
                 cur.execute(
-                    """
+                    f"""
                     SELECT DISTINCT token.value
                       FROM cards c,
                            LATERAL jsonb_array_elements_text(c.sub_types) AS token(value)
                      WHERE c.is_deprecated = false
+                       AND {visibility_c}
                        AND BTRIM(token.value) <> ''
                      ORDER BY 1
                     """
@@ -482,10 +497,11 @@ def card_library_facets():
                 sub_types = [row[0] for row in cur.fetchall()]
 
                 cur.execute(
-                    """
+                    f"""
                     SELECT DISTINCT BTRIM(types_line)
                       FROM cards
                      WHERE is_deprecated = false
+                       AND {visibility}
                        AND BTRIM(types_line) <> ''
                      ORDER BY 1
                     """
@@ -520,14 +536,19 @@ def browse_card_library(
     sub_type: str | None = Query(default=None, max_length=60),
     limit: int = Query(default=48, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    is_admin: bool = Depends(get_optional_is_admin),
 ):
     """
     Browse / filter the card catalogue.
 
     Name search (`q`) uses the same closest-match ranking as `/cards/search`
     (prefix first, then substring, shorter names preferred).
+    Non-admins only see published cards; admins see the full catalogue.
     """
-    where = ["is_deprecated = false"]
+    where = [
+        "is_deprecated = false",
+        catalogue_visibility_sql("cards", bypass=is_admin),
+    ]
     params: dict[str, Any] = {"limit": limit, "offset": offset}
 
     needle = (q or "").strip()
@@ -666,14 +687,20 @@ def browse_card_library(
     return CardLibraryResponse(items=items, total=total, limit=limit, offset=offset)
 
 
-
 @router.get("/{card_id}", response_model=CardByNameResponse)
-def get_card_by_id(card_id: int):
-    """Fetch a single card by primary key (Unity barcode id)."""
+def get_card_by_id(
+    card_id: int,
+    is_admin: bool = Depends(get_optional_is_admin),
+):
+    """Fetch a card by primary key (Unity barcode id)."""
     if card_id <= 0:
         raise HTTPException(status_code=400, detail="invalid_card_id")
 
-    sql = _CARD_SELECT_SQL + " WHERE id = %(card_id)s"
+    sql = (
+        _CARD_SELECT_SQL
+        + " WHERE id = %(card_id)s"
+        + f" AND {catalogue_visibility_sql('cards', bypass=is_admin)}"
+    )
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
@@ -692,13 +719,18 @@ def get_card_by_id(card_id: int):
 
 
 @router.get("/by-name/{card_name}", response_model=CardByNameResponse)
-def get_card_by_name(card_name: str):
-    """Fetch a single card by exact card name (case-insensitive)."""
+def get_card_by_name(
+    card_name: str,
+    is_admin: bool = Depends(get_optional_is_admin),
+):
+    """Fetch a card by exact card name (case-insensitive)."""
     normalized_name = card_name.replace("+", " ").strip()
 
     sql = (
         _CARD_SELECT_SQL
-        + " WHERE LOWER(card_name) = LOWER(%(card_name)s) ORDER BY id DESC LIMIT 1"
+        + " WHERE LOWER(card_name) = LOWER(%(card_name)s)"
+        + f" AND {catalogue_visibility_sql('cards', bypass=is_admin)}"
+        + " ORDER BY id DESC LIMIT 1"
     )
     try:
         with get_connection() as conn:

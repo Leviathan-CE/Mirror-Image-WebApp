@@ -1,8 +1,9 @@
 /**
  * Card catalog API (search / library browse / lookup).
+ * Pass an auth token when available so admin JWTs bypass publish filtering.
  */
 
-import { apiBaseUrl, readJsonOrThrow } from "@/lib/api/client"
+import { apiBaseUrl, authHeaders, readJsonOrThrow } from "@/lib/api/client"
 
 export type CardSearchHit = {
   id: number
@@ -70,7 +71,8 @@ export type CardLibraryQuery = {
 
 export async function searchCards(
   query: string,
-  limit = 12
+  limit = 12,
+  token?: string | null
 ): Promise<CardSearchHit[]> {
   const q = query.trim()
   if (!q) return []
@@ -79,13 +81,14 @@ export async function searchCards(
   url.searchParams.set("q", q)
   url.searchParams.set("limit", String(limit))
 
-  const response = await fetch(url)
+  const response = await fetch(url, { headers: authHeaders(token) })
   return readJsonOrThrow<CardSearchHit[]>(response, "card_search_failed")
 }
 
 /** Full catalogue browse with filters; name (`q`) uses the same ranking as search. */
 export async function fetchCardLibrary(
-  query: CardLibraryQuery = {}
+  query: CardLibraryQuery = {},
+  token?: string | null
 ): Promise<CardLibraryResponse> {
   const url = new URL(`${apiBaseUrl()}/cards/library`)
   const q = query.q?.trim()
@@ -99,8 +102,8 @@ export async function fetchCardLibrary(
     url.searchParams.set("invoke_cost_max", String(query.invokeCostMax))
   }
   for (const color of query.colors ?? []) {
-    const token = color.trim()
-    if (token) url.searchParams.append("color", token)
+    const colorToken = color.trim()
+    if (colorToken) url.searchParams.append("color", colorToken)
   }
   const typesLine = query.typesLine?.trim()
   if (typesLine) url.searchParams.set("types_line", typesLine)
@@ -111,18 +114,27 @@ export async function fetchCardLibrary(
   url.searchParams.set("limit", String(query.limit ?? 48))
   url.searchParams.set("offset", String(query.offset ?? 0))
 
-  const response = await fetch(url)
+  const response = await fetch(url, { headers: authHeaders(token) })
   return readJsonOrThrow<CardLibraryResponse>(response, "card_library_failed")
 }
 
-export async function fetchCardFacets(): Promise<CardLibraryFacets> {
-  const response = await fetch(`${apiBaseUrl()}/cards/facets`)
+export async function fetchCardFacets(
+  token?: string | null
+): Promise<CardLibraryFacets> {
+  const response = await fetch(`${apiBaseUrl()}/cards/facets`, {
+    headers: authHeaders(token),
+  })
   return readJsonOrThrow<CardLibraryFacets>(response, "card_facets_failed")
 }
 
 /** Card-by-id payload uses serialization alias `ID`. */
-export async function fetchCardById(cardId: number): Promise<CardDetail> {
-  const response = await fetch(`${apiBaseUrl()}/cards/${cardId}`)
+export async function fetchCardById(
+  cardId: number,
+  token?: string | null
+): Promise<CardDetail> {
+  const response = await fetch(`${apiBaseUrl()}/cards/${cardId}`, {
+    headers: authHeaders(token),
+  })
   const raw = await readJsonOrThrow<{
     ID?: number
     id?: number
