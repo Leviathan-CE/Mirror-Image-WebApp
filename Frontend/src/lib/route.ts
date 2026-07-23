@@ -9,9 +9,17 @@ export const ROUTES = {
   HOW_TO_PLAY: "/how-to-play",
   LORE: "/lore",
   LOGIN: "/login",
+  REGISTER: "/register",
   DECK_COMUNITY: "/comunity_decks",
+
+  /** Admin console (role: admin). */
+  ADMIN: "/admin",
+  ADMIN_CARDS: "/admin/cards",
+  ADMIN_USERS: "/admin/users",
 
   /** Build a deck detail URL — never navigate to bare "/decks". */
   deck: (deckId: string | number) => `/decks/${deckId}` as const,
   DECK_PATTERN: "/decks/:deckId",
 } as const
+
+export const ADMIN_ROLE = "admin" as const

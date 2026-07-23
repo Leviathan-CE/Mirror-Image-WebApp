@@ -81,7 +81,7 @@ def test_get_optional_user_id_none_without_credentials():
 
 def test_get_optional_user_id_from_bearer():
     token = create_access_token(
-        user_id=7, user_name="ops", email="ops@example.com"
+        user_id=7, user_name="ops", email="ops@example.com", role="user"
     )
     credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 

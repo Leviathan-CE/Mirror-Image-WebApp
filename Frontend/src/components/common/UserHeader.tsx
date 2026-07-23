@@ -7,11 +7,12 @@ import {
   navButtonClassName,
 } from "@/components/common/headerStyles"
 import { Button } from "@/components/ui/button"
-import { ROUTES } from "@/lib/route"
+import { ADMIN_ROLE, ROUTES } from "@/lib/route"
 
 export function Userheader() {
   const navigate = useNavigate()
   const { user, clearSession } = useAuth()
+  const isAdmin = user?.role === ADMIN_ROLE
 
   function onLogout() {
     clearSession()
@@ -47,6 +48,14 @@ export function Userheader() {
           >
             LORE
           </Button>
+          {isAdmin ? (
+            <Button
+              className={navButtonClassName}
+              onClick={() => navigate(ROUTES.ADMIN)}
+            >
+              ADMIN
+            </Button>
+          ) : null}
         </>
       }
       actions={

@@ -1,3 +1,4 @@
+-- Cards in a deck, placed in a category section with quantity + display order.
 CREATE TABLE IF NOT EXISTS deck_has_cards (
     deck_id BIGINT NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
     card_id BIGINT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
@@ -9,3 +10,6 @@ CREATE TABLE IF NOT EXISTS deck_has_cards (
 
 CREATE INDEX IF NOT EXISTS idx_deck_has_cards_deck_category_sort
     ON deck_has_cards (deck_id, category_id, sort_order);
+
+COMMENT ON COLUMN deck_has_cards.category_id IS 'FK to deck_categories — Main/Side/custom sections.';
+COMMENT ON COLUMN deck_has_cards.sort_order IS 'Display order within a category (ascending).';

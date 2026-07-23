@@ -33,11 +33,6 @@ const SECTIONS: TocEntry[] = [
 
 const KEYWORDS = KEYWORD_ABILITIES
 
-/** Inline "[Hardcore]" marker used to flag optional advanced-mode rules steps. */
-function Hardcore() {
-    return <span className="font-light text-red-500">[Hardcore]</span>
-}
-
 /** Green check icon used to mark eligible/allowed symbols in rules legends. */
 function CheckMark() {
     return (

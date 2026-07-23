@@ -2,6 +2,7 @@
  * Client auth session for the SPA.
  *
  * - Hydrates token + user from localStorage on first paint.
+ * - Refreshes user (including role) from `/auth/me` when a token exists.
  * - `setSession` / `clearSession` keep React state and localStorage in sync.
  * - `isAuthenticated` is true only when both token and user are present.
  *
@@ -12,12 +13,13 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type PropsWithChildren,
 } from "react"
 
-import type { AuthUser } from "@/lib/api/auth"
+import { fetchCurrentUser, type AuthUser } from "@/lib/api/auth"
 
 const TOKEN_KEY = "mi_access_token"
 const USER_KEY = "mi_user"
@@ -64,6 +66,31 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setToken(null)
     setUser(null)
   }, [])
+
+  // Keep role/profile fresh — fixes sessions saved before `role` existed.
+  useEffect(() => {
+    if (!token) return
+
+    let cancelled = false
+    void fetchCurrentUser(token)
+      .then((fresh) => {
+        if (cancelled) return
+        localStorage.setItem(USER_KEY, JSON.stringify(fresh))
+        setUser(fresh)
+      })
+      .catch(() => {
+        if (cancelled) return
+        // Token invalid/expired — drop the session.
+        localStorage.removeItem(TOKEN_KEY)
+        localStorage.removeItem(USER_KEY)
+        setToken(null)
+        setUser(null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [token])
 
   const value = useMemo<AuthContextValue>(
     () => ({

@@ -12,6 +12,7 @@ const sampleUser: AuthUser = {
   id: 1,
   user_name: "operator_one",
   email: "user@localhost",
+  role: "user",
 }
 
 const clearSession = vi.fn()
@@ -53,7 +54,7 @@ describe("AppHeader", () => {
     )
     expect(screen.getByRole("button", { name: "LOGIN" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "LOGOUT" })).not.toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "DECKS" })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "DECKS" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "CARDS" })).toBeInTheDocument()
   })
 

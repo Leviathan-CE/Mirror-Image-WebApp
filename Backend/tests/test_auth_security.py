@@ -11,8 +11,14 @@ def test_password_hash_roundtrip():
 
 
 def test_jwt_roundtrip():
-    token = create_access_token(user_id=42, user_name="pilot", email="pilot@example.com")
+    token = create_access_token(
+        user_id=42,
+        user_name="pilot",
+        email="pilot@example.com",
+        role="user",
+    )
     payload = decode_access_token(token)
     assert payload["sub"] == "42"
     assert payload["user_name"] == "pilot"
     assert payload["email"] == "pilot@example.com"
+    assert payload["role"] == "user"

@@ -54,6 +54,7 @@ class UserPublic(BaseModel):
     id: int
     user_name: str
     email: str
+    role: str
 
 
 class AuthResponse(BaseModel):
@@ -66,13 +67,14 @@ class RegisterResponse(BaseModel):
     id: int
     user_name: str
     email: str
+    role: str
     access_token: str
     token_type: str = "bearer"
 
 
 def _fetch_user_by_login(cur, identifier: str) -> tuple | None:
     sql = """
-        SELECT id, user_name, email, password
+        SELECT id, user_name, email, password, role
         FROM users
         WHERE lower(email) = lower(%(id)s)
            OR lower(user_name) = lower(%(id)s)
@@ -91,7 +93,7 @@ def register(body: RegisterRequest):
     sql = """
         INSERT INTO users (user_name, email, password)
         VALUES (%(user_name)s, %(email)s, %(password)s)
-        RETURNING id, user_name, email
+        RETURNING id, user_name, email, role
     """
     try:
         with get_connection() as conn:
@@ -119,14 +121,15 @@ def register(body: RegisterRequest):
             detail="database_unavailable",
         ) from e
 
-    user_id, user_name, user_email = row[0], row[1], row[2]
+    user_id, user_name, user_email, user_role = row[0], row[1], row[2], row[3]
     token = create_access_token(
-        user_id=user_id, user_name=user_name, email=user_email
+        user_id=user_id, user_name=user_name, email=user_email, role=user_role
     )
     return RegisterResponse(
         id=user_id,
         user_name=user_name,
         email=user_email,
+        role=user_role,
         access_token=token,
     )
 
@@ -151,7 +154,7 @@ def login(body: LoginRequest):
             detail="invalid_credentials",
         )
 
-    user_id, user_name, email, password_hash = row
+    user_id, user_name, email, password_hash, role = row
     if not password_hash or not verify_password(body.password, password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -159,11 +162,13 @@ def login(body: LoginRequest):
         )
 
     token = create_access_token(
-        user_id=user_id, user_name=user_name, email=email
+        user_id=user_id, user_name=user_name, email=email, role=role
     )
     return AuthResponse(
         access_token=token,
-        user=UserPublic(id=user_id, user_name=user_name, email=email),
+        user=UserPublic(
+            id=user_id, user_name=user_name, email=email, role=role
+        ),
     )
 
 
@@ -192,4 +197,6 @@ def me(user_id: int = Depends(get_current_user_id)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="user_not_found",
         )
-    return UserPublic(id=row[0], user_name=row[1], email=row[2])
+    return UserPublic(
+        id=row[0], user_name=row[1], email=row[2], role=row[3]
+    )
