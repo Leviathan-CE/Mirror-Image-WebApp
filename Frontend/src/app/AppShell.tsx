@@ -9,6 +9,7 @@ import { CardLibraryPage } from "@/pages/cards/CardLibraryPage"
 import { DeckPage } from "@/pages/decks/DeckPage"
 import { LorePage } from "@/pages/lore/LorePage"
 import { ROUTES } from "@/lib/route"
+import { ComunityDecksPage } from "@/pages/decks/ComunityDecksPage"
 
 export function AppShell() {
   return (
@@ -31,6 +32,7 @@ export function AppShell() {
             <Route path={ROUTES.HOW_TO_PLAY} element={<HowToPlayPage />} />
             <Route path={ROUTES.LORE} element={<LorePage />} />
             <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+            <Route path={ROUTES.DECK_COMUNITY} element={<ComunityDecksPage/>}/>
           </Routes>
         </main>
       </BrowserRouter>

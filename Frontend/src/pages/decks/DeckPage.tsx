@@ -215,11 +215,11 @@ export function DeckPage() {
       setDeck((prev) =>
         prev
           ? {
-              ...prev,
-              ...updated,
-              categories: prev.categories,
-              cards: prev.cards,
-            }
+            ...prev,
+            ...updated,
+            categories: prev.categories,
+            cards: prev.cards,
+          }
           : prev
       )
       setEditing(false)
@@ -300,16 +300,16 @@ export function DeckPage() {
       setDeck((prev) =>
         prev
           ? {
-              ...prev,
-              categories: prev.categories.map((c) =>
-                c.id === categoryId ? updated : c
-              ),
-              cards: prev.cards.map((card) =>
-                card.category_id === categoryId
-                  ? { ...card, category_name: updated.name }
-                  : card
-              ),
-            }
+            ...prev,
+            categories: prev.categories.map((c) =>
+              c.id === categoryId ? updated : c
+            ),
+            cards: prev.cards.map((card) =>
+              card.category_id === categoryId
+                ? { ...card, category_name: updated.name }
+                : card
+            ),
+          }
           : prev
       )
     } catch {
@@ -329,9 +329,9 @@ export function DeckPage() {
       setDeck((prev) =>
         prev
           ? {
-              ...prev,
-              categories: prev.categories.filter((c) => c.id !== categoryId),
-            }
+            ...prev,
+            categories: prev.categories.filter((c) => c.id !== categoryId),
+          }
           : prev
       )
     } catch (error) {
@@ -443,7 +443,7 @@ export function DeckPage() {
         if (!prev) return prev
         const cards = prev.cards.map((entry) =>
           entry.card_id === card.card_id &&
-          entry.category_id === card.category_id
+            entry.category_id === card.category_id
             ? updated
             : entry
         )
@@ -526,9 +526,9 @@ export function DeckPage() {
     setDeck((prev) =>
       prev
         ? {
-            ...prev,
-            categories: [...prev.categories, created],
-          }
+          ...prev,
+          categories: [...prev.categories, created],
+        }
         : prev
     )
     return created.id
@@ -582,12 +582,12 @@ export function DeckPage() {
         const withoutSource =
           fromCategoryId != null
             ? prev.cards.filter(
-                (card) =>
-                  !(
-                    card.card_id === cardId &&
-                    card.category_id === fromCategoryId
-                  )
-              )
+              (card) =>
+                !(
+                  card.card_id === cardId &&
+                  card.category_id === fromCategoryId
+                )
+            )
             : prev.cards
         return withCardEntry(
           { ...prev, cards: withoutSource },
@@ -616,9 +616,9 @@ export function DeckPage() {
     setDeck((prev) =>
       prev
         ? {
-            ...prev,
-            categories: [...prev.categories, created],
-          }
+          ...prev,
+          categories: [...prev.categories, created],
+        }
         : prev
     )
     return created.id
@@ -681,12 +681,12 @@ export function DeckPage() {
         const withoutSource =
           fromCategoryId != null
             ? withoutOldPilot.filter(
-                (card) =>
-                  !(
-                    card.card_id === cardId &&
-                    card.category_id === fromCategoryId
-                  )
-              )
+              (card) =>
+                !(
+                  card.card_id === cardId &&
+                  card.category_id === fromCategoryId
+                )
+            )
             : withoutOldPilot
         return withCardEntry(
           { ...prev, cards: withoutSource },
@@ -753,9 +753,10 @@ export function DeckPage() {
             type="button"
             label="← BACK"
             className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900"
-            onClick={() =>
-              navigate(isAuthenticated ? ROUTES.MAIN : ROUTES.HOME)
-            }
+            onClick={() => {
+              if (window.history.length > 1) navigate(-1)
+              else navigate(ROUTES.DECK_COMUNITY)
+            }}
           />
           {canEdit ? (
             <span className="font-mono text-[10px] tracking-wide text-cyan-400/70">
