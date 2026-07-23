@@ -78,13 +78,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
         localStorage.setItem(USER_KEY, JSON.stringify(fresh))
         setUser(fresh)
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (cancelled) return
-        // Token invalid/expired — drop the session.
-        localStorage.removeItem(TOKEN_KEY)
-        localStorage.removeItem(USER_KEY)
-        setToken(null)
-        setUser(null)
+        // Only drop the session on real auth failures — not network blips
+        // after returning from Stripe Checkout / portal.
+        const status =
+          error && typeof error === "object" && "status" in error
+            ? Number((error as { status?: number }).status)
+            : 0
+        if (status === 401) {
+          localStorage.removeItem(TOKEN_KEY)
+          localStorage.removeItem(USER_KEY)
+          setToken(null)
+          setUser(null)
+        }
       })
 
     return () => {

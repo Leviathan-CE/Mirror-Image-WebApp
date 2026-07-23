@@ -10,6 +10,14 @@ export {
   type LoginResponse,
 } from "@/lib/api/auth"
 export {
+  fetchBillingStatus,
+  fetchBillingPlan,
+  createCheckoutSession,
+  createPortalSession,
+  type BillingStatus,
+  type BillingPlan,
+} from "@/lib/api/billing"
+export {
   searchCards,
   fetchCardById,
   fetchCardLibrary,

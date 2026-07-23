@@ -9,6 +9,9 @@ export type AuthUser = {
   user_name: string
   email: string
   role: string
+  subscription_status?: string
+  subscription_type?: string
+  is_subscribed?: boolean
 }
 
 export type LoginResponse = {

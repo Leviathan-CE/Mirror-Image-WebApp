@@ -9,7 +9,9 @@ from app.routers import health
 from app.routers import card_manager
 from app.routers import admin_cards
 from app.routers import auth
+from app.routers import billing
 from app.routers import decks
+from app.settings import frontend_origins
 
 """
 Application entry point for the Mirror Image API.
@@ -32,12 +34,7 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="Mirror Image API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=frontend_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -68,6 +65,7 @@ async def thumbnail_cache_headers(request, call_next):
 
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(billing.router)
 app.include_router(decks.router)
 app.include_router(admin_cards.router)
 app.include_router(card_manager.router)

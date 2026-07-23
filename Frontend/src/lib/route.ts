@@ -12,6 +12,9 @@ export const ROUTES = {
   REGISTER: "/register",
   DECK_COMUNITY: "/comunity_decks",
 
+  /** Stripe subscription / billing. */
+  SUBSCRIBE: "/subscribe",
+
   /** Admin console (role: admin). */
   ADMIN: "/admin",
   ADMIN_CARDS: "/admin/cards",

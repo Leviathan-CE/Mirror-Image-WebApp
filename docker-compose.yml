@@ -33,6 +33,14 @@ services:
       DB_NAME: ${POSTGRES_DB:-mirror_image}
       JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-mirror-image}
       JWT_EXPIRE_HOURS: ${JWT_EXPIRE_HOURS:-168}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_ID: ${STRIPE_PRICE_ID:-}
+      STRIPE_SUBSCRIPTION_TYPE: ${STRIPE_SUBSCRIPTION_TYPE:-standard supporter}
+      # Single source for public site URL + CORS/Stripe allowlist (see app/settings.py)
+      APP_ENV: ${APP_ENV:-development}
+      FRONTEND_URL: ${FRONTEND_URL:-http://127.0.0.1:3000}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-}
     ports:
       - "8000:8000"
     # Named volume — same idea as production: art lives in the container
