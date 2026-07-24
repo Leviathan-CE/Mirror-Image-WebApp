@@ -153,7 +153,7 @@ export function FreeFloatSurface({
           <div
             key={card.instanceId}
             className={cn(
-              "absolute touch-none transition-transform duration-200 ease-out",
+              "absolute touch-none transition-transform duration-250 ease-out",
               isDragging ? "z-20 cursor-grabbing" : "z-10 cursor-grab",
               card.expended && "rotate-90"
             )}
