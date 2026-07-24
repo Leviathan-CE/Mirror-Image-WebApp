@@ -5,46 +5,40 @@
  * - Owner can edit name, description, visibility, and categories.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
 import { sharedImages } from "@/assets"
 import { GlitchFx } from "@/components/effects/GlitchFx"
+import { DeckBoard } from "@/components/decks/DeckBoard"
 import { DeckCardSearch } from "@/components/decks/DeckCardSearch"
 import {
   DeckCardSortControls,
   type DeckCardSortMode,
 } from "@/components/decks/DeckCardSortControls"
-import { DeckCategorySection } from "@/components/decks/DeckCategorySection"
-import { DeckPilotSlot } from "@/components/decks/DeckPilotSlot"
-import { NewSectionDropZone } from "@/components/decks/NewSectionDropZone"
 import {
   cardsFromDragPayload,
-  deckCardSelectionKey,
   type DeckCardDragPayload,
 } from "@/components/decks/DeckCardStack"
 import "@/components/decks/DeckCardStack.css"
 import {
   applyCardMove,
-  augmentCards,
   augmentCategory,
   canAddCopyToMain,
-  cardsByCategory,
   clampQuantityToMax,
   deckCardCount,
   mainCategoryId,
   maxCopiesForCategory,
   nextCardQuantity,
   nextNewSectionName,
-  orderedSelectionKeys,
   pilotCard,
   pilotCategory,
   removeCardEntry,
-  selectionRangeKeys,
-  toggleSelectionKey,
   withCardEntry,
 } from "@/components/decks/deckLogic"
+import { useCardSelection } from "@/hooks/useCardSelection"
+import { useDeckDetail } from "@/hooks/useDeckDetail"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu } from "@/components/ui/DropdownMenu"
 import { EditBox } from "@/components/ui/EditBox"
@@ -56,14 +50,12 @@ import {
   createDeckCategory,
   deleteDeckCategory,
   deckCoverUrl,
-  fetchDeckDetail,
   PILOT_SECTION_NAME,
   removeDeckCard,
   updateDeck,
   updateDeckCard,
   updateDeckCategory,
   type DeckCardEntry,
-  type DeckDetail,
 } from "@/lib/api/decks"
 import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
@@ -74,9 +66,15 @@ export function DeckPage() {
   const navigate = useNavigate()
   const { user, token, isAuthenticated } = useAuth()
 
-  const [deck, setDeck] = useState<DeckDetail | null>(null)
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading")
-  const [errorText, setErrorText] = useState("")
+  const {
+    deck,
+    setDeck,
+    status,
+    errorText,
+    setErrorText,
+    loadDeck: reloadDeck,
+  } = useDeckDetail(deckId, token)
+
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [name, setName] = useState("")
@@ -84,109 +82,36 @@ export function DeckPage() {
   const [isPublic, setIsPublic] = useState(false)
   const [searchMenuOpen, setSearchMenuOpen] = useState(false)
   const [cardSortMode, setCardSortMode] = useState<DeckCardSortMode>("type")
-  const [selectedKeys, setSelectedKeys] = useState<ReadonlySet<string>>(
-    () => new Set()
-  )
-  const selectionAnchorKeyRef = useRef<string | null>(null)
 
   const canEdit =
     Boolean(deck && user && deck.author_name === user.user_name && token)
 
-  const clearCardSelection = useCallback((card?: DeckCardEntry) => {
-    setSelectedKeys(new Set())
-    if (card) {
-      selectionAnchorKeyRef.current = deckCardSelectionKey(
-        card.category_id,
-        card.card_id
-      )
-    }
-  }, [])
+  const { selectedKeys, selectCard, clearCardSelection } = useCardSelection({
+    deck,
+    sortMode: cardSortMode,
+    enabled: canEdit,
+  })
 
-  const selectCard = useCallback(
-    (card: DeckCardEntry, mode: "toggle" | "range") => {
-      const key = deckCardSelectionKey(card.category_id, card.card_id)
-
-      if (mode === "toggle") {
-        selectionAnchorKeyRef.current = key
-        setSelectedKeys((prev) => toggleSelectionKey(prev, key))
-        return
+  const loadDeck = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      const detail = await reloadDeck(opts)
+      if (detail) {
+        setName(detail.name ?? "")
+        setDescription(detail.description ?? "")
+        setIsPublic(detail.is_public)
       }
-
-      // range (Shift+click)
-      if (!deck) {
-        selectionAnchorKeyRef.current = key
-        setSelectedKeys(new Set([key]))
-        return
-      }
-
-      const orderedKeys = orderedSelectionKeys(
-        deck.cards,
-        deck.categories,
-        cardSortMode
-      )
-      const anchorKey = selectionAnchorKeyRef.current
-      const targetIndex = orderedKeys.indexOf(key)
-      const anchorIndex =
-        anchorKey != null ? orderedKeys.indexOf(anchorKey) : -1
-
-      if (targetIndex < 0 || anchorIndex < 0) {
-        selectionAnchorKeyRef.current = key
-      }
-      setSelectedKeys(
-        new Set(selectionRangeKeys(orderedKeys, anchorKey, key))
-      )
     },
-    [deck, cardSortMode]
+    [reloadDeck]
   )
 
+  // Keep edit-form fields aligned when the shared hook loads/reloads this deck.
   useEffect(() => {
-    if (!canEdit) {
-      clearCardSelection()
-      selectionAnchorKeyRef.current = null
-      return
-    }
+    if (status !== "ready" || !deck) return
+    setName(deck.name ?? "")
+    setDescription(deck.description ?? "")
+    setIsPublic(deck.is_public)
+  }, [status, deck?.id])
 
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") clearCardSelection()
-    }
-
-    window.addEventListener("keydown", onKeyDown)
-    return () => window.removeEventListener("keydown", onKeyDown)
-  }, [canEdit, clearCardSelection])
-
-  const loadDeck = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!Number.isFinite(deckId) || deckId <= 0) {
-      setStatus("error")
-      setErrorText("Invalid deck id.")
-      return
-    }
-
-    if (!opts?.silent) setStatus("loading")
-    try {
-      const detail = await fetchDeckDetail(deckId, token)
-      setDeck(detail)
-      setName(detail.name ?? "")
-      setDescription(detail.description ?? "")
-      setIsPublic(detail.is_public)
-      setStatus("ready")
-    } catch (error) {
-      setDeck(null)
-      setStatus("error")
-      if (error instanceof ApiError) {
-        setErrorText(
-          error.status === 404
-            ? "Deck not found or you do not have access."
-            : "Could not load this deck."
-        )
-      } else {
-        setErrorText("Could not reach the server.")
-      }
-    }
-  }, [deckId, token])
-
-  useEffect(() => {
-    void loadDeck()
-  }, [loadDeck])
 
   // After re-uploading art elsewhere, refresh timestamps so ?v= updates.
   useEffect(() => {
@@ -888,6 +813,7 @@ export function DeckPage() {
                           {deck.is_public ? "PUBLIC" : "PRIVATE"}
                         </span>
                       </div>
+                     
                       <p className="mt-2 font-buahs93 text-sm text-cyan-200/70">
                         by {deck.author_name}
                       </p>
@@ -899,9 +825,20 @@ export function DeckPage() {
                       <p className="mt-3 font-mono text-xs text-cyan-300/60">
                         {deck.card_count} cards · {deck.categories.length} sections
                       </p>
+
                     </>
                   )}
+
                 </div>
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <GlitchFx
+                  type="button"
+                  label="PLAY TEST"
+                  className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900"
+                  onClick={() => navigate(ROUTES.playTester(deckId))}
+                />
               </div>
             </header>
 
@@ -929,99 +866,24 @@ export function DeckPage() {
               />
             </div>
 
-            <div
-              className={cn(
-                "deck-board",
-                searchMenuOpen && "pointer-events-none"
-              )}
-              onMouseDown={(event) => {
-                if (event.target === event.currentTarget) clearCardSelection()
-              }}
-            >
-              <div className="deck-board__slot flex flex-col gap-4">
-                <DeckPilotSlot
-                  pilot={pilotCard(deck.cards, deck.categories)}
-                  canEdit={canEdit}
-                  disabled={saving}
-                  onDropCard={(payload) =>
-                    assignPilot(payload.cardId, payload.fromCategoryId)
-                  }
-                  onClear={canEdit ? onClearPilot : undefined}
-                />
-                {augmentCategory(deck.categories) ? (
-                  <DeckCategorySection
-                    category={augmentCategory(deck.categories)!}
-                    cards={augmentCards(
-                      deck.cards,
-                      deck.categories,
-                      cardSortMode
-                    )}
-                    canEdit={canEdit}
-                    disabled={saving}
-                    reserved
-                    selectedKeys={selectedKeys}
-                    onSelectCard={selectCard}
-                    onClearSelect={clearCardSelection}
-                    onRename={async () => undefined}
-                    onDelete={async () => undefined}
-                    onCardDrop={(payload) =>
-                      addAugment(payload.cardId, payload.fromCategoryId)
-                    }
-                    onQuantityDelta={onQuantityDelta}
-                  />
-                ) : canEdit ? (
-                  <DeckCategorySection
-                    category={{
-                      id: -1,
-                      name: AUGMENT_SECTION_NAME,
-                      sort_order: -2,
-                    }}
-                    cards={[]}
-                    canEdit={canEdit}
-                    disabled={saving}
-                    reserved
-                    selectedKeys={selectedKeys}
-                    onSelectCard={selectCard}
-                    onClearSelect={clearCardSelection}
-                    onRename={async () => undefined}
-                    onDelete={async () => undefined}
-                    onCardDrop={(payload) =>
-                      addAugment(payload.cardId, payload.fromCategoryId)
-                    }
-                  />
-                ) : null}
-              </div>
-              {cardsByCategory(
-                deck.cards,
-                deck.categories,
-                cardSortMode
-              ).map(
-                ({ category, cards }) => (
-                  <DeckCategorySection
-                    key={category.id}
-                    category={category}
-                    cards={cards}
-                    canEdit={canEdit}
-                    disabled={saving}
-                    selectedKeys={selectedKeys}
-                    onSelectCard={selectCard}
-                    onClearSelect={clearCardSelection}
-                    onRename={(name) => onRenameCategory(category.id, name)}
-                    onDelete={() => onDeleteCategory(category.id)}
-                    onCardDrop={(payload) =>
-                      onDropCardsToCategory(payload, category.id)
-                    }
-                    onQuantityDelta={onQuantityDelta}
-                  />
-                )
-              )}
-              {canEdit ? (
-                <NewSectionDropZone
-                  disabled={saving}
-                  onDropCard={onCreateSectionFromDrop}
-                />
-              ) : null}
-            </div>
+            <DeckBoard
+              deck={deck}
+              sortMode={cardSortMode}
+              canEdit={canEdit}
+              disabled={saving}
+              interactionLocked={searchMenuOpen}
+              selectedKeys={selectedKeys}
+              onSelectCard={selectCard}
+              onClearSelect={clearCardSelection}
+              onRenameCategory={onRenameCategory}
+              onDeleteCategory={onDeleteCategory}
+              onDropToCategory={onDropCardsToCategory}
+              onQuantityDelta={onQuantityDelta}
+              onAssignPilot={assignPilot}
+              onClearPilot={canEdit ? onClearPilot : undefined}
+              onAddAugment={addAugment}
+              onCreateSectionFromDrop={onCreateSectionFromDrop}
+            />
           </>
         ) : null}
       </div>
