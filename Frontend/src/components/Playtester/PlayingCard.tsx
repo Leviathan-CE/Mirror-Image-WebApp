@@ -32,6 +32,7 @@ export function PlayingCard({ card, className}: PlayingCardProps) {
           alt=""
           className="h-full w-full object-cover"
           draggable={false}
+       
         />
       ) : (
         <span className="flex h-full items-center justify-center px-2 text-center font-mono text-[10px] text-cyan-100/80">
