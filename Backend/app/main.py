@@ -11,7 +11,7 @@ from app.routers import admin_cards
 from app.routers import auth
 from app.routers import billing
 from app.routers import decks
-from app.settings import frontend_origins
+from app.settings import frontend_origins, is_dev
 
 """
 Application entry point for the Mirror Image API.
@@ -35,6 +35,10 @@ app = FastAPI(title="Mirror Image API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=frontend_origins(),
+    # Dev: any localhost / 127.0.0.1 port (Vite 5173, preview, etc.)
+    allow_origin_regex=(
+        r"https?://(localhost|127\.0\.0\.1)(:\d+)?" if is_dev() else None
+    ),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

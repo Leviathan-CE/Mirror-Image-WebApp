@@ -11,6 +11,7 @@ export const ROUTES = {
   LOGIN: "/login",
   REGISTER: "/register",
   DECK_COMUNITY: "/comunity_decks",
+  PLAY_TESTER: "/play_tester",
 
   /** Stripe subscription / billing. */
   SUBSCRIBE: "/subscribe",
@@ -23,6 +24,10 @@ export const ROUTES = {
   /** Build a deck detail URL — never navigate to bare "/decks". */
   deck: (deckId: string | number) => `/decks/${deckId}` as const,
   DECK_PATTERN: "/decks/:deckId",
+
+  //pick a deck and send it to play tester
+  playTester: (deckId: string | number) => `/play_tester/${deckId}` as const,
+  PLAY_TESTER_PATTERN: "/play_tester/:deckId",
 } as const
 
 export const ADMIN_ROLE = "admin" as const
