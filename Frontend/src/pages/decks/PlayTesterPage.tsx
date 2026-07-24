@@ -12,6 +12,7 @@ import {
   deckEntryToPlayInstance,
   moveCardtoBack,
   moveCardtoFront,
+  toggleExpended,
   type PlayingCardInstance,
 } from "@/components/Playtester/types"
 import { useDeckDetail } from "@/hooks/useDeckDetail"
@@ -56,6 +57,10 @@ export function PlayTesterPage() {
   function onSendToBack(instanceId:string){
     setFloatCards((prev)=> moveCardtoBack(prev, instanceId))
   }
+  function onToggleExpended(instanceId:string){
+    setFloatCards((prev) => toggleExpended(prev,instanceId))
+  }
+
 
   return (
     <section
@@ -78,6 +83,7 @@ export function PlayTesterPage() {
             onMoveCard={onMoveCard}
             onBringToFront={onBringToFront}
             onSendToBack={onSendToBack}
+            onToggleExpended={onToggleExpended}
           />
         ) : null}
       </div>

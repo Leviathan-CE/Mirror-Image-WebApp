@@ -82,3 +82,18 @@ export function moveCardtoBack(
   next.unshift(card)
   return next
 }
+
+/**
+ * Toggles state from expended to ready and visa versa
+ * @param cards
+ * @param instanceId
+ * @returns list with a card expended var changed
+ */
+export function toggleExpended(
+  cards: PlayingCardInstance[],
+  instanceId: string
+): PlayingCardInstance[] {
+  return cards.map((c) =>
+    c.instanceId === instanceId ? { ...c, expended: !c.expended } : c
+  )
+}

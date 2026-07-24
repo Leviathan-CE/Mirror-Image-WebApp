@@ -2,11 +2,13 @@
  * Free-float play surface — drag cards by {x,y} only.
  */
 
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 
 import { PlayingCard } from "@/components/Playtester/PlayingCard"
-import type { PlayingCardInstance } from "@/components/Playtester/types"
+import { toggleExpended, type PlayingCardInstance } from "@/components/Playtester/types"
 import { cn } from "@/lib/utils"
+import { CardEnlargeOverlay } from "./CardenlargeOverlay"
+import { cardArtUrl } from "@/lib/api/decks"
 
 const DRAG_THRESHOLD_PX = 5
 
@@ -14,8 +16,9 @@ export type FreeFloatSurfaceProps = {
   cards: PlayingCardInstance[]
   className?: string
   onMoveCard: (instanceId: string, x: number, y: number) => void
-  onBringToFront: (instanceId:string) => void
-  onSendToBack: (instanceId:string) => void
+  onBringToFront: (instanceId: string) => void
+  onSendToBack: (instanceId: string) => void
+  onToggleExpended: (instanceId:string) => void
 }
 
 type DragState = {
@@ -33,11 +36,30 @@ export function FreeFloatSurface({
   className,
   onMoveCard,
   onBringToFront,
-  onSendToBack
+  onToggleExpended,
+  //onSendToBack
 }: FreeFloatSurfaceProps) {
   const surfaceRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragState | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
+
+  const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
+  useEffect(() => {
+    if (!enlarged) return
+
+    function release() {
+      setEnlarged(null)
+    }
+
+    // Surface uses pointer events; listen for pointerup (mouseup alone can miss).
+    window.addEventListener("pointerup", release)
+    window.addEventListener("blur", release)
+    return () => {
+      window.removeEventListener("pointerup", release)
+      window.removeEventListener("blur", release)
+    }
+  }, [enlarged])
+
 
   function clientToLocal(clientX: number, clientY: number) {
     const surface = surfaceRef.current
@@ -53,11 +75,16 @@ export function FreeFloatSurface({
     event: ReactPointerEvent<HTMLDivElement>,
     card: PlayingCardInstance
   ) {
-    
-    if (event.button !== 0) return 
-    onBringToFront(card.instanceId)   
+
+    if (event.button === 1) {
+      event.preventDefault()
+      setEnlarged(card)
+      return
+    }
+    if (event.button !== 0) return
+    onBringToFront(card.instanceId)
     event.preventDefault()
-    
+
 
     const local = clientToLocal(event.clientX, event.clientY)
     const x = card.x ?? 0
@@ -102,15 +129,14 @@ export function FreeFloatSurface({
     dragRef.current = null
     setDraggingId(null)
     try {
-      
+
       event.currentTarget.releasePointerCapture(event.pointerId)
-     
+
     } catch {
       /* already released */
     }
-    
-  }
 
+  } 
 
   return (
     <div
@@ -127,8 +153,9 @@ export function FreeFloatSurface({
           <div
             key={card.instanceId}
             className={cn(
-              "absolute touch-none",
-              isDragging ? "z-20 cursor-grabbing" : "z-10 cursor-grab"
+              "absolute touch-none transition-transform duration-200 ease-out",
+              isDragging ? "z-20 cursor-grabbing" : "z-10 cursor-grab",
+              card.expended && "rotate-90"
             )}
             style={{
               left: card.x ?? 0,
@@ -138,11 +165,18 @@ export function FreeFloatSurface({
             onPointerMove={onCardPointerMove}
             onPointerUp={endDrag}
             onPointerCancel={endDrag}
+            onDoubleClick={() => onToggleExpended(card.instanceId)}
           >
             <PlayingCard card={card} />
           </div>
         )
       })}
+
+      <CardEnlargeOverlay
+        open={enlarged != null}
+        name={enlarged?.name ?? ""}
+        artSrc={enlarged ? cardArtUrl(enlarged.artPath, enlarged.artVersion) : null}
+      />
     </div>
   )
 }
