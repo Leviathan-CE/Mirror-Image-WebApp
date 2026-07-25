@@ -13,7 +13,7 @@ from psycopg2.extras import Json
 
 from app.db import get_connection
 from app.card_publish import catalogue_visibility_sql, get_optional_include_preview
-from app.security import get_optional_is_admin
+from app.security import get_current_admin_user_id, get_optional_is_admin
 
 logger = logging.getLogger(__name__)
 
@@ -208,8 +208,11 @@ def _slugify(value: str) -> str:
 
 
 @router.post("/", response_model=CardCreated, status_code=201)
-def create_card(body: CardCreate):
-    """Create a card row in Postgres and return its id and name."""
+def create_card(
+    body: CardCreate,
+    _admin_id: int = Depends(get_current_admin_user_id),
+):
+    """Create a card row in Postgres and return its id and name. Admin only."""
 
     insert_cols = {
         "id": body.id,
@@ -767,8 +770,12 @@ def get_card_by_name(
 
 
 @router.post("/{card_id}/thumbnail", response_model=CardThumbnailUploaded)
-async def upload_card_thumbnail(card_id: int, file: UploadFile = File(...)):
-    """Upload a card thumbnail, persist it on disk, and store its path."""
+async def upload_card_thumbnail(
+    card_id: int,
+    file: UploadFile = File(...),
+    _admin_id: int = Depends(get_current_admin_user_id),
+):
+    """Upload a card thumbnail, persist it on disk, and store its path. Admin only."""
 
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="thumbnail_must_be_image")
