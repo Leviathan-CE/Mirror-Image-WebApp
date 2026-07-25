@@ -12,7 +12,7 @@ from psycopg2.errors import CheckViolation, DataError, NotNullViolation, UniqueV
 from psycopg2.extras import Json
 
 from app.db import get_connection
-from app.card_publish import catalogue_visibility_sql
+from app.card_publish import catalogue_visibility_sql, get_optional_include_preview
 from app.security import get_optional_is_admin
 
 logger = logging.getLogger(__name__)
@@ -302,19 +302,22 @@ def search_cards(
     q: str = Query(min_length=1, max_length=80),
     limit: int = Query(default=12, ge=1, le=40),
     is_admin: bool = Depends(get_optional_is_admin),
+    include_preview: bool = Depends(get_optional_include_preview),
 ):
     """
     Typeahead search by card name.
 
     Prefers prefix matches, then substring matches.
-    Skips deprecated cards. Non-admins only see published cards;
-    admins see the full catalogue (including preview / not published).
+    Skips deprecated cards. Non-subscribers only see published cards;
+    subscribers also see preview; admins see the full catalogue.
     """
     needle = q.strip()
     if not needle:
         return []
 
-    visibility = catalogue_visibility_sql("c", bypass=is_admin)
+    visibility = catalogue_visibility_sql(
+        "c", bypass=is_admin, include_preview=include_preview
+    )
 
     try:
         with get_connection() as conn:
@@ -448,10 +451,15 @@ def _sql_card_matches_stl() -> str:
 @router.get("/facets", response_model=CardLibraryFacets)
 def card_library_facets(
     is_admin: bool = Depends(get_optional_is_admin),
+    include_preview: bool = Depends(get_optional_include_preview),
 ):
     """Distinct filter values for the card library UI."""
-    visibility = catalogue_visibility_sql("cards", bypass=is_admin)
-    visibility_c = catalogue_visibility_sql("c", bypass=is_admin)
+    visibility = catalogue_visibility_sql(
+        "cards", bypass=is_admin, include_preview=include_preview
+    )
+    visibility_c = catalogue_visibility_sql(
+        "c", bypass=is_admin, include_preview=include_preview
+    )
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
@@ -537,17 +545,21 @@ def browse_card_library(
     limit: int = Query(default=48, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     is_admin: bool = Depends(get_optional_is_admin),
+    include_preview: bool = Depends(get_optional_include_preview),
 ):
     """
     Browse / filter the card catalogue.
 
     Name search (`q`) uses the same closest-match ranking as `/cards/search`
     (prefix first, then substring, shorter names preferred).
-    Non-admins only see published cards; admins see the full catalogue.
+    Non-subscribers only see published cards; subscribers also see preview;
+    admins see the full catalogue.
     """
     where = [
         "is_deprecated = false",
-        catalogue_visibility_sql("cards", bypass=is_admin),
+        catalogue_visibility_sql(
+            "cards", bypass=is_admin, include_preview=include_preview
+        ),
     ]
     params: dict[str, Any] = {"limit": limit, "offset": offset}
 
@@ -691,6 +703,7 @@ def browse_card_library(
 def get_card_by_id(
     card_id: int,
     is_admin: bool = Depends(get_optional_is_admin),
+    include_preview: bool = Depends(get_optional_include_preview),
 ):
     """Fetch a card by primary key (Unity barcode id)."""
     if card_id <= 0:
@@ -699,7 +712,7 @@ def get_card_by_id(
     sql = (
         _CARD_SELECT_SQL
         + " WHERE id = %(card_id)s"
-        + f" AND {catalogue_visibility_sql('cards', bypass=is_admin)}"
+        + f" AND {catalogue_visibility_sql('cards', bypass=is_admin, include_preview=include_preview)}"
     )
     try:
         with get_connection() as conn:
@@ -722,6 +735,7 @@ def get_card_by_id(
 def get_card_by_name(
     card_name: str,
     is_admin: bool = Depends(get_optional_is_admin),
+    include_preview: bool = Depends(get_optional_include_preview),
 ):
     """Fetch a card by exact card name (case-insensitive)."""
     normalized_name = card_name.replace("+", " ").strip()
@@ -729,7 +743,7 @@ def get_card_by_name(
     sql = (
         _CARD_SELECT_SQL
         + " WHERE LOWER(card_name) = LOWER(%(card_name)s)"
-        + f" AND {catalogue_visibility_sql('cards', bypass=is_admin)}"
+        + f" AND {catalogue_visibility_sql('cards', bypass=is_admin, include_preview=include_preview)}"
         + " ORDER BY id DESC LIMIT 1"
     )
     try:

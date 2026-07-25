@@ -1,6 +1,7 @@
 /**
  * Card catalog API (search / library browse / lookup).
- * Pass an auth token when available so admin JWTs bypass publish filtering.
+ * Pass an auth token when available so admin / subscriber JWTs unlock
+ * unpublished or preview cards (server-side publish gate).
  */
 
 import { apiBaseUrl, authHeaders, readJsonOrThrow } from "@/lib/api/client"
