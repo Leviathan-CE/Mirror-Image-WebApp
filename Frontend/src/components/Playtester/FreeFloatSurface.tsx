@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 
 import { PlayingCard } from "@/components/Playtester/PlayingCard"
-import { toggleExpended, type PlayingCardInstance } from "@/components/Playtester/types"
+import { type PlayingCardInstance } from "@/components/Playtester/types"
 import { cn } from "@/lib/utils"
 import { CardEnlargeOverlay } from "./CardenlargeOverlay"
 import { cardArtUrl } from "@/lib/api/decks"
