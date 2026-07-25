@@ -1,3 +1,4 @@
+export { Important } from "./Important"
 export { Note } from "./Note"
 export { Section, SectionLink, Subsection } from "./Section"
 export { TableOfContents, BackToTocButton, collectTocSpyIds, type TocEntry } from "./TableOfContents"

@@ -16,6 +16,7 @@ import {
   createPortalSession,
   fetchBillingPlan,
   fetchBillingStatus,
+  syncBillingFromStripe,
   type BillingPlan,
   type BillingStatus,
 } from "@/lib/api/billing"
@@ -48,7 +49,7 @@ export function SubscribePage() {
   useEffect(() => {
     if (params.get("success") === "1") {
       setInfoText(
-        "Payment complete "
+        "Payment complete — syncing your subscription…"
       )
     } else if (params.get("canceled") === "1") {
       setInfoText("Checkout canceled. You can try again anytime.")
@@ -73,21 +74,49 @@ export function SubscribePage() {
     if (!token) return
 
     let cancelled = false
-    void fetchBillingStatus(token)
-      .then((data) => {
-        if (!cancelled) setStatus(data)
+    const afterCheckout = params.get("success") === "1"
+
+    // After Checkout, pull Stripe → DB so entitlement works even if the webhook
+    // was missed (common locally when `stripe listen` is not running).
+    const statusPromise = afterCheckout
+      ? syncBillingFromStripe(token)
+      : fetchBillingStatus(token)
+
+    void statusPromise
+      .then(async (data) => {
+        if (cancelled) return
+        setStatus(data)
+        if (afterCheckout && data.is_subscribed) {
+          setInfoText("Payment complete — subscription is active.")
+        }
+        // Refresh /auth/me so header/gates see the new entitlement.
+        try {
+          const fresh = await fetchCurrentUser(token)
+          if (!cancelled) setSession(token, fresh)
+        } catch {
+          /* keep existing session */
+        }
       })
       .catch(() => {
-        if (!cancelled) setStatus(null)
+        if (!cancelled) {
+          setStatus(null)
+          if (afterCheckout) {
+            setInfoText(
+              "Payment may have succeeded, but we could not sync yet. Refresh in a moment."
+            )
+          }
+        }
       })
 
-    void fetchCurrentUser(token)
-      .then((fresh) => {
-        if (!cancelled) setSession(token, fresh)
-      })
-      .catch(() => {
-        /* keep existing session */
-      })
+    if (!afterCheckout) {
+      void fetchCurrentUser(token)
+        .then((fresh) => {
+          if (!cancelled) setSession(token, fresh)
+        })
+        .catch(() => {
+          /* keep existing session */
+        })
+    }
 
     return () => {
       cancelled = true

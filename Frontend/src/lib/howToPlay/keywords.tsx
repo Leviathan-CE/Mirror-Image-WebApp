@@ -16,10 +16,10 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
     name: "AIRBORNE",
     text: "Only assets with Airborne or Long Range can attack this entity.",
   },
-  {
-    name: "BLITZ",
-    text: "This entity can attack the turn it enters the battlefield.",
-  },
+  // {
+  //   name: "BLITZ",
+  //   text: "This entity can attack the turn it enters the battlefield.",
+  // },
   {
     name: "BLOCK X",
     text: "When you block with a unit, augment, or cyberspell to reduce the damage an asset would deal, reduce it by an additional X.",

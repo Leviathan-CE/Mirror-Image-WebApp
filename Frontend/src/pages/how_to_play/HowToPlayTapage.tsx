@@ -3,6 +3,7 @@ import { useState, type CSSProperties, type ReactNode } from "react"
 import { Link } from "react-router-dom"
 import {
     BackToTocButton,
+    Important,
     Note,
     Section,
     SectionLink,
@@ -425,7 +426,7 @@ export function HowToPlayPage() {
                                         <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
                                         <li>Trigger any ability with the <GameIcon name="endTurn" /> tag.</li>
                                         <li>Players Lose any unspent resources in your resource pool (not your stockpile).</li>
-                                        <li>You draw cards until you have cards in hand equal to your pilots <GameIcon name="hand_size"/>. if you have no cards left in deck instead loose 1 life for each card you would have drawn to get to your pilots <GameIcon name="hand_size"/></li>
+                                        <li>You draw cards until you have cards in hand equal to your pilots <GameIcon name="hand_size"/>-2. if you have no cards left in deck instead loose 1 life for each card you would have drawn to get to your pilots <GameIcon name="hand_size"/>-2</li>
                                     </ol>
                                 </div>
                             </div>
@@ -433,12 +434,12 @@ export function HowToPlayPage() {
 
                         <Section id="reading-cards" title="Reading Your Cards">
 
-                            <p className="rounded border-l-2 border-red-400 bg-red-900/40 px-3 py-6 text-base lg:text-lg 2xl:text-xl">
+                            <Important>
                                 <Term>! Important !</Term> If there is a conflict between a card's
                                 text and this rulebook, follow the text on the card. Cards often
                                 have abilities that get around the rules to make things exciting,
                                 weird, or interesting.
-                            </p>
+                            </Important>
 
                             <div className="mx-auto flex w-full max-w justify-center">
                                 <img
@@ -471,11 +472,11 @@ export function HowToPlayPage() {
                                 corresponding base type shown in [ ]. Many cards also have subtypes,
                                 which can affect what the card does as well.
                             </p>
-                            <p className="rounded border-l-2 border-red-400 bg-red-900/40 px-3 py-6 text-base lg:text-lg 2xl:text-xl">
+                            <Important>
                                 <Term>! Important !</Term> Whenever an ability, effect, or text uses
                                 the word "this," it always refers to the card it is printed on,
                                 regardless of context.
-                            </p>
+                            </Important>
 
 
                             <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Base Types</h3>
@@ -660,9 +661,7 @@ export function HowToPlayPage() {
                                 pay the cost, you must have the required resources in your resource
                                 pool&mdash;an imaginary area where resources go when a card says to
                                 "add" a resource of the color you need; they stay there until the end
-                                of the turn. Most resource tokens have two abilities, the first is always the following
-                                even if it is not printed on the card: "<GameIcon name="expend"/>,<GameIcon name="dismantle"/>: Add one resoruce of its respective colours to
-                                your resource pool".
+                                of the turn.
 
                                 <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                     <img
@@ -676,16 +675,16 @@ export function HowToPlayPage() {
                             <p>
                                 For example, say I want to play the Needle Jet card. I need a
                                 RAM (blue) and Unit of Power (yellow) in my resource pool to play the card. I
-                                already have a RAM and a unit of Power readied in my stockpile, and each
-                                has two abilities: the first adds a resource of its respective color to my
-                                pool when I expend the resource card as a cost; the second makes me
-                                lose 1 life and dismantle the resource, then adds 2 of its respective
-                                color.
+                                already have a RAM and a unit of Power readied in my stockpile: 
+                                I then activate the RAM's ability of "<GameIcon name="expend"/>: Add a <GameIcon name="ram"/> to your resource pool"
+                                by turing the ram sideways as that is the cost then. i get to add a <GameIcon name="ram"/> to 
+                                my resource pool.
+            
                             </p>
                             <p>
-                                Because I have what I need, I'll expend both the RAM and Spirit Power
+                                Because I have what I need, I'll expend both the RAM and Unit of Power
                                 resources, which adds resources of the respective color when I expend
-                                them, as shown in the image below.
+                                them, as shown in the images below.
 
                                 <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                     <img
@@ -707,7 +706,7 @@ export function HowToPlayPage() {
                             <p>
                                 Once you have paid the cost by removing the resources in your resource pool equal to the invoke cost&mdash;and if the card says to target, you
                                 must have legal targets before you play the card, or you cannot play
-                                it&mdash;reveal the card you intend to play. It goes to the lock; declare its legal targets, then trigger any{" "}
+                                it; then reveal the card you intend to play. It goes to the lock; declare its legal targets, then trigger any{" "}
                                 <GameIcon name="invoke" /> tags printed on the card and resolve those tags immediately.
                             </p>
 
@@ -748,19 +747,24 @@ export function HowToPlayPage() {
                             >
                                 How to Attack
                             </h3>
+                            <p>
+                                Attakcing is the primary way to get damage in along with potentailly reducing you opponents resources
+                                on there turn to mount a counter attack. <Important> NOTE: Damage stays marked on a unit turn after turn. you can heal the damage
+                                    with cards and effect that say to heal it. </Important>
+                            </p>
                             <ol className="list-decimal space-y-1 pl-6">
-                                <li>Choose unit(s) that did not enter play this turn (units with Blitz qualify), play a cyberspell strike card, or activate an augment that says it makes an attack. When attacking with multiple units, the group is considered a single attack and must share the same target, but each attacker is treated separately for blocking purposes. you can combine units, strikes and weapon attacks together, just keep inmind both weapon attacks and strike use the lock so you can only combine one of those at a time with other units.</li>
+                                <li>Choose unit(s), play a cyberspell strike card, or activate an augment that says it makes an attack. When attacking with multiple units, the group is considered a single attack and must share the same target, but each attacker is treated separately for blocking purposes. </li>
                                 <li>Expend the chosen unit(s), declare an attack target (another unit or an opponent), and trigger the <GameIcon name="attack" /> abilities of the attacking units.</li>
                                 <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
                                 <li>
-                                    Block incoming damage. You may, in any order:
+                                    Block incoming damage. you can do so only for attacks that target you directly. You may, in any order:
                                     <ul className="list-disc space-y-1 pl-6 pt-1">
                                         <li>Discard any number of cards in hand with a <GameIcon name="threat_lvl" /> rating. The maximuim a card can block using its <GameIcon name="threat_lvl" /> is 3, however the block keyword can increase this limit. add the discarded cards together, and reduce the damage from an attacker of your choice by that total.</li>
                                         <li>Expend any number of augments you control, choose an attacker for each, reduce the incoming damage by that augment's <GameIcon name="threat_lvl" /> rating, and add a depletion counter to that augment.</li>
                                     </ul>
                                 </li>
-                                <li>Deal Preemptive Strike damage equal to your <GameIcon name="threat_lvl" />.</li>
-                                <li>If you did not already deal Preemptive Strike damage, deal damage equal to your <GameIcon name="threat_lvl" /> to the target of your attack. If the target is readied, it deals damage equal to its <GameIcon name="threat_lvl" /> back to the attacker. Damage dealt this way is simultaneous.</li>
+                                <li>The attacker(s) Deal Preemptive Strike damage equal to your <GameIcon name="threat_lvl" />.</li>
+                                <li>If the attacker(s) did not already deal Preemptive Strike damage, they deal damage equal to thier <GameIcon name="threat_lvl" /> to the target of your attack. If the target is readied, it deals damage equal to its <GameIcon name="threat_lvl" /> back to the attacker divide how the defender chooses. Damage dealt this way is simultaneous.</li>
                                 <li>If a unit's damage is greater than or equal to its <GameIcon name="threat_lvl" /> rating, it is defeated (the only exception being the Durable keyword), triggering its <GameIcon name="defeated" /> tag if it had one, along with any other triggered abilities that care about being defeated. A defeated unit goes to the discard pile.</li>
                                 <li>Any damage directed at a player that was not blocked or redirected is dealt as loss of life to that player. Then the attack ends.</li>
                             </ol>
@@ -972,12 +976,12 @@ export function HowToPlayPage() {
                                 will play. Almost always their ability text is displayed on the card;
                                 if not, here is the full list.
                             </p>
-                            <p className="rounded border-l-2 border-red-400 bg-red-900/40 px-3 py-6 text-base lg:text-lg 2xl:text-xl">
+                            <Important>
                                 <Term>! Important !</Term> Multiple instances of the same keyword on
                                 one entity do not stack, unless that keyword has a numerical value; in
                                 that case, they add together. Any keyword with X has a numerical
                                 value.
-                            </p>
+                            </Important>
                             <dl className="space-y-3">
                                 {KEYWORDS.map((keyword) => (
                                     <div key={keyword.name} className="grid gap-1 sm:grid-cols-[200px_1fr]">
@@ -1011,27 +1015,26 @@ export function HowToPlayPage() {
                                             <th className="py-2 pr-4">Deck size</th>
                                             <th className="py-2 pr-4">Capacity (# cards)</th>
                                             <th className="py-2">Equip slots (# augments)</th>
-                                            <th className="py-2">starting resource allocation</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/10">
                                         <tr>
-                                            <td className="py-2 pr-4">Light weight</td>
+                                            <td className="py-2 pr-4">Heavy weight</td>
                                             <td className="py-2 pr-4">30&ndash;39</td>
-                                            <td className="py-2">1</td>
-                                            <td className="py-2">+1</td>
+                                            <td className="py-2">3</td>
+                                            
                                         </tr>
                                         <tr>
                                             <td className="py-2 pr-4">Medium weight</td>
                                             <td className="py-2 pr-4">40&ndash;59</td>
                                             <td className="py-2">2</td>
-                                            <td className="py-2">0</td>
+                                            
                                         </tr>
                                         <tr>
-                                            <td className="py-2 pr-4">Heavy weight</td>
+                                            <td className="py-2 pr-4">Light weight</td>
                                             <td className="py-2 pr-4">60&ndash;70</td>
-                                            <td className="py-2">3</td>
-                                            <td className="py-2">-1</td>
+                                            <td className="py-2">1</td>
+                                            
                                         </tr>
                                     </tbody>
                                 </table>

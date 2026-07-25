@@ -23,6 +23,7 @@ from app.subscription import (
     _as_dict,
     period_end_from_subscription,
     require_stripe_config,
+    stripe_resource_id,
     subscription_type_from_subscription,
     stripe_secret_key,
     stripe_webhook_secret,
@@ -606,8 +607,10 @@ async def stripe_webhook(request: Request):
                     user_id_raw = metadata.get("user_id") or data_object.get(
                         "client_reference_id"
                     )
-                    customer_id = data_object.get("customer")
-                    subscription_id = data_object.get("subscription")
+                    customer_id = stripe_resource_id(data_object.get("customer"))
+                    subscription_id = stripe_resource_id(
+                        data_object.get("subscription")
+                    )
                     if user_id_raw and subscription_id:
                         try:
                             user_id = int(user_id_raw)
@@ -644,8 +647,8 @@ async def stripe_webhook(request: Request):
                     "customer.subscription.created",
                     "customer.subscription.deleted",
                 ):
-                    customer_id = data_object.get("customer")
-                    subscription_id = data_object.get("id")
+                    customer_id = stripe_resource_id(data_object.get("customer"))
+                    subscription_id = stripe_resource_id(data_object.get("id"))
                     sub_status = data_object.get("status") or "none"
                     tier = subscription_type_from_subscription(data_object)
                     if event_type == "customer.subscription.deleted":
@@ -667,11 +670,13 @@ async def stripe_webhook(request: Request):
 
                 elif event_type in ("invoice.paid", "invoice_payment.paid"):
                     # Payment succeeded — sync subscription if present on the invoice.
-                    customer_id = data_object.get("customer")
-                    subscription_id = data_object.get("subscription")
+                    customer_id = stripe_resource_id(data_object.get("customer"))
+                    subscription_id = stripe_resource_id(
+                        data_object.get("subscription")
+                    )
                     if not subscription_id and event_type == "invoice_payment.paid":
                         # Newer object shape may nest the invoice id only.
-                        invoice_id = data_object.get("invoice")
+                        invoice_id = stripe_resource_id(data_object.get("invoice"))
                         if invoice_id:
                             invoice = stripe.Invoice.retrieve(invoice_id)
                             inv = (
@@ -679,8 +684,12 @@ async def stripe_webhook(request: Request):
                                 if isinstance(invoice, dict)
                                 else invoice.to_dict()
                             )
-                            customer_id = customer_id or inv.get("customer")
-                            subscription_id = inv.get("subscription")
+                            customer_id = customer_id or stripe_resource_id(
+                                inv.get("customer")
+                            )
+                            subscription_id = stripe_resource_id(
+                                inv.get("subscription")
+                            )
                     if subscription_id:
                         sub = stripe.Subscription.retrieve(
                             subscription_id,

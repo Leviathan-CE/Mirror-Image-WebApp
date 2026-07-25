@@ -79,6 +79,21 @@ def _as_dict(value: Any) -> dict[str, Any]:
         return {}
 
 
+def stripe_resource_id(value: Any) -> str | None:
+    """Normalize a Stripe id that may be a string or an expanded object."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        cleaned = value.strip()
+        return cleaned or None
+    data = _as_dict(value)
+    raw = data.get("id")
+    if raw is None:
+        return None
+    cleaned = str(raw).strip()
+    return cleaned or None
+
+
 def period_end_from_subscription(sub: Any) -> datetime | None:
     """Parse current_period_end from a Stripe Subscription (or its items)."""
     data = _as_dict(sub)
