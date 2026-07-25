@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 import re
 
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from psycopg2 import OperationalError
@@ -12,6 +14,7 @@ from psycopg2.errors import UniqueViolation
 
 from app.db import get_connection
 from app.security import (
+    UNITY_TOKEN_EXPIRE_MINUTES,
     create_access_token,
     get_current_user_id,
     hash_password,
@@ -49,6 +52,8 @@ class LoginRequest(BaseModel):
     # Email or username
     identifier: str = Field(min_length=1, max_length=254)
     password: str = Field(min_length=1, max_length=128)
+    # "unity" → short-lived JWT (see JWT_UNITY_EXPIRE_MINUTES). Web clients omit this.
+    client: str = Field(default="", max_length=32)
 
 
 class UserPublic(BaseModel):
@@ -65,6 +70,8 @@ class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserPublic
+    # Seconds until JWT expiry (handy for Unity session UI).
+    expires_in: int | None = None
 
 
 class RegisterResponse(BaseModel):
@@ -197,12 +204,25 @@ def login(body: LoginRequest):
         )
 
     token = create_access_token(
-        user_id=user_id, user_name=user_name, email=email, role=role
+        user_id=user_id,
+        user_name=user_name,
+        email=email,
+        role=role,
+        expires_delta=(
+            timedelta(minutes=UNITY_TOKEN_EXPIRE_MINUTES)
+            if (body.client or "").strip().lower() == "unity"
+            else None
+        ),
     )
     public = _user_public_from_row(
         (user_id, user_name, email, role, sub_status or "none", sub_type or "")
     )
-    return AuthResponse(access_token=token, user=public)
+    expires_in = (
+        UNITY_TOKEN_EXPIRE_MINUTES * 60
+        if (body.client or "").strip().lower() == "unity"
+        else None
+    )
+    return AuthResponse(access_token=token, user=public, expires_in=expires_in)
 
 
 @router.get("/me", response_model=UserPublic)
