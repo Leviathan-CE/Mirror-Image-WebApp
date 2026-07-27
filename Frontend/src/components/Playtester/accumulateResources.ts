@@ -1,6 +1,9 @@
 /**
  * Accumulate Resources — parse invoke-cost icons into gainable pips,
  * map solid colours to Resource Token catalog cards.
+ *
+ * Token identity = super type Resource + invoke-cost colour pips (`cost`),
+ * not card name. Name matching caused false hits (e.g. Spirit Wire for LIF).
  */
 
 import type { CardLibraryItem } from "@/lib/api/cards"
@@ -42,12 +45,33 @@ function cardIsResource(item: CardLibraryItem): boolean {
   return supers.includes("resource") || typesLine.includes("resource")
 }
 
-function cardIsToken(item: CardLibraryItem): boolean {
-  const supers = (item.super_types ?? []).map((t) =>
-    String(t).trim().toLowerCase()
-  )
-  const typesLine = String(item.types_line ?? "").toLowerCase()
-  return supers.includes("token") || typesLine.includes("token")
+function costTokens(item: CardLibraryItem): string[] {
+  return (item.cost ?? []).map((t) => String(t).trim().toUpperCase())
+}
+
+/** Solid colour pips on the card (GEN / MULTI stripped). */
+function solidCostColors(item: CardLibraryItem): ResourceColor[] {
+  const out: ResourceColor[] = []
+  for (const raw of costTokens(item)) {
+    if (isGeneric(raw) || raw === "MULTI") continue
+    const solid = asSolid(raw)
+    if (solid) {
+      out.push(solid)
+      continue
+    }
+    if (raw.includes("-")) {
+      for (const part of raw.split("-")) {
+        const c = asSolid(part)
+        if (c) out.push(c)
+      }
+    }
+  }
+  return out
+}
+
+function isSoleGenericResource(item: CardLibraryItem): boolean {
+  const tokens = costTokens(item)
+  return tokens.length > 0 && tokens.every(isGeneric)
 }
 
 /** Turn one invoke-cost icon into a gainable pip (or null if GEN / unknown). */
@@ -105,110 +129,45 @@ export function autoResolveColors(pips: GainablePip[]): ResourceColor[] {
 }
 
 /**
- * Known Resource Token card names in the catalogue (preload by name).
- * Blue pip = RAM → "R.A.M", etc.
+ * Find the Resource token whose invoke-cost colour matches `color`.
+ *
+ * Rules:
+ * 1. Must be super type Resource
+ * 2. Prefer exact single solid pip === colour (e.g. cost: ["LIF"])
+ * 3. Else Resource whose solid pips include the colour
+ * 4. STL only: Resource whose cost is only GEN (catalogue Steel)
  */
-export const RESOURCE_TOKEN_NAME_MAP: {
-  color: ResourceColor
-  names: string[]
-}[] = [
-  { color: "POW", names: ["Unit of Power"] },
-  { color: "LIF", names: ["Spirit", "Life", "Unit of Life"] },
-  { color: "TIM", names: ["Natural Time"] },
-  { color: "MET", names: ["Living Metal"] },
-  { color: "STL", names: ["Steel"] },
-  { color: "RAM", names: ["R.A.M", "R.A.M.", "RAM"] },
-]
-
-export function allResourceTokenSearchNames(): string[] {
-  const out: string[] = []
-  for (const entry of RESOURCE_TOKEN_NAME_MAP) {
-    for (const name of entry.names) {
-      if (!out.includes(name)) out.push(name)
-    }
-  }
-  return out
-}
-
-function normalizeCardName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/\./g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-}
-
-/** Prefer exact name match for a colour’s known token titles. */
-export function findNamedResourceToken(
+export function findResourceTokenByCost(
   items: CardLibraryItem[],
   color: ResourceColor
 ): CardLibraryItem | null {
-  const entry = RESOURCE_TOKEN_NAME_MAP.find((e) => e.color === color)
-  if (!entry) return null
-  const wanted = entry.names.map(normalizeCardName)
+  const resources = items.filter(cardIsResource)
 
-  const exact = items.find((item) =>
-    wanted.includes(normalizeCardName(item.card_name))
-  )
+  const exact = resources.find((item) => {
+    const solids = solidCostColors(item)
+    return solids.length === 1 && solids[0] === color
+  })
   if (exact) return exact
 
-  return (
-    items.find((item) => {
-      const n = normalizeCardName(item.card_name)
-      return wanted.some((w) => n === w || n.includes(w) || w.includes(n))
-    }) ?? null
-  )
+  const loose = resources.find((item) => solidCostColors(item).includes(color))
+  if (loose) return loose
+
+  if (color === "STL") {
+    return resources.find(isSoleGenericResource) ?? null
+  }
+
+  return null
 }
 
 /**
- * Build colour → Resource Token catalog card.
- * 1) Match known token names (Unit of Power, R.A.M, …)
- * 2) Fall back to cost-colour / Resource|Token typing
+ * Build colour → Resource Token catalog card from Resource + invoke cost.
  */
 export function buildResourceTokenMap(
   items: CardLibraryItem[]
 ): Map<ResourceColor, CardLibraryItem> {
   const map = new Map<ResourceColor, CardLibraryItem>()
-
   for (const color of RESOURCE_COLORS) {
-    const named = findNamedResourceToken(items, color)
-    if (named) map.set(color, named)
-  }
-
-  const exact: Partial<Record<ResourceColor, CardLibraryItem>> = {}
-  const loose: Partial<Record<ResourceColor, CardLibraryItem>> = {}
-
-  for (const item of items) {
-    if (!cardIsResource(item) && !cardIsToken(item)) continue
-
-    const tokens = (item.cost ?? []).map((t) => String(t).trim().toUpperCase())
-    for (const color of RESOURCE_COLORS) {
-      if (map.has(color)) continue
-      const exactMatch = tokens.length === 1 && tokens[0] === color
-      const looseMatch =
-        tokens.includes(color) ||
-        tokens.some(
-          (t) => t.startsWith(`${color}-`) || t.endsWith(`-${color}`)
-        )
-      if (!exactMatch && !looseMatch) continue
-
-      if (exactMatch) {
-        const prev = exact[color]
-        if (!prev || (cardIsResource(item) && !cardIsResource(prev))) {
-          exact[color] = item
-        }
-      } else {
-        const prev = loose[color]
-        if (!prev || (cardIsResource(item) && !cardIsResource(prev))) {
-          loose[color] = item
-        }
-      }
-    }
-  }
-
-  for (const color of RESOURCE_COLORS) {
-    if (map.has(color)) continue
-    const card = exact[color] ?? loose[color]
+    const card = findResourceTokenByCost(items, color)
     if (card) map.set(color, card)
   }
   return map

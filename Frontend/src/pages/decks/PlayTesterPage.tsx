@@ -11,7 +11,6 @@ import { GlitchFx } from "@/components/effects/GlitchFx"
 import { AccumulatePipChooser } from "@/components/Playtester/AccumulatePipChooser"
 import {
   autoResolveColors,
-  allResourceTokenSearchNames,
   buildResourceTokenMap,
   canAutoResolvePips,
   extractGainablePips,
@@ -241,16 +240,10 @@ export function PlayTesterPage() {
     }
     let cancelled = false
     setResourcesReady(false)
-    const names = allResourceTokenSearchNames()
 
-    // Preload the six resource token cards by name (Unit of Power, R.A.M, …),
-    // plus Resource/Token super-type scans as backup.
+    // Resource tokens: identify by super type Resource + invoke-cost colour.
     void Promise.all([
-      ...names.map((q) =>
-        fetchCardLibrary({ q, limit: 12, offset: 0 }, token)
-      ),
       fetchCardLibrary({ superType: "Resource", limit: 100, offset: 0 }, token),
-      fetchCardLibrary({ superType: "Token", limit: 100, offset: 0 }, token),
     ])
       .then((results) => {
         if (cancelled) return

@@ -5,7 +5,7 @@
  * - Owner can edit name, description, visibility, and categories.
  */
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
@@ -19,11 +19,13 @@ import {
 } from "@/components/decks/DeckCardSortControls"
 import {
   cardsFromDragPayload,
+  isLibraryDragPayload,
   type DeckCardDragPayload,
 } from "@/components/decks/DeckCardStack"
+import { CardLibraryBrowser } from "@/components/cards/CardLibraryBrowser"
+import { MiddleMouseScroll } from "@/components/ui/MiddleMouseScroll"
 import "@/components/decks/DeckCardStack.css"
 import {
-  applyCardMove,
   augmentCategory,
   canAddCopyToMain,
   clampQuantityToMax,
@@ -60,6 +62,27 @@ import {
 import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
 
+const BROWSE_WIDTH_STORAGE_KEY = "mi-deck-browse-width-px"
+const BROWSE_WIDTH_MIN = 280
+const BROWSE_WIDTH_MAX = 640
+const BROWSE_WIDTH_DEFAULT = 352
+
+function clampBrowseWidth(width: number): number {
+  return Math.min(BROWSE_WIDTH_MAX, Math.max(BROWSE_WIDTH_MIN, Math.round(width)))
+}
+
+function readStoredBrowseWidth(): number {
+  try {
+    const raw = window.localStorage.getItem(BROWSE_WIDTH_STORAGE_KEY)
+    const parsed = raw == null ? NaN : Number(raw)
+    return Number.isFinite(parsed)
+      ? clampBrowseWidth(parsed)
+      : BROWSE_WIDTH_DEFAULT
+  } catch {
+    return BROWSE_WIDTH_DEFAULT
+  }
+}
+
 export function DeckPage() {
   const { deckId: deckIdParam } = useParams()
   const deckId = Number(deckIdParam)
@@ -81,7 +104,65 @@ export function DeckPage() {
   const [description, setDescription] = useState("")
   const [isPublic, setIsPublic] = useState(false)
   const [searchMenuOpen, setSearchMenuOpen] = useState(false)
+  const [browseOpen, setBrowseOpen] = useState(true)
+  const [browseWidth, setBrowseWidth] = useState(BROWSE_WIDTH_DEFAULT)
   const [cardSortMode, setCardSortMode] = useState<DeckCardSortMode>("type")
+  const browseResizeRef = useRef<{
+    pointerId: number
+    startX: number
+    startWidth: number
+  } | null>(null)
+
+  useEffect(() => {
+    setBrowseWidth(readStoredBrowseWidth())
+  }, [])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        BROWSE_WIDTH_STORAGE_KEY,
+        String(browseWidth)
+      )
+    } catch {
+      /* private mode / quota */
+    }
+  }, [browseWidth])
+
+  function onBrowseResizePointerDown(
+    event: ReactPointerEvent<HTMLDivElement>
+  ) {
+    if (event.button !== 0) return
+    event.preventDefault()
+    event.stopPropagation()
+    browseResizeRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startWidth: browseWidth,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function onBrowseResizePointerMove(
+    event: ReactPointerEvent<HTMLDivElement>
+  ) {
+    const drag = browseResizeRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    // Panel is on the right — drag handle leftward = wider.
+    setBrowseWidth(
+      clampBrowseWidth(drag.startWidth - (event.clientX - drag.startX))
+    )
+  }
+
+  function onBrowseResizePointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = browseResizeRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    browseResizeRef.current = null
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    } catch {
+      /* already released */
+    }
+  }
 
   const canEdit =
     Boolean(deck && user && deck.author_name === user.user_name && token)
@@ -164,6 +245,7 @@ export function DeckPage() {
     if (items.length === 0) return
 
     const name = nextNewSectionName(deck.categories.map((c) => c.name))
+    const fromLibrary = isLibraryDragPayload(payload)
 
     setSaving(true)
     setErrorText("")
@@ -177,18 +259,24 @@ export function DeckPage() {
 
       let workingCards = deck.cards
       for (const item of items) {
+        if (fromLibrary) {
+          const entry = await addDeckCard(deck.id, token, {
+            card_id: item.cardId,
+            category_id: created.id,
+            quantity: 1,
+          })
+          workingCards = withCardEntry(
+            { ...deck, cards: workingCards, categories: [...deck.categories, created] },
+            entry
+          ).cards
+          continue
+        }
         if (item.fromCategoryId === created.id) continue
-        const updated = await updateDeckCard(
-          deck.id,
+        workingCards = await moveOneCopyBetweenCategories(
+          workingCards,
           item.cardId,
           item.fromCategoryId,
-          token,
-          { category_id: created.id }
-        )
-        workingCards = applyCardMove(
-          workingCards,
-          item.fromCategoryId,
-          updated
+          created.id
         )
       }
 
@@ -271,6 +359,74 @@ export function DeckPage() {
     }
   }
 
+  /**
+   * Move a single copy of a card between sections.
+   * Stacks stay behind (qty − 1); only one copy lands in the destination.
+   */
+  async function moveOneCopyBetweenCategories(
+    workingCards: DeckCardEntry[],
+    cardId: number,
+    fromCategoryId: number,
+    toCategoryId: number
+  ): Promise<DeckCardEntry[]> {
+    if (!token || !deck) return workingCards
+    if (fromCategoryId === toCategoryId) return workingCards
+
+    const source = workingCards.find(
+      (card) =>
+        card.card_id === cardId && card.category_id === fromCategoryId
+    )
+    if (!source) return workingCards
+
+    const destCategory = deck.categories.find((c) => c.id === toCategoryId) ?? {
+      id: toCategoryId,
+      name: "",
+      sort_order: 0,
+    }
+    const maxCopies = maxCopiesForCategory(destCategory)
+    const existingDest = workingCards.find(
+      (card) =>
+        card.card_id === cardId && card.category_id === toCategoryId
+    )
+    if ((existingDest?.quantity ?? 0) >= maxCopies) {
+      throw new Error("max_copies")
+    }
+
+    let nextCards = workingCards
+
+    if (source.quantity <= 1) {
+      await removeDeckCard(deck.id, cardId, fromCategoryId, token)
+      nextCards = removeCardEntry(nextCards, cardId, fromCategoryId)
+    } else {
+      const reduced = await updateDeckCard(
+        deck.id,
+        cardId,
+        fromCategoryId,
+        token,
+        { quantity: source.quantity - 1 }
+      )
+      nextCards = [
+        ...removeCardEntry(nextCards, cardId, fromCategoryId),
+        reduced,
+      ]
+    }
+
+    const added = await addDeckCard(deck.id, token, {
+      card_id: cardId,
+      category_id: toCategoryId,
+      quantity: 1,
+    })
+    const clampedQty = clampQuantityToMax(added.quantity, maxCopies)
+    const entry =
+      clampedQty < added.quantity
+        ? await updateDeckCard(deck.id, cardId, toCategoryId, token, {
+            quantity: clampedQty,
+          })
+        : added
+
+    return withCardEntry({ ...deck, cards: nextCards }, entry).cards
+  }
+
   async function onMoveCards(
     items: Array<{ cardId: number; fromCategoryId: number }>,
     toCategoryId: number
@@ -284,17 +440,11 @@ export function DeckPage() {
     try {
       let workingCards = deck.cards
       for (const item of toMove) {
-        const updated = await updateDeckCard(
-          deck.id,
+        workingCards = await moveOneCopyBetweenCategories(
+          workingCards,
           item.cardId,
           item.fromCategoryId,
-          token,
-          { category_id: toCategoryId }
-        )
-        workingCards = applyCardMove(
-          workingCards,
-          item.fromCategoryId,
-          updated
+          toCategoryId
         )
       }
       setDeck((prev) => {
@@ -308,10 +458,86 @@ export function DeckPage() {
       clearCardSelection()
     } catch (error) {
       setErrorText(
-        error instanceof ApiError && error.status === 409
-          ? "That card is already in the target section."
-          : "Could not move card."
+        error instanceof Error && error.message === "max_copies"
+          ? "That section already has the maximum copies of that card."
+          : error instanceof ApiError && error.status === 409
+            ? "That card is already in the target section."
+            : "Could not move card."
       )
+      await loadDeck()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function onAddCardFromLibrary(
+    cardId: number,
+    toCategoryId: number
+  ) {
+    if (!token || !deck || !canEdit) return
+
+    const category = deck.categories.find((c) => c.id === toCategoryId)
+    if (!category) {
+      setErrorText("That section no longer exists.")
+      return
+    }
+
+    const maxCopies = maxCopiesForCategory(category)
+    const existing = deck.cards.find(
+      (card) => card.card_id === cardId && card.category_id === toCategoryId
+    )
+
+    if (existing) {
+      const nextQty = nextCardQuantity(existing.quantity, 1, maxCopies)
+      if (nextQty === null) {
+        setErrorText(
+          `${category.name} already has the maximum copies of that card.`
+        )
+        return
+      }
+      setSaving(true)
+      setErrorText("")
+      try {
+        const updated = await updateDeckCard(
+          deck.id,
+          existing.card_id,
+          existing.category_id,
+          token,
+          { quantity: nextQty }
+        )
+        setDeck((prev) => (prev ? withCardEntry(prev, updated) : prev))
+      } catch {
+        setErrorText("Could not add that card.")
+        await loadDeck()
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
+
+    setSaving(true)
+    setErrorText("")
+    try {
+      const entry = await addDeckCard(deck.id, token, {
+        card_id: cardId,
+        category_id: toCategoryId,
+        quantity: 1,
+      })
+      const clampedQty = clampQuantityToMax(entry.quantity, maxCopies)
+      if (clampedQty < entry.quantity) {
+        const clamped = await updateDeckCard(
+          deck.id,
+          entry.card_id,
+          entry.category_id,
+          token,
+          { quantity: clampedQty }
+        )
+        setDeck((prev) => (prev ? withCardEntry(prev, clamped) : prev))
+        return
+      }
+      setDeck((prev) => (prev ? withCardEntry(prev, entry) : prev))
+    } catch {
+      setErrorText("Could not add that card.")
       await loadDeck()
     } finally {
       setSaving(false)
@@ -322,6 +548,10 @@ export function DeckPage() {
     payload: DeckCardDragPayload,
     toCategoryId: number
   ) {
+    if (isLibraryDragPayload(payload)) {
+      await onAddCardFromLibrary(payload.cardId, toCategoryId)
+      return
+    }
     await onMoveCards(cardsFromDragPayload(payload), toCategoryId)
   }
 
@@ -831,7 +1061,15 @@ export function DeckPage() {
                 </div>
               </div>
 
-              <div className="mt-4 flex justify-end">
+              <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+                {canEdit ? (
+                  <GlitchFx
+                    type="button"
+                    label={browseOpen ? "HIDE BROWSE" : "BROWSE"}
+                    className="font-buahs93 h-9 rounded-none border border-cyan-500/40 bg-black/70 px-4 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10"
+                    onClick={() => setBrowseOpen((prev) => !prev)}
+                  />
+                ) : null}
                 <GlitchFx
                   type="button"
                   label="PLAY TEST"
@@ -847,42 +1085,100 @@ export function DeckPage() {
               </p>
             ) : null}
 
-            {canEdit ? (
-              <div className="mb-4">
-                <DeckCardSearch
+            <div
+              className={cn(
+                "flex flex-col gap-6",
+                canEdit && browseOpen && "xl:flex-row xl:items-start"
+              )}
+            >
+              <div className="min-w-0 flex-1">
+                {canEdit ? (
+                  <div className="mb-4">
+                    <DeckCardSearch
+                      disabled={saving}
+                      token={token}
+                      onPick={onAddCardFromSearch}
+                      onOpenChange={setSearchMenuOpen}
+                    />
+                  </div>
+                ) : null}
+
+                <div className="mb-6">
+                  <DeckCardSortControls
+                    value={cardSortMode}
+                    onChange={setCardSortMode}
+                  />
+                </div>
+
+                <DeckBoard
+                  deck={deck}
+                  sortMode={cardSortMode}
+                  canEdit={canEdit}
                   disabled={saving}
-                  token={token}
-                  onPick={onAddCardFromSearch}
-                  onOpenChange={setSearchMenuOpen}
+                  interactionLocked={searchMenuOpen}
+                  selectedKeys={selectedKeys}
+                  onSelectCard={selectCard}
+                  onClearSelect={clearCardSelection}
+                  onRenameCategory={onRenameCategory}
+                  onDeleteCategory={onDeleteCategory}
+                  onDropToCategory={onDropCardsToCategory}
+                  onQuantityDelta={onQuantityDelta}
+                  onAssignPilot={assignPilot}
+                  onClearPilot={canEdit ? onClearPilot : undefined}
+                  onAddAugment={addAugment}
+                  onCreateSectionFromDrop={onCreateSectionFromDrop}
                 />
               </div>
-            ) : null}
 
-            <div className="mb-6">
-              <DeckCardSortControls
-                value={cardSortMode}
-                onChange={setCardSortMode}
-              />
+              {canEdit && browseOpen ? (
+                <aside
+                  className="relative flex w-full shrink-0 flex-col border border-cyan-500/25 bg-black/55 p-3 xl:sticky xl:top-4 xl:h-[calc(100vh-2rem)] xl:max-h-[calc(100vh-2rem)] xl:w-[var(--browse-w)] xl:overflow-hidden"
+                  style={{ ["--browse-w" as string]: `${browseWidth}px` }}
+                >
+                  <MiddleMouseScroll
+                    label="Card library"
+                    horizontal={false}
+                    vertical
+                    className="min-h-0 w-full flex-1"
+                    viewportClassName="pr-2"
+                  >
+                    <CardLibraryBrowser
+                      token={token}
+                      compact
+                      draggable
+                      title="CARD LIBRARY"
+                      onCardActivate={(card) =>
+                        void onAddCardFromSearch({
+                          id: card.id,
+                          card_name: card.card_name,
+                          card_set_name: card.card_set_name,
+                          rarity: card.rarity,
+                          card_art_path: card.card_art_path,
+                          card_art_version: card.card_art_version,
+                        })
+                      }
+                    />
+                  </MiddleMouseScroll>
+                  <div
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label="Resize card library"
+                    title="Drag to resize · double-click to reset"
+                    className="absolute top-0 left-0 z-20 hidden h-full w-2 cursor-col-resize touch-none xl:block"
+                    onPointerDown={onBrowseResizePointerDown}
+                    onPointerMove={onBrowseResizePointerMove}
+                    onPointerUp={onBrowseResizePointerUp}
+                    onPointerCancel={onBrowseResizePointerUp}
+                    onDoubleClick={() => setBrowseWidth(BROWSE_WIDTH_DEFAULT)}
+                  >
+                    <span
+                      aria-hidden
+                      className="absolute inset-y-3 left-0.5 w-0.5 bg-cyan-400/35"
+                    />
+                  </div>
+                </aside>
+              ) : null}
             </div>
-
-            <DeckBoard
-              deck={deck}
-              sortMode={cardSortMode}
-              canEdit={canEdit}
-              disabled={saving}
-              interactionLocked={searchMenuOpen}
-              selectedKeys={selectedKeys}
-              onSelectCard={selectCard}
-              onClearSelect={clearCardSelection}
-              onRenameCategory={onRenameCategory}
-              onDeleteCategory={onDeleteCategory}
-              onDropToCategory={onDropCardsToCategory}
-              onQuantityDelta={onQuantityDelta}
-              onAssignPilot={assignPilot}
-              onClearPilot={canEdit ? onClearPilot : undefined}
-              onAddAugment={addAugment}
-              onCreateSectionFromDrop={onCreateSectionFromDrop}
-            />
           </>
         ) : null}
       </div>

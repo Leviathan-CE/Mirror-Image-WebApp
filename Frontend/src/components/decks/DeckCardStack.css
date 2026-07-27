@@ -7,18 +7,24 @@
 /*
  * Shared card footprint for the deck board, stacks, and pilot slot.
  * Section columns track --card-w so gaps stay small as cards scale.
+ *
+ * Use px (not rem) so browser page-zoom / root font size does not
+ * further enlarge deck cards. Cap via --card-w / --card-h only.
  */
 .deck-board,
 .deck-card-stack,
 .deck-card-frame {
-  --card-w: 13rem;
-  --card-h: 18.2rem;
+  --card-w: 240px;
+  --card-h: 320px; /* ~5:7 */
+  /* Raise these only if you also raise --card-w / --card-h. */
+  --card-w-max: 480px;
+  --card-h-max: 640px;
   /* Peek strip of each card under the one above — keeps section height tight. */
-  --stack-peek: 2.25rem;
-  --stack-overlap: calc(var(--card-h) - var(--stack-peek));
-  --reveal-shift: calc(var(--card-h) * 0.82);
+  --stack-peek: 26px;
+  --stack-overlap: calc(min(var(--card-h), var(--card-h-max)) - var(--stack-peek));
+  --reveal-shift: calc(min(var(--card-h), var(--card-h-max)) * 0.82);
   /* Column = card + slight padding (room for hover scale + tiny gutter). */
-  --section-w: calc(var(--card-w) + 0.75rem);
+  --section-w: calc(min(var(--card-w), var(--card-w-max)) + 12px);
 }
 
 .deck-board {
@@ -37,8 +43,8 @@
 }
 
 .deck-card-frame {
-  width: var(--card-w);
-  height: var(--card-h);
+  width: min(var(--card-w), var(--card-w-max));
+  height: min(var(--card-h), var(--card-h-max));
 }
 
 .deck-card-stack {
@@ -62,8 +68,8 @@
 .deck-card-stack__item {
   --angle: 12px;
   position: relative;
-  width: var(--card-w);
-  height: var(--card-h);
+  width: min(var(--card-w), var(--card-w-max));
+  height: min(var(--card-h), var(--card-h-max));
   margin-top: calc(var(--stack-overlap) * -1);
   flex-shrink: 0;
   cursor: pointer;
@@ -148,7 +154,7 @@
   background: rgb(0 0 0 / 0.85);
   color: #67e8f9;
   font-family: ui-monospace, monospace;
-  font-size: 1.15rem;
+  font-size: 0.7rem;
   font-weight: 600;
   line-height: 1.2;
   text-align: center;
@@ -239,54 +245,4 @@
   object-fit: cover;
   pointer-events: none;
   user-select: none;
-}
-
-@media (max-width: 640px) {
-  .deck-board,
-  .deck-card-stack,
-  .deck-card-frame {
-    --card-w: 10rem;
-    --card-h: 14rem;
-    --stack-peek: 2rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .deck-board,
-  .deck-card-stack,
-  .deck-card-frame {
-    --card-w: 15rem;
-    --card-h: 21rem;
-    --stack-peek: 2.5rem;
-  }
-}
-
-@media (min-width: 1280px) {
-  .deck-board,
-  .deck-card-stack,
-  .deck-card-frame {
-    --card-w: 16.5rem;
-    --card-h: 23.1rem;
-    --stack-peek: 2.65rem;
-  }
-}
-
-@media (min-width: 1536px) {
-  .deck-board,
-  .deck-card-stack,
-  .deck-card-frame {
-    --card-w: 18rem;
-    --card-h: 25.2rem;
-    --stack-peek: 2.8rem;
-  }
-}
-
-@media (min-width: 1800px) {
-  .deck-board,
-  .deck-card-stack,
-  .deck-card-frame {
-    --card-w: 19.5rem;
-    --card-h: 27.3rem;
-    --stack-peek: 3rem;
-  }
 }
