@@ -1,27 +1,51 @@
 /**
- * Single playtester card face — display only.
+ * Single playtester card face.
+ * When `onCounterAdjust` is set, counter badges accept:
+ *   left-click  → +1
+ *   right-click → −1
+ * (pointer events are stopped so the parent card does not drag / open its menu)
  */
 
+import type { ReactNode } from "react"
+
+import { GameIcon } from "@/components/common/GameIcon"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
-import type { PlayingCardInstance } from "./types"
+import type { CardCounterKind, PlayingCardInstance } from "./types"
 
 export type PlayingCardProps = {
   card: PlayingCardInstance
   className?: string
   isSelected?: boolean
   isExpended?: boolean
+  /** Left-click +1 / right-click −1 on a counter badge. */
+  onCounterAdjust?: (kind: CardCounterKind, delta: number) => void
 }
 
-export function PlayingCard({ card, className}: PlayingCardProps) {
+export function PlayingCard({
+  card,
+  className,
+  isSelected,
+  onCounterAdjust,
+}: PlayingCardProps) {
   const src = cardArtUrl(card.artPath, card.artVersion)
-  
+  const time = card.timeCounters ?? 0
+  const damage = card.damageCounters ?? 0
+  const tlv = card.tlvCounters ?? 0
+  const hasCounters = time > 0 || damage > 0 || tlv > 0
+  const interactive = Boolean(onCounterAdjust)
+
+  function adjust(kind: CardCounterKind, delta: number) {
+    onCounterAdjust?.(kind, delta)
+  }
+
   return (
     <div
       className={cn(
         "relative h-36 w-28 shrink-0 overflow-hidden border border-cyan-500/35 bg-black/70",
         "clip-angled",
+        isSelected && "border-cyan-300/90",
         className
       )}
       aria-label={card.name}
@@ -32,13 +56,127 @@ export function PlayingCard({ card, className}: PlayingCardProps) {
           alt=""
           className="h-full w-full object-cover"
           draggable={false}
-       
         />
       ) : (
         <span className="flex h-full items-center justify-center px-2 text-center font-mono text-[10px] text-cyan-100/80">
           {card.name}
         </span>
       )}
+
+      {hasCounters ? (
+        <div className="absolute top-1 right-1 bottom-1 flex flex-col items-end justify-end gap-1">
+          {time > 0 ? (
+            <CounterBadge
+              kind="time"
+              count={time}
+              interactive={interactive}
+              className="border-emerald-400/70 bg-emerald-950/90 text-emerald-200"
+              label="Time"
+              onAdjust={adjust}
+            >
+              {time}
+            </CounterBadge>
+          ) : null}
+          {damage > 0 ? (
+            <CounterBadge
+              kind="damage"
+              count={damage}
+              interactive={interactive}
+              className="border-red-400/70 bg-red-950/90 text-red-200"
+              label="Damage"
+              onAdjust={adjust}
+            >
+              {damage}
+            </CounterBadge>
+          ) : null}
+          {tlv > 0 ? (
+            <CounterBadge
+              kind="tlv"
+              count={tlv}
+              interactive={interactive}
+              className="border-amber-400/70 bg-black/85 text-amber-100"
+              label="TLV"
+              onAdjust={adjust}
+            >
+              <GameIcon name="threat_lvl" className="h-4 w-auto" />
+              {tlv}
+            </CounterBadge>
+          ) : null}
+        </div>
+      ) : null}
     </div>
+  )
+}
+
+type CounterBadgeProps = {
+  kind: CardCounterKind
+  count: number
+  interactive: boolean
+  className: string
+  label: string
+  onAdjust: (kind: CardCounterKind, delta: number) => void
+  children: ReactNode
+}
+
+function CounterBadge({
+  kind,
+  count,
+  interactive,
+  className,
+  label,
+  onAdjust,
+  children,
+}: CounterBadgeProps) {
+  const title = interactive
+    ? `${label}: ${count} · left-click +1 · right-click −1`
+    : `${label} counters: ${count}`
+
+  return (
+    <span
+      data-counter-badge=""
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      title={title}
+      className={cn(
+        "inline-flex min-h-7 min-w-7 items-center justify-center gap-1 border px-1.5 font-glitch text-base leading-none",
+        interactive ? "pointer-events-auto cursor-pointer select-none" : "pointer-events-none",
+        className
+      )}
+      onPointerDown={(event) => {
+        if (!interactive) return
+        // Block the free-float card drag / selection handlers.
+        event.preventDefault()
+        event.stopPropagation()
+      }}
+      onClick={(event) => {
+        if (!interactive) return
+        event.preventDefault()
+        event.stopPropagation()
+        onAdjust(kind, 1)
+      }}
+      onDoubleClick={(event) => {
+        // Prevent the card wrapper's double-click → expend.
+        event.preventDefault()
+        event.stopPropagation()
+      }}
+      onContextMenu={(event) => {
+        if (!interactive) return
+        event.preventDefault()
+        event.stopPropagation()
+        onAdjust(kind, -1)
+      }}
+      onKeyDown={(event) => {
+        if (!interactive) return
+        if (event.key === "Enter" || event.key === "+") {
+          event.preventDefault()
+          onAdjust(kind, 1)
+        } else if (event.key === "-" || event.key === "Backspace") {
+          event.preventDefault()
+          onAdjust(kind, -1)
+        }
+      }}
+    >
+      {children}
+    </span>
   )
 }

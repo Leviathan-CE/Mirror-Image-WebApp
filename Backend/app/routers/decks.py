@@ -28,6 +28,7 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -114,9 +115,20 @@ class DeckCardEntry(BaseModel):
     sort_order: int
     card_art_path: str | None = None
     invoke_cost: int = 0
+    # Invoke-cost icon list (LIF, MET, GEN2, …) — used by playtester Accumulate.
+    cost: list[Any] = Field(default_factory=list)
     types_line: str = ""
     # Epoch seconds from cards.updated_at — used to bust browser image cache.
     card_art_version: int | None = None
+    # Pilot starting values (also present on other cards; usually 0).
+    hand_size: int = 0
+    ram_capacity: int = 0
+    power_capacity: int = 0
+    metal_capacity: int = 0
+    spirit_capacity: int = 0
+    steel_capacity: int = 0
+    # Starting life total on pilots (not a resource token).
+    lif_capacity: int = 0
 
 
 class DeckDetail(DeckSummary):
@@ -341,7 +353,15 @@ def _fetch_deck_cards(
             c.card_art_path,
             c.invoke_cost,
             c.types_line,
-            EXTRACT(EPOCH FROM c.updated_at)::bigint
+            EXTRACT(EPOCH FROM c.updated_at)::bigint,
+            c.cost,
+            c.hand_size,
+            c.ram_capacity,
+            c.power_capacity,
+            c.metal_capacity,
+            c.spirit_capacity,
+            c.steel_capacity,
+            c.lif_capacity
         FROM deck_has_cards dhc
         JOIN cards c ON c.id = dhc.card_id
         JOIN deck_categories dc ON dc.id = dhc.category_id
@@ -366,6 +386,14 @@ def _fetch_deck_cards(
             invoke_cost=int(row[7] or 0),
             types_line=row[8] or "",
             card_art_version=int(row[9]) if row[9] is not None else None,
+            cost=list(row[10] or []),
+            hand_size=int(row[11] or 0),
+            ram_capacity=int(row[12] or 0),
+            power_capacity=int(row[13] or 0),
+            metal_capacity=int(row[14] or 0),
+            spirit_capacity=int(row[15] or 0),
+            steel_capacity=int(row[16] or 0),
+            lif_capacity=int(row[17] or 0),
         )
         for row in cur.fetchall()
     ]

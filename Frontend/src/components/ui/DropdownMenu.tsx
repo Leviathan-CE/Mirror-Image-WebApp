@@ -14,11 +14,15 @@ import { cn } from "@/lib/utils"
 
 export type DropdownMenuItem = {
   id: string
-  label: string
-  onSelect: () => void
+  /** Plain text or JSX (e.g. text + GameIcon). */
+  label: ReactNode
+  /** Required for leaf items; omit when `submenu` is present. */
+  onSelect?: () => void
   disabled?: boolean
   /** Danger styling (e.g. Delete). */
   tone?: "default" | "danger"
+  /** Nested choices — opens a flyout instead of running onSelect. */
+  submenu?: DropdownMenuItem[]
 }
 
 type DropdownMenuProps = {
@@ -106,14 +110,14 @@ export function DropdownMenu({
               role="menuitem"
               disabled={item.disabled}
               className={cn(
-                "font-buahs93 block w-full px-3 py-2 text-left text-xs hover:bg-cyan-500/15 disabled:opacity-50",
+                "font-buahs93 flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs hover:bg-cyan-500/15 disabled:opacity-50",
                 item.tone === "danger"
                   ? "text-red-300/90 hover:bg-red-500/15"
                   : "text-cyan-100"
               )}
               onClick={() => {
                 setOpen(false)
-                item.onSelect()
+                item.onSelect?.()
               }}
             >
               {item.label}

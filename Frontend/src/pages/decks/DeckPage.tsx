@@ -679,8 +679,7 @@ export function DeckPage() {
             label="← BACK"
             className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900"
             onClick={() => {
-              if (window.history.length > 1) navigate(-1)
-              else navigate(ROUTES.DECK_COMUNITY)
+               navigate(ROUTES.DECK_COMUNITY)
             }}
           />
           {canEdit ? (

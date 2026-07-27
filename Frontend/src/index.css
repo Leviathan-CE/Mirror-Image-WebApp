@@ -156,6 +156,15 @@
 }
 
 @layer components {
+  /* Custom MiddleMouseScroll: hide native bars; thumbs are drawn in React. */
+  .mi-middle-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .mi-middle-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
   .clip-angled {
     --angle: 10px;
     clip-path: polygon(

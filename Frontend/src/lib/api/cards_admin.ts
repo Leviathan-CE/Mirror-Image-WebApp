@@ -3,6 +3,7 @@
  */
 
 import { apiBaseUrl, authHeaders, readJsonOrThrow } from "@/lib/api/client"
+import type { CardLibraryQuery } from "@/lib/api/cards"
 
 export type PublishStatus = "published" | "preview" | "not published"
 
@@ -45,14 +46,32 @@ export type AdminCardBulkUpdate = {
   lagality?: string
 }
 
-/** Admin catalogue browse — same name ranking as library/search. */
+/** Admin catalogue browse — same filters as user card library. */
 export async function fetchAdminCardLibrary(
   token: string,
-  query: { q?: string; limit?: number; offset?: number } = {}
+  query: CardLibraryQuery = {}
 ): Promise<AdminCardLibraryResponse> {
   const url = new URL(`${apiBaseUrl()}/cards/admin/library`)
   const q = query.q?.trim()
   if (q) url.searchParams.set("q", q)
+  const description = query.description?.trim()
+  if (description) url.searchParams.set("description", description)
+  if (query.invokeCostMin != null) {
+    url.searchParams.set("invoke_cost_min", String(query.invokeCostMin))
+  }
+  if (query.invokeCostMax != null) {
+    url.searchParams.set("invoke_cost_max", String(query.invokeCostMax))
+  }
+  for (const color of query.colors ?? []) {
+    const colorToken = color.trim()
+    if (colorToken) url.searchParams.append("color", colorToken)
+  }
+  const typesLine = query.typesLine?.trim()
+  if (typesLine) url.searchParams.set("types_line", typesLine)
+  const superType = query.superType?.trim()
+  if (superType) url.searchParams.set("super_type", superType)
+  const subType = query.subType?.trim()
+  if (subType) url.searchParams.set("sub_type", subType)
   url.searchParams.set("limit", String(query.limit ?? 48))
   url.searchParams.set("offset", String(query.offset ?? 0))
 

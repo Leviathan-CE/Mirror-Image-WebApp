@@ -47,9 +47,21 @@ export type DeckCardEntry = {
   sort_order: number
   card_art_path: string | null
   invoke_cost?: number
+  /** Invoke-cost icon tokens (LIF, MET, GEN2, …). */
+  cost?: string[]
   types_line?: string
   /** Epoch seconds — changes when card art is re-uploaded. */
   card_art_version?: number | null
+  /** Pilot opening hand size (0 on non-pilots). */
+  hand_size?: number
+  /** Starting stockpile resource counts printed on the pilot. */
+  ram_capacity?: number
+  power_capacity?: number
+  metal_capacity?: number
+  spirit_capacity?: number
+  steel_capacity?: number
+  /** Starting life total on pilots (not a resource token). */
+  lif_capacity?: number
 }
 
 export type DeckDetail = DeckSummary & {
