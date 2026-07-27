@@ -5,6 +5,7 @@
 import { useState, type DragEvent } from "react"
 
 import {
+  deckCardDropEffect,
   isDeckCardDrag,
   parseDeckCardDrag,
   type DeckCardDragPayload,
@@ -46,7 +47,7 @@ export function NewSectionDropZone({
       onDragOver={(event) => {
         if (disabled || !isCardDrag(event)) return
         event.preventDefault()
-        event.dataTransfer.dropEffect = "move"
+        event.dataTransfer.dropEffect = deckCardDropEffect()
         setDropActive(true)
       }}
       onDragLeave={(event) => {

@@ -7,7 +7,10 @@ import { DeckCategorySection } from "@/components/decks/DeckCategorySection"
 import { DeckPilotSlot } from "@/components/decks/DeckPilotSlot"
 import { NewSectionDropZone } from "@/components/decks/NewSectionDropZone"
 import type { DeckCardSortMode } from "@/components/decks/DeckCardSortControls"
-import type { DeckCardDragPayload } from "@/components/decks/DeckCardStack"
+import {
+  isLibraryDragPayload,
+  type DeckCardDragPayload,
+} from "@/components/decks/DeckCardStack"
 import {
   augmentCards,
   augmentCategory,
@@ -34,9 +37,15 @@ export type DeckBoardProps = {
     categoryId: number
   ) => void | Promise<void>
   onQuantityDelta?: (card: DeckCardEntry, delta: 1 | -1) => void
-  onAssignPilot: (cardId: number, fromCategoryId: number) => void | Promise<void>
+  onAssignPilot: (
+    cardId: number,
+    fromCategoryId: number | null
+  ) => void | Promise<void>
   onClearPilot?: () => void
-  onAddAugment: (cardId: number, fromCategoryId: number) => void | Promise<void>
+  onAddAugment: (
+    cardId: number,
+    fromCategoryId: number | null
+  ) => void | Promise<void>
   onCreateSectionFromDrop?: (payload: DeckCardDragPayload) => void | Promise<void>
 }
 
@@ -73,7 +82,10 @@ export function DeckBoard({
           canEdit={canEdit}
           disabled={disabled}
           onDropCard={(payload) =>
-            void onAssignPilot(payload.cardId, payload.fromCategoryId)
+            void onAssignPilot(
+              payload.cardId,
+              isLibraryDragPayload(payload) ? null : payload.fromCategoryId
+            )
           }
           onClear={canEdit ? onClearPilot : undefined}
         />
@@ -90,7 +102,10 @@ export function DeckBoard({
             onRename={async () => undefined}
             onDelete={async () => undefined}
             onCardDrop={(payload) =>
-              void onAddAugment(payload.cardId, payload.fromCategoryId)
+              void onAddAugment(
+                payload.cardId,
+                isLibraryDragPayload(payload) ? null : payload.fromCategoryId
+              )
             }
             onQuantityDelta={onQuantityDelta}
           />
@@ -111,7 +126,10 @@ export function DeckBoard({
             onRename={async () => undefined}
             onDelete={async () => undefined}
             onCardDrop={(payload) =>
-              void onAddAugment(payload.cardId, payload.fromCategoryId)
+              void onAddAugment(
+                payload.cardId,
+                isLibraryDragPayload(payload) ? null : payload.fromCategoryId
+              )
             }
           />
         ) : null}
