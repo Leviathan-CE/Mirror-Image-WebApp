@@ -18,6 +18,14 @@ export function AppHeader() {
   const { isAuthenticated, user } = useAuth()
   const { pathname } = useLocation()
 
+  // Full-screen table — no site chrome.
+  if (
+    pathname === ROUTES.PLAY_TESTER ||
+    pathname.startsWith(`${ROUTES.PLAY_TESTER}/`)
+  ) {
+    return null
+  }
+
   const onAdminRoute = pathname.startsWith(ROUTES.ADMIN)
   const isAdmin = user?.role === ADMIN_ROLE
 

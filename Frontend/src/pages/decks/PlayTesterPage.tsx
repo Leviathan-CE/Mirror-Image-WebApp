@@ -86,6 +86,15 @@ const RESOURCE_COLOR_ICON: Record<ResourceColor, GameIconName> = {
   STL: "steel",
 }
 
+const PILOT_GEN_MAX = 10
+
+/** Map a pilot +GEN bonus (1–10) to a cost icon. */
+function genIconForCount(n: number): GameIconName {
+  if (n <= 0) return "gen0"
+  if (n >= 10) return "gen10"
+  return `gen${n}` as GameIconName
+}
+
 function pointInRect(
   clientX: number,
   clientY: number,
@@ -168,6 +177,8 @@ export function PlayTesterPage() {
   const [playNotice, setPlayNotice] = useState<string | null>(null)
   const [life, setLife] = useState(0)
   const [turn, setTurn] = useState(1)
+  /** Zone-persistent pilot invoke tax (+GEN). Survives pilot card swaps. */
+  const [pilotGenBonus, setPilotGenBonus] = useState(0)
   const [pilotHandSize, setPilotHandSize] = useState(0)
   const [mulliganOpen, setMulliganOpen] = useState(false)
   /** Timers for staggered concurrent mulligan draws. */
@@ -202,6 +213,7 @@ export function PlayTesterPage() {
       setSessionCards([])
       setLife(0)
       setTurn(1)
+      setPilotGenBonus(0)
       setPilotHandSize(0)
       setMulliganOpen(false)
       for (const t of mulliganTimersRef.current) window.clearTimeout(t)
@@ -216,6 +228,7 @@ export function PlayTesterPage() {
     setSessionCards(opening)
     setLife(startingLifeFromPilot(pilot))
     setTurn(1)
+    setPilotGenBonus(0)
     setPilotHandSize(Math.max(0, Math.floor(pilot?.hand_size ?? 0)))
     setMulliganOpen(cardsInZone(opening, "hand").length > 0)
   }, [status, deck, resourcesReady, resourceByColor])
@@ -1072,6 +1085,12 @@ export function PlayTesterPage() {
     })
   }
 
+  function adjustPilotGenBonus(delta: number) {
+    setPilotGenBonus((prev) =>
+      Math.max(0, Math.min(PILOT_GEN_MAX, prev + delta))
+    )
+  }
+
   const ctxMenuItems: DropdownMenuItem[] = (() => {
     if (!ctxMenu) return []
     const card = sessionCards.find((c) => c.instanceId === ctxMenu.instanceId)
@@ -1250,7 +1269,48 @@ export function PlayTesterPage() {
       ]
     }
 
-    // Trashyard / dismantled / pilot — bottom only for now.
+    // Trashyard / dismantled — bottom only for now.
+    if (card.zone === "trashyard" || card.zone === "dismantled") {
+      return [putOnBottomItem]
+    }
+
+    if (card.zone === "pilot") {
+      return [
+        {
+          id: "add-pilot-gen",
+          label: (
+            <span className="inline-flex items-center gap-1.5">
+              Add +
+              <GameIcon
+                name={genIconForCount(
+                  Math.min(PILOT_GEN_MAX, pilotGenBonus + 1)
+                )}
+                className="h-4 w-auto lg:h-4 2xl:h-4"
+              />
+              {pilotGenBonus > 0 ? ` (${pilotGenBonus}/${PILOT_GEN_MAX})` : ""}
+            </span>
+          ),
+          disabled: pilotGenBonus >= PILOT_GEN_MAX,
+          onSelect: () => adjustPilotGenBonus(1),
+        },
+        {
+          id: "remove-pilot-gen",
+          label: (
+            <span className="inline-flex items-center gap-1.5">
+              Remove +
+              <GameIcon
+                name={genIconForCount(Math.max(1, pilotGenBonus))}
+                className="h-4 w-auto lg:h-4 2xl:h-4"
+              />
+            </span>
+          ),
+          disabled: pilotGenBonus <= 0,
+          onSelect: () => adjustPilotGenBonus(-1),
+        },
+        putOnBottomItem,
+      ]
+    }
+
     return [putOnBottomItem]
   })()
 
@@ -1269,28 +1329,30 @@ export function PlayTesterPage() {
     >
       <div className="absolute inset-0 bg-black/65" aria-hidden />
 
-      <div className="absolute left-3 top-16 z-50">
-        <GlitchFx
-          type="button"
-          label="← BACK TO DECK"
-          className="font-buahs93 h-7 rounded-none bg-cyan-700 px-3 text-xs hover:bg-cyan-900"
-          onClick={() => {
-            // Prefer history back so we do not push a second /decks/:id entry.
-            // (Pushing made DeckPage's navigate(-1) return to the playtester.)
-            if (window.history.length > 1) {
-              navigate(-1)
-              return
-            }
-            if (Number.isFinite(deckId) && deckId > 0) {
-              navigate(ROUTES.deck(deckId))
-              return
-            }
-            navigate(ROUTES.MAIN)
-          }}
-        />
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-50 p-2">
+        <div className="pointer-events-auto">
+          <GlitchFx
+            type="button"
+            label="← BACK TO DECK"
+            className="font-buahs93 h-7 rounded-none bg-cyan-700 px-3 text-xs hover:bg-cyan-900"
+            onClick={() => {
+              // Prefer history back so we do not push a second /decks/:id entry.
+              // (Pushing made DeckPage's navigate(-1) return to the playtester.)
+              if (window.history.length > 1) {
+                navigate(-1)
+                return
+              }
+              if (Number.isFinite(deckId) && deckId > 0) {
+                navigate(ROUTES.deck(deckId))
+                return
+              }
+              navigate(ROUTES.MAIN)
+            }}
+          />
+        </div>
       </div>
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col p-3 pt-16">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col p-2">
         {status === "error" ? (
           <p className="font-mono text-sm text-red-400" role="alert">
             {errorText}
@@ -1299,7 +1361,7 @@ export function PlayTesterPage() {
 
         {playNotice ? (
           <p
-            className="mb-2 font-mono text-xs text-amber-200/90"
+            className="mb-1 font-mono text-xs text-amber-200/90"
             role="status"
           >
             {playNotice}
@@ -1307,7 +1369,7 @@ export function PlayTesterPage() {
         ) : null}
 
         {status === "ready" ? (
-          <div className="relative z-0 flex min-h-0 flex-1 flex-col gap-2">
+          <div className="relative z-0 flex min-h-0 flex-1 flex-col gap-1">
             <div ref={surfaceRef} className="relative z-0 min-h-0 min-w-0 flex-1">
               <p className="pointer-events-none absolute bottom-1 left-2 z-10 font-mono text-[10px] tracking-wide text-cyan-100/70">
                 Battlefield
@@ -1328,7 +1390,7 @@ export function PlayTesterPage() {
               />
             </div>
 
-            <div className="relative z-0 flex h-60 min-h-48 w-full shrink-0 items-end gap-2">
+            <div className="relative z-0 flex h-60 min-h-40 w-full shrink-0 items-end gap-1.5">
               <div
                 ref={stockpileRef}
                 className="relative z-0 min-h-0 min-w-0 flex-1 self-stretch"
@@ -1337,7 +1399,7 @@ export function PlayTesterPage() {
                   Stockpile · {stockpileCards.length}
                 </p>
                 <FreeFloatSurface
-                  className="h-full min-h-0 w-full border-cyan-500/20 pt-4"
+                  className="h-full min-h-0 w-full border-cyan-500/20 pt-3"
                   cards={stockpileCards}
                   onMoveCards={onMoveCards}
                   onBringToFront={onBringToFront}
@@ -1352,7 +1414,7 @@ export function PlayTesterPage() {
                 />
               </div>
 
-              <div className="flex shrink-0 flex-col items-center gap-1 self-end">
+              <div className="flex w-[8.25rem] shrink-0 flex-col items-center gap-1 self-end">
                 <LifeCounter
                   life={life}
                   onAdjust={(delta) =>
@@ -1363,15 +1425,60 @@ export function PlayTesterPage() {
                   ref={pilotRef}
                   cards={pilotCards}
                   label="Pilot"
+                  size="lg"
                   onReleaseCard={onFaceUpPileRelease}
                   onCardContextMenu={onFloatCardContextMenu}
+                  cardOverlay={
+                    pilotGenBonus > 0 ? (
+                      <span
+                        data-pilot-gen-badge=""
+                        role="button"
+                        tabIndex={0}
+                        title={`Pilot +GEN ${pilotGenBonus} · left-click +1 · right-click −1`}
+                        className="inline-flex items-center gap-0.5 border border-cyan-400/60 bg-black/85 px-1.5 py-1 font-buahs93 text-base leading-none text-cyan-100"
+                        onPointerDown={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                        }}
+                        onClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          adjustPilotGenBonus(1)
+                        }}
+                        onContextMenu={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          adjustPilotGenBonus(-1)
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === "+") {
+                            event.preventDefault()
+                            adjustPilotGenBonus(1)
+                          } else if (
+                            event.key === "-" ||
+                            event.key === "Backspace"
+                          ) {
+                            event.preventDefault()
+                            adjustPilotGenBonus(-1)
+                          }
+                        }}
+                      >
+                        +
+                        <GameIcon
+                          name={genIconForCount(pilotGenBonus)}
+                          className="h-5 w-auto"
+                        />
+                      </span>
+                    ) : null
+                  }
                 />
               </div>
             </div>
 
-            <div className="relative z-40 flex shrink-0 items-end gap-3 overflow-visible pb-5">
-              <div ref={handRef} className="min-w-0 flex-1 self-end">
+            <div className="relative z-40 flex shrink-0 items-stretch gap-2 overflow-visible">
+              <div ref={handRef} className="flex min-h-0 min-w-0 flex-1">
                 <PlayerHand
+                  className="min-h-0 w-full flex-1"
                   cards={handCards}
                   onReleaseCard={onHandRelease}
                   onCardContextMenu={onHandContextMenu}
@@ -1400,7 +1507,7 @@ export function PlayTesterPage() {
               />
             </div>
 
-            <div className="relative z-40 flex shrink-0 items-center gap-2 border-t border-cyan-500/25 bg-black/55 px-3 py-2">
+            <div className="relative z-40 flex shrink-0 items-center gap-2 border-t border-cyan-500/25 bg-black/55 px-2 py-1.5">
               <GlitchFx
                 type="button"
                 label="START TURN"
