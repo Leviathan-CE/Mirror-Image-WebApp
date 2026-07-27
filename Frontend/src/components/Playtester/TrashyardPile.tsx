@@ -14,6 +14,7 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from "react"
 
 import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
@@ -23,12 +24,15 @@ import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
 const DRAG_THRESHOLD_PX = 5
-const CARD_H = 128
-const CARD_W = 96
-/** Peek between unique faces while fanned (condensed). */
-const FAN_PEEK = 34
-/** How far covering cards slide away so the hovered face shows. */
-const REVEAL_SHIFT = Math.round(CARD_H * 0.75)
+
+/** Preset card footprints — keep 3:4 so art crops match other zones. */
+const PILE_SIZES = {
+  md: { w: 96, h: 128, peek: 34 },
+  /** Pilot / hero slot — ~1.4× so it reads as the focal zone. */
+  lg: { w: 132, h: 176, peek: 46 },
+} as const
+
+export type TrashyardPileSize = keyof typeof PILE_SIZES
 
 type TrashGroup = {
   cardId: number
@@ -63,6 +67,8 @@ export type TrashyardPileProps = {
   className?: string
   /** Zone title under the pile. */
   label?: string
+  /** Card footprint. Default `md` (same as deck/hand). Use `lg` for pilot. */
+  size?: TrashyardPileSize
   onReleaseCard: (
     instanceId: string,
     clientX: number,
@@ -74,6 +80,11 @@ export type TrashyardPileProps = {
     clientX: number,
     clientY: number
   ) => void
+  /**
+   * Optional badge drawn on top of the pile (e.g. pilot +GEN).
+   * Shown even when the pile is empty so zone-persistent counters stay visible.
+   */
+  cardOverlay?: ReactNode
 }
 
 type TrashDrag = {
@@ -88,9 +99,21 @@ type TrashDrag = {
 
 export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
   function TrashyardPile(
-    { cards, className, label = "Trashyard", onReleaseCard, onCardContextMenu },
+    {
+      cards,
+      className,
+      label = "Trashyard",
+      size = "md",
+      onReleaseCard,
+      onCardContextMenu,
+      cardOverlay,
+    },
     ref
   ) {
+    const { w: cardW, h: cardH, peek: fanPeek } = PILE_SIZES[size]
+    const revealShift = Math.round(cardH * 0.75)
+    const cardBoxClass = "h-full w-full"
+
     const [pileHovered, setPileHovered] = useState(false)
     /** Index into `groups` — covering cards above this slide away. */
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
@@ -208,14 +231,15 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       <>
         <div
           className={cn(
-            // Absolute bottom label keeps the tray at h-32 so it lines up with Hand cards.
-            "relative z-40 flex w-[7.5rem] shrink-0 flex-col items-center",
+            "relative z-40 flex shrink-0 flex-col items-center self-stretch",
             className
           )}
+          style={{ width: cardW }}
         >
           <div
             ref={ref}
-            className="relative h-32 w-24 overflow-visible"
+            className="relative shrink-0 overflow-visible"
+            style={{ width: cardW, height: cardH }}
             onMouseEnter={() => {
               if (!dragRef.current) setPileHovered(true)
             }}
@@ -229,9 +253,10 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
             {cards.length === 0 ? (
               <div
                 className={cn(
-                  "absolute inset-x-0 bottom-0 flex h-32 items-center justify-center",
+                  "absolute inset-x-0 bottom-0 flex items-center justify-center",
                   "border border-dashed border-cyan-500/25 bg-black/40 clip-angled"
                 )}
+                style={{ height: cardH }}
               >
                 <span className="font-mono text-[10px] text-white/35">Empty</span>
               </div>
@@ -261,14 +286,14 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
                         : "cursor-grab"
                     )}
                     style={{
-                      bottom: index * FAN_PEEK,
-                      width: CARD_W,
-                      height: CARD_H,
+                      bottom: index * fanPeek,
+                      width: cardW,
+                      height: cardH,
                       zIndex: index + 1,
                       transform: isHovered
                         ? "scale(1.06)"
                         : isCovering
-                          ? `translateY(-${REVEAL_SHIFT}px)`
+                          ? `translateY(-${revealShift}px)`
                           : "translateY(0) scale(1)",
                       filter: isHovered
                         ? "brightness(1.08)"
@@ -294,7 +319,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
                   >
                     <PlayingCard
                       card={group.display}
-                      className="h-32 w-24"
+                      className={cardBoxClass}
                     />
                     {qty > 1 ? (
                       <span
@@ -316,7 +341,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
                   "absolute inset-x-0 bottom-0 touch-none select-none",
                   dragging?.moved ? "cursor-grabbing opacity-30" : "cursor-grab"
                 )}
-                style={{ width: CARD_W, height: CARD_H }}
+                style={{ width: cardW, height: cardH }}
                 onPointerDown={(event) => {
                   if (topCard) onCardPointerDown(event, topCard.instanceId)
                 }}
@@ -332,13 +357,18 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
                 }}
               >
                 {topCard ? (
-                  <PlayingCard card={topCard} className="h-32 w-24" />
+                  <PlayingCard card={topCard} className={cardBoxClass} />
                 ) : null}
               </div>
             )}
-          </div>
 
-          <p className="pointer-events-none absolute top-full mt-1 whitespace-nowrap font-mono text-[10px] tracking-wide text-cyan-100/70">
+            {cardOverlay ? (
+              <div className="pointer-events-auto absolute top-1 right-1 z-30">
+                {cardOverlay}
+              </div>
+            ) : null}
+          </div>
+          <p className="pointer-events-none mt-1 whitespace-nowrap font-mono text-[10px] tracking-wide text-cyan-100/70">
             {label} · {cards.length}
           </p>
         </div>
@@ -346,11 +376,16 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
         {ghostCard && dragging?.moved ? (
           <div
             className="pointer-events-none fixed z-[80] -translate-x-1/2 -translate-y-1/2"
-            style={{ left: dragging.ghostX, top: dragging.ghostY }}
+            style={{
+              left: dragging.ghostX,
+              top: dragging.ghostY,
+              width: cardW,
+              height: cardH,
+            }}
           >
             <PlayingCard
               card={ghostCard}
-              className="h-32 w-24 shadow-lg shadow-cyan-500/20"
+              className={cn(cardBoxClass, "shadow-lg shadow-cyan-500/20")}
             />
           </div>
         ) : null}

@@ -115,6 +115,58 @@ function cardHitBox(card: PlayingCardInstance) {
   return { left: x, top: y, right: x + CARD_W, bottom: y + CARD_H }
 }
 
+function cardFootprint(card: PlayingCardInstance | undefined) {
+  if (card?.expended) {
+    const size = Math.max(CARD_W, CARD_H)
+    return { w: size, h: size }
+  }
+  return { w: CARD_W, h: CARD_H }
+}
+
+/**
+ * Keep a drag group fully inside the surface. Shifts the whole group as one
+ * rigid body so multi-select spacing is preserved.
+ */
+function clampMovesToSurface(
+  moves: CardMove[],
+  cards: PlayingCardInstance[],
+  surfaceW: number,
+  surfaceH: number
+): CardMove[] {
+  if (moves.length === 0 || surfaceW <= 0 || surfaceH <= 0) return moves
+
+  const byId = new Map(cards.map((c) => [c.instanceId, c]))
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+
+  for (const move of moves) {
+    const { w, h } = cardFootprint(byId.get(move.instanceId))
+    minX = Math.min(minX, move.x)
+    minY = Math.min(minY, move.y)
+    maxX = Math.max(maxX, move.x + w)
+    maxY = Math.max(maxY, move.y + h)
+  }
+
+  let dx = 0
+  let dy = 0
+  if (minX < 0) dx += -minX
+  if (minY < 0) dy += -minY
+  if (maxX + dx > surfaceW) dx += surfaceW - (maxX + dx)
+  if (maxY + dy > surfaceH) dy += surfaceH - (maxY + dy)
+  // Group larger than the surface: pin to the top-left corner.
+  if (minX + dx < 0) dx = -minX
+  if (minY + dy < 0) dy = -minY
+
+  if (dx === 0 && dy === 0) return moves
+  return moves.map((move) => ({
+    ...move,
+    x: move.x + dx,
+    y: move.y + dy,
+  }))
+}
+
 export function FreeFloatSurface({
   cards,
   className,
@@ -251,8 +303,8 @@ export function FreeFloatSurface({
     // Commit positions while ghosts still match the cursor, then clear drag.
     if (moved) {
       const local = clientToLocal(clientX, clientY)
-      const primaryX = Math.max(0, local.x - current.offsetX)
-      const primaryY = Math.max(0, local.y - current.offsetY)
+      const primaryX = local.x - current.offsetX
+      const primaryY = local.y - current.offsetY
       const originPrimary = current.origins[current.instanceId] ?? {
         x: 0,
         y: 0,
@@ -260,14 +312,23 @@ export function FreeFloatSurface({
       const dx = primaryX - originPrimary.x
       const dy = primaryY - originPrimary.y
 
-      const moves: CardMove[] = groupIds.map((id) => {
+      const proposed: CardMove[] = groupIds.map((id) => {
         const origin = current.origins[id] ?? { x: 0, y: 0 }
         return {
           instanceId: id,
-          x: Math.max(0, origin.x + dx),
-          y: Math.max(0, origin.y + dy),
+          x: origin.x + dx,
+          y: origin.y + dy,
         }
       })
+
+      const surface = surfaceRef.current
+      const bounds = surface?.getBoundingClientRect()
+      const moves = clampMovesToSurface(
+        proposed,
+        cardsRef.current,
+        bounds?.width ?? 0,
+        bounds?.height ?? 0
+      )
       onMoveCardsRef.current(moves)
       onCardsReleasedRef.current?.(groupIds, clientX, clientY)
     }
@@ -423,7 +484,10 @@ export function FreeFloatSurface({
                 isDragging
                   ? "z-20 cursor-grabbing opacity-0"
                   : "z-10 cursor-grab",
-                card.expended && !isDragging && "rotate-90",
+                // Keep rotate while dragging (source is opacity-0). Dropping
+                // rotate-90 during drag made it re-apply on release and replay
+                // the expend spin via transition-transform.
+                card.expended && "rotate-90",
                 card.selected &&
                   !isDragging &&
                   "ring-2 ring-cyan-300 ring-offset-1 ring-offset-black/80"

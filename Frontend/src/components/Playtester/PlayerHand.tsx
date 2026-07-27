@@ -133,21 +133,24 @@ export function PlayerHand({
 
   return (
     <>
-      <div className={cn("flex w-full min-w-0 flex-col", className)}>
-        <p className="mb-1 font-mono text-[10px] tracking-wide text-cyan-100/70">
+      <div
+        className={cn(
+          "relative flex h-full min-h-0 w-full min-w-0 flex-col",
+          className
+        )}
+      >
+        <p className="pointer-events-none absolute top-1 left-2 z-10 font-mono text-[10px] tracking-wide text-cyan-100/70">
           Hand · {cards.length}
         </p>
         <MiddleMouseScroll
           label="Player hand"
           horizontal
           vertical={false}
-          // Fixed hand chrome height: viewport + reserved scrollbar slot so
-          // empty ↔ cards (and scrollbar appearing) does not jump the layout.
-          className="w-full border border-cyan-500/25 bg-black/55"
-          viewportClassName="flex h-36 min-h-36 items-end gap-2 overflow-x-auto px-3 pt-2"
+          className="flex min-h-0 w-full flex-1 flex-col border border-cyan-500/25 bg-black/55"
+          viewportClassName="flex min-h-32 flex-1 items-end gap-1.5 overflow-x-auto px-2 pb-1 pt-1"
         >
           <div
-            className="flex h-full w-max min-w-full items-end justify-center gap-2"
+            className="flex h-full w-max min-w-full items-end justify-center gap-1.5"
             data-playtester-hand
           >
             {cards.length === 0 ? (
@@ -190,8 +193,6 @@ export function PlayerHand({
             )}
           </div>
         </MiddleMouseScroll>
-        {/* Always reserve the horizontal scrollbar band (h-2 + mt-1). */}
-        <div className="mt-1 h-2 shrink-0" aria-hidden />
       </div>
 
       {ghostCard && dragging?.moved ? (

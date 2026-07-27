@@ -16,8 +16,8 @@ export function LifeCounter({ life, onAdjust, className }: LifeCounterProps) {
       type="button"
       title={`Life: ${life} · left-click +1 · right-click −1`}
       className={cn(
-        "inline-flex min-h-8 min-w-12 select-none items-center justify-center border border-red-400/70",
-        "bg-red-950/90 px-2 font-glitch text-lg leading-none text-red-200",
+        "inline-flex min-h-12 w-full select-none items-center justify-center border border-red-400/70",
+        "bg-red-950/90 px-3 py-1.5 font-glitch text-3xl leading-none text-red-200",
         "cursor-pointer hover:bg-red-900/90",
         className
       )}

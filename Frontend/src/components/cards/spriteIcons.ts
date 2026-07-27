@@ -39,6 +39,7 @@ const SPRITE_TO_ICON: Record<string, GameIconName> = {
   GEN6: "gen6",
   GEN7: "gen7",
   GEN8: "gen8",
+  GEN9: "gen9",
   GEN10: "gen10",
   GENX: "genX",
 }

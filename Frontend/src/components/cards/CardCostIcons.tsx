@@ -45,6 +45,7 @@ const GENERIC_ICONS: Record<string, GameIconName> = {
   GEN6: "gen6",
   GEN7: "gen7",
   GEN8: "gen8",
+  GEN9: "gen9",
   GEN10: "gen10",
   GENX: "genX",
   GEN: "genX",
@@ -85,7 +86,7 @@ export function costTokenToIcon(token: string): GameIconName | null {
   if (HYBRID_ALIASES[key]) return HYBRID_ALIASES[key]
   const hybrid = normalizeHybridKey(key)
   if (HYBRID_ALIASES[hybrid]) return HYBRID_ALIASES[hybrid]
-  // Unknown GEN9 etc. — closest available glyph.
+  // Unknown high GENN etc. — closest available glyph.
   if (/^GEN\d+$/.test(key)) return "genX"
   return null
 }

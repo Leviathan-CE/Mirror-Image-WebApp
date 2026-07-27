@@ -154,7 +154,9 @@ export function ContextMenu({
                 runLeaf(item)
               }}
             >
-              <span className="min-w-0 flex-1">{item.label}</span>
+              <span className="inline-flex min-w-0 flex-1 items-center gap-1.5">
+                {item.label}
+              </span>
               {hasSubmenu ? (
                 <span className="shrink-0 text-cyan-300/70" aria-hidden>
                   ›
@@ -174,7 +176,7 @@ export function ContextMenu({
                     role="menuitem"
                     disabled={sub.disabled}
                     className={cn(
-                      "font-buahs93 flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs hover:bg-cyan-500/15 disabled:opacity-50",
+                      "font-buahs93 inline-flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs hover:bg-cyan-500/15 disabled:opacity-50",
                       sub.tone === "danger"
                         ? "text-red-300/90 hover:bg-red-500/15"
                         : "text-cyan-100"
