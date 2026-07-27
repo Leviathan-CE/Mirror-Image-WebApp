@@ -158,7 +158,8 @@
 .deck-card-enlarge {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  /* Above playtester zones (hand/trash z-40) and in-page UI. */
+  z-index: 10000;
   display: flex;
   flex-direction: column;
   align-items: center;
