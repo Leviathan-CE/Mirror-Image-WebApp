@@ -33,8 +33,30 @@ docker compose exec -T db psql -U postgres -d mirror_image < Backend/sql/09_seed
 ```
 
 Schema for new environments comes entirely from `Backend/sql/` init scripts
-(see `Backend/sql/README.md`). For older volumes, apply scripts under
-`Backend/sql/migrations/` (see that folder’s README).
+(see `Backend/sql/README.md`). Those only run on an **empty** Postgres volume.
+
+### Apply DB migrations (existing volumes)
+
+If login/API fails with missing columns (e.g. `subscription_status does not exist`),
+your volume was created before the current schema. With Compose running:
+
+```bash
+npm run migrate
+```
+
+Or call the script directly:
+
+```bash
+./scripts/migrate-db.sh
+```
+
+Apply a single migration:
+
+```bash
+npm run migrate -- 17_users_stripe_subscription.sql
+```
+
+See `Backend/sql/migrations/README.md` for details.
 
 Or wipe and recreate (destroys all data):
 
