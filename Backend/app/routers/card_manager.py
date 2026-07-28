@@ -83,7 +83,11 @@ class CardCreate(BaseModel):
     )
     spirit_capacity: int = Field(default=0, ge=0)
     steel_capacity: int = Field(default=0, ge=0)
-    
+    time_capacity: int = Field(
+        default=0,
+        ge=0,
+        validation_alias=AliasChoices("time_capacity", "tim_capacity"),
+    )
     lif_capacity: int = Field(default=0, ge=0)
     hand_size: int = Field(default=0, ge=0)
 
@@ -140,6 +144,7 @@ class CardByNameResponse(BaseModel):
     metal_capacity: int
     spirit_capacity: int
     steel_capacity: int
+    time_capacity: int
     lif_capacity: int
     hand_size: int
     lagality: str
@@ -153,8 +158,8 @@ _CARD_SELECT_SQL = """
            description, rarity, artist_name, card_number, card_count,
            legal_info, card_printing, is_summon, is_pilot, is_augment,
            threat_level, ram_capacity, power_capacity, metal_capacity,
-           spirit_capacity, steel_capacity, lif_capacity, hand_size, lagality,
-           card_art_path, card_art_mime_type
+           spirit_capacity, steel_capacity, time_capacity, lif_capacity,
+           hand_size, lagality, card_art_path, card_art_mime_type
       FROM cards
 """
 
@@ -188,11 +193,12 @@ def _card_row_to_response(row) -> CardByNameResponse:
         metal_capacity=row[24],
         spirit_capacity=row[25],
         steel_capacity=row[26],
-        lif_capacity=row[27],
-        hand_size=row[28],
-        lagality=row[29],
-        card_art_path=row[30],
-        card_art_mime_type=row[31],
+        time_capacity=row[27],
+        lif_capacity=row[28],
+        hand_size=row[29],
+        lagality=row[30],
+        card_art_path=row[31],
+        card_art_mime_type=row[32],
     )
 
 
@@ -243,6 +249,7 @@ def create_card(
         "metal_capacity": body.metal_capacity,
         "spirit_capacity": body.spirit_capacity,
         "steel_capacity": body.steel_capacity,
+        "time_capacity": body.time_capacity,
         "lif_capacity": body.lif_capacity,
         "hand_size": body.hand_size,
         "lagality": body.lagality,

@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS cards (
     metal_capacity INTEGER NOT NULL DEFAULT 0,
     spirit_capacity INTEGER NOT NULL DEFAULT 0,
     steel_capacity INTEGER NOT NULL DEFAULT 0,
+    time_capacity INTEGER NOT NULL DEFAULT 0,
 
     lif_capacity INTEGER NOT NULL DEFAULT 0,
     hand_size    INTEGER NOT NULL DEFAULT 0,
@@ -57,6 +58,7 @@ CREATE TABLE IF NOT EXISTS cards (
     CONSTRAINT cards_capacities_non_negative CHECK (
         ram_capacity >= 0 AND power_capacity >= 0 AND metal_capacity >= 0
         AND spirit_capacity >= 0 AND steel_capacity >= 0
+        AND time_capacity >= 0
         AND lif_capacity >= 0 AND hand_size >= 0
     )
 );

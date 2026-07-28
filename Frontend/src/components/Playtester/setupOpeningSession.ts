@@ -46,6 +46,7 @@ export function startingResourceColorsFromPilot(
   push("POW", pilot.power_capacity)
   push("MET", pilot.metal_capacity)
   push("LIF", pilot.spirit_capacity)
+  push("TIM", pilot.time_capacity)
   push("STL", pilot.steel_capacity)
   return out
 }

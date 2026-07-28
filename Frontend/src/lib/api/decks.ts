@@ -60,6 +60,7 @@ export type DeckCardEntry = {
   metal_capacity?: number
   spirit_capacity?: number
   steel_capacity?: number
+  time_capacity?: number
   /** Starting life total on pilots (not a resource token). */
   lif_capacity?: number
 }
