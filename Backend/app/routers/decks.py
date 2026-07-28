@@ -127,6 +127,7 @@ class DeckCardEntry(BaseModel):
     metal_capacity: int = 0
     spirit_capacity: int = 0
     steel_capacity: int = 0
+    time_capacity: int = 0
     # Starting life total on pilots (not a resource token).
     lif_capacity: int = 0
 
@@ -361,6 +362,7 @@ def _fetch_deck_cards(
             c.metal_capacity,
             c.spirit_capacity,
             c.steel_capacity,
+            c.time_capacity,
             c.lif_capacity
         FROM deck_has_cards dhc
         JOIN cards c ON c.id = dhc.card_id
@@ -393,7 +395,8 @@ def _fetch_deck_cards(
             metal_capacity=int(row[14] or 0),
             spirit_capacity=int(row[15] or 0),
             steel_capacity=int(row[16] or 0),
-            lif_capacity=int(row[17] or 0),
+            time_capacity=int(row[17] or 0),
+            lif_capacity=int(row[18] or 0),
         )
         for row in cur.fetchall()
     ]
