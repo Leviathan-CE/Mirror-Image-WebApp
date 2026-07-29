@@ -54,6 +54,8 @@ export type FreeFloatSurfaceProps = {
     clientX: number,
     clientY: number
   ) => void
+  /** Right-click empty surface (not on a card). */
+  onEmptyContextMenu?: (clientX: number, clientY: number) => void
   /** Left-click / right-click a counter badge on a free-float card. */
   onCardCounterAdjust?: (
     instanceId: string,
@@ -177,6 +179,7 @@ export function FreeFloatSurface({
   onSelectionChange,
   onCardsReleased,
   onCardContextMenu,
+  onEmptyContextMenu,
   onCardCounterAdjust,
 }: FreeFloatSurfaceProps) {
   const surfaceRef = useRef<HTMLDivElement>(null)
@@ -471,6 +474,11 @@ export function FreeFloatSurface({
           className
         )}
         onPointerDown={onSurfacePointerDown}
+        onContextMenu={(event) => {
+          // Card handlers stopPropagation; this only fires on empty surface.
+          event.preventDefault()
+          onEmptyContextMenu?.(event.clientX, event.clientY)
+        }}
       >
         {cards.map((card) => {
           const isDragging = Boolean(draggingIds?.has(card.instanceId))
