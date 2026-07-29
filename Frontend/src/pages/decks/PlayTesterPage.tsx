@@ -20,6 +20,7 @@ import {
   type ResourceColor,
 } from "@/components/Playtester/accumulateResources"
 import { CardBottomSlideAnimation } from "@/components/Playtester/CardBottomSlideAnimation"
+import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import {
   CardFlipFlyAnimation,
   type FlipFlyMode,
@@ -70,6 +71,7 @@ import {
   fetchCardLibrary,
   type CardLibraryItem,
 } from "@/lib/api/cards"
+import { cardArtUrl } from "@/lib/api/decks"
 import { useDeckDetail } from "@/hooks/useDeckDetail"
 import { ROUTES } from "@/lib/route"
 import { GameIcon } from "@/components/common/GameIcon"
@@ -137,11 +139,14 @@ type BottomSlideAnim = {
   to: { x: number; y: number }
 }
 
-type CtxMenuState = {
-  instanceId: string
-  x: number
-  y: number
-}
+type CtxMenuState =
+  | { kind: "card"; instanceId: string; x: number; y: number }
+  | {
+      kind: "zone"
+      zone: "hand" | "battlefield" | "stockpile"
+      x: number
+      y: number
+    }
 
 type AccumulateChooserState = {
   card: PlayingCardInstance
@@ -169,6 +174,10 @@ export function PlayTesterPage() {
   bottomAnimRef.current = bottomAnim
 
   const [ctxMenu, setCtxMenu] = useState<CtxMenuState | null>(null)
+  /** Sticky zoom from context menu (middle-mouse zoom stays local to each zone). */
+  const [inspectCard, setInspectCard] = useState<PlayingCardInstance | null>(
+    null
+  )
   const [accumulateChooser, setAccumulateChooser] =
     useState<AccumulateChooserState | null>(null)
   const [resourceTokens, setResourceTokens] = useState<CardLibraryItem[]>([])
@@ -266,6 +275,46 @@ export function PlayTesterPage() {
       cancelled = true
     }
   }, [status, token])
+
+  // Delete / Backspace removes selected hand / battlefield / stockpile cards.
+  useEffect(() => {
+    if (status !== "ready") return
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Delete" && event.key !== "Backspace") return
+      if (mulliganOpen || accumulateChooser || inspectCard) return
+
+      const target = event.target
+      if (target instanceof HTMLElement) {
+        const tag = target.tagName
+        if (
+          tag === "INPUT" ||
+          tag === "TEXTAREA" ||
+          tag === "SELECT" ||
+          target.isContentEditable
+        ) {
+          return
+        }
+      }
+
+      const ids = sessionCardsRef.current
+        .filter(
+          (c) =>
+            c.selected &&
+            (c.zone === "hand" ||
+              c.zone === "battlefield" ||
+              c.zone === "stockpile")
+        )
+        .map((c) => c.instanceId)
+      if (ids.length === 0) return
+
+      event.preventDefault()
+      deleteSessionCards(ids)
+    }
+
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [status, mulliganOpen, accumulateChooser, inspectCard])
 
   const handCards = cardsInZone(sessionCards, "hand")
   const battlefieldCards = cardsInZone(sessionCards, "battlefield")
@@ -1035,7 +1084,7 @@ export function PlayTesterPage() {
     clientY: number
   ) {
     setPlayNotice(null)
-    setCtxMenu({ instanceId, x: clientX, y: clientY })
+    setCtxMenu({ kind: "card", instanceId, x: clientX, y: clientY })
   }
 
   function onFloatCardContextMenu(
@@ -1044,7 +1093,27 @@ export function PlayTesterPage() {
     clientY: number
   ) {
     setPlayNotice(null)
-    setCtxMenu({ instanceId, x: clientX, y: clientY })
+    setCtxMenu({ kind: "card", instanceId, x: clientX, y: clientY })
+  }
+
+  function onZoneEmptyContextMenu(
+    zone: "hand" | "battlefield" | "stockpile",
+    clientX: number,
+    clientY: number
+  ) {
+    setPlayNotice(null)
+    setCtxMenu({ kind: "zone", zone, x: clientX, y: clientY })
+  }
+
+  /** Remove cards from the session (cheat / cleanup — not trashyard). */
+  function deleteSessionCards(instanceIds: string[]) {
+    if (instanceIds.length === 0) return
+    const ids = new Set(instanceIds)
+    setSessionCards((prev) => {
+      const next = prev.filter((c) => !ids.has(c.instanceId))
+      sessionCardsRef.current = next
+      return next
+    })
   }
 
   function onFloatCardCounterAdjust(
@@ -1086,6 +1155,32 @@ export function PlayTesterPage() {
 
   const ctxMenuItems: DropdownMenuItem[] = (() => {
     if (!ctxMenu) return []
+
+    const generateResourceItem: DropdownMenuItem = {
+      id: "generate-resource",
+      label: "Generate resource",
+      disabled: availableResourceColors.size === 0,
+      submenu: RESOURCE_COLORS.map((color) => ({
+        id: `gen-resource-${color}`,
+        label: (
+          <>
+            <GameIcon
+              name={RESOURCE_COLOR_ICON[color]}
+              className="h-4 w-auto"
+            />
+            {color}
+          </>
+        ),
+        disabled: !resourceByColor.has(color),
+        onSelect: () => spawnResourceColor(color),
+      })),
+    }
+
+    // Empty zone surface — generate only.
+    if (ctxMenu.kind === "zone") {
+      return [generateResourceItem]
+    }
+
     const card = sessionCards.find((c) => c.instanceId === ctxMenu.instanceId)
     if (!card || card.zone === "library") return []
 
@@ -1120,6 +1215,40 @@ export function PlayTesterPage() {
         }),
     }
 
+    const VeiwCardDetials: DropdownMenuItem = {
+      id: "CardDetails",
+      label: "Veiw Details",
+      onSelect: () => setInspectCard(card),
+    }
+
+    const deleteTargets = (() => {
+      if (
+        (card.zone === "battlefield" || card.zone === "stockpile") &&
+        card.selected
+      ) {
+        return sessionCards
+          .filter(
+            (c) =>
+              c.selected &&
+              (c.zone === "battlefield" ||
+                c.zone === "stockpile" ||
+                c.zone === "hand")
+          )
+          .map((c) => c.instanceId)
+      }
+      return [card.instanceId]
+    })()
+
+    const deleteItem: DropdownMenuItem = {
+      id: "delete-card",
+      label:
+        deleteTargets.length > 1
+          ? `Delete (${deleteTargets.length})`
+          : "Delete",
+      tone: "danger",
+      onSelect: () => deleteSessionCards(deleteTargets),
+    }
+
     if (card.zone === "hand") {
       const pips = extractGainablePips(card.cost)
       const hasCatalog = pips.some((pip) => {
@@ -1143,7 +1272,10 @@ export function PlayTesterPage() {
           disabled: busy || pips.length === 0 || !hasCatalog,
           onSelect: () => startAccumulate(card.instanceId),
         },
+        generateResourceItem,
         putOnBottomItem,
+        VeiwCardDetials,
+        deleteItem,
       ]
     }
 
@@ -1207,64 +1339,16 @@ export function PlayTesterPage() {
               duplicatePlayingCard(prev, card.instanceId)
             ),
         },
-        {
-          id: "generate-resource",
-          label: "Generate resource",
-          disabled: availableResourceColors.size === 0,
-          submenu: RESOURCE_COLORS.map((color) => ({
-            id: `gen-resource-${color}`,
-            label: (
-              <>
-                <GameIcon
-                  name={RESOURCE_COLOR_ICON[color]}
-                  className="h-4 w-auto"
-                />
-                {color}
-              </>
-            ),
-            disabled: !resourceByColor.has(color),
-            onSelect: () => spawnResourceColor(color),
-          })),
-        },
-        // {
-        //   id: "remove-time",
-        //   label: "Remove time counter",
-        //   disabled: time <= 0,
-        //   onSelect: () =>
-        //     setSessionCards((prev) =>
-        //       adjustCardCounter(prev, card.instanceId, "time", -1)
-        //     ),
-        // },
-        // {
-        //   id: "remove-damage",
-        //   label: "Remove damage counter",
-        //   disabled: damage <= 0,
-        //   onSelect: () =>
-        //     setSessionCards((prev) =>
-        //       adjustCardCounter(prev, card.instanceId, "damage", -1)
-        //     ),
-        // },
-        // {
-        //   id: "remove-tlv",
-        //   label: (
-        //     <>
-        //       Remove <GameIcon name="threat_lvl" className="h-4 w-auto" />{" "}
-        //       counter
-        //     </>
-        //   ),
-        //   disabled: tlv <= 0,
-        //   onSelect: () =>
-        //     setSessionCards((prev) =>
-        //       adjustCardCounter(prev, card.instanceId, "tlv", -1)
-        //     ),
-        // },
+        generateResourceItem,
         putOnBottomItem,
+        VeiwCardDetials,
+        deleteItem,
       ]
     }
 
-    // Trashyard / dismantled — bottom only for now.
+    // Trashyard / dismantled — zoom + bottom.
     if (card.zone === "trashyard" || card.zone === "dismantled") {
-      return [putOnBottomItem]
+      return [putOnBottomItem, VeiwCardDetials]
     }
 
     if (card.zone === "pilot") {
@@ -1301,10 +1385,11 @@ export function PlayTesterPage() {
           onSelect: () => adjustPilotGenBonus(-1),
         },
         putOnBottomItem,
+        VeiwCardDetials,
       ]
     }
 
-    return [putOnBottomItem]
+    return [putOnBottomItem, VeiwCardDetials]
   })()
 
   function onBottomSlideComplete() {
@@ -1379,6 +1464,9 @@ export function PlayTesterPage() {
                 }
                 onCardsReleased={onBattlefieldRelease}
                 onCardContextMenu={onFloatCardContextMenu}
+                onEmptyContextMenu={(x, y) =>
+                  onZoneEmptyContextMenu("battlefield", x, y)
+                }
                 onCardCounterAdjust={onFloatCardCounterAdjust}
               />
             </div>
@@ -1403,6 +1491,9 @@ export function PlayTesterPage() {
                   }
                   onCardsReleased={onStockpileRelease}
                   onCardContextMenu={onFloatCardContextMenu}
+                  onEmptyContextMenu={(x, y) =>
+                    onZoneEmptyContextMenu("stockpile", x, y)
+                  }
                   onCardCounterAdjust={onFloatCardCounterAdjust}
                 />
               </div>
@@ -1475,6 +1566,29 @@ export function PlayTesterPage() {
                   cards={handCards}
                   onReleaseCard={onHandRelease}
                   onCardContextMenu={onHandContextMenu}
+                  onEmptyContextMenu={(x, y) =>
+                    onZoneEmptyContextMenu("hand", x, y)
+                  }
+                  onCardSelect={(instanceId) => {
+                    setSessionCards((prev) =>
+                      prev.map((c) => {
+                        if (c.zone === "hand") {
+                          return {
+                            ...c,
+                            selected: c.instanceId === instanceId,
+                          }
+                        }
+                        if (
+                          (c.zone === "battlefield" ||
+                            c.zone === "stockpile") &&
+                          c.selected
+                        ) {
+                          return { ...c, selected: false }
+                        }
+                        return c
+                      })
+                    )
+                  }}
                 />
               </div>
               <DeckPile
@@ -1553,6 +1667,17 @@ export function PlayTesterPage() {
         items={ctxMenuItems}
         onClose={() => setCtxMenu(null)}
         label="Card actions"
+      />
+
+      <CardEnlargeOverlay
+        open={inspectCard != null}
+        name={inspectCard?.name ?? ""}
+        artSrc={
+          inspectCard
+            ? cardArtUrl(inspectCard.artPath, inspectCard.artVersion)
+            : null
+        }
+        onDismiss={() => setInspectCard(null)}
       />
 
       {mulliganOpen ? (

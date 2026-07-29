@@ -31,6 +31,10 @@ export type PlayerHandProps = {
     clientX: number,
     clientY: number
   ) => void
+  /** Right-click empty hand area (not on a card). */
+  onEmptyContextMenu?: (clientX: number, clientY: number) => void
+  /** Click (no drag) — parent can mark the card selected for Delete key. */
+  onCardSelect?: (instanceId: string) => void
 }
 
 type HandDrag = {
@@ -48,6 +52,8 @@ export function PlayerHand({
   className,
   onReleaseCard,
   onCardContextMenu,
+  onEmptyContextMenu,
+  onCardSelect,
 }: PlayerHandProps) {
   const dragRef = useRef<HandDrag | null>(null)
   const [drag, setDrag] = useState<HandDrag | null>(null)
@@ -129,6 +135,9 @@ export function PlayerHand({
     }
 
     onReleaseCard(current.instanceId, event.clientX, event.clientY)
+    if (!current.moved) {
+      onCardSelect?.(current.instanceId)
+    }
   }
 
   return (
@@ -152,6 +161,17 @@ export function PlayerHand({
           <div
             className="flex h-full w-max min-w-full items-end justify-center gap-1.5"
             data-playtester-hand
+            onContextMenu={(event) => {
+              // Card handlers stopPropagation; empty / padding hits this.
+              if (
+                event.target instanceof Element &&
+                event.target.closest("[data-playtester-instance]")
+              ) {
+                return
+              }
+              event.preventDefault()
+              onEmptyContextMenu?.(event.clientX, event.clientY)
+            }}
           >
             {cards.length === 0 ? (
               <div
@@ -170,7 +190,10 @@ export function PlayerHand({
                       "touch-none transition-transform duration-150",
                       isDragging
                         ? "cursor-grabbing opacity-30"
-                        : "cursor-grab hover:-translate-y-2"
+                        : "cursor-grab hover:-translate-y-2",
+                      card.selected &&
+                        !isDragging &&
+                        "ring-2 ring-cyan-300 ring-offset-1 ring-offset-black/80"
                     )}
                     onPointerDown={(event) => onCardPointerDown(event, card)}
                     onPointerMove={onCardPointerMove}
@@ -178,6 +201,7 @@ export function PlayerHand({
                     onPointerCancel={endDrag}
                     onContextMenu={(event) => {
                       event.preventDefault()
+                      event.stopPropagation()
                       onCardContextMenu?.(
                         card.instanceId,
                         event.clientX,
