@@ -46,10 +46,14 @@ export type AdminCardBulkUpdate = {
   lagality?: string
 }
 
-/** Admin catalogue browse — same filters as user card library. */
+/** Admin catalogue browse — same filters as user card library + publish status. */
+export type AdminCardLibraryQuery = CardLibraryQuery & {
+  published?: PublishStatus
+}
+
 export async function fetchAdminCardLibrary(
   token: string,
-  query: CardLibraryQuery = {}
+  query: AdminCardLibraryQuery = {}
 ): Promise<AdminCardLibraryResponse> {
   const url = new URL(`${apiBaseUrl()}/cards/admin/library`)
   const q = query.q?.trim()
@@ -72,6 +76,9 @@ export async function fetchAdminCardLibrary(
   if (superType) url.searchParams.set("super_type", superType)
   const subType = query.subType?.trim()
   if (subType) url.searchParams.set("sub_type", subType)
+  if (query.published) {
+    url.searchParams.set("published", query.published)
+  }
   url.searchParams.set("limit", String(query.limit ?? 48))
   url.searchParams.set("offset", String(query.offset ?? 0))
 
@@ -80,6 +87,38 @@ export async function fetchAdminCardLibrary(
     response,
     "admin_card_library_failed"
   )
+}
+
+export type AdminCardDetail = {
+  id: number
+  card_name: string
+  card_set_name: string
+  rarity: string
+  invoke_cost: number
+  cost: string[]
+  super_types: string[]
+  sub_types: string[]
+  types_line: string
+  description: string
+  keywords: string[]
+  show_help_text: boolean
+  threat_level: string
+  card_art_path: string | null
+  card_art_version?: number | null
+  lagality: string
+  published: PublishStatus | string
+  is_deprecated: boolean
+}
+
+export async function fetchAdminCardDetail(
+  token: string,
+  cardId: number
+): Promise<AdminCardDetail> {
+  const response = await fetch(
+    `${apiBaseUrl()}/cards/admin/library/${cardId}`,
+    { headers: authHeaders(token) }
+  )
+  return readJsonOrThrow<AdminCardDetail>(response, "admin_card_detail_failed")
 }
 
 /** Bulk-set publish status and/or lagality for selected cards. */

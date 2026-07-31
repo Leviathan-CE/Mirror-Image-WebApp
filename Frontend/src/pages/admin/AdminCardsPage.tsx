@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from "react"
 
 import { useAuth } from "@/app/providers/AuthProvider"
+import { CardDetailOverlay } from "@/components/cards/CardDetailOverlay"
 import { costTokenToIcon } from "@/components/cards/CardCostIcons"
 import { CardSearchBar } from "@/components/cards/CardSearchBar"
 import { GameIcon } from "@/components/common/GameIcon"
@@ -19,7 +20,9 @@ import {
   LAGALITY_OPTIONS,
   PUBLISH_STATUSES,
   bulkUpdateAdminCards,
+  fetchAdminCardDetail,
   fetchAdminCardLibrary,
+  type AdminCardDetail,
   type AdminCardItem,
   type PublishStatus,
 } from "@/lib/api/cards_admin"
@@ -108,6 +111,9 @@ export function AdminCardsPage() {
   const [typesLine, setTypesLine] = useState("")
   const [superType, setSuperType] = useState("")
   const [subType, setSubType] = useState("")
+  const [publishedFilter, setPublishedFilter] = useState<PublishStatus | "">(
+    ""
+  )
   const [items, setItems] = useState<AdminCardItem[]>([])
   const [total, setTotal] = useState(0)
   const [offset, setOffset] = useState(0)
@@ -118,6 +124,8 @@ export function AdminCardsPage() {
   const [bulkLagality, setBulkLagality] = useState<string>("")
   const [busy, setBusy] = useState(false)
   const [actionMessage, setActionMessage] = useState("")
+  const [detail, setDetail] = useState<AdminCardDetail | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedName(nameQuery.trim()), 200)
@@ -159,6 +167,7 @@ export function AdminCardsPage() {
     typesLine,
     superType,
     subType,
+    publishedFilter,
   ])
 
   useEffect(() => {
@@ -182,6 +191,7 @@ export function AdminCardsPage() {
       typesLine: typesLine || undefined,
       superType: superType || undefined,
       subType: subType || undefined,
+      published: publishedFilter || undefined,
       limit: PAGE_SIZE,
       offset,
     })
@@ -218,6 +228,7 @@ export function AdminCardsPage() {
     typesLine,
     superType,
     subType,
+    publishedFilter,
     offset,
   ])
 
@@ -236,6 +247,7 @@ export function AdminCardsPage() {
     setTypesLine("")
     setSuperType("")
     setSubType("")
+    setPublishedFilter("")
     setOffset(0)
   }
 
@@ -269,6 +281,24 @@ export function AdminCardsPage() {
     setSelectedIds(new Set())
   }
 
+  async function openDetail(cardId: number) {
+    if (!token || detailLoading) return
+    setDetailLoading(true)
+    setActionMessage("")
+    try {
+      const data = await fetchAdminCardDetail(token, cardId)
+      setDetail(data)
+    } catch (error) {
+      setActionMessage(
+        error instanceof ApiError
+          ? "Could not load card details."
+          : "Could not reach the server."
+      )
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
   async function applyBulk() {
     if (!token || selectedCount === 0) return
     if (!bulkPublish && !bulkLagality) {
@@ -298,6 +328,7 @@ export function AdminCardsPage() {
       setActionMessage(`Updated ${result.updated} row(s).`)
       setBulkPublish("")
       setBulkLagality("")
+      clearSelection()
     } catch (error: unknown) {
       setActionMessage(
         error instanceof ApiError
@@ -417,6 +448,26 @@ export function AdminCardsPage() {
             >
               <option value="">Any</option>
               {facets.sub_types.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block sm:col-span-2">
+            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+              PUBLISH STATUS
+            </span>
+            <select
+              value={publishedFilter}
+              onChange={(e) =>
+                setPublishedFilter(e.target.value as PublishStatus | "")
+              }
+              className={filterSelectClassName}
+            >
+              <option value="">Any</option>
+              {PUBLISH_STATUSES.map((value) => (
                 <option key={value} value={value}>
                   {value}
                 </option>
@@ -634,7 +685,13 @@ export function AdminCardsPage() {
                     />
                   </td>
                   <td className="px-2 py-2">
-                    <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-3 text-left"
+                      disabled={busy || detailLoading}
+                      title={`View details for ${item.card_name}`}
+                      onClick={() => void openDetail(item.id)}
+                    >
                       {art ? (
                         <img
                           src={art}
@@ -647,7 +704,7 @@ export function AdminCardsPage() {
                         </span>
                       )}
                       <div className="min-w-0">
-                        <p className="truncate font-buahs93 text-sm text-white">
+                        <p className="truncate font-buahs93 text-sm text-white underline-offset-2 hover:underline">
                           {item.card_name}
                         </p>
                         <p className="truncate font-mono text-[10px] text-cyan-400/55">
@@ -657,7 +714,7 @@ export function AdminCardsPage() {
                           {item.rarity}
                         </p>
                       </div>
-                    </div>
+                    </button>
                   </td>
                   <td className="px-2 py-2 font-mono text-xs text-white/60">
                     {item.card_set_name}
@@ -687,6 +744,24 @@ export function AdminCardsPage() {
         disabled={busy || status === "loading"}
         onPrev={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))}
         onNext={() => setOffset((o) => o + PAGE_SIZE)}
+      />
+
+      <CardDetailOverlay
+        card={
+          detail
+            ? {
+                ...detail,
+                cost: detail.cost.map(String),
+                keywords: detail.keywords.map(String),
+                super_types: detail.super_types.map(String),
+                sub_types: detail.sub_types.map(String),
+                metaLine: `#${detail.id} · ${detail.published} · ${detail.lagality}${
+                  detail.is_deprecated ? " · deprecated" : ""
+                }`,
+              }
+            : null
+        }
+        onClose={() => setDetail(null)}
       />
     </AdminPageShell>
   )

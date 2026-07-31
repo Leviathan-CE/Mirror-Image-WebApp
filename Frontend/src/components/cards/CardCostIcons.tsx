@@ -48,7 +48,7 @@ const GENERIC_ICONS: Record<string, GameIconName> = {
   GEN9: "gen9",
   GEN10: "gen10",
   GENX: "genX",
-  GEN: "genX",
+  GEN: "steel",
 }
 
 /** Normalize hybrid token order so POW-MET and MET-POW both resolve. */

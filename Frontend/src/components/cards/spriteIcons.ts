@@ -29,7 +29,7 @@ const SPRITE_TO_ICON: Record<string, GameIconName> = {
   RAM: "ram",
   TIM: "time",
   STL: "steel",
-  GEN: "genX",
+  GEN: "steel",
   GEN0: "gen0",
   GEN1: "gen1",
   GEN2: "gen2",

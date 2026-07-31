@@ -4,12 +4,10 @@
  */
 
 import { useEffect, useRef, useState, type DragEvent as ReactDragEvent } from "react"
-import { createPortal } from "react-dom"
 
-import { CardCostIcons, costTokenToIcon } from "@/components/cards/CardCostIcons"
-import { CardRulesText } from "@/components/cards/CardRulesText"
+import { CardDetailOverlay } from "@/components/cards/CardDetailOverlay"
+import { costTokenToIcon } from "@/components/cards/CardCostIcons"
 import { CardSearchBar } from "@/components/cards/CardSearchBar"
-import { parseKeyword } from "@/components/cards/keywordHelp.logic"
 import { GameIcon } from "@/components/common/GameIcon"
 import {
   beginDeckCardDrag,
@@ -591,126 +589,10 @@ export function CardLibraryBrowser({
         })}
       </ul>
 
-      {selected
-        ? createPortal(
-            <div
-              className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/85 p-2 sm:p-4 md:p-6"
-              role="dialog"
-              aria-modal="true"
-              aria-label={selected.card_name}
-              onClick={() => setSelected(null)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") setSelected(null)
-              }}
-            >
-              <div
-                className="grid max-h-[min(96vh,100%)] w-full max-w-[min(96vw,90rem)] gap-4 overflow-y-auto border border-cyan-500/30 bg-black/95 p-3 sm:gap-6 sm:p-5 md:grid-cols-[minmax(14rem,42%)_minmax(0,1fr)] md:gap-8 md:p-6 lg:grid-cols-[minmax(18rem,46%)_minmax(0,1fr)]"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {cardArtUrl(selected.card_art_path, selected.card_art_version) ? (
-                  <img
-                    src={
-                      cardArtUrl(
-                        selected.card_art_path,
-                        selected.card_art_version
-                      ) ?? undefined
-                    }
-                    alt=""
-                    className="mx-auto h-auto max-h-[min(70vh,52rem)] w-full max-w-md object-contain md:max-h-[min(88vh,64rem)] md:max-w-none"
-                  />
-                ) : (
-                  <div className="flex aspect-[2/3] max-h-[70vh] items-center justify-center border border-dashed border-cyan-500/25 font-mono text-xs text-cyan-500/40 md:max-h-[88vh]">
-                    NO ART
-                  </div>
-                )}
-                <div className="flex min-h-0 flex-col">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <h2 className="font-glitch text-3xl text-cyan-300 sm:text-4xl lg:text-5xl">
-                      {selected.card_name}
-                    </h2>
-                    <GlitchFx
-                      type="button"
-                      label="CLOSE"
-                      className={secondaryActionClassName}
-                      onClick={() => setSelected(null)}
-                    />
-                  </div>
-                  <p className="mt-2 font-mono text-sm text-cyan-400/70 sm:text-base">
-                    {selected.card_set_name} · {selected.rarity}
-                  </p>
-                  <div className="mt-4 flex flex-wrap items-start gap-8 sm:mt-5">
-                    <div className="space-y-2">
-                      <p className="font-buahs93 text-sm text-cyan-200/80 sm:text-base">
-                        INVOKE COST
-                      </p>
-                      <CardCostIcons
-                        cost={selected.cost}
-                        iconClassName="h-6 w-auto lg:h-7 2xl:h-7"
-                      />
-                    </div>
-                    {selected.threat_level &&
-                    selected.threat_level !== "0" &&
-                    selected.threat_level.trim() !== "" ? (
-                      <div className="space-y-2">
-                        <p className="font-buahs93 text-sm text-cyan-200/80 sm:text-base">
-                          THREAT LEVEL
-                        </p>
-                        <div className="flex items-center gap-1.5">
-                          <GameIcon
-                            name="threat_lvl"
-                            className="h-7 w-auto lg:h-8 2xl:h-8"
-                          />
-                          <span className="font-buahs93 text-base text-cyan-100 sm:text-lg">
-                            {selected.threat_level}
-                          </span>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                  <p className="mt-4 font-mono text-sm text-white/55 sm:text-base">
-                    {[...selected.super_types, ...selected.sub_types]
-                      .filter(Boolean)
-                      .join(" · ") || "—"}
-                    {selected.types_line ? ` · ${selected.types_line}` : ""}
-                  </p>
-
-                  {(selected.keywords?.length ?? 0) > 0 ? (
-                    <div className="mt-5 border border-cyan-500/20 bg-black/40 p-3 sm:p-4">
-                      <p className="font-buahs93 text-xs tracking-wide text-cyan-300/80">
-                        KEYWORDS
-                      </p>
-                      <ul className="mt-2 space-y-2">
-                        {selected.keywords.map((raw) => {
-                          const kw = parseKeyword(raw)
-                          return (
-                            <li key={raw} className="text-sm sm:text-base">
-                              <span className="font-buahs93 text-cyan-100">
-                                {kw.label}
-                              </span>
-                              {kw.help ? (
-                                <span className="mt-0.5 block italic text-white/60">
-                                  {kw.help}
-                                </span>
-                              ) : null}
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    </div>
-                  ) : null}
-
-                  <div className="mt-5 sm:mt-6">
-                    <p className="mb-2 font-buahs93 text-xs tracking-wide text-cyan-300/80">
-                      RULES TEXT
-                    </p>
-                    <CardRulesText text={selected.description} />
-                  </div>
-                </div>
-              </div>
-            </div>,
-            document.body
-          )
-        : null}
+      <CardDetailOverlay
+        card={selected}
+        onClose={() => setSelected(null)}
+      />
     </div>
   )
 }
