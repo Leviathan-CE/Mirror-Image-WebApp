@@ -7,7 +7,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { GlitchFx } from "@/components/effects/GlitchFx"
-import { Button } from "@/components/ui/button"
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import { DropdownMenu } from "@/components/ui/DropdownMenu"
 import { EditBox } from "@/components/ui/EditBox"
 import { ApiError } from "@/lib/api/client"
@@ -47,9 +47,11 @@ export function DeckListCard({
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [name, setName] = useState(deck.name ?? "")
   const [description, setDescription] = useState(deck.description ?? "")
   const [isPublic, setIsPublic] = useState(deck.is_public)
+  const label = deck.name ?? `Deck #${deck.id}`
 
   function beginEdit() {
     setName(deck.name ?? "")
@@ -90,22 +92,14 @@ export function DeckListCard({
     }
   }
 
-  async function confirmDelete() {
+  async function performDelete() {
     if (!token || !onDeleted) return
-    const label = deck.name ?? `Deck #${deck.id}`
-    if (
-      !window.confirm(
-        `Delete “${label}”? This cannot be undone.`
-      )
-    ) {
-      return
-    }
-
     setSaving(true)
     onBusyChange?.(true)
     onError?.("")
     try {
       await deleteDeck(deck.id, token)
+      setDeleteOpen(false)
       onDeleted(deck.id)
     } catch (error) {
       onError?.(
@@ -156,13 +150,13 @@ export function DeckListCard({
               className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900 disabled:opacity-60"
               onClick={() => void saveEdit()}
             />
-            <Button
-              className="font-buahs93 h-9 rounded-none bg-card px-4 text-sm text-white"
+            <GlitchFx
+              type="button"
+              label="CANCEL"
               disabled={saving || locked}
+              className="font-buahs93 h-9 rounded-none border border-cyan-500/40 bg-black/70 px-5 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 disabled:opacity-60"
               onClick={cancelEdit}
-            >
-              CANCEL
-            </Button>
+            />
           </div>
         </div>
       </div>
@@ -225,13 +219,29 @@ export function DeckListCard({
                 label: "Delete",
                 tone: "danger",
                 onSelect: () => {
-                  void confirmDelete()
+                  setDeleteOpen(true)
                 },
               },
             ]}
           />
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Delete deck?"
+        description={`Delete “${label}”? This cannot be undone.`}
+        confirmLabel="Delete deck"
+        cancelLabel="Keep deck"
+        tone="danger"
+        busy={saving}
+        onCancel={() => {
+          if (!saving) setDeleteOpen(false)
+        }}
+        onConfirm={() => {
+          void performDelete()
+        }}
+      />
     </div>
   )
 }

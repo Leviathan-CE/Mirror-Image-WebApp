@@ -32,14 +32,14 @@ def default_subscription_type() -> str:
 
 
 # Marketing copy for the Subscribe page (features may land later).
-PLAN_DISPLAY_NAME = "Standard Supporter"
+PLAN_DISPLAY_NAME = "LEVEL 3 ACCESS MEMBER TIER"
 PLAN_TAGLINE = (
-    "Support Mirror Image development and unlock early-access play spaces."
+    "Support Mirror Image development and unlock early-access to cards to use in play-spaces."
 )
 PLAN_FEATURES = (
-    "Access preview cards still in design",
-    "Play with friends in the Playtester",
-)
+    "Access preview cards still in design, with new ones added each month to build and play with.",
+    "Helping support a solo developer and illistrator work full time on this project and bring it to life."
+    )
 
 
 def require_stripe_config() -> tuple[str, str]:

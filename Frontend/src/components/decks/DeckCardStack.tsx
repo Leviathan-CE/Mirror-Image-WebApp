@@ -7,6 +7,11 @@
 
 import { useEffect, useRef, useState } from "react"
 
+import {
+  ClassifiedCardFace,
+  cardClassification,
+} from "@/components/decks/ClassifiedCardFace"
+import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import { cardArtUrl, type DeckCardEntry } from "@/lib/api/decks"
 
 import "./DeckCardStack.css"
@@ -143,6 +148,8 @@ export function DeckCardStack({
 }: DeckCardStackProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
   const [enlarged, setEnlarged] = useState<DeckCardEntry | null>(null)
+  /** Sticky redacted zoom (left-click) — subscribe CTA is usable here. */
+  const [inspectCard, setInspectCard] = useState<DeckCardEntry | null>(null)
   const [draggingKeys, setDraggingKeys] = useState<ReadonlySet<string> | null>(
     null
   )
@@ -188,7 +195,11 @@ export function DeckCardStack({
         onMouseLeave={() => setHoveredIndex(null)}
       >
         {cards.map((card, index) => {
-          const src = cardArtUrl(card.card_art_path, card.card_art_version)
+          const classification = cardClassification(card)
+          const classified = classification != null
+          const src = classified
+            ? null
+            : cardArtUrl(card.card_art_path, card.card_art_version)
           const isHovered = hoveredIndex === index
           const isCovering =
             hoveredIndex != null && index > hoveredIndex && !isHovered
@@ -204,7 +215,9 @@ export function DeckCardStack({
                 isCovering ? " is-covering" : ""
               }${isDragging ? " is-dragging" : ""}${
                 isSelected ? " is-selected" : ""
-              }${canDrag ? " is-draggable" : ""}`}
+              }${canDrag ? " is-draggable" : ""}${
+                classified ? " is-classified" : ""
+              }`}
               style={{
                 // Keep stack order — do not pull hovered cards above covers.
                 zIndex: index + 1,
@@ -309,6 +322,14 @@ export function DeckCardStack({
                   return
                 }
 
+                // Redacted stubs: open sticky zoom so the member CTA is clickable.
+                if (classified) {
+                  event.preventDefault()
+                  onClearSelect?.()
+                  setInspectCard(card)
+                  return
+                }
+
                 onClearSelect?.(card)
 
                 if (!canAdjust) return
@@ -324,12 +345,22 @@ export function DeckCardStack({
                 if (event.button === 1) event.preventDefault()
               }}
               title={
-                canAdjust
-                  ? `${card.card_name} ×${card.quantity} — click +1 (max ${DECK_CARD_MAX_COPIES}) · Ctrl/Cmd+click select · Shift+click range · right-click −1 · drag to move · middle-hold enlarge`
-                  : `${card.card_name} ×${card.quantity} — middle-click hold to enlarge`
+                classification === "top_secret"
+                  ? `${card.card_name} — TOP SECRET · click to inspect`
+                  : classification === "classified"
+                    ? `${card.card_name} — CLASSIFIED · click for details / become a member`
+                  : canAdjust
+                    ? `${card.card_name} ×${card.quantity} — click +1 (max ${DECK_CARD_MAX_COPIES}) · Ctrl/Cmd+click select · Shift+click range · right-click −1 · drag to move · middle-hold enlarge`
+                    : `${card.card_name} ×${card.quantity} — middle-click hold to enlarge`
               }
             >
-              {src ? (
+              {classified && classification ? (
+                <ClassifiedCardFace
+                  name={card.card_name}
+                  classification={classification}
+                  size="stack"
+                />
+              ) : src ? (
                 <img
                   src={src}
                   alt={card.card_name}
@@ -351,7 +382,13 @@ export function DeckCardStack({
 
       {enlarged ? (
         <div className="deck-card-enlarge" role="dialog" aria-label={enlarged.card_name}>
-          {cardArtUrl(enlarged.card_art_path, enlarged.card_art_version) ? (
+          {cardClassification(enlarged) ? (
+            <ClassifiedCardFace
+              name={enlarged.card_name}
+              classification={cardClassification(enlarged)!}
+              size="enlarge"
+            />
+          ) : cardArtUrl(enlarged.card_art_path, enlarged.card_art_version) ? (
             <img
               src={cardArtUrl(enlarged.card_art_path, enlarged.card_art_version)!}
               alt={enlarged.card_name}
@@ -363,10 +400,25 @@ export function DeckCardStack({
           )}
           <p className="deck-card-enlarge__caption">
             {enlarged.card_name}
+            {cardClassification(enlarged) === "top_secret"
+              ? " — TOP SECRET"
+              : cardClassification(enlarged) === "classified"
+                ? " — CLASSIFIED"
+                : ""}
             {enlarged.quantity > 1 ? ` ×${enlarged.quantity}` : ""}
           </p>
         </div>
       ) : null}
+
+      <CardEnlargeOverlay
+        open={inspectCard != null}
+        name={inspectCard?.card_name ?? ""}
+        artSrc={null}
+        classification={
+          inspectCard ? cardClassification(inspectCard) : null
+        }
+        onDismiss={() => setInspectCard(null)}
+      />
     </>
   )
 }

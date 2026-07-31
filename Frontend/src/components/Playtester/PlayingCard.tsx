@@ -10,6 +10,7 @@ import type { ReactNode } from "react"
 
 import { sharedImages } from "@/assets/shared"
 import { GameIcon } from "@/components/common/GameIcon"
+import { ClassifiedCardFace } from "@/components/decks/ClassifiedCardFace"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
@@ -36,7 +37,11 @@ export function PlayingCard({
   onCounterAdjust,
 }: PlayingCardProps) {
   const faceDown = Boolean(card.faceDown)
-  const faceSrc = cardArtUrl(card.artPath, card.artVersion)
+  const classification = card.classification ?? (card.isClassified ? "classified" : null)
+  const classified = classification != null
+  const faceSrc = classified
+    ? null
+    : cardArtUrl(card.artPath, card.artVersion)
   const time = card.timeCounters ?? 0
   const damage = card.damageCounters ?? 0
   const tlv = card.tlvCounters ?? 0
@@ -47,13 +52,34 @@ export function PlayingCard({
     onCounterAdjust?.(kind, delta)
   }
 
+  const borderClass =
+    classification === "top_secret"
+      ? "border-amber-400/50"
+      : classification === "classified"
+        ? "border-red-400/50"
+        : "border-cyan-500/35"
+  const selectedBorder =
+    classification === "top_secret"
+      ? "border-amber-300/90"
+      : classification === "classified"
+        ? "border-red-300/90"
+        : "border-cyan-300/90"
+
   return (
     <div
       className={cn(
         "relative h-36 w-28 shrink-0 [perspective:800px]",
         className
       )}
-      aria-label={faceDown ? `${card.name} (face down)` : card.name}
+      aria-label={
+        faceDown
+          ? `${card.name} (face down)`
+          : classification === "top_secret"
+            ? `${card.name} (top secret)`
+            : classification === "classified"
+              ? `${card.name} (classified)`
+              : card.name
+      }
     >
       <div
         className="relative h-full w-full [transform-style:preserve-3d]"
@@ -66,11 +92,18 @@ export function PlayingCard({
         <div
           className={cn(
             faceShell,
-            "border-cyan-500/35",
-            isSelected && "border-cyan-300/90"
+            borderClass,
+            isSelected && selectedBorder
           )}
         >
-          {faceSrc ? (
+          {classification ? (
+            <ClassifiedCardFace
+              name={card.name}
+              classification={classification}
+              size="stack"
+              className="!rounded-none"
+            />
+          ) : faceSrc ? (
             <img
               src={faceSrc}
               alt=""
@@ -83,7 +116,7 @@ export function PlayingCard({
             </span>
           )}
 
-          {hasCounters ? (
+          {!classified && hasCounters ? (
             <div className="absolute top-1 right-1 bottom-1 flex flex-col items-end justify-end gap-1">
               {time > 0 ? (
                 <CounterBadge

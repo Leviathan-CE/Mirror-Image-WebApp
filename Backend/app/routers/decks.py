@@ -37,7 +37,12 @@ from psycopg2.errors import ForeignKeyViolation, UniqueViolation
 
 from app.db import get_connection
 from app.deck_defaults import DEFAULT_DECK_CATEGORY_NAMES
-from app.card_publish import catalogue_visibility_sql, get_optional_include_preview
+from app.card_publish import (
+    catalogue_visibility_sql,
+    classified_deck_card_overrides,
+    deck_card_classification,
+    get_optional_include_preview,
+)
 from app.security import (
     get_current_user_id,
     get_optional_is_admin,
@@ -130,6 +135,10 @@ class DeckCardEntry(BaseModel):
     time_capacity: int = 0
     # Starting life total on pilots (not a resource token).
     lif_capacity: int = 0
+    # True when preview / unpublished content was stripped for this viewer.
+    is_classified: bool = False
+    # "classified" (preview lock) | "top_secret" (not published) | null.
+    classification: str | None = None
 
 
 class DeckDetail(DeckSummary):
@@ -342,6 +351,9 @@ def _fetch_deck_cards(
     cur,
     deck_id: int,
     category_id: int | None = None,
+    *,
+    bypass: bool = False,
+    include_preview: bool = False,
 ) -> list[DeckCardEntry]:
     sql = """
         SELECT
@@ -363,10 +375,12 @@ def _fetch_deck_cards(
             c.spirit_capacity,
             c.steel_capacity,
             c.time_capacity,
-            c.lif_capacity
+            c.lif_capacity,
+            pc.published
         FROM deck_has_cards dhc
         JOIN cards c ON c.id = dhc.card_id
         JOIN deck_categories dc ON dc.id = dhc.category_id
+        LEFT JOIN publish_cards pc ON pc.card_id = c.id
         WHERE dhc.deck_id = %(deck_id)s
     """
     params: dict = {"deck_id": deck_id}
@@ -376,8 +390,9 @@ def _fetch_deck_cards(
     sql += " ORDER BY dc.sort_order ASC, dhc.sort_order ASC, c.card_name ASC"
 
     cur.execute(sql, params)
-    return [
-        DeckCardEntry(
+    entries: list[DeckCardEntry] = []
+    for row in cur.fetchall():
+        entry = DeckCardEntry(
             card_id=row[0],
             card_name=row[1],
             quantity=int(row[2]),
@@ -397,9 +412,20 @@ def _fetch_deck_cards(
             steel_capacity=int(row[16] or 0),
             time_capacity=int(row[17] or 0),
             lif_capacity=int(row[18] or 0),
+            is_classified=False,
+            classification=None,
         )
-        for row in cur.fetchall()
-    ]
+        kind = deck_card_classification(
+            row[19],
+            bypass=bypass,
+            include_preview=include_preview,
+        )
+        if kind is not None:
+            entry = entry.model_copy(
+                update=classified_deck_card_overrides(kind)
+            )
+        entries.append(entry)
+    return entries
 
 
 def _fetch_one_deck_card(
@@ -407,10 +433,19 @@ def _fetch_one_deck_card(
     deck_id: int,
     card_id: int,
     category_id: int,
+    *,
+    bypass: bool = False,
+    include_preview: bool = False,
 ) -> DeckCardEntry:
     cards = [
         entry
-        for entry in _fetch_deck_cards(cur, deck_id, category_id)
+        for entry in _fetch_deck_cards(
+            cur,
+            deck_id,
+            category_id,
+            bypass=bypass,
+            include_preview=include_preview,
+        )
         if entry.card_id == card_id
     ]
     if not cards:
@@ -612,11 +647,15 @@ def create_deck(
 def get_deck(
     deck_id: int,
     user_id: int | None = Depends(get_optional_user_id),
+    is_admin: bool = Depends(get_optional_is_admin),
+    include_preview: bool = Depends(get_optional_include_preview),
 ):
     """
     Deck metadata, categories, and cards.
 
     Public decks: anyone. Private decks: owner only.
+    Preview / unpublished cards are classified stubs unless the viewer
+    is entitled (subscriber preview or admin bypass).
     Mutations still require ownership on write routes.
     """
     try:
@@ -624,7 +663,12 @@ def get_deck(
             with conn.cursor() as cur:
                 row = _require_readable_deck(cur, deck_id=deck_id, user_id=user_id)
                 categories = _fetch_deck_categories(cur, deck_id)
-                cards = _fetch_deck_cards(cur, deck_id)
+                cards = _fetch_deck_cards(
+                    cur,
+                    deck_id,
+                    bypass=is_admin,
+                    include_preview=include_preview,
+                )
                 count = _card_count(cur, deck_id)
     except OperationalError as e:
         raise _db_unavailable(e) from e
@@ -907,6 +951,8 @@ def list_deck_cards(
     deck_id: int,
     category_id: int | None = Query(default=None, gt=0),
     user_id: int | None = Depends(get_optional_user_id),
+    is_admin: bool = Depends(get_optional_is_admin),
+    include_preview: bool = Depends(get_optional_include_preview),
 ):
     """List cards in a readable deck (public or owned), optionally by category."""
     try:
@@ -915,7 +961,13 @@ def list_deck_cards(
                 _require_readable_deck(cur, deck_id=deck_id, user_id=user_id)
                 if category_id is not None:
                     _require_category_on_deck(cur, deck_id, category_id)
-                return _fetch_deck_cards(cur, deck_id, category_id)
+                return _fetch_deck_cards(
+                    cur,
+                    deck_id,
+                    category_id,
+                    bypass=is_admin,
+                    include_preview=include_preview,
+                )
     except OperationalError as e:
         raise _db_unavailable(e) from e
 
@@ -995,7 +1047,12 @@ def add_card_to_deck(
                 )
                 entry = cur.fetchone()
                 result = _fetch_one_deck_card(
-                    cur, deck_id, int(entry[0]), int(entry[2])
+                    cur,
+                    deck_id,
+                    int(entry[0]),
+                    int(entry[2]),
+                    bypass=is_admin,
+                    include_preview=include_preview,
                 )
             conn.commit()
     except ForeignKeyViolation as e:
@@ -1016,6 +1073,8 @@ def update_deck_card(
         description="Current category of the entry to update",
     ),
     user_id: int = Depends(get_current_user_id),
+    is_admin: bool = Depends(get_optional_is_admin),
+    include_preview: bool = Depends(get_optional_include_preview),
 ):
     """Update quantity, move category, and/or set sort_order for one entry."""
     if body.quantity is None and body.category_id is None and body.sort_order is None:
@@ -1111,7 +1170,12 @@ def update_deck_card(
 
                 entry = cur.fetchone()
                 result = _fetch_one_deck_card(
-                    cur, deck_id, int(entry[0]), int(entry[2])
+                    cur,
+                    deck_id,
+                    int(entry[0]),
+                    int(entry[2]),
+                    bypass=is_admin,
+                    include_preview=include_preview,
                 )
             conn.commit()
     except UniqueViolation as e:
@@ -1163,6 +1227,8 @@ def reorder_deck_cards(
     deck_id: int,
     body: ReorderCardsRequest,
     user_id: int = Depends(get_current_user_id),
+    is_admin: bool = Depends(get_optional_is_admin),
+    include_preview: bool = Depends(get_optional_include_preview),
 ):
     """
     Set sort_order for many entries at once.
@@ -1196,7 +1262,12 @@ def reorder_deck_cards(
                             detail=f"deck_card_not_found:{item.card_id}:{item.category_id}",
                         )
 
-                cards = _fetch_deck_cards(cur, deck_id)
+                cards = _fetch_deck_cards(
+                    cur,
+                    deck_id,
+                    bypass=is_admin,
+                    include_preview=include_preview,
+                )
             conn.commit()
     except OperationalError as e:
         raise _db_unavailable(e) from e

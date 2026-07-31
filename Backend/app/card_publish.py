@@ -95,3 +95,72 @@ def get_optional_include_preview(
     role = row[0] or "user"
     sub_status = row[1] or "none"
     return is_subscription_entitled(role=role, subscription_status=sub_status)
+
+
+def should_classify_publish_status(
+    published: str | None,
+    *,
+    bypass: bool = False,
+    include_preview: bool = False,
+) -> bool:
+    """
+    True when a deck card must be returned as a classified stub.
+
+    - Admins (``bypass``): never classify.
+    - ``published``: never classify.
+    - ``preview`` + subscriber (``include_preview``): never classify.
+    - Anything else (preview without sub, not published, missing row): classify.
+    """
+    return deck_card_classification(
+        published, bypass=bypass, include_preview=include_preview
+    ) is not None
+
+
+def deck_card_classification(
+    published: str | None,
+    *,
+    bypass: bool = False,
+    include_preview: bool = False,
+) -> str | None:
+    """
+    Redaction kind for a deck card, or ``None`` when the viewer sees full data.
+
+    - ``classified`` — preview status, viewer not entitled (subscribe CTA).
+    - ``top_secret`` — not published / missing publish row (coming soon).
+    """
+    if bypass:
+        return None
+    if published == PUBLISHED_STATUS:
+        return None
+    if published == PREVIEW_STATUS:
+        return None if include_preview else "classified"
+    return "top_secret"
+
+
+def classified_deck_card_overrides(classification: str = "classified") -> dict:
+    """
+    Field overrides for a classified deck-card stub.
+
+    Keeps name / quantity / category / sort; strips art and printed stats.
+    ``classification`` is ``classified`` (preview lock) or ``top_secret``.
+    """
+    kind = (
+        "top_secret" if classification == "top_secret" else "classified"
+    )
+    return {
+        "card_art_path": None,
+        "card_art_version": None,
+        "invoke_cost": 0,
+        "cost": [],
+        "types_line": "TOP SECRET" if kind == "top_secret" else "CLASSIFIED",
+        "hand_size": 0,
+        "ram_capacity": 0,
+        "power_capacity": 0,
+        "metal_capacity": 0,
+        "spirit_capacity": 0,
+        "steel_capacity": 0,
+        "time_capacity": 0,
+        "lif_capacity": 0,
+        "is_classified": True,
+        "classification": kind,
+    }
