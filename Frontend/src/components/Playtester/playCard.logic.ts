@@ -38,6 +38,10 @@ export type PlayingCardInstance = {
   damageCounters?: number
   /** Extra TLV (threat level) counters. */
   tlvCounters?: number
+  /** Preview / unpublished content stripped for this viewer. */
+  isClassified?: boolean
+  /** classified = preview lock; top_secret = not published. */
+  classification?: "classified" | "top_secret" | null
 }
 
 /** Expand one deck list row into a single play instance (first copy). */
@@ -48,18 +52,33 @@ export function deckEntryToPlayInstance(
     card_art_path: string | null
     card_art_version?: number | null
     cost?: string[] | null
+    is_classified?: boolean
+    classification?: "classified" | "top_secret" | null
   },
   zone: PlayZone = PLAY_ZONE.hand
 ): PlayingCardInstance {
+  const classification =
+    entry.classification === "classified" || entry.classification === "top_secret"
+      ? entry.classification
+      : entry.is_classified
+        ? "classified"
+        : null
+  const classified = classification != null
   return {
     instanceId: `preview-${entry.card_id}`,
     cardId: entry.card_id,
     name: entry.card_name,
-    artPath: entry.card_art_path,
-    artVersion: entry.card_art_version ?? null,
-    cost: Array.isArray(entry.cost) ? entry.cost.map(String) : [],
+    artPath: classified ? null : entry.card_art_path,
+    artVersion: classified ? null : (entry.card_art_version ?? null),
+    cost: classified
+      ? []
+      : Array.isArray(entry.cost)
+        ? entry.cost.map(String)
+        : [],
     zone,
     expended: false,
+    isClassified: classified,
+    classification,
   }
 }
 
@@ -75,6 +94,8 @@ export function expandDeckToPlayInstances(
     card_art_version?: number | null
     cost?: string[] | null
     quantity: number
+    is_classified?: boolean
+    classification?: "classified" | "top_secret" | null
   }>,
   zone: PlayZone = PLAY_ZONE.library
 ): PlayingCardInstance[] {
@@ -293,6 +314,8 @@ export function duplicatePlayingCard(
     selected: false,
     isResourceToken: card.isResourceToken,
     faceDown: card.faceDown,
+    isClassified: card.isClassified,
+    classification: card.classification,
   }
   // Append so the copy paints above the original (same as moveCardtoFront).
   return [...cards, copy]

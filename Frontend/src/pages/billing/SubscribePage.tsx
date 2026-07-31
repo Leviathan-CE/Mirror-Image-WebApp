@@ -281,14 +281,16 @@ export function SubscribePage() {
                 {busy ? "REDIRECTING…" : "BECOME A SUPPORTER"}
               </Button>
             ) : null}
-            <Button
-              type="button"
-              className={secondaryActionClassName}
-              disabled={busy}
-              onClick={() => void onManage()}
-            >
-              MANAGE BILLING
-            </Button>
+            {entitled ? (
+              <Button
+                type="button"
+                className={secondaryActionClassName}
+                disabled={busy}
+                onClick={() => void onManage()}
+              >
+                MANAGE BILLING
+              </Button>
+            ) : null}
           </div>
 
           {!stripeReady ? (

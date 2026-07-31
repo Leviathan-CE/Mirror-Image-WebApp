@@ -8,6 +8,10 @@
 import { useEffect } from "react"
 import { createPortal } from "react-dom"
 
+import {
+  ClassifiedCardFace,
+  type CardClassification,
+} from "@/components/decks/ClassifiedCardFace"
 import "@/components/decks/DeckCardStack.css"
 
 export type CardEnlargeOverlayProps = {
@@ -15,6 +19,8 @@ export type CardEnlargeOverlayProps = {
   name: string
   artSrc: string | null
   caption?: string
+  /** Preview / unpublished stub — redacted face. */
+  classification?: CardClassification | null
   /** When set, overlay is sticky until backdrop click or Escape. */
   onDismiss?: () => void
 }
@@ -23,6 +29,7 @@ export function CardEnlargeOverlay({
   open,
   name,
   artSrc,
+  classification = null,
   onDismiss,
 }: CardEnlargeOverlayProps) {
   useEffect(() => {
@@ -37,11 +44,18 @@ export function CardEnlargeOverlay({
 
   if (!open || typeof document === "undefined") return null
 
+  const label =
+    classification === "top_secret"
+      ? `${name} — TOP SECRET`
+      : classification === "classified"
+        ? `${name} — CLASSIFIED`
+        : name
+
   return createPortal(
     <div
       className="deck-card-enlarge"
       role="dialog"
-      aria-label={name}
+      aria-label={label}
       aria-modal={onDismiss ? true : undefined}
       /* Middle-mouse hold uses pointer-events:none in CSS; sticky Zoom must click. */
       style={onDismiss ? { pointerEvents: "auto", cursor: "zoom-out" } : undefined}
@@ -51,7 +65,15 @@ export function CardEnlargeOverlay({
         onDismiss?.()
       }}
     >
-      {artSrc ? (
+      {classification ? (
+        <div onClick={(event) => event.stopPropagation()}>
+          <ClassifiedCardFace
+            name={name}
+            classification={classification}
+            size="enlarge"
+          />
+        </div>
+      ) : artSrc ? (
         <img
           src={artSrc}
           className="deck-card-enlarge__art clip-angled"

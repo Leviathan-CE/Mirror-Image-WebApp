@@ -7,6 +7,7 @@ import {
   duplicatePlayingCard,
   readyBattlefieldAndStockpile,
   selectableActionTargets,
+  deckEntryToPlayInstance,
   setCardsFaceDown,
   toggleExpended,
   toggleFaceDown,
@@ -177,5 +178,44 @@ describe("cardsInZone / toggleExpended / duplicatePlayingCard", () => {
   it("does not duplicate hand cards", () => {
     const cards = [card({ instanceId: "a", zone: PLAY_ZONE.hand })]
     expect(duplicatePlayingCard(cards, "a")).toBe(cards)
+  })
+})
+
+describe("deckEntryToPlayInstance classified", () => {
+  it("strips art/cost and sets isClassified from the API flag", () => {
+    const inst = deckEntryToPlayInstance(
+      {
+        card_id: 9,
+        card_name: "Secret Preview",
+        card_art_path: "/art/secret.png",
+        card_art_version: 3,
+        cost: ["LIF"],
+        is_classified: true,
+        classification: "classified",
+      },
+      PLAY_ZONE.hand
+    )
+    expect(inst.isClassified).toBe(true)
+    expect(inst.classification).toBe("classified")
+    expect(inst.artPath).toBeNull()
+    expect(inst.artVersion).toBeNull()
+    expect(inst.cost).toEqual([])
+    expect(inst.name).toBe("Secret Preview")
+  })
+
+  it("maps top_secret unpublished stubs", () => {
+    const inst = deckEntryToPlayInstance(
+      {
+        card_id: 10,
+        card_name: "Unreleased",
+        card_art_path: "/art/x.png",
+        is_classified: true,
+        classification: "top_secret",
+      },
+      PLAY_ZONE.hand
+    )
+    expect(inst.classification).toBe("top_secret")
+    expect(inst.isClassified).toBe(true)
+    expect(inst.artPath).toBeNull()
   })
 })

@@ -6,7 +6,6 @@ import { useAuth } from "@/app/providers/AuthProvider"
 import { Tabs } from "@/components/ui/Tabs"
 import { DeckListCard } from "@/components/decks/DeckListCard"
 import { GlitchFx } from "@/components/effects/GlitchFx"
-import { Button } from "@/components/ui/button"
 import { EditBox } from "@/components/ui/EditBox"
 import { ApiError } from "@/lib/api/client"
 import {
@@ -267,13 +266,13 @@ export function MainPage() {
                   className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900 disabled:opacity-60"
                   onClick={() => void onCreateDeck()}
                 />
-                <Button
-                  className="font-buahs93 h-9 rounded-none bg-card px-4 text-sm text-white"
+                <GlitchFx
+                  type="button"
+                  label="CANCEL"
                   disabled={saving}
+                  className="font-buahs93 h-9 rounded-none border border-cyan-500/40 bg-black/70 px-5 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 disabled:opacity-60"
                   onClick={resetCreateForm}
-                >
-                  CANCEL
-                </Button>
+                />
               </div>
             </div>
           </div>

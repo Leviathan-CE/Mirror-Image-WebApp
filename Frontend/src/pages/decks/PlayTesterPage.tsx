@@ -946,9 +946,15 @@ export function PlayTesterPage() {
         open={inspectCard != null}
         name={inspectCard?.name ?? ""}
         artSrc={
-          inspectCard
-            ? cardArtUrl(inspectCard.artPath, inspectCard.artVersion)
-            : null
+          inspectCard?.isClassified
+            ? null
+            : inspectCard
+              ? cardArtUrl(inspectCard.artPath, inspectCard.artVersion)
+              : null
+        }
+        classification={
+          inspectCard?.classification ??
+          (inspectCard?.isClassified ? "classified" : null)
         }
         onDismiss={() => setInspectCard(null)}
       />

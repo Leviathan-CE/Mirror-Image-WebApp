@@ -63,6 +63,17 @@ export type DeckCardEntry = {
   time_capacity?: number
   /** Starting life total on pilots (not a resource token). */
   lif_capacity?: number
+  /**
+   * Server stripped preview / unpublished art for this viewer.
+   * Trust this flag — do not re-derive from subscription client-side alone.
+   */
+  is_classified?: boolean
+  /**
+   * Why the card is redacted:
+   * - classified — preview card (subscribe CTA)
+   * - top_secret — not published (coming soon)
+   */
+  classification?: "classified" | "top_secret" | null
 }
 
 export type DeckDetail = DeckSummary & {

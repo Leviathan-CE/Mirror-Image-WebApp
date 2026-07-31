@@ -41,7 +41,7 @@ import {
 } from "@/components/decks/deck.logic"
 import { useCardSelection } from "@/hooks/useCardSelection"
 import { useDeckDetail } from "@/hooks/useDeckDetail"
-import { Button } from "@/components/ui/button"
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import { DropdownMenu } from "@/components/ui/DropdownMenu"
 import { EditBox } from "@/components/ui/EditBox"
 import { ApiError } from "@/lib/api/client"
@@ -50,6 +50,7 @@ import {
   addDeckCard,
   AUGMENT_SECTION_NAME,
   createDeckCategory,
+  deleteDeck,
   deleteDeckCategory,
   deckCoverUrl,
   PILOT_SECTION_NAME,
@@ -100,6 +101,7 @@ export function DeckPage() {
 
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [isPublic, setIsPublic] = useState(false)
@@ -232,6 +234,25 @@ export function DeckPage() {
     } catch (error) {
       setErrorText(
         error instanceof ApiError ? "Could not save deck details." : "Save failed."
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function onDeleteDeck() {
+    if (!token || !deck || !canEdit) return
+    setSaving(true)
+    setErrorText("")
+    try {
+      await deleteDeck(deck.id, token)
+      setDeleteOpen(false)
+      navigate(ROUTES.MAIN)
+    } catch (error) {
+      setErrorText(
+        error instanceof ApiError
+          ? "Could not delete this deck."
+          : "Delete failed."
       )
     } finally {
       setSaving(false)
@@ -995,18 +1016,18 @@ export function DeckPage() {
                           className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900 disabled:opacity-60"
                           onClick={() => void onSaveMeta()}
                         />
-                        <Button
-                          className="font-buahs93 h-9 rounded-none bg-card px-4 text-sm text-white"
+                        <GlitchFx
+                          type="button"
+                          label="CANCEL"
                           disabled={saving}
+                          className="font-buahs93 h-9 rounded-none border border-cyan-500/40 bg-black/70 px-5 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 disabled:opacity-60"
                           onClick={() => {
                             setEditing(false)
                             setName(deck.name ?? "")
                             setDescription(deck.description ?? "")
                             setIsPublic(deck.is_public)
                           }}
-                        >
-                          CANCEL
-                        </Button>
+                        />
                       </div>
                     </div>
                   ) : (
@@ -1026,6 +1047,12 @@ export function DeckPage() {
                                   id: "edit-details",
                                   label: "Edit details",
                                   onSelect: () => setEditing(true),
+                                },
+                                {
+                                  id: "delete-deck",
+                                  label: "Delete deck",
+                                  tone: "danger",
+                                  onSelect: () => setDeleteOpen(true),
                                 },
                               ]}
                             />
@@ -1063,12 +1090,14 @@ export function DeckPage() {
 
               <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
                 {canEdit ? (
-                  <GlitchFx
-                    type="button"
-                    label={browseOpen ? "HIDE BROWSE" : "BROWSE"}
-                    className="font-buahs93 h-9 rounded-none border border-cyan-500/40 bg-black/70 px-4 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10"
-                    onClick={() => setBrowseOpen((prev) => !prev)}
-                  />
+                  <>
+                    <GlitchFx
+                      type="button"
+                      label={browseOpen ? "HIDE BROWSE" : "BROWSE"}
+                      className="font-buahs93 h-9 rounded-none border border-cyan-500/40 bg-black/70 px-4 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10"
+                      onClick={() => setBrowseOpen((prev) => !prev)}
+                    />
+                  </>
                 ) : null}
                 <GlitchFx
                   type="button"
@@ -1179,6 +1208,22 @@ export function DeckPage() {
                 </aside>
               ) : null}
             </div>
+
+            <ConfirmDialog
+              open={deleteOpen}
+              title="Delete deck?"
+              description={`Delete “${deck.name ?? `Deck #${deck.id}`}”? This cannot be undone.`}
+              confirmLabel="Delete deck"
+              cancelLabel="Keep deck"
+              tone="danger"
+              busy={saving}
+              onCancel={() => {
+                if (!saving) setDeleteOpen(false)
+              }}
+              onConfirm={() => {
+                void onDeleteDeck()
+              }}
+            />
           </>
         ) : null}
       </div>
