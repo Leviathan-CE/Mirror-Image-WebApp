@@ -8,12 +8,12 @@ import {
   augmentCards,
   isReservedCategory,
   pilotCard,
-} from "@/components/decks/deckLogic"
+} from "@/components/decks/deck.logic"
 import {
   RESOURCE_COLORS,
   spawnResourceTokenInstance,
   type ResourceColor,
-} from "@/components/Playtester/accumulateResources"
+} from "@/components/Playtester/accumulateResources.logic"
 import {
   expandDeckToPlayInstances,
   putCardOnLibraryBottom,

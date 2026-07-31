@@ -2,7 +2,7 @@
  * Playtester — battlefield + hand + library; drag cards between zones.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
@@ -15,16 +15,29 @@ import {
   canAutoResolvePips,
   extractGainablePips,
   spawnResourceTokenInstance,
-  RESOURCE_COLORS,
   type GainablePip,
   type ResourceColor,
-} from "@/components/Playtester/accumulateResources"
+} from "@/components/Playtester/accumulateResources.logic"
 import { CardBottomSlideAnimation } from "@/components/Playtester/CardBottomSlideAnimation"
 import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import {
   CardFlipFlyAnimation,
-  type FlipFlyMode,
 } from "@/components/Playtester/CardFlipFlyAnimation"
+import {
+  FLIP_FLY_MODE,
+  PILOT_GEN_MAX,
+  PLAY_ZONE,
+  PLAYTESTER_STORAGE,
+  SELECTABLE_ACTION_ZONES,
+  STOCKPILE_HEIGHT,
+  type FlipFlyMode,
+  type PlayZone,
+} from "@/components/Playtester/playtesterConstants"
+import {
+  genIconForCount,
+  usePlayContextMenu,
+  type CtxMenuState,
+} from "@/components/Playtester/usePlayContextMenu"
 import { DeckPile } from "@/components/Playtester/DeckPile"
 import { FreeFloatSurface } from "@/components/Playtester/FreeFloatSurface"
 import { LifeCounter } from "@/components/Playtester/LifeCounter"
@@ -35,8 +48,8 @@ import {
   applyMulliganToBottom,
   setupOpeningSession,
   startingLifeFromPilot,
-} from "@/components/Playtester/setupOpeningSession"
-import { pilotCard } from "@/components/decks/deckLogic"
+} from "@/components/Playtester/setupOpeningSession.logic"
+import { pilotCard } from "@/components/decks/deck.logic"
 import {
   cardsInZone,
   moveCardtoBack,
@@ -62,11 +75,11 @@ import {
   duplicatePlayingCard,
   takeTopLibraryCard,
   toggleExpended,
+  setCardsFaceDown,
   readyBattlefieldAndStockpile,
   type PlayingCardInstance,
 } from "@/components/Playtester/types"
 import { ContextMenu } from "@/components/ui/ContextMenu"
-import type { DropdownMenuItem } from "@/components/ui/DropdownMenu"
 import {
   fetchCardLibrary,
   type CardLibraryItem,
@@ -75,25 +88,24 @@ import { cardArtUrl } from "@/lib/api/decks"
 import { useDeckDetail } from "@/hooks/useDeckDetail"
 import { ROUTES } from "@/lib/route"
 import { GameIcon } from "@/components/common/GameIcon"
-import type { GameIconName } from "@/components/common/GameIcon"
 
-/** Cost colour → GameIcon asset name. */
-const RESOURCE_COLOR_ICON: Record<ResourceColor, GameIconName> = {
-  LIF: "life",
-  MET: "metal",
-  POW: "power",
-  RAM: "ram",
-  TIM: "time",
-  STL: "steel",
+function clampStockpileHeight(height: number): number {
+  return Math.min(
+    STOCKPILE_HEIGHT.max,
+    Math.max(STOCKPILE_HEIGHT.min, Math.round(height))
+  )
 }
 
-const PILOT_GEN_MAX = 10
-
-/** Map a pilot +GEN bonus (1–10) to a cost icon. */
-function genIconForCount(n: number): GameIconName {
-  if (n <= 0) return "gen0"
-  if (n >= 10) return "gen10"
-  return `gen${n}` as GameIconName
+function readStoredStockpileHeight(): number {
+  try {
+    const raw = window.localStorage.getItem(PLAYTESTER_STORAGE.stockpileHeightPx)
+    const parsed = raw == null ? NaN : Number(raw)
+    return Number.isFinite(parsed)
+      ? clampStockpileHeight(parsed)
+      : STOCKPILE_HEIGHT.default
+  } catch {
+    return STOCKPILE_HEIGHT.default
+  }
 }
 
 function pointInRect(
@@ -111,15 +123,6 @@ function pointInRect(
   )
 }
 
-type FlipLandZone =
-  | "hand"
-  | "battlefield"
-  | "stockpile"
-  | "pilot"
-  | "trashyard"
-  | "dismantled"
-  | "library"
-
 type FlipFlyAnim = {
   /** Stable key so several flips can fly at once. */
   id: string
@@ -128,7 +131,7 @@ type FlipFlyAnim = {
   from: { x: number; y: number; w: number; h: number }
   to: { x: number; y: number }
   /** Where the card sits when the fly finishes. */
-  landZone: FlipLandZone
+  landZone: PlayZone
   landX?: number
   landY?: number
 }
@@ -138,15 +141,6 @@ type BottomSlideAnim = {
   from: { x: number; y: number; w: number; h: number }
   to: { x: number; y: number }
 }
-
-type CtxMenuState =
-  | { kind: "card"; instanceId: string; x: number; y: number }
-  | {
-      kind: "zone"
-      zone: "hand" | "battlefield" | "stockpile"
-      x: number
-      y: number
-    }
 
 type AccumulateChooserState = {
   card: PlayingCardInstance
@@ -189,6 +183,14 @@ export function PlayTesterPage() {
   const [pilotGenBonus, setPilotGenBonus] = useState(0)
   const [pilotHandSize, setPilotHandSize] = useState(0)
   const [mulliganOpen, setMulliganOpen] = useState(false)
+  const [stockpileHeightPx, setStockpileHeightPx] = useState<number>(
+    STOCKPILE_HEIGHT.default
+  )
+  const stockpileResizeRef = useRef<{
+    pointerId: number
+    startY: number
+    startHeight: number
+  } | null>(null)
   /** Timers for staggered concurrent mulligan draws. */
   const mulliganTimersRef = useRef<number[]>([])
   /** Spreads rapid click-draws so overlapping flies don't stack on one pixel. */
@@ -215,6 +217,59 @@ export function PlayTesterPage() {
     () => new Set(resourceByColor.keys()),
     [resourceByColor]
   )
+
+  useEffect(() => {
+    setStockpileHeightPx(readStoredStockpileHeight())
+  }, [])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        PLAYTESTER_STORAGE.stockpileHeightPx,
+        String(stockpileHeightPx)
+      )
+    } catch {
+      /* private mode / quota */
+    }
+  }, [stockpileHeightPx])
+
+  function onStockpileResizePointerDown(
+    event: ReactPointerEvent<HTMLDivElement>
+  ) {
+    if (event.button !== 0) return
+    event.preventDefault()
+    event.stopPropagation()
+    stockpileResizeRef.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      startHeight: stockpileHeightPx,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function onStockpileResizePointerMove(
+    event: ReactPointerEvent<HTMLDivElement>
+  ) {
+    const drag = stockpileResizeRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    // Drag handle upward = taller stockpile; downward = more battlefield.
+    setStockpileHeightPx(
+      clampStockpileHeight(drag.startHeight - (event.clientY - drag.startY))
+    )
+  }
+
+  function onStockpileResizePointerUp(
+    event: ReactPointerEvent<HTMLDivElement>
+  ) {
+    const drag = stockpileResizeRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    stockpileResizeRef.current = null
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    } catch {
+      /* already released */
+    }
+  }
 
   useEffect(() => {
     if (status !== "ready" || !deck) {
@@ -297,14 +352,9 @@ export function PlayTesterPage() {
         }
       }
 
+      const selectable = SELECTABLE_ACTION_ZONES as readonly string[]
       const ids = sessionCardsRef.current
-        .filter(
-          (c) =>
-            c.selected &&
-            (c.zone === "hand" ||
-              c.zone === "battlefield" ||
-              c.zone === "stockpile")
-        )
+        .filter((c) => c.selected && selectable.includes(c.zone))
         .map((c) => c.instanceId)
       if (ids.length === 0) return
 
@@ -316,13 +366,13 @@ export function PlayTesterPage() {
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [status, mulliganOpen, accumulateChooser, inspectCard])
 
-  const handCards = cardsInZone(sessionCards, "hand")
-  const battlefieldCards = cardsInZone(sessionCards, "battlefield")
-  const stockpileCards = cardsInZone(sessionCards, "stockpile")
-  const pilotCards = cardsInZone(sessionCards, "pilot")
-  const libraryCount = cardsInZone(sessionCards, "library").length
-  const trashCards = cardsInZone(sessionCards, "trashyard")
-  const dismantledCards = cardsInZone(sessionCards, "dismantled")
+  const handCards = cardsInZone(sessionCards, PLAY_ZONE.hand)
+  const battlefieldCards = cardsInZone(sessionCards, PLAY_ZONE.battlefield)
+  const stockpileCards = cardsInZone(sessionCards, PLAY_ZONE.stockpile)
+  const pilotCards = cardsInZone(sessionCards, PLAY_ZONE.pilot)
+  const libraryCount = cardsInZone(sessionCards, PLAY_ZONE.library).length
+  const trashCards = cardsInZone(sessionCards, PLAY_ZONE.trashyard)
+  const dismantledCards = cardsInZone(sessionCards, PLAY_ZONE.dismantled)
 
   function clientToLocalIn(
     el: HTMLElement | null,
@@ -395,9 +445,34 @@ export function PlayTesterPage() {
     )
   }
 
+  /** Click / marquee selection on the hand strip. */
+  function onHandSelectionChange(instanceIds: string[]) {
+    const selected = new Set(instanceIds)
+    setSessionCards((prev) =>
+      prev.map((card) => {
+        if (card.zone === PLAY_ZONE.hand) {
+          const nextSelected = selected.has(card.instanceId)
+          return card.selected === nextSelected
+            ? card
+            : { ...card, selected: nextSelected }
+        }
+        if (
+          (card.zone === "battlefield" || card.zone === "stockpile") &&
+          card.selected
+        ) {
+          return { ...card, selected: false }
+        }
+        return card
+      })
+    )
+  }
+
   function clearFloatSelection(cards: PlayingCardInstance[]) {
     return cards.map((c) =>
-      (c.zone === "battlefield" || c.zone === "stockpile") && c.selected
+      (c.zone === "battlefield" ||
+        c.zone === "stockpile" ||
+        c.zone === "hand") &&
+      c.selected
         ? { ...c, selected: false }
         : c
     )
@@ -460,7 +535,7 @@ export function PlayTesterPage() {
       )
       pushFlipAnim({
         card,
-        mode: "put",
+        mode: FLIP_FLY_MODE.put,
         from: {
           x: clientX - w / 2,
           y: clientY - h / 2,
@@ -559,20 +634,29 @@ export function PlayTesterPage() {
 
   /** Hand release: deck → trash → dismantled → pilot → stockpile → battlefield. */
   function onHandRelease(
-    instanceId: string,
+    instanceIds: string[],
     clientX: number,
     clientY: number
   ) {
-    if (tryPutGroupOnDeck([instanceId], clientX, clientY)) return
-    if (tryPutGroupOnTrashyard([instanceId], clientX, clientY)) return
-    if (tryPutGroupOnDismantled([instanceId], clientX, clientY)) return
-    if (tryPutGroupOnPilot([instanceId], clientX, clientY)) return
-    if (tryPutGroupOnStockpile([instanceId], clientX, clientY)) return
+    if (instanceIds.length === 0) return
+    if (tryPutGroupOnDeck(instanceIds, clientX, clientY)) return
+    if (tryPutGroupOnTrashyard(instanceIds, clientX, clientY)) return
+    if (tryPutGroupOnDismantled(instanceIds, clientX, clientY)) return
+    if (tryPutGroupOnPilot(instanceIds, clientX, clientY)) return
+    if (tryPutGroupOnStockpile(instanceIds, clientX, clientY)) return
     if (!pointInRect(clientX, clientY, surfaceRef.current)) return
     const { x, y } = clientToSurfaceLocal(clientX, clientY)
-    setSessionCards((prev) =>
-      moveCardtoFront(moveToBattlefield(prev, instanceId, x, y), instanceId)
-    )
+    setSessionCards((prev) => {
+      let next = prev
+      instanceIds.forEach((id, index) => {
+        if (!next.some((c) => c.instanceId === id && c.zone === "hand")) return
+        next = moveCardtoFront(
+          moveToBattlefield(next, id, x + index * 24, y),
+          id
+        )
+      })
+      return clearFloatSelection(next)
+    })
   }
 
   /** Battlefield release: deck → trash → dismantled → pilot → stockpile → hand. */
@@ -721,7 +805,7 @@ export function PlayTesterPage() {
     setSessionCards(taken.cards)
     pushFlipAnim({
       card: taken.drawn,
-      mode: "draw",
+      mode: FLIP_FLY_MODE.draw,
       from,
       to,
       landZone: "hand",
@@ -829,11 +913,11 @@ export function PlayTesterPage() {
     if (mulliganTimersRef.current.length > 0) return
 
     const targetHand = Math.max(0, pilotHandSize - 2)
-    const handCount = cardsInZone(sessionCardsRef.current, "hand").length
+    const handCount = cardsInZone(sessionCardsRef.current, PLAY_ZONE.hand).length
     const need = Math.max(0, targetHand - handCount)
 
     if (need > 0) {
-      const libraryCount = cardsInZone(sessionCardsRef.current, "library").length
+      const libraryCount = cardsInZone(sessionCardsRef.current, PLAY_ZONE.library).length
       const drawCount = Math.min(need, libraryCount)
       const lifeLoss = need - drawCount
       if (lifeLoss > 0) {
@@ -846,7 +930,9 @@ export function PlayTesterPage() {
   }
 
   /**
-   * Drag top library card onto a zone → back→face flip into that zone.
+   * Drag top library card onto a zone. Ghost stays face down while dragging.
+   * Battlefield / stockpile: slide face down and stay that way.
+   * Other zones: flip back→face on the way in.
    * Dropping back on the deck (or nowhere valid) cancels.
    */
   function onDeckTopRelease(clientX: number, clientY: number) {
@@ -860,38 +946,38 @@ export function PlayTesterPage() {
     const w = deckRect.width
     const h = deckRect.height
 
-    let landZone: FlipLandZone | null = null
+    let landZone: PlayZone | null = null
     let to = { x: clientX - w / 2, y: clientY - h / 2 }
     let landX: number | undefined
     let landY: number | undefined
 
     if (pointInRect(clientX, clientY, handRef.current)) {
-      landZone = "hand"
+      landZone = PLAY_ZONE.hand
       const handRect = handRef.current!.getBoundingClientRect()
       to = {
         x: handRect.right - w - 12,
         y: handRect.top + (handRect.height - h) / 2,
       }
     } else if (pointInRect(clientX, clientY, trashRef.current)) {
-      landZone = "trashyard"
+      landZone = PLAY_ZONE.trashyard
       const trashRect = trashRef.current!.getBoundingClientRect()
       to = { x: trashRect.left, y: trashRect.top }
     } else if (pointInRect(clientX, clientY, dismantledRef.current)) {
-      landZone = "dismantled"
+      landZone = PLAY_ZONE.dismantled
       const dismantledRect = dismantledRef.current!.getBoundingClientRect()
       to = { x: dismantledRect.left, y: dismantledRect.top }
     } else if (pointInRect(clientX, clientY, stockpileRef.current)) {
-      landZone = "stockpile"
+      landZone = PLAY_ZONE.stockpile
       const local = clientToStockpileLocal(clientX, clientY)
       landX = local.x
       landY = local.y
       to = { x: clientX - w / 2, y: clientY - h / 2 }
     } else if (pointInRect(clientX, clientY, pilotRef.current)) {
-      landZone = "pilot"
+      landZone = PLAY_ZONE.pilot
       const pilotRect = pilotRef.current!.getBoundingClientRect()
       to = { x: pilotRect.left, y: pilotRect.top }
     } else if (pointInRect(clientX, clientY, surfaceRef.current)) {
-      landZone = "battlefield"
+      landZone = PLAY_ZONE.battlefield
       const local = clientToSurfaceLocal(clientX, clientY)
       landX = local.x
       landY = local.y
@@ -903,11 +989,17 @@ export function PlayTesterPage() {
     const taken = takeTopLibraryCard(sessionCardsRef.current)
     if (!taken) return
 
+    // Battlefield / stockpile keep the library secrecy (stay face down).
+    // Everywhere else reveals on land (flip during flight).
+    const stayFaceDown =
+      landZone === PLAY_ZONE.battlefield || landZone === PLAY_ZONE.stockpile
+    const flyingCard = { ...taken.drawn, faceDown: stayFaceDown }
+
     sessionCardsRef.current = taken.cards
     setSessionCards(taken.cards)
     pushFlipAnim({
-      card: taken.drawn,
-      mode: "draw",
+      card: flyingCard,
+      mode: stayFaceDown ? FLIP_FLY_MODE.faceDown : FLIP_FLY_MODE.draw,
       from: {
         x: clientX - w / 2,
         y: clientY - h / 2,
@@ -932,31 +1024,31 @@ export function PlayTesterPage() {
     }
     if (!current) return
 
-    if (current.landZone === "library" || current.mode === "put") {
+    if (current.landZone === PLAY_ZONE.library || current.mode === FLIP_FLY_MODE.put) {
       const next = putCardOnLibraryTop(sessionCardsRef.current, current.card)
       sessionCardsRef.current = next
       setSessionCards(next)
       return
     }
-    if (current.landZone === "hand") {
+    if (current.landZone === PLAY_ZONE.hand) {
       const next = putCardInHand(sessionCardsRef.current, current.card)
       sessionCardsRef.current = next
       setSessionCards(next)
       return
     }
-    if (current.landZone === "trashyard") {
+    if (current.landZone === PLAY_ZONE.trashyard) {
       const next = putCardInTrashyard(sessionCardsRef.current, current.card)
       sessionCardsRef.current = next
       setSessionCards(next)
       return
     }
-    if (current.landZone === "dismantled") {
+    if (current.landZone === PLAY_ZONE.dismantled) {
       const next = putCardInDismantled(sessionCardsRef.current, current.card)
       sessionCardsRef.current = next
       setSessionCards(next)
       return
     }
-    if (current.landZone === "stockpile") {
+    if (current.landZone === PLAY_ZONE.stockpile) {
       const next = putCardOnStockpile(
         sessionCardsRef.current,
         current.card,
@@ -967,13 +1059,13 @@ export function PlayTesterPage() {
       setSessionCards(next)
       return
     }
-    if (current.landZone === "pilot") {
+    if (current.landZone === PLAY_ZONE.pilot) {
       const next = putCardOnPilot(sessionCardsRef.current, current.card)
       sessionCardsRef.current = next
       setSessionCards(next)
       return
     }
-    if (current.landZone === "battlefield") {
+    if (current.landZone === PLAY_ZONE.battlefield) {
       const next = putCardOnBattlefield(
         sessionCardsRef.current,
         current.card,
@@ -1048,7 +1140,7 @@ export function PlayTesterPage() {
     if (flipAnims.length > 0 || bottomAnim) return
 
     const card = sessionCards.find(
-      (c) => c.instanceId === instanceId && c.zone === "hand"
+      (c) => c.instanceId === instanceId && c.zone === PLAY_ZONE.hand
     )
     if (!card) return
 
@@ -1132,7 +1224,7 @@ export function PlayTesterPage() {
       return
     }
     setSessionCards((prev) => {
-      const seq = cardsInZone(prev, "stockpile").length
+      const seq = cardsInZone(prev, PLAY_ZONE.stockpile).length
       const next = [
         ...prev,
         spawnResourceTokenInstance(
@@ -1153,244 +1245,37 @@ export function PlayTesterPage() {
     )
   }
 
-  const ctxMenuItems: DropdownMenuItem[] = (() => {
-    if (!ctxMenu) return []
-
-    const generateResourceItem: DropdownMenuItem = {
-      id: "generate-resource",
-      label: "Generate resource",
-      disabled: availableResourceColors.size === 0,
-      submenu: RESOURCE_COLORS.map((color) => ({
-        id: `gen-resource-${color}`,
-        label: (
-          <>
-            <GameIcon
-              name={RESOURCE_COLOR_ICON[color]}
-              className="h-4 w-auto"
-            />
-            {color}
-          </>
-        ),
-        disabled: !resourceByColor.has(color),
-        onSelect: () => spawnResourceColor(color),
-      })),
-    }
-
-    // Empty zone surface — generate only.
-    if (ctxMenu.kind === "zone") {
-      return [generateResourceItem]
-    }
-
-    const card = sessionCards.find((c) => c.instanceId === ctxMenu.instanceId)
-    if (!card || card.zone === "library") return []
-
-    const putBottomTargets = (() => {
-      if (
-        (card.zone === "battlefield" || card.zone === "stockpile") &&
-        card.selected
-      ) {
-        return sessionCards
-          .filter(
-            (c) =>
-              c.selected &&
-              (c.zone === "battlefield" || c.zone === "stockpile")
-          )
-          .map((c) => c.instanceId)
-      }
-      return [card.instanceId]
-    })()
-
-    const putOnBottomItem: DropdownMenuItem = {
-      id: "put-bottom",
-      label:
-        putBottomTargets.length > 1
-          ? `Put on bottom (${putBottomTargets.length})`
-          : "Put on bottom",
-      disabled: Boolean(bottomAnim) || flipAnims.length > 0,
-      onSelect: () =>
+  const ctxMenuItems = usePlayContextMenu({
+    ctxMenu,
+    sessionCards,
+    resourceByColor,
+    availableResourceColors,
+    animBusy: flipAnims.length > 0 || Boolean(bottomAnim),
+    pilotGenBonus,
+    actions: {
+      spawnResourceColor,
+      putOnLibraryBottom: (instanceIds) => {
         setSessionCards((prev) => {
-          const next = putCardsOnLibraryBottom(prev, putBottomTargets)
+          const next = putCardsOnLibraryBottom(prev, instanceIds)
           sessionCardsRef.current = next
           return next
-        }),
-    }
-
-    const VeiwCardDetials: DropdownMenuItem = {
-      id: "CardDetails",
-      label: "Veiw Details",
-      onSelect: () => setInspectCard(card),
-    }
-
-    const deleteTargets = (() => {
-      if (
-        (card.zone === "battlefield" || card.zone === "stockpile") &&
-        card.selected
-      ) {
-        return sessionCards
-          .filter(
-            (c) =>
-              c.selected &&
-              (c.zone === "battlefield" ||
-                c.zone === "stockpile" ||
-                c.zone === "hand")
-          )
-          .map((c) => c.instanceId)
-      }
-      return [card.instanceId]
-    })()
-
-    const deleteItem: DropdownMenuItem = {
-      id: "delete-card",
-      label:
-        deleteTargets.length > 1
-          ? `Delete (${deleteTargets.length})`
-          : "Delete",
-      tone: "danger",
-      onSelect: () => deleteSessionCards(deleteTargets),
-    }
-
-    if (card.zone === "hand") {
-      const pips = extractGainablePips(card.cost)
-      const hasCatalog = pips.some((pip) => {
-        if (pip.kind === "solid") return resourceByColor.has(pip.color)
-        if (pip.kind === "hybrid") {
-          return pip.colors.some((c) => resourceByColor.has(c))
-        }
-        return availableResourceColors.size > 0
-      })
-      const busy = flipAnims.length > 0 || Boolean(bottomAnim)
-      let label = "Accumulate Resources"
-      if (busy) label = "Accumulate Resources (busy)"
-      else if (pips.length === 0) label = "Accumulate Resources (no colour pips)"
-      else if (!hasCatalog) {
-        label = "Accumulate Resources (no token cards loaded)"
-      }
-      return [
-        {
-          id: "accumulate",
-          label,
-          disabled: busy || pips.length === 0 || !hasCatalog,
-          onSelect: () => startAccumulate(card.instanceId),
-        },
-        generateResourceItem,
-        putOnBottomItem,
-        VeiwCardDetials,
-        deleteItem,
-      ]
-    }
-
-    if (card.zone === "battlefield" || card.zone === "stockpile") {
-      return [
-        {
-          id: "add-time",
-          label: (
-            <>
-              Add{" "}
-              <span
-                aria-hidden
-                className="inline-flex min-h-6 min-w-6 items-center justify-center border border-emerald-400/70 bg-emerald-950/90 px-1 font-glitch text-sm leading-none text-emerald-200"
-              >
-                1
-              </span>{" "}
-              time counter
-            </>
-          ),
-          onSelect: () =>
-            setSessionCards((prev) =>
-              adjustCardCounter(prev, card.instanceId, "time", 1)
-            ),
-        },
-        {
-          id: "add-damage",
-          label: (
-            <>
-              Add{" "}
-              <span
-                aria-hidden
-                className="inline-flex min-h-6 min-w-6 items-center justify-center border border-red-400/70 bg-red-950/90 px-1 font-glitch text-sm leading-none text-red-200"
-              >
-                1
-              </span>{" "}
-              damage counter
-            </>
-          ),
-          onSelect: () =>
-            setSessionCards((prev) =>
-              adjustCardCounter(prev, card.instanceId, "damage", 1)
-            ),
-        },
-        {
-          id: "add-tlv",
-          label: (
-            <>
-              Add <GameIcon name="threat_lvl" className="h-4 w-auto" /> counter
-            </>
-          ),
-          onSelect: () =>
-            setSessionCards((prev) =>
-              adjustCardCounter(prev, card.instanceId, "tlv", 1)
-            ),
-        },
-        {
-          id: "create-copy",
-          label: "Create copy",
-          onSelect: () =>
-            setSessionCards((prev) =>
-              duplicatePlayingCard(prev, card.instanceId)
-            ),
-        },
-        generateResourceItem,
-        putOnBottomItem,
-        VeiwCardDetials,
-        deleteItem,
-      ]
-    }
-
-    // Trashyard / dismantled — zoom + bottom.
-    if (card.zone === "trashyard" || card.zone === "dismantled") {
-      return [putOnBottomItem, VeiwCardDetials]
-    }
-
-    if (card.zone === "pilot") {
-      return [
-        {
-          id: "add-pilot-gen",
-          label: (
-            <span className="inline-flex items-center gap-1.5">
-              Add +
-              <GameIcon
-                name={genIconForCount(
-                  Math.min(PILOT_GEN_MAX, pilotGenBonus + 1)
-                )}
-                className="h-4 w-auto lg:h-4 2xl:h-4"
-              />
-              {pilotGenBonus > 0 ? ` (${pilotGenBonus}/${PILOT_GEN_MAX})` : ""}
-            </span>
-          ),
-          disabled: pilotGenBonus >= PILOT_GEN_MAX,
-          onSelect: () => adjustPilotGenBonus(1),
-        },
-        {
-          id: "remove-pilot-gen",
-          label: (
-            <span className="inline-flex items-center gap-1.5">
-              Remove +
-              <GameIcon
-                name={genIconForCount(Math.max(1, pilotGenBonus))}
-                className="h-4 w-auto lg:h-4 2xl:h-4"
-              />
-            </span>
-          ),
-          disabled: pilotGenBonus <= 0,
-          onSelect: () => adjustPilotGenBonus(-1),
-        },
-        putOnBottomItem,
-        VeiwCardDetials,
-      ]
-    }
-
-    return [putOnBottomItem, VeiwCardDetials]
-  })()
+        })
+      },
+      setFaceDown: (instanceIds, faceDown) => {
+        setSessionCards((prev) => setCardsFaceDown(prev, instanceIds, faceDown))
+      },
+      deleteSessionCards,
+      startAccumulate,
+      adjustCounter: (instanceId, kind, delta) => {
+        setSessionCards((prev) => adjustCardCounter(prev, instanceId, kind, delta))
+      },
+      duplicateCard: (instanceId) => {
+        setSessionCards((prev) => duplicatePlayingCard(prev, instanceId))
+      },
+      inspectCard: (card) => setInspectCard(card),
+      adjustPilotGenBonus,
+    },
+  })
 
   function onBottomSlideComplete() {
     const current = bottomAnimRef.current
@@ -1471,7 +1356,30 @@ export function PlayTesterPage() {
               />
             </div>
 
-            <div className="relative z-0 flex h-60 min-h-40 w-full shrink-0 items-end gap-1.5">
+            <div
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="Resize stockpile"
+              title="Drag to resize battlefield / stockpile · double-click to reset"
+              className="relative z-20 h-2 w-full shrink-0 cursor-row-resize touch-none"
+              onPointerDown={onStockpileResizePointerDown}
+              onPointerMove={onStockpileResizePointerMove}
+              onPointerUp={onStockpileResizePointerUp}
+              onPointerCancel={onStockpileResizePointerUp}
+              onDoubleClick={() =>
+                setStockpileHeightPx(STOCKPILE_HEIGHT.default)
+              }
+            >
+              <div
+                className="absolute inset-x-8 top-1/2 h-px -translate-y-1/2 bg-cyan-500/35"
+                aria-hidden
+              />
+            </div>
+
+            <div
+              className="relative z-0 flex w-full shrink-0 items-end gap-1.5"
+              style={{ height: stockpileHeightPx, minHeight: STOCKPILE_HEIGHT.min }}
+            >
               <div
                 ref={stockpileRef}
                 className="relative z-0 min-h-0 min-w-0 flex-1 self-stretch"
@@ -1564,31 +1472,12 @@ export function PlayTesterPage() {
                 <PlayerHand
                   className="min-h-0 w-full flex-1"
                   cards={handCards}
-                  onReleaseCard={onHandRelease}
+                  onReleaseCards={onHandRelease}
                   onCardContextMenu={onHandContextMenu}
                   onEmptyContextMenu={(x, y) =>
                     onZoneEmptyContextMenu("hand", x, y)
                   }
-                  onCardSelect={(instanceId) => {
-                    setSessionCards((prev) =>
-                      prev.map((c) => {
-                        if (c.zone === "hand") {
-                          return {
-                            ...c,
-                            selected: c.instanceId === instanceId,
-                          }
-                        }
-                        if (
-                          (c.zone === "battlefield" ||
-                            c.zone === "stockpile") &&
-                          c.selected
-                        ) {
-                          return { ...c, selected: false }
-                        }
-                        return c
-                      })
-                    )
-                  }}
+                  onSelectionChange={onHandSelectionChange}
                 />
               </div>
               <DeckPile

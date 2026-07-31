@@ -16,7 +16,7 @@ import {
   augmentCategory,
   cardsByCategory,
   pilotCard,
-} from "@/components/decks/deckLogic"
+} from "@/components/decks/deck.logic"
 import { AUGMENT_SECTION_NAME, type DeckCardEntry, type DeckDetail } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 

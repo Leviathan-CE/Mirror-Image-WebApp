@@ -12,7 +12,7 @@ import {
   orderedSelectionKeys,
   selectionRangeKeys,
   toggleSelectionKey,
-} from "@/components/decks/deckLogic"
+} from "@/components/decks/deck.logic"
 import type { DeckCardEntry, DeckDetail } from "@/lib/api/decks"
 
 export type UseCardSelectionOptions = {

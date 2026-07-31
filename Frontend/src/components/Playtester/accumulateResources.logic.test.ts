@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   buildResourceTokenMap,
   findResourceTokenByCost,
-} from "@/components/Playtester/accumulateResources"
+} from "@/components/Playtester/accumulateResources.logic"
 import type { CardLibraryItem } from "@/lib/api/cards"
 
 function card(

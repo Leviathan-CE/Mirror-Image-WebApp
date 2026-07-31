@@ -4,7 +4,7 @@ import {
   formatSubscriptionDate,
   isUserSubscribed,
   subscriptionPeriodLabel,
-} from "./subscription"
+} from "./subscription.logic"
 
 describe("isUserSubscribed", () => {
   it("uses is_subscribed when present", () => {

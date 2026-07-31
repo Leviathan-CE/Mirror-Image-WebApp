@@ -308,7 +308,7 @@ export function HowToPlayPage() {
 
                         <Section id="playmat" title="Playmat Area">
                             <p>
-                               <Note>Hover over each zone of the playmat to see what it does.</Note>
+                                <Note>Hover over each zone of the playmat to see what it does.</Note>
                             </p>
                             <InteractivePlaymat />
                             <p>
@@ -382,7 +382,7 @@ export function HowToPlayPage() {
                             <p>
                                 There are three phases: the maintenance phase (start of turn), the
                                 main phase, and the end-of-turn phase. Take them in order on your
-                                turn. 
+                                turn.
                             </p>
                             <div className="space-y-1">
                                 <p className="flex items-center gap-2 font-semibold text-cyan-200">
@@ -406,7 +406,7 @@ export function HowToPlayPage() {
                                     </p>
                                     <p>To make an attack, in brief:</p>
                                     <ol className="list-decimal space-y-1 pl-6">
-                                        <li>Choose and expend your attacker(s), then declare a target. Then trigger any units attacking with a <GameIcon name="attack"/> tag.</li>
+                                        <li>Choose and expend your attacker(s), then declare a target. Then trigger any units attacking with a <GameIcon name="attack" /> tag.</li>
                                         <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
                                         <li>The defender may block to reduce the incoming damage.</li>
                                         <li>Deal damage (Preemptive Strike first, then simultaneous). Defeated units go to the discard pile; unblocked damage to a player becomes loss of life.</li>
@@ -426,7 +426,7 @@ export function HowToPlayPage() {
                                         <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
                                         <li>Trigger any ability with the <GameIcon name="endTurn" /> tag.</li>
                                         <li>Players Lose any unspent resources in your resource pool (not your stockpile).</li>
-                                        <li>You draw cards until you have cards in hand equal to your pilots <GameIcon name="hand_size"/>-2. if you have no cards left in deck instead loose 1 life for each card you would have drawn to get to your pilots <GameIcon name="hand_size"/>-2</li>
+                                        <li>You draw cards until you have cards in hand equal to your pilots <GameIcon name="hand_size" />-2. if you have no cards left in deck instead loose 1 life for each card you would have drawn to get to your pilots <GameIcon name="hand_size" />-2</li>
                                     </ol>
                                 </div>
                             </div>
@@ -675,11 +675,11 @@ export function HowToPlayPage() {
                             <p>
                                 For example, say I want to play the Needle Jet card. I need a
                                 RAM (blue) and Unit of Power (yellow) in my resource pool to play the card. I
-                                already have a RAM and a unit of Power readied in my stockpile: 
-                                I then activate the RAM's ability of "<GameIcon name="expend"/>: Add a <GameIcon name="ram"/> to your resource pool"
-                                by turing the ram sideways as that is the cost then. i get to add a <GameIcon name="ram"/> to 
+                                already have a RAM and a unit of Power readied in my stockpile:
+                                I then activate the RAM's ability of "<GameIcon name="expend" />: Add a <GameIcon name="ram" /> to your resource pool"
+                                by turing the ram sideways as that is the cost then. i get to add a <GameIcon name="ram" /> to
                                 my resource pool.
-            
+
                             </p>
                             <p>
                                 Because I have what I need, I'll expend both the RAM and Unit of Power
@@ -753,14 +753,33 @@ export function HowToPlayPage() {
                                     with cards and effect that say to heal it. </Important>
                             </p>
                             <ol className="list-decimal space-y-1 pl-6">
-                                <li>Choose unit(s), play a cyberspell strike card, or activate an augment that says it makes an attack. When attacking with multiple units, the group is considered a single attack and must share the same target, but each attacker is treated separately for blocking purposes. </li>
-                                <li>Expend the chosen unit(s), declare an attack target (another unit or an opponent), and trigger the <GameIcon name="attack" /> abilities of the attacking units.</li>
-                                <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
+                                <li>Choose unit(s), play a cyberspell strike card, or activate an augment that says it makes an attack.
+                                    When attacking with multiple units, the group is considered a
+                                    single attack and must share the same target, but each attacker
+                                    is treated separately for blocking purposes. </li>
+                                <li>Expend the chosen unit(s), declare an attack target
+                                    (another unit or an opponent), and trigger the
+                                    <GameIcon name="attack" /> abilities of the attacking units. When
+                                    declaring the target of your attack you must target a readied unit
+                                    the defending player controls if able.
+                                    <Note>If you cannot target the a readied unit a defending player controls, example: a readied unit with airborn per say then you may choose targets
+                                        as if it was not there.</Note></li>
+                                <li>Players may play Quick Hacks or activate abilities,
+                                    starting with the active player, until no one adds more effects.</li>
                                 <li>
-                                    Block incoming damage. you can do so only for attacks that target you directly. You may, in any order:
+                                    Block incoming damage. you can do so only for attacks
+                                    that target you directly. You may, in any order:
                                     <ul className="list-disc space-y-1 pl-6 pt-1">
-                                        <li>Discard any number of cards in hand with a <GameIcon name="threat_lvl" /> rating. The maximuim a card can block using its <GameIcon name="threat_lvl" /> is 3, however the block keyword can increase this limit. add the discarded cards together, and reduce the damage from an attacker of your choice by that total.</li>
-                                        <li>Expend any number of augments you control, choose an attacker for each, reduce the incoming damage by that augment's <GameIcon name="threat_lvl" /> rating, and add a depletion counter to that augment.</li>
+                                        <li>Discard any number of cards in hand with a
+                                            <GameIcon name="threat_lvl" /> rating. The maximuim a
+                                            card can block using its <GameIcon name="threat_lvl" />
+                                            is 3, however the block keyword can increase this limit.
+                                            add the discarded cards together, and reduce the damage
+                                            from an attacker of your choice by that total.</li>
+                                        <li>Expend any number of augments you control, choose an
+                                            attacker for each, reduce the incoming damage by that
+                                            augment's <GameIcon name="threat_lvl" /> rating, and
+                                            add a depletion counter to that augment.</li>
                                     </ul>
                                 </li>
                                 <li>The attacker(s) Deal Preemptive Strike damage equal to your <GameIcon name="threat_lvl" />.</li>
@@ -1022,19 +1041,19 @@ export function HowToPlayPage() {
                                             <td className="py-2 pr-4">Heavy weight</td>
                                             <td className="py-2 pr-4">30&ndash;39</td>
                                             <td className="py-2">3</td>
-                                            
+
                                         </tr>
                                         <tr>
                                             <td className="py-2 pr-4">Medium weight</td>
                                             <td className="py-2 pr-4">40&ndash;59</td>
                                             <td className="py-2">2</td>
-                                            
+
                                         </tr>
                                         <tr>
                                             <td className="py-2 pr-4">Light weight</td>
                                             <td className="py-2 pr-4">60&ndash;70</td>
                                             <td className="py-2">1</td>
-                                            
+
                                         </tr>
                                     </tbody>
                                 </table>

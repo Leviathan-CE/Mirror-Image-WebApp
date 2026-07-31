@@ -1,0 +1,299 @@
+/** Playtester card instance + card-local session ops (no zone transfers). */
+
+import {
+  PLAY_ZONE,
+  SELECTABLE_ACTION_ZONES,
+  type PlayZone,
+  type SelectableActionZone,
+} from "./playtesterConstants"
+
+export type { PlayZone, SelectableActionZone }
+export { PLAY_ZONE, SELECTABLE_ACTION_ZONES }
+
+export type PlayingCardInstance = {
+  /** Unique even when the deck has multiple copies of the same card. */
+  instanceId: string
+  cardId: number
+  name: string
+  artPath: string | null
+  artVersion?: number | null
+  /** Invoke-cost icon list (LIF, MET, GEN2, …). */
+  cost: string[]
+  zone: PlayZone
+  x?: number
+  y?: number
+  /** Mirror Image “tapped” / used this turn. */
+  expended: boolean
+  selected?: boolean
+  /** True when the card shows its back instead of art. */
+  faceDown?: boolean
+  /**
+   * Created Resource Token (not a deck card). Destroyed if it would enter
+   * library / hand / trashyard / dismantled / pilot.
+   */
+  isResourceToken?: boolean
+  /** Green time counters (stockpile / lock timing). */
+  timeCounters?: number
+  /** Red damage counters marked on the card. */
+  damageCounters?: number
+  /** Extra TLV (threat level) counters. */
+  tlvCounters?: number
+}
+
+/** Expand one deck list row into a single play instance (first copy). */
+export function deckEntryToPlayInstance(
+  entry: {
+    card_id: number
+    card_name: string
+    card_art_path: string | null
+    card_art_version?: number | null
+    cost?: string[] | null
+  },
+  zone: PlayZone = PLAY_ZONE.hand
+): PlayingCardInstance {
+  return {
+    instanceId: `preview-${entry.card_id}`,
+    cardId: entry.card_id,
+    name: entry.card_name,
+    artPath: entry.card_art_path,
+    artVersion: entry.card_art_version ?? null,
+    cost: Array.isArray(entry.cost) ? entry.cost.map(String) : [],
+    zone,
+    expended: false,
+  }
+}
+
+/**
+ * Expand deck list rows into physical copies using each entry's `quantity`.
+ * Example: one row with quantity 3 → three PlayingCardInstance values.
+ */
+export function expandDeckToPlayInstances(
+  entries: Array<{
+    card_id: number
+    card_name: string
+    card_art_path: string | null
+    card_art_version?: number | null
+    cost?: string[] | null
+    quantity: number
+  }>,
+  zone: PlayZone = PLAY_ZONE.library
+): PlayingCardInstance[] {
+  const out: PlayingCardInstance[] = []
+  for (const entry of entries) {
+    const qty = Math.max(0, Math.floor(entry.quantity ?? 0))
+    for (let copy = 0; copy < qty; copy++) {
+      out.push({
+        ...deckEntryToPlayInstance(entry, zone),
+        instanceId: `${zone}-${entry.card_id}-c${copy}-${out.length}`,
+      })
+    }
+  }
+  return out
+}
+
+/** In-place Fisher–Yates shuffle (returns the same array). */
+export function shuffleInPlace<T>(items: T[]): T[] {
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const tmp = items[i]!
+    items[i] = items[j]!
+    items[j] = tmp
+  }
+  return items
+}
+
+/**
+ *  moves current selected card instance to the front of the 
+ * list making it display ontop of everything else
+ * @param cards 
+ * @param instanceId 
+ * @returns list of cards instances
+ */
+export function moveCardtoFront(
+  cards: PlayingCardInstance[],
+  instanceId: string 
+): PlayingCardInstance[] {
+  const i = cards.findIndex((c) => c.instanceId ===instanceId)
+  if (i < 0) return cards
+  const next = [...cards]
+  const [card] = next.splice(i, 1)
+  next.push(card)
+  return next
+
+}
+/**
+ * move curretn selest insantce of card to the back
+ * of the this making it dsiplay below all other cards
+ * @param cards 
+ * @param instanceId  
+ * @returns list of cards instances 
+*/
+export function moveCardtoBack(
+  cards: PlayingCardInstance[],
+  instanceId: string
+): PlayingCardInstance[] {
+
+  const i = cards.findIndex((c) => c.instanceId === instanceId)
+  if (i < 0) return cards
+  const next = [...cards]
+  const [card] = next.splice(i,1)
+  next.unshift(card)
+  return next
+}
+
+/**
+ * Toggles state from expended to ready and visa versa
+ * @param cards
+ * @param instanceId
+ * @returns list with a card expended var changed
+ */
+export function toggleExpended(
+  cards: PlayingCardInstance[],
+  instanceId: string
+): PlayingCardInstance[] {
+  return cards.map((c) =>
+    c.instanceId === instanceId ? { ...c, expended: !c.expended } : c
+  )
+}
+
+/** Flip a card between face-up art and the card back. */
+export function toggleFaceDown(
+  cards: PlayingCardInstance[],
+  instanceId: string
+): PlayingCardInstance[] {
+  return cards.map((c) =>
+    c.instanceId === instanceId ? { ...c, faceDown: !c.faceDown } : c
+  )
+}
+
+/**
+ * Set face orientation for many cards at once.
+ * Multi-select should converge on one state (from the context-menu label),
+ * not toggle each card independently (which would keep a mixed selection mixed).
+ */
+export function setCardsFaceDown(
+  cards: PlayingCardInstance[],
+  instanceIds: readonly string[],
+  faceDown: boolean
+): PlayingCardInstance[] {
+  if (instanceIds.length === 0) return cards
+  const ids = new Set(instanceIds)
+  return cards.map((c) =>
+    ids.has(c.instanceId) ? { ...c, faceDown } : c
+  )
+}
+
+function isSelectableActionZone(
+  zone: PlayZone
+): zone is SelectableActionZone {
+  return (SELECTABLE_ACTION_ZONES as readonly string[]).includes(zone)
+}
+
+/**
+ * Context-menu / bulk actions: if the focus card is already selected in a
+ * selectable zone, operate on the whole selection; otherwise just that card.
+ */
+export function selectableActionTargets(
+  cards: PlayingCardInstance[],
+  focus: PlayingCardInstance
+): string[] {
+  if (focus.selected && isSelectableActionZone(focus.zone)) {
+    return cards
+      .filter((c) => c.selected && isSelectableActionZone(c.zone))
+      .map((c) => c.instanceId)
+  }
+  return [focus.instanceId]
+}
+
+/**
+ * Start-of-turn cleanup for free-float zones:
+ * ready (un-expend) every battlefield + stockpile card, and remove 1 time
+ * counter from each that still has at least one.
+ */
+export function readyBattlefieldAndStockpile(
+  cards: PlayingCardInstance[]
+): PlayingCardInstance[] {
+  return cards.map((c) => {
+    if (c.zone !== PLAY_ZONE.battlefield && c.zone !== PLAY_ZONE.stockpile) return c
+    const time = c.timeCounters ?? 0
+    return {
+      ...c,
+      expended: false,
+      selected: false,
+      timeCounters: time > 0 ? time - 1 : 0,
+    }
+  })
+}
+
+export function cardsInZone(
+  cards: PlayingCardInstance[],
+  zone: PlayZone
+): PlayingCardInstance[] {
+  return cards.filter((c) => c.zone === zone)
+}
+
+/** Remove a card from the session (held in an animation overlay). */
+export function removeCard(
+  cards: PlayingCardInstance[],
+  instanceId: string
+): PlayingCardInstance[] {
+  return cards.filter((c) => c.instanceId !== instanceId)
+}
+
+export type CardCounterKind = "time" | "damage" | "tlv"
+
+/** Add (or subtract) counters on a session card. Counts never go below 0. */
+export function adjustCardCounter(
+  cards: PlayingCardInstance[],
+  instanceId: string,
+  kind: CardCounterKind,
+  delta: number
+): PlayingCardInstance[] {
+  return cards.map((c) => {
+    if (c.instanceId !== instanceId) return c
+    const key =
+      kind === "time"
+        ? "timeCounters"
+        : kind === "damage"
+          ? "damageCounters"
+          : "tlvCounters"
+    const current = c[key] ?? 0
+    const next = Math.max(0, current + delta)
+    return { ...c, [key]: next }
+  })
+}
+
+const COPY_OFFSET_X = 28
+const COPY_OFFSET_Y = 28
+
+/**
+ * Spawn a second physical copy of a free-float card (battlefield / stockpile).
+ * New `instanceId` so React/drag treat it as a separate object; offset so it
+ * is visible beside the original. Starts ready with no counters.
+ */
+export function duplicatePlayingCard(
+  cards: PlayingCardInstance[],
+  instanceId: string
+): PlayingCardInstance[] {
+  const card = cards.find((c) => c.instanceId === instanceId)
+  if (!card) return cards
+  if (card.zone !== "battlefield" && card.zone !== "stockpile") return cards
+
+  const copy: PlayingCardInstance = {
+    instanceId: `copy-${card.cardId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    cardId: card.cardId,
+    name: card.name,
+    artPath: card.artPath,
+    artVersion: card.artVersion,
+    cost: card.cost ?? [],
+    zone: card.zone,
+    x: (card.x ?? 0) + COPY_OFFSET_X,
+    y: (card.y ?? 0) + COPY_OFFSET_Y,
+    expended: false,
+    selected: false,
+    isResourceToken: card.isResourceToken,
+    faceDown: card.faceDown,
+  }
+  // Append so the copy paints above the original (same as moveCardtoFront).
+  return [...cards, copy]
+}

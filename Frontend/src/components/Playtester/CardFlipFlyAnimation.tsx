@@ -3,6 +3,7 @@
  *
  * - draw: library → zone  (back → face)
  * - put:  zone → library  (face → back)
+ * - faceDown: library → zone (stays back; no flip)
  *
  * Completion must not rely only on transitionend: if from ≈ to (e.g. drop on
  * the battlefield under the cursor), the outer translate never runs and the
@@ -15,9 +16,11 @@ import { sharedImages } from "@/assets/shared"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
+import { FLIP_FLY_MODE, type FlipFlyMode } from "./playtesterConstants"
 import type { PlayingCardInstance } from "./types"
 
-export type FlipFlyMode = "draw" | "put"
+export type { FlipFlyMode }
+export { FLIP_FLY_MODE }
 
 export type CardFlipFlyAnimationProps = {
   card: PlayingCardInstance
@@ -101,8 +104,30 @@ export function CardFlipFlyAnimation({
     </div>
   )
 
-  const startFace = mode === "draw" ? backFace : frontFace
-  const endFace = mode === "draw" ? frontFace : backFace
+  // faceDown: slide with the back only — no rotateY reveal.
+  if (mode === FLIP_FLY_MODE.faceDown) {
+    return (
+      <div
+        className="pointer-events-none fixed z-[90]"
+        style={{
+          left: from.x,
+          top: from.y,
+          width: from.w,
+          height: from.h,
+          transform: active
+            ? `translate(${dx}px, ${dy}px)`
+            : "translate(0px, 0px)",
+          transition: `transform ${FLIP_MS}ms ease-in-out`,
+        }}
+        onTransitionEnd={onFlyEnd}
+      >
+        <div className="relative h-full w-full">{backFace}</div>
+      </div>
+    )
+  }
+
+  const startFace = mode === FLIP_FLY_MODE.draw ? backFace : frontFace
+  const endFace = mode === FLIP_FLY_MODE.draw ? frontFace : backFace
 
   return (
     <div

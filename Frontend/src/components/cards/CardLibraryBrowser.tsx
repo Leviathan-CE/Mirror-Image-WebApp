@@ -9,7 +9,7 @@ import { createPortal } from "react-dom"
 import { CardCostIcons, costTokenToIcon } from "@/components/cards/CardCostIcons"
 import { CardRulesText } from "@/components/cards/CardRulesText"
 import { CardSearchBar } from "@/components/cards/CardSearchBar"
-import { parseKeyword } from "@/components/cards/keywordHelp"
+import { parseKeyword } from "@/components/cards/keywordHelp.logic"
 import { GameIcon } from "@/components/common/GameIcon"
 import {
   beginDeckCardDrag,
