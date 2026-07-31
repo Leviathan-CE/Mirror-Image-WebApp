@@ -24,15 +24,14 @@ import {
   CardFlipFlyAnimation,
 } from "@/components/Playtester/CardFlipFlyAnimation"
 import {
-  FLIP_FLY_MODE,
   PILOT_GEN_MAX,
   PLAY_ZONE,
   PLAYTESTER_STORAGE,
   SELECTABLE_ACTION_ZONES,
   STOCKPILE_HEIGHT,
-  type FlipFlyMode,
-  type PlayZone,
 } from "@/components/Playtester/playtesterConstants"
+import { useCardDragDrop } from "@/components/Playtester/useCardDragDrop"
+import { useDrawAnimations } from "@/components/Playtester/useDrawAnimations"
 import {
   genIconForCount,
   usePlayContextMenu,
@@ -54,26 +53,10 @@ import {
   cardsInZone,
   moveCardtoBack,
   moveCardtoFront,
-  moveToBattlefield,
-  moveToHand,
-  moveToTrashyard,
-  moveToDismantled,
-  moveToStockpile,
-  moveToPilot,
-  putCardInHand,
-  putCardInTrashyard,
-  putCardInDismantled,
-  putCardOnBattlefield,
-  putCardOnStockpile,
-  putCardOnPilot,
-  putCardOnLibraryTop,
-  putCardOnLibraryBottom,
   putCardsOnLibraryBottom,
   removeCard,
-  isResourceTokenInstance,
   adjustCardCounter,
   duplicatePlayingCard,
-  takeTopLibraryCard,
   toggleExpended,
   setCardsFaceDown,
   readyBattlefieldAndStockpile,
@@ -108,40 +91,6 @@ function readStoredStockpileHeight(): number {
   }
 }
 
-function pointInRect(
-  clientX: number,
-  clientY: number,
-  el: HTMLElement | null
-): boolean {
-  if (!el) return false
-  const r = el.getBoundingClientRect()
-  return (
-    clientX >= r.left &&
-    clientX <= r.right &&
-    clientY >= r.top &&
-    clientY <= r.bottom
-  )
-}
-
-type FlipFlyAnim = {
-  /** Stable key so several flips can fly at once. */
-  id: string
-  card: PlayingCardInstance
-  mode: FlipFlyMode
-  from: { x: number; y: number; w: number; h: number }
-  to: { x: number; y: number }
-  /** Where the card sits when the fly finishes. */
-  landZone: PlayZone
-  landX?: number
-  landY?: number
-}
-
-type BottomSlideAnim = {
-  card: PlayingCardInstance
-  from: { x: number; y: number; w: number; h: number }
-  to: { x: number; y: number }
-}
-
 type AccumulateChooserState = {
   card: PlayingCardInstance
   pips: GainablePip[]
@@ -158,15 +107,6 @@ export function PlayTesterPage() {
   const [sessionCards, setSessionCards] = useState<PlayingCardInstance[]>([])
   const sessionCardsRef = useRef<PlayingCardInstance[]>([])
   sessionCardsRef.current = sessionCards
-  const [flipAnims, setFlipAnims] = useState<FlipFlyAnim[]>([])
-  const flipAnimsRef = useRef<FlipFlyAnim[]>([])
-  flipAnimsRef.current = flipAnims
-  const flipAnimIdRef = useRef(0)
-
-  const [bottomAnim, setBottomAnim] = useState<BottomSlideAnim | null>(null)
-  const bottomAnimRef = useRef<BottomSlideAnim | null>(null)
-  bottomAnimRef.current = bottomAnim
-
   const [ctxMenu, setCtxMenu] = useState<CtxMenuState | null>(null)
   /** Sticky zoom from context menu (middle-mouse zoom stays local to each zone). */
   const [inspectCard, setInspectCard] = useState<PlayingCardInstance | null>(
@@ -191,16 +131,6 @@ export function PlayTesterPage() {
     startY: number
     startHeight: number
   } | null>(null)
-  /** Timers for staggered concurrent mulligan draws. */
-  const mulliganTimersRef = useRef<number[]>([])
-  /** Spreads rapid click-draws so overlapping flies don't stack on one pixel. */
-  const drawBurstOffsetRef = useRef(0)
-  /** Shared deck→hand path for a burst of click-draws. */
-  const clickDrawRouteRef = useRef<{
-    from: { x: number; y: number; w: number; h: number }
-    to: { x: number; y: number }
-  } | null>(null)
-
   const surfaceRef = useRef<HTMLDivElement>(null)
   const stockpileRef = useRef<HTMLDivElement>(null)
   const pilotRef = useRef<HTMLDivElement>(null)
@@ -217,6 +147,75 @@ export function PlayTesterPage() {
     () => new Set(resourceByColor.keys()),
     [resourceByColor]
   )
+
+  function clientToLocalIn(
+    el: HTMLElement | null,
+    clientX: number,
+    clientY: number
+  ) {
+    if (!el) return { x: 0, y: 0 }
+    const rect = el.getBoundingClientRect()
+    return {
+      x: Math.max(0, clientX - rect.left - 56),
+      y: Math.max(0, clientY - rect.top - 72),
+    }
+  }
+
+  function clientToSurfaceLocal(clientX: number, clientY: number) {
+    return clientToLocalIn(surfaceRef.current, clientX, clientY)
+  }
+
+  function clientToStockpileLocal(clientX: number, clientY: number) {
+    return clientToLocalIn(stockpileRef.current, clientX, clientY)
+  }
+
+  const zoneRefs = {
+    deck: deckRef,
+    hand: handRef,
+    surface: surfaceRef,
+    stockpile: stockpileRef,
+    pilot: pilotRef,
+    trash: trashRef,
+    dismantled: dismantledRef,
+  }
+
+  const {
+    flipAnims,
+    bottomAnim,
+    animBusy,
+    isFlipFlying,
+    hasPendingDrawTimers,
+    pushFlipAnim,
+    onDrawFromDeck,
+    queueDrawsToHand,
+    onDeckTopRelease,
+    onFlipAnimComplete,
+    startBottomSlide,
+    onBottomSlideComplete,
+    clearDrawTimers,
+  } = useDrawAnimations({
+    sessionCardsRef,
+    setSessionCards,
+    zoneRefs,
+    clientToSurfaceLocal,
+    clientToStockpileLocal,
+    mulliganOpen,
+  })
+
+  const {
+    onHandRelease,
+    onBattlefieldRelease,
+    onStockpileRelease,
+    onFaceUpPileRelease,
+  } = useCardDragDrop({
+    sessionCards,
+    setSessionCards,
+    zoneRefs,
+    clientToSurfaceLocal,
+    clientToStockpileLocal,
+    isFlipFlying,
+    pushFlipAnim,
+  })
 
   useEffect(() => {
     setStockpileHeightPx(readStoredStockpileHeight())
@@ -279,8 +278,7 @@ export function PlayTesterPage() {
       setPilotGenBonus(0)
       setPilotHandSize(0)
       setMulliganOpen(false)
-      for (const t of mulliganTimersRef.current) window.clearTimeout(t)
-      mulliganTimersRef.current = []
+      clearDrawTimers()
       return
     }
     if (!resourcesReady) return
@@ -374,27 +372,6 @@ export function PlayTesterPage() {
   const trashCards = cardsInZone(sessionCards, PLAY_ZONE.trashyard)
   const dismantledCards = cardsInZone(sessionCards, PLAY_ZONE.dismantled)
 
-  function clientToLocalIn(
-    el: HTMLElement | null,
-    clientX: number,
-    clientY: number
-  ) {
-    if (!el) return { x: 0, y: 0 }
-    const rect = el.getBoundingClientRect()
-    return {
-      x: Math.max(0, clientX - rect.left - 56),
-      y: Math.max(0, clientY - rect.top - 72),
-    }
-  }
-
-  function clientToSurfaceLocal(clientX: number, clientY: number) {
-    return clientToLocalIn(surfaceRef.current, clientX, clientY)
-  }
-
-  function clientToStockpileLocal(clientX: number, clientY: number) {
-    return clientToLocalIn(stockpileRef.current, clientX, clientY)
-  }
-
   function onMoveCards(
     moves: { instanceId: string; x: number; y: number }[]
   ) {
@@ -467,434 +444,6 @@ export function PlayTesterPage() {
     )
   }
 
-  function clearFloatSelection(cards: PlayingCardInstance[]) {
-    return cards.map((c) =>
-      (c.zone === "battlefield" ||
-        c.zone === "stockpile" ||
-        c.zone === "hand") &&
-      c.selected
-        ? { ...c, selected: false }
-        : c
-    )
-  }
-
-  /**
-   * Drop onto deck → face→back onto library top.
-   * One card keeps the flip anim; a group is placed instantly.
-   */
-  function tryPutGroupOnDeck(
-    instanceIds: string[],
-    clientX: number,
-    clientY: number
-  ): boolean {
-    if (flipAnimsRef.current.length > 0) return false
-    const deckEl = deckRef.current
-    if (!deckEl || !pointInRect(clientX, clientY, deckEl)) return false
-
-    const movable = instanceIds
-      .map((id) => sessionCards.find((c) => c.instanceId === id))
-      .filter(
-        (c): c is PlayingCardInstance => Boolean(c && c.zone !== "library")
-      )
-    if (movable.length === 0) return false
-
-    // Resource tokens never enter the library — they leave play.
-    const resources = movable.filter((c) => isResourceTokenInstance(c))
-    const cards = movable.filter((c) => !isResourceTokenInstance(c))
-
-    if (resources.length > 0 && cards.length === 0) {
-      setSessionCards((prev) => {
-        let next = prev
-        for (const card of resources) {
-          next = removeCard(next, card.instanceId)
-        }
-        return clearFloatSelection(next)
-      })
-      return true
-    }
-
-    if (resources.length > 0) {
-      setSessionCards((prev) => {
-        let next = prev
-        for (const card of resources) {
-          next = removeCard(next, card.instanceId)
-        }
-        return next
-      })
-    }
-
-    if (cards.length === 0) return true
-
-    if (cards.length === 1) {
-      const card = cards[0]!
-      const deckRect = deckEl.getBoundingClientRect()
-      const w = deckRect.width
-      const h = deckRect.height
-      setSessionCards((prev) =>
-        clearFloatSelection(removeCard(prev, card.instanceId))
-      )
-      pushFlipAnim({
-        card,
-        mode: FLIP_FLY_MODE.put,
-        from: {
-          x: clientX - w / 2,
-          y: clientY - h / 2,
-          w,
-          h,
-        },
-        to: { x: deckRect.left, y: deckRect.top },
-        landZone: "library",
-      })
-      return true
-    }
-
-    setSessionCards((prev) => {
-      let next = prev
-      for (const card of cards) {
-        next = removeCard(next, card.instanceId)
-        next = putCardOnLibraryTop(next, card)
-      }
-      return clearFloatSelection(next)
-    })
-    return true
-  }
-
-  /** Drop onto trashyard (face-up, no flip). */
-  function tryPutGroupOnTrashyard(
-    instanceIds: string[],
-    clientX: number,
-    clientY: number
-  ): boolean {
-    if (!pointInRect(clientX, clientY, trashRef.current)) return false
-    setSessionCards((prev) => {
-      let next = prev
-      for (const id of instanceIds) {
-        const card = next.find((c) => c.instanceId === id)
-        if (!card || card.zone === "trashyard") continue
-        next = moveToTrashyard(next, id)
-      }
-      return clearFloatSelection(next)
-    })
-    return true
-  }
-
-  /** Drop onto dismantled (face-up, no flip). */
-  function tryPutGroupOnDismantled(
-    instanceIds: string[],
-    clientX: number,
-    clientY: number
-  ): boolean {
-    if (!pointInRect(clientX, clientY, dismantledRef.current)) return false
-    setSessionCards((prev) => {
-      let next = prev
-      for (const id of instanceIds) {
-        const card = next.find((c) => c.instanceId === id)
-        if (!card || card.zone === "dismantled") continue
-        next = moveToDismantled(next, id)
-      }
-      return clearFloatSelection(next)
-    })
-    return true
-  }
-
-  /** Drop onto stockpile free-float zone. */
-  function tryPutGroupOnStockpile(
-    instanceIds: string[],
-    clientX: number,
-    clientY: number
-  ): boolean {
-    if (!pointInRect(clientX, clientY, stockpileRef.current)) return false
-    const { x, y } = clientToStockpileLocal(clientX, clientY)
-    setSessionCards((prev) => {
-      let next = prev
-      instanceIds.forEach((id, index) => {
-        if (!next.some((c) => c.instanceId === id)) return
-        next = moveToStockpile(next, id, x + index * 24, y)
-      })
-      return clearFloatSelection(next)
-    })
-    return true
-  }
-
-  /**
-   * Drop onto pilot slot (capacity 1). Only the first card of a group seats;
-   * an existing pilot is bumped to hand inside moveToPilot.
-   */
-  function tryPutGroupOnPilot(
-    instanceIds: string[],
-    clientX: number,
-    clientY: number
-  ): boolean {
-    if (!pointInRect(clientX, clientY, pilotRef.current)) return false
-    const id = instanceIds[0]
-    if (!id) return false
-    setSessionCards((prev) => clearFloatSelection(moveToPilot(prev, id)))
-    return true
-  }
-
-  /** Hand release: deck → trash → dismantled → pilot → stockpile → battlefield. */
-  function onHandRelease(
-    instanceIds: string[],
-    clientX: number,
-    clientY: number
-  ) {
-    if (instanceIds.length === 0) return
-    if (tryPutGroupOnDeck(instanceIds, clientX, clientY)) return
-    if (tryPutGroupOnTrashyard(instanceIds, clientX, clientY)) return
-    if (tryPutGroupOnDismantled(instanceIds, clientX, clientY)) return
-    if (tryPutGroupOnPilot(instanceIds, clientX, clientY)) return
-    if (tryPutGroupOnStockpile(instanceIds, clientX, clientY)) return
-    if (!pointInRect(clientX, clientY, surfaceRef.current)) return
-    const { x, y } = clientToSurfaceLocal(clientX, clientY)
-    setSessionCards((prev) => {
-      let next = prev
-      instanceIds.forEach((id, index) => {
-        if (!next.some((c) => c.instanceId === id && c.zone === "hand")) return
-        next = moveCardtoFront(
-          moveToBattlefield(next, id, x + index * 24, y),
-          id
-        )
-      })
-      return clearFloatSelection(next)
-    })
-  }
-
-  /** Battlefield release: deck → trash → dismantled → pilot → stockpile → hand. */
-  function onBattlefieldRelease(
-    instanceIds: string[],
-    clientX: number,
-    clientY: number
-  ) {
-    if (tryPutGroupOnDeck(instanceIds, clientX, clientY)) return
-    if (tryPutGroupOnTrashyard(instanceIds, clientX, clientY)) return
-    if (tryPutGroupOnDismantled(instanceIds, clientX, clientY)) return
-    if (tryPutGroupOnPilot(instanceIds, clientX, clientY)) return
-    if (tryPutGroupOnStockpile(instanceIds, clientX, clientY)) return
-    if (pointInRect(clientX, clientY, handRef.current)) {
-      setSessionCards((prev) => {
-        let next = prev
-        for (const id of instanceIds) {
-          next = moveToHand(next, id)
-        }
-        return clearFloatSelection(next)
-      })
-    }
-  }
-
-  /** Stockpile release: deck → trash → dismantled → pilot → hand → battlefield. */
-  function onStockpileRelease(
-    instanceIds: string[],
-    clientX: number,
-    clientY: number
-  ) {
-    if (tryPutGroupOnDeck(instanceIds, clientX, clientY)) return
-    if (tryPutGroupOnTrashyard(instanceIds, clientX, clientY)) return
-    if (tryPutGroupOnDismantled(instanceIds, clientX, clientY)) return
-    if (tryPutGroupOnPilot(instanceIds, clientX, clientY)) return
-    if (pointInRect(clientX, clientY, handRef.current)) {
-      setSessionCards((prev) => {
-        let next = prev
-        for (const id of instanceIds) {
-          next = moveToHand(next, id)
-        }
-        return clearFloatSelection(next)
-      })
-      return
-    }
-    if (pointInRect(clientX, clientY, surfaceRef.current)) {
-      const { x, y } = clientToSurfaceLocal(clientX, clientY)
-      setSessionCards((prev) => {
-        let next = prev
-        instanceIds.forEach((id, index) => {
-          next = moveCardtoFront(
-            moveToBattlefield(next, id, x + index * 24, y),
-            id
-          )
-        })
-        return clearFloatSelection(next)
-      })
-    }
-  }
-
-  /** Shared release from trashyard, dismantled, or pilot slot. */
-  function onFaceUpPileRelease(
-    instanceId: string,
-    clientX: number,
-    clientY: number
-  ) {
-    if (tryPutGroupOnDeck([instanceId], clientX, clientY)) return
-    if (tryPutGroupOnTrashyard([instanceId], clientX, clientY)) return
-    if (tryPutGroupOnDismantled([instanceId], clientX, clientY)) return
-    if (tryPutGroupOnPilot([instanceId], clientX, clientY)) return
-    if (tryPutGroupOnStockpile([instanceId], clientX, clientY)) return
-    if (pointInRect(clientX, clientY, handRef.current)) {
-      setSessionCards((prev) => moveToHand(prev, instanceId))
-      return
-    }
-    if (pointInRect(clientX, clientY, surfaceRef.current)) {
-      const { x, y } = clientToSurfaceLocal(clientX, clientY)
-      setSessionCards((prev) =>
-        moveCardtoFront(moveToBattlefield(prev, instanceId, x, y), instanceId)
-      )
-    }
-  }
-
-  /** Click deck (no drag): draw top card with back→face flip into hand. */
-  function pushFlipAnim(anim: Omit<FlipFlyAnim, "id">): string {
-    flipAnimIdRef.current += 1
-    const id = `flip-${flipAnimIdRef.current}`
-    const next: FlipFlyAnim = { ...anim, id }
-    const list = [...flipAnimsRef.current, next]
-    flipAnimsRef.current = list
-    setFlipAnims(list)
-    return id
-  }
-
-  function beginDrawToHand(options?: {
-    /** Allow overlapping flips (mulligan burst). */
-    concurrent?: boolean
-    /** Slight hand landing offset so stacked flies stay readable. */
-    landOffsetIndex?: number
-    /**
-     * Frozen screen positions for a burst of draws. Without this, each staggered
-     * start re-measures the hand — and as earlier cards land, hand height/center
-     * shifts so later flies aim higher or lower (looks like random up/down).
-     */
-    frozenRoute?: {
-      from: { x: number; y: number; w: number; h: number }
-      to: { x: number; y: number }
-    }
-  }): boolean {
-    if (!options?.concurrent && flipAnimsRef.current.length > 0) return false
-
-    const deckEl = deckRef.current
-    const handEl = handRef.current
-    if (!deckEl || !handEl) return false
-
-    const taken = takeTopLibraryCard(sessionCardsRef.current)
-    if (!taken) return false
-
-    const offset = (options?.landOffsetIndex ?? 0) * 18
-    let from: { x: number; y: number; w: number; h: number }
-    let to: { x: number; y: number }
-
-    if (options?.frozenRoute) {
-      from = options.frozenRoute.from
-      to = {
-        x: options.frozenRoute.to.x - offset,
-        y: options.frozenRoute.to.y,
-      }
-    } else {
-      const deckRect = deckEl.getBoundingClientRect()
-      const handRect = handEl.getBoundingClientRect()
-      const cardW = deckRect.width
-      const cardH = deckRect.height
-      from = {
-        x: deckRect.left,
-        y: deckRect.top,
-        w: cardW,
-        h: cardH,
-      }
-      to = {
-        x: handRect.right - cardW - 12 - offset,
-        y: handRect.top + (handRect.height - cardH) / 2,
-      }
-    }
-
-    sessionCardsRef.current = taken.cards
-    setSessionCards(taken.cards)
-    pushFlipAnim({
-      card: taken.drawn,
-      mode: FLIP_FLY_MODE.draw,
-      from,
-      to,
-      landZone: "hand",
-    })
-    return true
-  }
-
-  function onDrawFromDeck() {
-    if (mulliganOpen || mulliganTimersRef.current.length > 0) return
-
-    const deckEl = deckRef.current
-    const handEl = handRef.current
-    if (!deckEl || !handEl) return
-
-    if (!clickDrawRouteRef.current) {
-      const deckRect = deckEl.getBoundingClientRect()
-      const handRect = handEl.getBoundingClientRect()
-      const cardW = deckRect.width
-      const cardH = deckRect.height
-      clickDrawRouteRef.current = {
-        from: {
-          x: deckRect.left,
-          y: deckRect.top,
-          w: cardW,
-          h: cardH,
-        },
-        to: {
-          x: handRect.right - cardW - 12,
-          y: handRect.top + (handRect.height - cardH) / 2,
-        },
-      }
-      drawBurstOffsetRef.current = 0
-    }
-
-    const landOffsetIndex = drawBurstOffsetRef.current
-    drawBurstOffsetRef.current += 1
-    beginDrawToHand({
-      concurrent: true,
-      landOffsetIndex,
-      frozenRoute: clickDrawRouteRef.current,
-    })
-  }
-
-  /** Fire replacement draws in quick succession — flips overlap in flight. */
-  function queueDrawsToHand(count: number) {
-    for (const t of mulliganTimersRef.current) window.clearTimeout(t)
-    mulliganTimersRef.current = []
-    if (count <= 0) return
-
-    const deckEl = deckRef.current
-    const handEl = handRef.current
-    if (!deckEl || !handEl) return
-
-    // One shared flight path for the whole burst (Y stays identical).
-    const deckRect = deckEl.getBoundingClientRect()
-    const handRect = handEl.getBoundingClientRect()
-    const cardW = deckRect.width
-    const cardH = deckRect.height
-    const frozenRoute = {
-      from: {
-        x: deckRect.left,
-        y: deckRect.top,
-        w: cardW,
-        h: cardH,
-      },
-      to: {
-        x: handRect.right - cardW - 12,
-        y: handRect.top + (handRect.height - cardH) / 2,
-      },
-    }
-
-    const STAGGER_MS = 300
-    for (let i = 0; i < count; i++) {
-      const landOffsetIndex = i
-      const timer = window.setTimeout(() => {
-        beginDrawToHand({
-          concurrent: true,
-          landOffsetIndex,
-          frozenRoute,
-        })
-        mulliganTimersRef.current = mulliganTimersRef.current.filter(
-          (id) => id !== timer
-        )
-      }, i * STAGGER_MS)
-      mulliganTimersRef.current.push(timer)
-    }
-  }
-
-  /** Start turn: ready BF + stockpile, tick time counters down by 1. */
   function onStartTurn() {
     if (mulliganOpen || bottomAnim) return
     setSessionCards((prev) => {
@@ -910,7 +459,7 @@ export function PlayTesterPage() {
    */
   function onEndTurn() {
     if (mulliganOpen || bottomAnim) return
-    if (mulliganTimersRef.current.length > 0) return
+    if (hasPendingDrawTimers()) return
 
     const targetHand = Math.max(0, pilotHandSize - 2)
     const handCount = cardsInZone(sessionCardsRef.current, PLAY_ZONE.hand).length
@@ -927,154 +476,6 @@ export function PlayTesterPage() {
     }
 
     setTurn((prev) => prev + 1)
-  }
-
-  /**
-   * Drag top library card onto a zone. Ghost stays face down while dragging.
-   * Battlefield / stockpile: slide face down and stay that way.
-   * Other zones: flip back→face on the way in.
-   * Dropping back on the deck (or nowhere valid) cancels.
-   */
-  function onDeckTopRelease(clientX: number, clientY: number) {
-    if (flipAnimsRef.current.length > 0) return
-
-    const deckEl = deckRef.current
-    if (!deckEl) return
-    if (pointInRect(clientX, clientY, deckEl)) return
-
-    const deckRect = deckEl.getBoundingClientRect()
-    const w = deckRect.width
-    const h = deckRect.height
-
-    let landZone: PlayZone | null = null
-    let to = { x: clientX - w / 2, y: clientY - h / 2 }
-    let landX: number | undefined
-    let landY: number | undefined
-
-    if (pointInRect(clientX, clientY, handRef.current)) {
-      landZone = PLAY_ZONE.hand
-      const handRect = handRef.current!.getBoundingClientRect()
-      to = {
-        x: handRect.right - w - 12,
-        y: handRect.top + (handRect.height - h) / 2,
-      }
-    } else if (pointInRect(clientX, clientY, trashRef.current)) {
-      landZone = PLAY_ZONE.trashyard
-      const trashRect = trashRef.current!.getBoundingClientRect()
-      to = { x: trashRect.left, y: trashRect.top }
-    } else if (pointInRect(clientX, clientY, dismantledRef.current)) {
-      landZone = PLAY_ZONE.dismantled
-      const dismantledRect = dismantledRef.current!.getBoundingClientRect()
-      to = { x: dismantledRect.left, y: dismantledRect.top }
-    } else if (pointInRect(clientX, clientY, stockpileRef.current)) {
-      landZone = PLAY_ZONE.stockpile
-      const local = clientToStockpileLocal(clientX, clientY)
-      landX = local.x
-      landY = local.y
-      to = { x: clientX - w / 2, y: clientY - h / 2 }
-    } else if (pointInRect(clientX, clientY, pilotRef.current)) {
-      landZone = PLAY_ZONE.pilot
-      const pilotRect = pilotRef.current!.getBoundingClientRect()
-      to = { x: pilotRect.left, y: pilotRect.top }
-    } else if (pointInRect(clientX, clientY, surfaceRef.current)) {
-      landZone = PLAY_ZONE.battlefield
-      const local = clientToSurfaceLocal(clientX, clientY)
-      landX = local.x
-      landY = local.y
-      to = { x: clientX - w / 2, y: clientY - h / 2 }
-    }
-
-    if (!landZone) return
-
-    const taken = takeTopLibraryCard(sessionCardsRef.current)
-    if (!taken) return
-
-    // Battlefield / stockpile keep the library secrecy (stay face down).
-    // Everywhere else reveals on land (flip during flight).
-    const stayFaceDown =
-      landZone === PLAY_ZONE.battlefield || landZone === PLAY_ZONE.stockpile
-    const flyingCard = { ...taken.drawn, faceDown: stayFaceDown }
-
-    sessionCardsRef.current = taken.cards
-    setSessionCards(taken.cards)
-    pushFlipAnim({
-      card: flyingCard,
-      mode: stayFaceDown ? FLIP_FLY_MODE.faceDown : FLIP_FLY_MODE.draw,
-      from: {
-        x: clientX - w / 2,
-        y: clientY - h / 2,
-        w,
-        h,
-      },
-      to,
-      landZone,
-      landX,
-      landY,
-    })
-  }
-
-  function onFlipAnimComplete(animId: string) {
-    const current = flipAnimsRef.current.find((a) => a.id === animId)
-    const remaining = flipAnimsRef.current.filter((a) => a.id !== animId)
-    flipAnimsRef.current = remaining
-    setFlipAnims(remaining)
-    if (remaining.length === 0) {
-      drawBurstOffsetRef.current = 0
-      clickDrawRouteRef.current = null
-    }
-    if (!current) return
-
-    if (current.landZone === PLAY_ZONE.library || current.mode === FLIP_FLY_MODE.put) {
-      const next = putCardOnLibraryTop(sessionCardsRef.current, current.card)
-      sessionCardsRef.current = next
-      setSessionCards(next)
-      return
-    }
-    if (current.landZone === PLAY_ZONE.hand) {
-      const next = putCardInHand(sessionCardsRef.current, current.card)
-      sessionCardsRef.current = next
-      setSessionCards(next)
-      return
-    }
-    if (current.landZone === PLAY_ZONE.trashyard) {
-      const next = putCardInTrashyard(sessionCardsRef.current, current.card)
-      sessionCardsRef.current = next
-      setSessionCards(next)
-      return
-    }
-    if (current.landZone === PLAY_ZONE.dismantled) {
-      const next = putCardInDismantled(sessionCardsRef.current, current.card)
-      sessionCardsRef.current = next
-      setSessionCards(next)
-      return
-    }
-    if (current.landZone === PLAY_ZONE.stockpile) {
-      const next = putCardOnStockpile(
-        sessionCardsRef.current,
-        current.card,
-        current.landX ?? 24,
-        current.landY ?? 24
-      )
-      sessionCardsRef.current = next
-      setSessionCards(next)
-      return
-    }
-    if (current.landZone === PLAY_ZONE.pilot) {
-      const next = putCardOnPilot(sessionCardsRef.current, current.card)
-      sessionCardsRef.current = next
-      setSessionCards(next)
-      return
-    }
-    if (current.landZone === PLAY_ZONE.battlefield) {
-      const next = putCardOnBattlefield(
-        sessionCardsRef.current,
-        current.card,
-        current.landX ?? 24,
-        current.landY ?? 48
-      )
-      sessionCardsRef.current = next
-      setSessionCards(next)
-    }
   }
 
   function cardScreenRect(instanceId: string): {
@@ -1104,12 +505,6 @@ export function PlayTesterPage() {
     colors: ResourceColor[],
     from: { x: number; y: number; w: number; h: number }
   ) {
-    const deckEl = deckRef.current
-    const deckRect = deckEl?.getBoundingClientRect()
-    const to = deckRect
-      ? { x: deckRect.left, y: deckRect.top }
-      : { x: from.x, y: from.y - 80 }
-
     setSessionCards((prev) => {
       let next = removeCard(prev, card.instanceId)
       colors.forEach((color, index) => {
@@ -1128,16 +523,12 @@ export function PlayTesterPage() {
       return next
     })
 
-    setBottomAnim({
-      card,
-      from,
-      to,
-    })
+    startBottomSlide(card, from)
   }
 
   function startAccumulate(instanceId: string) {
     setCtxMenu(null)
-    if (flipAnims.length > 0 || bottomAnim) return
+    if (animBusy) return
 
     const card = sessionCards.find(
       (c) => c.instanceId === instanceId && c.zone === PLAY_ZONE.hand
@@ -1250,7 +641,7 @@ export function PlayTesterPage() {
     sessionCards,
     resourceByColor,
     availableResourceColors,
-    animBusy: flipAnims.length > 0 || Boolean(bottomAnim),
+    animBusy,
     pilotGenBonus,
     actions: {
       spawnResourceColor,
@@ -1276,13 +667,6 @@ export function PlayTesterPage() {
       adjustPilotGenBonus,
     },
   })
-
-  function onBottomSlideComplete() {
-    const current = bottomAnimRef.current
-    setBottomAnim(null)
-    if (!current) return
-    setSessionCards((prev) => putCardOnLibraryBottom(prev, current.card))
-  }
 
   return (
     <section
