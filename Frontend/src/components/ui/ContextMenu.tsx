@@ -114,7 +114,7 @@ export function ContextMenu({
       role="menu"
       aria-label={label}
       className={cn(
-        "fixed z-[100] min-w-[9rem] border border-cyan-500/30 bg-black/95 py-1 shadow-lg",
+        "fixed z-[10100] min-w-[9rem] border border-cyan-500/30 bg-black/95 py-1 shadow-lg",
         className
       )}
       style={{ left: pos.left, top: pos.top }}

@@ -24,7 +24,7 @@ import {
   formatSubscriptionDate,
   isUserSubscribed,
   subscriptionPeriodLabel,
-} from "@/lib/subscription"
+} from "@/lib/subscription.logic"
 import { cn } from "@/lib/utils"
 
 const primaryActionClassName =

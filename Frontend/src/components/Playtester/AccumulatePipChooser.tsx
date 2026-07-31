@@ -12,7 +12,7 @@ import {
   RESOURCE_COLORS,
   type GainablePip,
   type ResourceColor,
-} from "./accumulateResources"
+} from "./accumulateResources.logic"
 
 export type AccumulatePipChooserProps = {
   cardName: string

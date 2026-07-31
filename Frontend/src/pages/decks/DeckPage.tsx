@@ -38,7 +38,7 @@ import {
   pilotCategory,
   removeCardEntry,
   withCardEntry,
-} from "@/components/decks/deckLogic"
+} from "@/components/decks/deck.logic"
 import { useCardSelection } from "@/hooks/useCardSelection"
 import { useDeckDetail } from "@/hooks/useDeckDetail"
 import { Button } from "@/components/ui/button"

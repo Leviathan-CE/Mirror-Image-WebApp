@@ -1,18 +1,24 @@
 /**
  * Single playtester card face.
+ * Face-up / face-down uses a CSS 3D rotateY flip (same idea as draw/put fly).
  * When `onCounterAdjust` is set, counter badges accept:
  *   left-click  → +1
  *   right-click → −1
- * (pointer events are stopped so the parent card does not drag / open its menu)
  */
 
 import type { ReactNode } from "react"
 
+import { sharedImages } from "@/assets/shared"
 import { GameIcon } from "@/components/common/GameIcon"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
 import type { CardCounterKind, PlayingCardInstance } from "./types"
+
+const FLIP_MS = 450
+
+const faceShell =
+  "absolute inset-0 overflow-hidden border bg-black/70 clip-angled [backface-visibility:hidden]"
 
 export type PlayingCardProps = {
   card: PlayingCardInstance
@@ -29,7 +35,8 @@ export function PlayingCard({
   isSelected,
   onCounterAdjust,
 }: PlayingCardProps) {
-  const src = cardArtUrl(card.artPath, card.artVersion)
+  const faceDown = Boolean(card.faceDown)
+  const faceSrc = cardArtUrl(card.artPath, card.artVersion)
   const time = card.timeCounters ?? 0
   const damage = card.damageCounters ?? 0
   const tlv = card.tlvCounters ?? 0
@@ -43,67 +50,99 @@ export function PlayingCard({
   return (
     <div
       className={cn(
-        "relative h-36 w-28 shrink-0 overflow-hidden border border-cyan-500/35 bg-black/70",
-        "clip-angled",
-        isSelected && "border-cyan-300/90",
+        "relative h-36 w-28 shrink-0 [perspective:800px]",
         className
       )}
-      aria-label={card.name}
+      aria-label={faceDown ? `${card.name} (face down)` : card.name}
     >
-      {src ? (
-        <img
-          src={src}
-          alt=""
-          className="h-full w-full object-cover"
-          draggable={false}
-        />
-      ) : (
-        <span className="flex h-full items-center justify-center px-2 text-center font-mono text-[10px] text-cyan-100/80">
-          {card.name}
-        </span>
-      )}
+      <div
+        className="relative h-full w-full [transform-style:preserve-3d]"
+        style={{
+          transform: faceDown ? "rotateY(180deg)" : "rotateY(0deg)",
+          transition: `transform ${FLIP_MS}ms ease-in-out`,
+        }}
+      >
+        {/* Front (art) */}
+        <div
+          className={cn(
+            faceShell,
+            "border-cyan-500/35",
+            isSelected && "border-cyan-300/90"
+          )}
+        >
+          {faceSrc ? (
+            <img
+              src={faceSrc}
+              alt=""
+              className="h-full w-full object-cover"
+              draggable={false}
+            />
+          ) : (
+            <span className="flex h-full items-center justify-center px-2 text-center font-mono text-[10px] text-cyan-100/80">
+              {card.name}
+            </span>
+          )}
 
-      {hasCounters ? (
-        <div className="absolute top-1 right-1 bottom-1 flex flex-col items-end justify-end gap-1">
-          {time > 0 ? (
-            <CounterBadge
-              kind="time"
-              count={time}
-              interactive={interactive}
-              className="border-emerald-400/70 bg-emerald-950/90 text-emerald-200"
-              label="Time"
-              onAdjust={adjust}
-            >
-              {time}
-            </CounterBadge>
-          ) : null}
-          {damage > 0 ? (
-            <CounterBadge
-              kind="damage"
-              count={damage}
-              interactive={interactive}
-              className="border-red-400/70 bg-red-950/90 text-red-200"
-              label="Damage"
-              onAdjust={adjust}
-            >
-              {damage}
-            </CounterBadge>
-          ) : null}
-          {tlv > 0 ? (
-            <CounterBadge
-              kind="tlv"
-              count={tlv}
-              interactive={interactive}
-              className="border-amber-400/70 bg-black/85 text-amber-100"
-              label="TLV"
-              onAdjust={adjust}
-            >
-              <GameIcon name="threat_lvl" className="h-4 w-auto" />
-              {tlv}
-            </CounterBadge>
+          {hasCounters ? (
+            <div className="absolute top-1 right-1 bottom-1 flex flex-col items-end justify-end gap-1">
+              {time > 0 ? (
+                <CounterBadge
+                  kind="time"
+                  count={time}
+                  interactive={interactive}
+                  className="border-emerald-400/70 bg-emerald-950/90 text-emerald-200"
+                  label="Time"
+                  onAdjust={adjust}
+                >
+                  {time}
+                </CounterBadge>
+              ) : null}
+              {damage > 0 ? (
+                <CounterBadge
+                  kind="damage"
+                  count={damage}
+                  interactive={interactive}
+                  className="border-red-400/70 bg-red-950/90 text-red-200"
+                  label="Damage"
+                  onAdjust={adjust}
+                >
+                  {damage}
+                </CounterBadge>
+              ) : null}
+              {tlv > 0 ? (
+                <CounterBadge
+                  kind="tlv"
+                  count={tlv}
+                  interactive={interactive}
+                  className="border-amber-400/70 bg-black/85 text-amber-100"
+                  label="TLV"
+                  onAdjust={adjust}
+                >
+                  <GameIcon name="threat_lvl" className="h-4 w-auto" />
+                  {tlv}
+                </CounterBadge>
+              ) : null}
+            </div>
           ) : null}
         </div>
-      ) : null}
+
+        {/* Back */}
+        <div
+          className={cn(
+            faceShell,
+            "border-cyan-500/40",
+            isSelected && "border-cyan-300/90"
+          )}
+          style={{ transform: "rotateY(180deg)" }}
+        >
+          <img
+            src={sharedImages.CARD_BACK}
+            alt=""
+            className="h-full w-full object-cover"
+            draggable={false}
+          />
+        </div>
+      </div>
     </div>
   )
 }
@@ -139,12 +178,13 @@ function CounterBadge({
       title={title}
       className={cn(
         "inline-flex min-h-7 min-w-7 items-center justify-center gap-1 border px-1.5 font-glitch text-base leading-none",
-        interactive ? "pointer-events-auto cursor-pointer select-none" : "pointer-events-none",
+        interactive
+          ? "pointer-events-auto cursor-pointer select-none"
+          : "pointer-events-none",
         className
       )}
       onPointerDown={(event) => {
         if (!interactive) return
-        // Block the free-float card drag / selection handlers.
         event.preventDefault()
         event.stopPropagation()
       }}
@@ -155,7 +195,6 @@ function CounterBadge({
         onAdjust(kind, 1)
       }}
       onDoubleClick={(event) => {
-        // Prevent the card wrapper's double-click → expend.
         event.preventDefault()
         event.stopPropagation()
       }}

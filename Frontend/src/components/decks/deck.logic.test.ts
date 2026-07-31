@@ -22,7 +22,7 @@ import {
   sortDeckCards,
   toggleSelectionKey,
   withCardEntry,
-} from "./deckLogic"
+} from "./deck.logic"
 import type { DeckCardEntry, DeckCategoryOut, DeckDetail } from "@/lib/api/decks"
 
 function cat(
