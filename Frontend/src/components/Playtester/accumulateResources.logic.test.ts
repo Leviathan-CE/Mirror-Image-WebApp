@@ -88,4 +88,20 @@ describe("buildResourceTokenMap (Resource + invoke cost)", () => {
     const map = buildResourceTokenMap([hybridResource, spiritPower])
     expect(map.get("LIF")?.card_name).toBe("Spirit Power")
   })
+
+  it("maps TIM from Natural Time (Resource + cost TIM)", () => {
+    const naturalTime = card({
+      id: 1044497,
+      card_name: "Natural Time",
+      cost: ["TIM"],
+      super_types: ["Token", "Entity", "Resource"],
+      types_line: "Natural Chornomancy",
+    })
+    expect(findResourceTokenByCost([naturalTime, steel], "TIM")?.card_name).toBe(
+      "Natural Time"
+    )
+    const map = buildResourceTokenMap([naturalTime, steel, spiritPower])
+    expect(map.get("TIM")?.id).toBe(1044497)
+    expect(map.get("STL")?.card_name).toBe("Steel")
+  })
 })
