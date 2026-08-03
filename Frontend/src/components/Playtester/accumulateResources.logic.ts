@@ -74,10 +74,18 @@ function isSoleGenericResource(item: CardLibraryItem): boolean {
   return tokens.length > 0 && tokens.every(isGeneric)
 }
 
-/** Turn one invoke-cost icon into a gainable pip (or null if GEN / unknown). */
+/**
+ * Turn one invoke-cost icon into a gainable pip.
+ * Bare GEN is steel (STL); numbered GEN / GENX stay non-gainable.
+ */
 export function classifyCostToken(raw: string): GainablePip | null {
   const token = raw.trim().toUpperCase()
-  if (!token || isGeneric(token)) return null
+  if (!token) return null
+  // Unity: bare GEN = steel pip (same as icon map). Catalog Steel still uses GEN.
+  if (token === "GEN") {
+    return { kind: "solid", token, color: "STL" }
+  }
+  if (isGeneric(token)) return null
   if (token === "MULTI") return { kind: "multi", token }
   if (SOLID.has(token)) {
     return { kind: "solid", token, color: token as ResourceColor }

@@ -15,6 +15,8 @@ import {
 } from "react"
 
 import { sharedImages } from "@/assets/shared"
+import type { PlayingCardInstance } from "@/components/Playtester/types"
+import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
 const MAX_UNDER_LAYERS = 5
@@ -41,7 +43,17 @@ export type DeckPileProps = {
    * the back→face fly animation.
    */
   onTopCardRelease?: (clientX: number, clientY: number) => void
+  /** Right-click on the pile (shuffle / search / degrade / …). */
+  onContextMenu?: (clientX: number, clientY: number) => void
+  /** Current top library card — only rendered while `topRevealed`. */
+  topCard?: PlayingCardInstance | null
+  /** Play with the deck's top card face up on the pile. */
+  topRevealed?: boolean
 }
+
+const FLIP_MS = 450
+const faceShell =
+  "absolute inset-0 overflow-hidden border bg-black/80 clip-angled shadow-md shadow-black/55 [backface-visibility:hidden]"
 
 function CardBackFace({ className }: { className?: string }) {
   return (
@@ -58,6 +70,73 @@ function CardBackFace({ className }: { className?: string }) {
         draggable={false}
         className="h-full w-full object-cover"
       />
+    </div>
+  )
+}
+
+/**
+ * Top card that flips between its back and its face in place on the pile.
+ * Every new top card starts face down, so each reveal replays the flip.
+ */
+function TopCardFace({
+  card,
+  revealed,
+}: {
+  card: PlayingCardInstance | null
+  revealed: boolean
+}) {
+  const faceSrc = card ? cardArtUrl(card.artPath, card.artVersion) : null
+  const [faceUp, setFaceUp] = useState(false)
+  const instanceId = card?.instanceId ?? null
+
+  useEffect(() => {
+    setFaceUp(false)
+    if (!revealed || !instanceId) return
+    let inner = 0
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setFaceUp(true))
+    })
+    return () => {
+      cancelAnimationFrame(outer)
+      cancelAnimationFrame(inner)
+    }
+  }, [instanceId, revealed])
+
+  return (
+    <div className="absolute inset-0 [perspective:800px]">
+      <div
+        className="relative h-full w-full [transform-style:preserve-3d]"
+        style={{
+          transform: faceUp ? "rotateY(0deg)" : "rotateY(180deg)",
+          transition: `transform ${FLIP_MS}ms ease-in-out`,
+        }}
+      >
+        <div className={cn(faceShell, "border-cyan-400/60")}>
+          {faceSrc ? (
+            <img
+              src={faceSrc}
+              alt=""
+              draggable={false}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="flex h-full items-center justify-center px-1 text-center font-mono text-[10px] text-cyan-100/80">
+              {card?.name}
+            </span>
+          )}
+        </div>
+        <div
+          className={cn(faceShell, "border-cyan-400/60")}
+          style={{ transform: "rotateY(180deg)" }}
+        >
+          <img
+            src={sharedImages.CARD_BACK}
+            alt=""
+            draggable={false}
+            className="h-full w-full object-cover"
+          />
+        </div>
+      </div>
     </div>
   )
 }
@@ -80,6 +159,9 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
       busy = false,
       onClickDraw,
       onTopCardRelease,
+      onContextMenu,
+      topCard = null,
+      topRevealed = false,
     },
     ref
   ) {
@@ -166,6 +248,11 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
             className
           )}
           style={{ width: CARD_W + STACK_PAD_X }}
+          onContextMenu={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            onContextMenu?.(event.clientX, event.clientY)
+          }}
         >
           {/*
             Outer box owns the full visual footprint (face + right/up stack).
@@ -205,7 +292,11 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
                 <div
                   role="button"
                   tabIndex={interactive ? 0 : -1}
-                  aria-label={`${label}, ${count} cards`}
+                  aria-label={
+                    topRevealed && topCard
+                      ? `${label}, ${count} cards, top card ${topCard.name}`
+                      : `${label}, ${count} cards`
+                  }
                   aria-disabled={!interactive}
                   onPointerDown={onTopPointerDown}
                   onMouseEnter={() => {
@@ -229,7 +320,7 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
                       : "transform 150ms ease-out",
                   }}
                 >
-                  <CardBackFace className="border-cyan-400/60" />
+                  <TopCardFace card={topCard} revealed={topRevealed} />
                 </div>
               ) : (
                 <div

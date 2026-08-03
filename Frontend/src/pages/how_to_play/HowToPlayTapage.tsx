@@ -782,9 +782,52 @@ export function HowToPlayPage() {
                                             add a depletion counter to that augment.</li>
                                     </ul>
                                 </li>
-                                <li>The attacker(s) Deal Preemptive Strike damage equal to your <GameIcon name="threat_lvl" />.</li>
-                                <li>If the attacker(s) did not already deal Preemptive Strike damage, they deal damage equal to thier <GameIcon name="threat_lvl" /> to the target of your attack. If the target is readied, it deals damage equal to its <GameIcon name="threat_lvl" /> back to the attacker divide how the defender chooses. Damage dealt this way is simultaneous.</li>
-                                <li>If a unit's damage is greater than or equal to its <GameIcon name="threat_lvl" /> rating, it is defeated (the only exception being the Durable keyword), triggering its <GameIcon name="defeated" /> tag if it had one, along with any other triggered abilities that care about being defeated. A defeated unit goes to the discard pile.</li>
+                                <li>
+                                    The attacker(s) deal Preemptive Strike damage equal to their{" "}
+                                    <GameIcon name="threat_lvl" /> (including modifiers).
+                                </li>
+                                <li>
+                                    If the attacker(s) did not already deal Preemptive Strike
+                                    damage, they deal damage equal to their{" "}
+                                    <GameIcon name="threat_lvl" /> (including modifiers) to the
+                                    target of the attack. Then the defending unit deals damage
+                                    back:
+                                    <ul className="list-disc space-y-1 pl-6 pt-1">
+                                        <li>
+                                            If it is <span className="font-semibold text-cyan-200">readied</span>,
+                                            it deals damage equal to its{" "}
+                                            <GameIcon name="threat_lvl" /> including all
+                                            modifiers (such as Lethal).
+                                        </li>
+                                        <li>
+                                            If it is <span className="font-semibold text-cyan-200">expended</span>,
+                                            it deals damage equal to half its{" "}
+                                            <GameIcon name="threat_lvl" />, rounded down. For
+                                            this damage, ignore modifiers that add damage when
+                                            the unit deals damage (such as Lethal), but still
+                                            apply modifiers that change its{" "}
+                                            <GameIcon name="threat_lvl" /> directly.
+                                        </li>
+                                    </ul>
+                                    If there are
+                                    multiple attackers, the defending player divides
+                                    this damage among them as they choose.
+                                    Damage dealt this way is simultaneous.
+                                </li>
+                                <li>
+                                    After damage is dealt, check each unit that took damage. A unit
+                                    is defeated if its marked damage is at least its{" "}
+                                    <GameIcon name="threat_lvl" /> — unless it has Durable X, in
+                                    which case it survives until marked damage is at least its{" "}
+                                    <GameIcon name="threat_lvl" /> + X. When a unit is defeated
+                                    this way, trigger its <GameIcon name="defeated" /> tag (if any)
+                                    and any other on-defeat abilities, then put it into the discard
+                                    pile.
+                                    <Note>
+                                        Example: Threat Level 3 with Durable 2 is defeated at 5
+                                        damage, not 3.
+                                    </Note>
+                                </li>
                                 <li>Any damage directed at a player that was not blocked or redirected is dealt as loss of life to that player. Then the attack ends.</li>
                             </ol>
                         </Section>

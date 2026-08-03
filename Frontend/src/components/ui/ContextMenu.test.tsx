@@ -56,4 +56,38 @@ describe("ContextMenu", () => {
     )
     expect(screen.queryByRole("menu")).not.toBeInTheDocument()
   })
+
+  it("shows count input beside action and uses it on select", async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    const onChange = vi.fn()
+
+    render(
+      <ContextMenu
+        open
+        x={20}
+        y={20}
+        onClose={vi.fn()}
+        items={[
+          {
+            id: "degrade",
+            label: "Degrade",
+            onSelect,
+            countInput: {
+              value: "2",
+              onChange,
+              ariaLabel: "Degrade count",
+            },
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getByLabelText("Degrade count")).toHaveValue(2)
+    await user.clear(screen.getByLabelText("Degrade count"))
+    await user.type(screen.getByLabelText("Degrade count"), "4")
+    expect(onChange).toHaveBeenCalled()
+    await user.click(screen.getByRole("menuitem", { name: "Degrade" }))
+    expect(onSelect).toHaveBeenCalledOnce()
+  })
 })

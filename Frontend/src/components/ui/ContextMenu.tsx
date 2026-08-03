@@ -123,46 +123,82 @@ export function ContextMenu({
       {items.map((item) => {
         const hasSubmenu = Boolean(item.submenu?.length)
         const submenuOpen = openSubmenuId === item.id
+        const countInput = item.countInput
 
         return (
           <div key={item.id} className="relative">
-            <button
-              type="button"
-              role="menuitem"
-              aria-haspopup={hasSubmenu ? "menu" : undefined}
-              aria-expanded={hasSubmenu ? submenuOpen : undefined}
-              disabled={item.disabled}
+            <div
               className={cn(
-                "font-buahs93 flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs hover:bg-cyan-500/15 disabled:opacity-50",
-                item.tone === "danger"
-                  ? "text-red-300/90 hover:bg-red-500/15"
-                  : "text-cyan-100"
+                "flex w-full items-center gap-1",
+                countInput ? "px-2 py-1" : undefined
               )}
-              onClick={(event) => {
-                event.preventDefault()
-                event.stopPropagation()
-                if (item.disabled) {
-                  onClose()
-                  return
-                }
-                if (hasSubmenu) {
-                  setOpenSubmenuId((prev) =>
-                    prev === item.id ? null : item.id
-                  )
-                  return
-                }
-                runLeaf(item)
-              }}
             >
-              <span className="inline-flex min-w-0 flex-1 items-center gap-1.5">
-                {item.label}
-              </span>
-              {hasSubmenu ? (
-                <span className="shrink-0 text-cyan-300/70" aria-hidden>
-                  ›
+              <button
+                type="button"
+                role="menuitem"
+                aria-haspopup={hasSubmenu ? "menu" : undefined}
+                aria-expanded={hasSubmenu ? submenuOpen : undefined}
+                disabled={item.disabled}
+                className={cn(
+                  "font-buahs93 flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs hover:bg-cyan-500/15 disabled:opacity-50",
+                  countInput ? "px-1.5 py-1.5" : "px-3 py-2",
+                  item.tone === "danger"
+                    ? "text-red-300/90 hover:bg-red-500/15"
+                    : "text-cyan-100"
+                )}
+                onClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  if (item.disabled) {
+                    onClose()
+                    return
+                  }
+                  if (hasSubmenu) {
+                    setOpenSubmenuId((prev) =>
+                      prev === item.id ? null : item.id
+                    )
+                    return
+                  }
+                  runLeaf(item)
+                }}
+              >
+                <span className="inline-flex min-w-0 flex-1 items-center gap-1.5">
+                  {item.label}
                 </span>
+                {hasSubmenu ? (
+                  <span className="shrink-0 text-cyan-300/70" aria-hidden>
+                    ›
+                  </span>
+                ) : null}
+              </button>
+
+              {countInput ? (
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={countInput.min ?? 1}
+                  max={countInput.max}
+                  value={countInput.value}
+                  aria-label={countInput.ariaLabel ?? `${String(item.label)} count`}
+                  disabled={item.disabled}
+                  className={cn(
+                    "h-7 w-12 shrink-0 border border-cyan-500/40 bg-black/80 px-1",
+                    "font-mono text-xs text-cyan-50 outline-none",
+                    "focus:border-cyan-300 disabled:opacity-50"
+                  )}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => event.stopPropagation()}
+                  onChange={(event) => countInput.onChange(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      if (!item.disabled) runLeaf(item)
+                    }
+                  }}
+                />
               ) : null}
-            </button>
+            </div>
 
             {hasSubmenu && submenuOpen ? (
               <div

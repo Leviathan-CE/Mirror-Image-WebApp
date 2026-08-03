@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 
 import {
   buildResourceTokenMap,
+  classifyCostToken,
+  extractGainablePips,
   findResourceTokenByCost,
 } from "@/components/Playtester/accumulateResources.logic"
 import type { CardLibraryItem } from "@/lib/api/cards"
@@ -103,5 +105,28 @@ describe("buildResourceTokenMap (Resource + invoke cost)", () => {
     const map = buildResourceTokenMap([naturalTime, steel, spiritPower])
     expect(map.get("TIM")?.id).toBe(1044497)
     expect(map.get("STL")?.card_name).toBe("Steel")
+  })
+})
+
+describe("classifyCostToken / extractGainablePips (GEN → STL)", () => {
+  it("maps bare GEN to solid STL", () => {
+    expect(classifyCostToken("GEN")).toEqual({
+      kind: "solid",
+      token: "GEN",
+      color: "STL",
+    })
+  })
+
+  it("does not treat numbered GEN or GENX as STL", () => {
+    expect(classifyCostToken("GEN2")).toBeNull()
+    expect(classifyCostToken("GENX")).toBeNull()
+  })
+
+  it("extracts STL from a cost that includes GEN", () => {
+    expect(extractGainablePips(["GEN", "TIM", "LIF"])).toEqual([
+      { kind: "solid", token: "GEN", color: "STL" },
+      { kind: "solid", token: "TIM", color: "TIM" },
+      { kind: "solid", token: "LIF", color: "LIF" },
+    ])
   })
 })

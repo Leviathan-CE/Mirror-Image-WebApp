@@ -19,6 +19,7 @@ import {
   type ResourceColor,
 } from "@/components/Playtester/accumulateResources.logic"
 import { CardBottomSlideAnimation } from "@/components/Playtester/CardBottomSlideAnimation"
+import { CardTuckUnderAnimation } from "@/components/Playtester/CardTuckUnderAnimation"
 import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import {
   CardFlipFlyAnimation,
@@ -36,8 +37,20 @@ import {
   genIconForCount,
   usePlayContextMenu,
   type CtxMenuState,
+  type DeckActionCounts,
+  type DeckCountKey,
 } from "@/components/Playtester/usePlayContextMenu"
 import { DeckPile } from "@/components/Playtester/DeckPile"
+import { DeckPeekOverlay } from "@/components/Playtester/DeckPeekOverlay"
+import { DeckShuffleAnimation } from "@/components/Playtester/DeckShuffleAnimation"
+import { DeckSearchModal } from "@/components/Playtester/DeckSearchModal"
+import {
+  clampDeckCount,
+  peekTopLibrary,
+  putTopLibraryOnBottom,
+  reorderTopLibrary,
+  shuffleLibrary,
+} from "@/components/Playtester/deckActions.logic"
 import { FreeFloatSurface } from "@/components/Playtester/FreeFloatSurface"
 import { LifeCounter } from "@/components/Playtester/LifeCounter"
 import { MulliganModal } from "@/components/Playtester/MulliganModal"
@@ -97,6 +110,12 @@ type AccumulateChooserState = {
   from: { x: number; y: number; w: number; h: number }
 }
 
+type DeckPeekState = {
+  title: string
+  cards: PlayingCardInstance[]
+  allowReorder: boolean
+}
+
 export function PlayTesterPage() {
   const navigate = useNavigate()
   const { token } = useAuth()
@@ -114,6 +133,16 @@ export function PlayTesterPage() {
   )
   const [accumulateChooser, setAccumulateChooser] =
     useState<AccumulateChooserState | null>(null)
+  /** Deck row counts persist for the whole playtester session. */
+  const [deckActionCounts, setDeckActionCounts] = useState<DeckActionCounts>({
+    degrade: "1",
+    lookTop: "1",
+    putBottom: "1",
+  })
+  const [deckPeek, setDeckPeek] = useState<DeckPeekState | null>(null)
+  const [deckSearchOpen, setDeckSearchOpen] = useState(false)
+  /** Deck plays with its top card face up on the pile until turned off. */
+  const [topRevealed, setTopRevealed] = useState(false)
   const [resourceTokens, setResourceTokens] = useState<CardLibraryItem[]>([])
   const [resourcesReady, setResourcesReady] = useState(false)
   const [playNotice, setPlayNotice] = useState<string | null>(null)
@@ -186,8 +215,15 @@ export function PlayTesterPage() {
     isFlipFlying,
     hasPendingDrawTimers,
     pushFlipAnim,
+    tuckAnims,
+    onTuckAnimComplete,
+    queueTuckUnderDeck,
+    shuffleAnim,
+    startDeckShuffle,
+    onShuffleAnimComplete,
     onDrawFromDeck,
     queueDrawsToHand,
+    queueDegradeToTrashyard,
     onDeckTopRelease,
     onFlipAnimComplete,
     startBottomSlide,
@@ -207,6 +243,7 @@ export function PlayTesterPage() {
     onBattlefieldRelease,
     onStockpileRelease,
     onFaceUpPileRelease,
+    onLibraryCardRelease,
   } = useCardDragDrop({
     sessionCards,
     setSessionCards,
@@ -278,6 +315,7 @@ export function PlayTesterPage() {
       setPilotGenBonus(0)
       setPilotHandSize(0)
       setMulliganOpen(false)
+      setTopRevealed(false)
       clearDrawTimers()
       return
     }
@@ -292,6 +330,7 @@ export function PlayTesterPage() {
     setPilotGenBonus(0)
     setPilotHandSize(Math.max(0, Math.floor(pilot?.hand_size ?? 0)))
     setMulliganOpen(cardsInZone(opening, "hand").length > 0)
+    setTopRevealed(false)
   }, [status, deck, resourcesReady, resourceByColor])
 
   useEffect(() => {
@@ -335,7 +374,15 @@ export function PlayTesterPage() {
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Delete" && event.key !== "Backspace") return
-      if (mulliganOpen || accumulateChooser || inspectCard) return
+      if (
+        mulliganOpen ||
+        accumulateChooser ||
+        inspectCard ||
+        deckPeek ||
+        deckSearchOpen
+      ) {
+        return
+      }
 
       const target = event.target
       if (target instanceof HTMLElement) {
@@ -362,13 +409,16 @@ export function PlayTesterPage() {
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [status, mulliganOpen, accumulateChooser, inspectCard])
+  }, [status, mulliganOpen, accumulateChooser, inspectCard, deckPeek, deckSearchOpen])
 
   const handCards = cardsInZone(sessionCards, PLAY_ZONE.hand)
   const battlefieldCards = cardsInZone(sessionCards, PLAY_ZONE.battlefield)
   const stockpileCards = cardsInZone(sessionCards, PLAY_ZONE.stockpile)
   const pilotCards = cardsInZone(sessionCards, PLAY_ZONE.pilot)
   const libraryCount = cardsInZone(sessionCards, PLAY_ZONE.library).length
+  const topLibraryCard = topRevealed
+    ? (peekTopLibrary(sessionCards, 1)[0] ?? null)
+    : null
   const trashCards = cardsInZone(sessionCards, PLAY_ZONE.trashyard)
   const dismantledCards = cardsInZone(sessionCards, PLAY_ZONE.dismantled)
 
@@ -636,13 +686,112 @@ export function PlayTesterPage() {
     )
   }
 
+  function setDeckActionCount(key: DeckCountKey, value: string) {
+    setDeckActionCounts((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function onDeckContextMenu(clientX: number, clientY: number) {
+    setPlayNotice(null)
+    setCtxMenu({ kind: "deck", x: clientX, y: clientY })
+  }
+
+  function degradeDeck(count: number) {
+    const n = clampDeckCount(count, libraryCount)
+    if (n <= 0) return
+    if (hasPendingDrawTimers() || isFlipFlying()) return
+    queueDegradeToTrashyard(n)
+    setPlayNotice(`Degraded ${n}.`)
+  }
+
+  function lookAtDeckTop(count: number) {
+    const n = clampDeckCount(count, libraryCount)
+    if (n <= 0) return
+    const peeked = peekTopLibrary(sessionCardsRef.current, n)
+    setDeckPeek({
+      title: `Look at top ${peeked.length}`,
+      cards: peeked,
+      allowReorder: true,
+    })
+  }
+
+  function putDeckTopOnBottom(count: number) {
+    const n = clampDeckCount(count, libraryCount)
+    if (n <= 0) return
+    if (hasPendingDrawTimers() || isFlipFlying()) return
+    setSessionCards((prev) => {
+      const next = putTopLibraryOnBottom(prev, n)
+      sessionCardsRef.current = next
+      return next
+    })
+    queueTuckUnderDeck(n)
+    setPlayNotice(
+      n === 1
+        ? "Top card put on the bottom."
+        : `Top ${n} cards put on the bottom.`
+    )
+  }
+
+  function shuffleLibraryNow(notice: string) {
+    setSessionCards((prev) => {
+      const next = shuffleLibrary(prev)
+      sessionCardsRef.current = next
+      return next
+    })
+    startDeckShuffle()
+    setPlayNotice(notice)
+  }
+
+  function shuffleDeck() {
+    if (hasPendingDrawTimers() || isFlipFlying()) return
+    shuffleLibraryNow("Deck shuffled.")
+  }
+
+  function toggleDeckTopRevealed() {
+    if (!topRevealed && libraryCount <= 0) {
+      setPlayNotice("Deck is empty.")
+      return
+    }
+    const next = !topRevealed
+    setTopRevealed(next)
+    setPlayNotice(next ? "Top card revealed." : "Top card hidden.")
+  }
+
+  function onDeckPeekDone(orderedCards: PlayingCardInstance[]) {
+    const peek = deckPeek
+    setDeckPeek(null)
+    if (!peek?.allowReorder || orderedCards.length === 0) return
+    setSessionCards((prev) => {
+      const next = reorderTopLibrary(
+        prev,
+        orderedCards.map((c) => c.instanceId)
+      )
+      sessionCardsRef.current = next
+      return next
+    })
+  }
+
+  function openDeckSearch() {
+    if (libraryCount <= 0) return
+    setDeckSearchOpen(true)
+  }
+
+  /** Searching the deck means shuffling it afterwards, however you close it. */
+  function closeDeckSearch() {
+    setDeckSearchOpen(false)
+    if (libraryCount <= 0) return
+    shuffleLibraryNow("Deck searched — shuffled.")
+  }
+
   const ctxMenuItems = usePlayContextMenu({
     ctxMenu,
     sessionCards,
     resourceByColor,
     availableResourceColors,
-    animBusy,
+    animBusy: animBusy || hasPendingDrawTimers(),
     pilotGenBonus,
+    deckActionCounts,
+    setDeckActionCount,
+    topRevealed,
     actions: {
       spawnResourceColor,
       putOnLibraryBottom: (instanceIds) => {
@@ -665,6 +814,12 @@ export function PlayTesterPage() {
       },
       inspectCard: (card) => setInspectCard(card),
       adjustPilotGenBonus,
+      degradeDeck,
+      lookAtDeckTop,
+      putDeckTopOnBottom,
+      shuffleDeck,
+      toggleDeckTopRevealed,
+      openDeckSearch,
     },
   })
 
@@ -676,7 +831,7 @@ export function PlayTesterPage() {
     >
       <div className="absolute inset-0 bg-black/65" aria-hidden />
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-50 p-2">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-50 flex items-start justify-between gap-2 p-2">
         <div className="pointer-events-auto">
           <GlitchFx
             type="button"
@@ -697,21 +852,21 @@ export function PlayTesterPage() {
             }}
           />
         </div>
+
+        {playNotice ? (
+          <p
+            className="max-w-[45%] text-right font-mono text-xs text-amber-200/90"
+            role="status"
+          >
+            {playNotice}
+          </p>
+        ) : null}
       </div>
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col p-2">
         {status === "error" ? (
-          <p className="font-mono text-sm text-red-400" role="alert">
+          <p className="mt-7 font-mono text-sm text-red-400" role="alert">
             {errorText}
-          </p>
-        ) : null}
-
-        {playNotice ? (
-          <p
-            className="mb-1 font-mono text-xs text-amber-200/90"
-            role="status"
-          >
-            {playNotice}
           </p>
         ) : null}
 
@@ -869,7 +1024,10 @@ export function PlayTesterPage() {
                 count={libraryCount}
                 onClickDraw={onDrawFromDeck}
                 onTopCardRelease={onDeckTopRelease}
-                busy={Boolean(bottomAnim) || mulliganOpen}
+                onContextMenu={onDeckContextMenu}
+                topCard={topLibraryCard}
+                topRevealed={topRevealed}
+                busy={Boolean(bottomAnim) || mulliganOpen || deckSearchOpen}
               />
               <TrashyardPile
                 ref={trashRef}
@@ -921,6 +1079,21 @@ export function PlayTesterPage() {
           from={anim.from}
           to={anim.to}
           onComplete={() => onFlipAnimComplete(anim.id)}
+        />
+      ))}
+
+      {shuffleAnim ? (
+        <DeckShuffleAnimation
+          from={shuffleAnim.from}
+          onComplete={onShuffleAnimComplete}
+        />
+      ) : null}
+
+      {tuckAnims.map((anim) => (
+        <CardTuckUnderAnimation
+          key={anim.id}
+          from={anim.from}
+          onComplete={() => onTuckAnimComplete(anim.id)}
         />
       ))}
 
@@ -988,6 +1161,22 @@ export function PlayTesterPage() {
           }}
         />
       ) : null}
+
+      <DeckPeekOverlay
+        open={Boolean(deckPeek)}
+        title={deckPeek?.title ?? ""}
+        cards={deckPeek?.cards ?? []}
+        allowReorder={deckPeek?.allowReorder ?? false}
+        onClose={onDeckPeekDone}
+      />
+
+      <DeckSearchModal
+        open={deckSearchOpen}
+        sessionCards={sessionCards}
+        onCancel={closeDeckSearch}
+        onCardRelease={onLibraryCardRelease}
+        onCardContextMenu={onFloatCardContextMenu}
+      />
     </section>
   )
 }

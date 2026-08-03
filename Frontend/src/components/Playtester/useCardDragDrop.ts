@@ -328,10 +328,24 @@ export function useCardDragDrop({
     }
   }
 
+  /** Drag a specific library card (e.g. from Search deck) onto a zone. */
+  function onLibraryCardRelease(
+    instanceId: string,
+    clientX: number,
+    clientY: number
+  ) {
+    const card = sessionCards.find(
+      (c) => c.instanceId === instanceId && c.zone === PLAY_ZONE.library
+    )
+    if (!card) return
+    onFaceUpPileRelease(instanceId, clientX, clientY)
+  }
+
   return {
     onHandRelease,
     onBattlefieldRelease,
     onStockpileRelease,
     onFaceUpPileRelease,
+    onLibraryCardRelease,
   }
 }

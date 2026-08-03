@@ -40,6 +40,7 @@ export type FlipFlyMode = (typeof FLIP_FLY_MODE)[keyof typeof FLIP_FLY_MODE]
 /** localStorage keys owned by the playtester. */
 export const PLAYTESTER_STORAGE = {
   stockpileHeightPx: "mi-playtester-stockpile-height-px",
+  deckSearchBoxPx: "mi-playtester-deck-search-box-px",
 } as const
 
 /** Stockpile row height (px) — drag the seam under the battlefield to resize. */
@@ -47,6 +48,19 @@ export const STOCKPILE_HEIGHT = {
   min: 120,
   max: 480,
   default: 240,
+} as const
+
+/**
+ * Deck search panel box (px) — drag the header to move it, the bottom-right
+ * grip to resize.
+ */
+export const DECK_SEARCH_SIZE = {
+  minWidth: 240,
+  maxWidth: 1200,
+  defaultWidth: 352,
+  minHeight: 200,
+  maxHeight: 900,
+  defaultHeight: 448,
 } as const
 
 export const PILOT_GEN_MAX = 10
@@ -65,6 +79,12 @@ export const CTX_MENU_ACTION = {
   createCopy: "create-copy",
   addPilotGen: "add-pilot-gen",
   removePilotGen: "remove-pilot-gen",
+  deckDegrade: "deck-degrade",
+  deckLookTop: "deck-look-top",
+  deckPutTopBottom: "deck-put-top-bottom",
+  deckShuffle: "deck-shuffle",
+  deckRevealTop: "deck-reveal-top",
+  deckSearch: "deck-search",
 } as const
 
 export type CtxMenuActionId =

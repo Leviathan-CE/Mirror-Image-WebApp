@@ -49,6 +49,17 @@ export type BottomSlideAnim = {
   to: { x: number; y: number }
 }
 
+/** Face-down lift-and-tuck on the deck pile (top card → bottom of deck). */
+export type TuckUnderAnim = {
+  id: string
+  from: { x: number; y: number; w: number; h: number }
+}
+
+/** Riffle shuffle played over the deck pile. */
+export type ShuffleAnim = {
+  from: { x: number; y: number; w: number; h: number }
+}
+
 export type PlaytesterZoneRefs = {
   deck: RefObject<HTMLDivElement | null>
   hand: RefObject<HTMLDivElement | null>
@@ -105,6 +116,13 @@ export function useDrawAnimations({
   const [bottomAnim, setBottomAnim] = useState<BottomSlideAnim | null>(null)
   const bottomAnimRef = useRef<BottomSlideAnim | null>(null)
   bottomAnimRef.current = bottomAnim
+
+  const [tuckAnims, setTuckAnims] = useState<TuckUnderAnim[]>([])
+  const tuckAnimsRef = useRef<TuckUnderAnim[]>([])
+  tuckAnimsRef.current = tuckAnims
+  const tuckAnimIdRef = useRef(0)
+
+  const [shuffleAnim, setShuffleAnim] = useState<ShuffleAnim | null>(null)
 
   const mulliganTimersRef = useRef<number[]>([])
   const drawBurstOffsetRef = useRef(0)
@@ -264,6 +282,150 @@ export function useDrawAnimations({
           landOffsetIndex,
           frozenRoute,
         })
+        mulliganTimersRef.current = mulliganTimersRef.current.filter(
+          (id) => id !== timer
+        )
+      }, i * STAGGER_MS)
+      mulliganTimersRef.current.push(timer)
+    }
+  }
+
+  /** Mill one top library card into the trashyard with a back→face fly. */
+  function beginDegradeToTrash(options?: {
+    concurrent?: boolean
+    frozenRoute?: {
+      from: { x: number; y: number; w: number; h: number }
+      to: { x: number; y: number }
+    }
+  }): boolean {
+    if (!options?.concurrent && flipAnimsRef.current.length > 0) return false
+
+    const deckEl = zoneRefs.deck.current
+    const trashEl = zoneRefs.trash.current
+    if (!deckEl || !trashEl) return false
+
+    const taken = takeTopLibraryCard(sessionCardsRef.current)
+    if (!taken) return false
+
+    let from: { x: number; y: number; w: number; h: number }
+    let to: { x: number; y: number }
+
+    if (options?.frozenRoute) {
+      from = options.frozenRoute.from
+      to = options.frozenRoute.to
+    } else {
+      const deckRect = deckEl.getBoundingClientRect()
+      const trashRect = trashEl.getBoundingClientRect()
+      from = {
+        x: deckRect.left,
+        y: deckRect.top,
+        w: deckRect.width,
+        h: deckRect.height,
+      }
+      to = { x: trashRect.left, y: trashRect.top }
+    }
+
+    sessionCardsRef.current = taken.cards
+    setSessionCards(taken.cards)
+    pushFlipAnim({
+      card: taken.drawn,
+      mode: FLIP_FLY_MODE.draw,
+      from,
+      to,
+      landZone: PLAY_ZONE.trashyard,
+    })
+    return true
+  }
+
+  /**
+   * Lift-and-tuck the deck's top card, once per card put on the bottom.
+   * Purely visual: the library keeps the same size, so state is applied by the caller.
+   * Long moves only animate the first few cards so the table is not blocked.
+   */
+  function queueTuckUnderDeck(count: number) {
+    const deckEl = zoneRefs.deck.current
+    if (!deckEl || count <= 0) return
+
+    const rect = deckEl.getBoundingClientRect()
+    const from = {
+      x: rect.left,
+      y: rect.top,
+      w: rect.width,
+      h: rect.height,
+    }
+
+    const MAX_VISUAL = 6
+    const STAGGER_MS = 140
+    const shown = Math.min(count, MAX_VISUAL)
+
+    for (let i = 0; i < shown; i++) {
+      const timer = window.setTimeout(() => {
+        tuckAnimIdRef.current += 1
+        const next: TuckUnderAnim = {
+          id: `tuck-${tuckAnimIdRef.current}`,
+          from,
+        }
+        const list = [...tuckAnimsRef.current, next]
+        tuckAnimsRef.current = list
+        setTuckAnims(list)
+        mulliganTimersRef.current = mulliganTimersRef.current.filter(
+          (id) => id !== timer
+        )
+      }, i * STAGGER_MS)
+      mulliganTimersRef.current.push(timer)
+    }
+  }
+
+  /** Riffle the pile once (cosmetic — caller reorders the library). */
+  function startDeckShuffle() {
+    const deckEl = zoneRefs.deck.current
+    if (!deckEl) return
+    const rect = deckEl.getBoundingClientRect()
+    setShuffleAnim({
+      from: {
+        x: rect.left,
+        y: rect.top,
+        w: rect.width,
+        h: rect.height,
+      },
+    })
+  }
+
+  function onShuffleAnimComplete() {
+    setShuffleAnim(null)
+  }
+
+  function onTuckAnimComplete(animId: string) {
+    const remaining = tuckAnimsRef.current.filter((a) => a.id !== animId)
+    tuckAnimsRef.current = remaining
+    setTuckAnims(remaining)
+  }
+
+  /** Degrade X — flip-fly top cards to trash in quick succession. */
+  function queueDegradeToTrashyard(count: number) {
+    clearDrawTimers()
+    if (count <= 0) return
+
+    const deckEl = zoneRefs.deck.current
+    const trashEl = zoneRefs.trash.current
+    if (!deckEl || !trashEl) return
+
+    const deckRect = deckEl.getBoundingClientRect()
+    const trashRect = trashEl.getBoundingClientRect()
+    const frozenRoute = {
+      from: {
+        x: deckRect.left,
+        y: deckRect.top,
+        w: deckRect.width,
+        h: deckRect.height,
+      },
+      to: { x: trashRect.left, y: trashRect.top },
+    }
+
+    const STAGGER_MS = 120
+    for (let i = 0; i < count; i++) {
+      const timer = window.setTimeout(() => {
+        beginDegradeToTrash({ concurrent: true, frozenRoute })
         mulliganTimersRef.current = mulliganTimersRef.current.filter(
           (id) => id !== timer
         )
@@ -434,17 +596,28 @@ export function useDrawAnimations({
     setSessionCards((prev) => putCardOnLibraryBottom(prev, current.card))
   }
 
-  const animBusy = flipAnims.length > 0 || Boolean(bottomAnim)
+  const animBusy =
+    flipAnims.length > 0 ||
+    Boolean(bottomAnim) ||
+    tuckAnims.length > 0 ||
+    Boolean(shuffleAnim)
 
   return {
     flipAnims,
     bottomAnim,
+    tuckAnims,
+    onTuckAnimComplete,
+    queueTuckUnderDeck,
+    shuffleAnim,
+    startDeckShuffle,
+    onShuffleAnimComplete,
     animBusy,
     isFlipFlying,
     hasPendingDrawTimers,
     pushFlipAnim,
     onDrawFromDeck,
     queueDrawsToHand,
+    queueDegradeToTrashyard,
     onDeckTopRelease,
     onFlipAnimComplete,
     startBottomSlide,
