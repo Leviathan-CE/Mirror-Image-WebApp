@@ -23,6 +23,17 @@ export type DropdownMenuItem = {
   tone?: "default" | "danger"
   /** Nested choices — opens a flyout instead of running onSelect. */
   submenu?: DropdownMenuItem[]
+  /**
+   * Optional count field beside the action (e.g. Degrade [3]).
+   * Clicking the action label still runs `onSelect`.
+   */
+  countInput?: {
+    value: string
+    onChange: (value: string) => void
+    min?: number
+    max?: number
+    ariaLabel?: string
+  }
 }
 
 type DropdownMenuProps = {

@@ -13,6 +13,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
   type UIEvent,
@@ -23,6 +24,8 @@ import { cn } from "@/lib/utils"
 export type MiddleMouseScrollProps = {
   children: ReactNode
   className?: string
+  /** Inline style for the wrapper — e.g. a user-resized height. */
+  style?: CSSProperties
   /** Scrollport class (the element that overflows). */
   viewportClassName?: string
   /** Allow horizontal overflow / scrollbar. Default true. */
@@ -74,6 +77,7 @@ function thumbLayout(
 export function MiddleMouseScroll({
   children,
   className,
+  style,
   viewportClassName,
   horizontal = true,
   vertical = true,
@@ -288,7 +292,10 @@ export function MiddleMouseScroll({
   }
 
   return (
-    <div className={cn("relative flex min-h-0 min-w-0 flex-col", className)}>
+    <div
+      className={cn("relative flex min-h-0 min-w-0 flex-col", className)}
+      style={style}
+    >
       <div
         ref={viewportRef}
         role="region"

@@ -258,9 +258,14 @@ To make an attack:
    - Expend any number of augments you control, choose an attacker for each, reduce the incoming damage by that augment's `[POWER]` rating, and add a depletion counter to that augment.
 4. Before damage is dealt, players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.
 5. Deal Preemptive Strike damage equal to your `[POWER]` + modifiers.
-6. If you did not already deal Preemptive Strike damage, deal damage equal to your `[POWER]` + modifiers to the target of your attack. If the target is readied, it deals damage back to the attacker equal to its `[POWER]` + modifiers. Damage dealt this way is simultaneous.
+6. If you did not already deal Preemptive Strike damage, deal damage equal to your `[POWER]` + modifiers to the target of your attack. Then the defending unit deals damage back:
+   - If it is **readied**, it deals damage equal to its `[POWER]` including all modifiers (such as Lethal).
+   - If it is **expended**, it deals damage equal to half its `[POWER]`, rounded down. For this damage, ignore modifiers that add damage when the unit deals damage (such as Lethal), but still apply modifiers that change its `[POWER]` directly. If there are multiple attackers, the defending player divides this damage among them as they choose.
+   Damage dealt this way is simultaneous.
 
-   If a unit's `[POWER]` is 0 or less, or if the damage dealt is greater than or equal to its `[POWER]` rating, it is defeated (the only exception being the Durable keyword). This triggers its on-defeat tag, if it has one, along with any other triggered abilities that care about being defeated. A defeated unit goes to the trashyard (discard pile).
+   After damage is dealt, check each unit that took damage. A unit is defeated if its marked damage is at least its `[POWER]` — unless it has Durable X, in which case it survives until marked damage is at least its `[POWER]` + X. When a unit is defeated this way, trigger its on-defeat tag (if any) and any other on-defeat abilities, then put it into the trashyard (discard pile).
+
+   Example: `[POWER]` 3 with Durable 2 is defeated at 5 damage, not 3.
 
 7. Any damage directed at a player that was not blocked or redirected is dealt as loss of life to that player. Then the attack ends.
 

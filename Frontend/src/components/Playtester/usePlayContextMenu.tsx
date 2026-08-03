@@ -18,6 +18,7 @@ import {
 } from "@/components/Playtester/playtesterConstants"
 import {
   selectableActionTargets,
+  cardsInZone,
   type PlayingCardInstance,
 } from "@/components/Playtester/types"
 import type { DropdownMenuItem } from "@/components/ui/DropdownMenu"
@@ -48,6 +49,7 @@ export type CtxMenuState =
       x: number
       y: number
     }
+  | { kind: "deck"; x: number; y: number }
 
 export type PlayContextMenuActions = {
   spawnResourceColor: (color: ResourceColor) => void
@@ -63,7 +65,20 @@ export type PlayContextMenuActions = {
   duplicateCard: (instanceId: string) => void
   inspectCard: (card: PlayingCardInstance) => void
   adjustPilotGenBonus: (delta: number) => void
+  /** Deck pile actions */
+  degradeDeck: (count: number) => void
+  lookAtDeckTop: (count: number) => void
+  putDeckTopOnBottom: (count: number) => void
+  shuffleDeck: () => void
+  /** Play with the deck's top card face up on the pile (flip in place). */
+  toggleDeckTopRevealed: () => void
+  openDeckSearch: () => void
 }
+
+/** Deck rows that carry their own count field. */
+export type DeckCountKey = "degrade" | "lookTop" | "putBottom"
+
+export type DeckActionCounts = Record<DeckCountKey, string>
 
 export type UsePlayContextMenuArgs = {
   ctxMenu: CtxMenuState | null
@@ -73,6 +88,11 @@ export type UsePlayContextMenuArgs = {
   /** True while flip-fly or bottom-slide animations block zone moves. */
   animBusy: boolean
   pilotGenBonus: number
+  /** One count per deck row, so each field edits independently. */
+  deckActionCounts: DeckActionCounts
+  setDeckActionCount: (key: DeckCountKey, value: string) => void
+  /** True while the deck's top card is shown face up. */
+  topRevealed: boolean
   actions: PlayContextMenuActions
 }
 
@@ -83,6 +103,9 @@ export function usePlayContextMenu({
   availableResourceColors,
   animBusy,
   pilotGenBonus,
+  deckActionCounts,
+  setDeckActionCount,
+  topRevealed,
   actions,
 }: UsePlayContextMenuArgs): DropdownMenuItem[] {
   if (!ctxMenu) return []
@@ -111,8 +134,83 @@ export function usePlayContextMenu({
     return [generateResourceItem]
   }
 
+  if (ctxMenu.kind === "deck") {
+    const librarySize = cardsInZone(sessionCards, PLAY_ZONE.library).length
+    const empty = librarySize === 0
+
+    function countFor(key: DeckCountKey) {
+      const parsed = Number.parseInt(deckActionCounts[key], 10)
+      return {
+        parsed,
+        ok: Number.isFinite(parsed) && parsed > 0 && parsed <= librarySize,
+        field: {
+          value: deckActionCounts[key],
+          onChange: (value: string) => setDeckActionCount(key, value),
+          min: 1,
+          max: Math.max(1, librarySize),
+        },
+      }
+    }
+
+    const degrade = countFor("degrade")
+    const lookTop = countFor("lookTop")
+    const putBottom = countFor("putBottom")
+
+    return [
+      {
+        id: CTX_MENU_ACTION.deckDegrade,
+        label: "Degrade",
+        disabled: empty || animBusy || !degrade.ok,
+        countInput: { ...degrade.field, ariaLabel: "Degrade count" },
+        onSelect: () => actions.degradeDeck(degrade.parsed),
+      },
+      {
+        id: CTX_MENU_ACTION.deckLookTop,
+        label: "Look at top",
+        disabled: empty || animBusy || !lookTop.ok,
+        countInput: { ...lookTop.field, ariaLabel: "Look at top count" },
+        onSelect: () => actions.lookAtDeckTop(lookTop.parsed),
+      },
+      {
+        id: CTX_MENU_ACTION.deckPutTopBottom,
+        label: "Put top on bottom",
+        disabled: empty || animBusy || !putBottom.ok,
+        countInput: { ...putBottom.field, ariaLabel: "Put on bottom count" },
+        onSelect: () => actions.putDeckTopOnBottom(putBottom.parsed),
+      },
+      {
+        id: CTX_MENU_ACTION.deckShuffle,
+        label: "Shuffle",
+        disabled: empty || animBusy,
+        onSelect: () => actions.shuffleDeck(),
+      },
+      {
+        id: CTX_MENU_ACTION.deckRevealTop,
+        label: topRevealed ? "Hide top card" : "Reveal top card",
+        disabled: empty || animBusy,
+        onSelect: () => actions.toggleDeckTopRevealed(),
+      },
+      {
+        id: CTX_MENU_ACTION.deckSearch,
+        label: "Search deck…",
+        disabled: empty || animBusy,
+        onSelect: () => actions.openDeckSearch(),
+      },
+    ]
+  }
+
   const card = sessionCards.find((c) => c.instanceId === ctxMenu.instanceId)
-  if (!card || card.zone === PLAY_ZONE.library) return []
+  if (!card) return []
+
+  const viewCardDetails: DropdownMenuItem = {
+    id: CTX_MENU_ACTION.cardDetails,
+    label: "View details",
+    onSelect: () => actions.inspectCard(card),
+  }
+
+  // Cards still in the deck are only reachable from deck search / peek, where
+  // zone actions do not apply — inspecting them is all that makes sense.
+  if (card.zone === PLAY_ZONE.library) return [viewCardDetails]
 
   const putBottomTargets = selectableActionTargets(sessionCards, card)
   const putOnBottomItem: DropdownMenuItem = {
@@ -123,12 +221,6 @@ export function usePlayContextMenu({
         : "Put on bottom",
     disabled: animBusy,
     onSelect: () => actions.putOnLibraryBottom(putBottomTargets),
-  }
-
-  const viewCardDetails: DropdownMenuItem = {
-    id: CTX_MENU_ACTION.cardDetails,
-    label: "Veiw Details",
-    onSelect: () => actions.inspectCard(card),
   }
 
   const flipTargets = selectableActionTargets(sessionCards, card)
