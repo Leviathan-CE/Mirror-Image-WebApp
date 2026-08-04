@@ -90,4 +90,65 @@ describe("ContextMenu", () => {
     await user.click(screen.getByRole("menuitem", { name: "Degrade" }))
     expect(onSelect).toHaveBeenCalledOnce()
   })
+
+  it("keeps the count field editable while its row is disabled", async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    // A cleared field makes the action invalid, so the row disables itself.
+    // The field must stay live or there is no way to type a valid count.
+    render(
+      <ContextMenu
+        open
+        x={20}
+        y={20}
+        onClose={vi.fn()}
+        items={[
+          {
+            id: "degrade",
+            label: "Degrade",
+            disabled: true,
+            onSelect: vi.fn(),
+            countInput: {
+              value: "",
+              onChange,
+              ariaLabel: "Degrade count",
+              disabled: false,
+            },
+          },
+        ]}
+      />
+    )
+
+    const field = screen.getByLabelText("Degrade count")
+    expect(field).toBeEnabled()
+    await user.type(field, "3")
+    expect(onChange).toHaveBeenCalledWith("3")
+  })
+
+  it("locks the count field when the field itself is disabled", () => {
+    render(
+      <ContextMenu
+        open
+        x={20}
+        y={20}
+        onClose={vi.fn()}
+        items={[
+          {
+            id: "degrade",
+            label: "Degrade",
+            onSelect: vi.fn(),
+            countInput: {
+              value: "2",
+              onChange: vi.fn(),
+              ariaLabel: "Degrade count",
+              disabled: true,
+            },
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getByLabelText("Degrade count")).toBeDisabled()
+  })
 })

@@ -38,6 +38,10 @@ export type PlayingCardInstance = {
   damageCounters?: number
   /** Extra TLV (threat level) counters. */
   tlvCounters?: number
+  /** Grey catch-all counters for effects with no dedicated counter. */
+  genericCounters?: number
+  /** Orange depletion counters. */
+  depletionCounters?: number
   /** Preview / unpublished content stripped for this viewer. */
   isClassified?: boolean
   /** classified = preview lock; top_secret = not published. */
@@ -230,6 +234,10 @@ export function selectableActionTargets(
  * Start-of-turn cleanup for free-float zones:
  * ready (un-expend) every battlefield + stockpile card, and remove 1 time
  * counter from each that still has at least one.
+ *
+ * The maintenance phase readies *before* removing counters, so a card still
+ * holding a counter at that moment keeps its expended state and only readies
+ * on the following turn, once the counter is gone.
  */
 export function readyBattlefieldAndStockpile(
   cards: PlayingCardInstance[]
@@ -237,11 +245,12 @@ export function readyBattlefieldAndStockpile(
   return cards.map((c) => {
     if (c.zone !== PLAY_ZONE.battlefield && c.zone !== PLAY_ZONE.stockpile) return c
     const time = c.timeCounters ?? 0
+    const waiting = time > 0
     return {
       ...c,
-      expended: false,
+      expended: waiting ? c.expended : false,
       selected: false,
-      timeCounters: time > 0 ? time - 1 : 0,
+      timeCounters: waiting ? time - 1 : 0,
     }
   })
 }
@@ -261,7 +270,27 @@ export function removeCard(
   return cards.filter((c) => c.instanceId !== instanceId)
 }
 
-export type CardCounterKind = "time" | "damage" | "tlv"
+export type CardCounterKind =
+  | "time"
+  | "damage"
+  | "tlv"
+  | "generic"
+  | "depletion"
+
+/**
+ * Counter kind → the field it lives in. Single source of truth: a new kind
+ * cannot compile until it is listed here, and zone moves read this map to know
+ * what to clear.
+ */
+export const CARD_COUNTER_FIELD = {
+  time: "timeCounters",
+  damage: "damageCounters",
+  tlv: "tlvCounters",
+  generic: "genericCounters",
+  depletion: "depletionCounters",
+} as const satisfies Record<CardCounterKind, keyof PlayingCardInstance>
+
+export type CardCounterField = (typeof CARD_COUNTER_FIELD)[CardCounterKind]
 
 /** Add (or subtract) counters on a session card. Counts never go below 0. */
 export function adjustCardCounter(
@@ -272,12 +301,7 @@ export function adjustCardCounter(
 ): PlayingCardInstance[] {
   return cards.map((c) => {
     if (c.instanceId !== instanceId) return c
-    const key =
-      kind === "time"
-        ? "timeCounters"
-        : kind === "damage"
-          ? "damageCounters"
-          : "tlvCounters"
+    const key = CARD_COUNTER_FIELD[kind]
     const current = c[key] ?? 0
     const next = Math.max(0, current + delta)
     return { ...c, [key]: next }

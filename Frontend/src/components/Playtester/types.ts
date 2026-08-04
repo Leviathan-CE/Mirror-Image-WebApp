@@ -3,8 +3,13 @@
 export type { PlayZone, SelectableActionZone } from "./playtesterConstants"
 export { PLAY_ZONE, SELECTABLE_ACTION_ZONES } from "./playtesterConstants"
 
-export type { PlayingCardInstance, CardCounterKind } from "./playCard.logic"
+export type {
+  PlayingCardInstance,
+  CardCounterKind,
+  CardCounterField,
+} from "./playCard.logic"
 export {
+  CARD_COUNTER_FIELD,
   deckEntryToPlayInstance,
   expandDeckToPlayInstances,
   shuffleInPlace,

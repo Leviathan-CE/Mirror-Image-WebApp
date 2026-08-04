@@ -3,7 +3,7 @@
  *
  * - draw: library → zone  (back → face)
  * - put:  zone → library  (face → back)
- * - faceDown: library → zone (stays back; no flip)
+ * - faceDown: either direction, already back — slides with no flip
  *
  * Completion must not rely only on transitionend: if from ≈ to (e.g. drop on
  * the battlefield under the cursor), the outer translate never runs and the

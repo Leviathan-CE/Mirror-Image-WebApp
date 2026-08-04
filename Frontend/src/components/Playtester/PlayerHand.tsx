@@ -2,6 +2,10 @@
  * Bottom hand strip — cards fan in a row; drag upward onto the battlefield.
  * Empty-area drag draws a marquee to multi-select.
  * Dragging a selected card moves the whole hand selection as a group.
+ *
+ * Card drag move/up listen on `window` (capture). Relying only on the card
+ * element + setPointerCapture breaks on macOS/Safari: leaving the scrollable
+ * hand fires lostpointercapture, the ghost freezes, and zone drops never fire.
  */
 
 import {
@@ -105,12 +109,39 @@ export function PlayerHand({
   onSelectionRef.current = onSelectionChange
   const onReleaseRef = useRef(onReleaseCards)
   onReleaseRef.current = onReleaseCards
+  /** Exact listener refs attached for this gesture (identity must match remove). */
+  const cardDragListenersRef = useRef<{
+    move: (event: PointerEvent) => void
+    up: (event: PointerEvent) => void
+  } | null>(null)
+  const marqueeListenersRef = useRef<{
+    move: (event: PointerEvent) => void
+    up: (event: PointerEvent) => void
+  } | null>(null)
 
   const [drag, setDrag] = useState<HandDrag | null>(null)
   const [marquee, setMarquee] = useState<MarqueeState | null>(null)
   const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
 
   const draggingIds = drag?.moved ? new Set(drag.groupIds) : null
+
+  function detachWindowCardDrag() {
+    const listeners = cardDragListenersRef.current
+    if (!listeners) return
+    window.removeEventListener("pointermove", listeners.move, true)
+    window.removeEventListener("pointerup", listeners.up, true)
+    window.removeEventListener("pointercancel", listeners.up, true)
+    cardDragListenersRef.current = null
+  }
+
+  function detachWindowMarquee() {
+    const listeners = marqueeListenersRef.current
+    if (!listeners) return
+    window.removeEventListener("pointermove", listeners.move)
+    window.removeEventListener("pointerup", listeners.up)
+    window.removeEventListener("pointercancel", listeners.up)
+    marqueeListenersRef.current = null
+  }
 
   useEffect(() => {
     if (!enlarged) return
@@ -127,62 +158,12 @@ export function PlayerHand({
 
   useEffect(() => {
     return () => {
+      detachWindowCardDrag()
+      detachWindowMarquee()
       dragRef.current = null
       marqueeRef.current = null
     }
   }, [])
-
-  function detachWindowMarquee() {
-    window.removeEventListener("pointermove", onWindowMarqueeMove)
-    window.removeEventListener("pointerup", onWindowMarqueeUp)
-    window.removeEventListener("pointercancel", onWindowMarqueeUp)
-  }
-
-  function onWindowMarqueeMove(event: PointerEvent) {
-    const current = marqueeRef.current
-    if (!current || current.pointerId !== event.pointerId) return
-    const next = { ...current, x1: event.clientX, y1: event.clientY }
-    marqueeRef.current = next
-    setMarquee(next)
-  }
-
-  function onWindowMarqueeUp(event: PointerEvent) {
-    const current = marqueeRef.current
-    if (!current || current.pointerId !== event.pointerId) return
-    detachWindowMarquee()
-    marqueeRef.current = null
-    setMarquee(null)
-
-    const draggedFar =
-      Math.hypot(current.x1 - current.x0, current.y1 - current.y0) >
-      DRAG_THRESHOLD_PX
-
-    if (!draggedFar) {
-      onSelectionRef.current?.([])
-      return
-    }
-
-    const box = normalizeRect(current.x0, current.y0, current.x1, current.y1)
-    const hit: string[] = []
-    for (const card of cardsRef.current) {
-      const el = document.querySelector(
-        `[data-playtester-instance="${CSS.escape(card.instanceId)}"]`
-      )
-      if (!(el instanceof HTMLElement)) continue
-      const r = el.getBoundingClientRect()
-      if (
-        rectsIntersect(box, {
-          left: r.left,
-          top: r.top,
-          right: r.right,
-          bottom: r.bottom,
-        })
-      ) {
-        hit.push(card.instanceId)
-      }
-    }
-    onSelectionRef.current?.(hit)
-  }
 
   function onEmptyPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.button !== 0) return
@@ -204,9 +185,61 @@ export function PlayerHand({
     }
     marqueeRef.current = next
     setMarquee(next)
-    window.addEventListener("pointermove", onWindowMarqueeMove)
-    window.addEventListener("pointerup", onWindowMarqueeUp)
-    window.addEventListener("pointercancel", onWindowMarqueeUp)
+
+    function onMove(moveEvent: PointerEvent) {
+      const current = marqueeRef.current
+      if (!current || current.pointerId !== moveEvent.pointerId) return
+      const updated = {
+        ...current,
+        x1: moveEvent.clientX,
+        y1: moveEvent.clientY,
+      }
+      marqueeRef.current = updated
+      setMarquee(updated)
+    }
+
+    function onUp(upEvent: PointerEvent) {
+      const current = marqueeRef.current
+      if (!current || current.pointerId !== upEvent.pointerId) return
+      detachWindowMarquee()
+      marqueeRef.current = null
+      setMarquee(null)
+
+      const draggedFar =
+        Math.hypot(current.x1 - current.x0, current.y1 - current.y0) >
+        DRAG_THRESHOLD_PX
+
+      if (!draggedFar) {
+        onSelectionRef.current?.([])
+        return
+      }
+
+      const box = normalizeRect(current.x0, current.y0, current.x1, current.y1)
+      const hit: string[] = []
+      for (const item of cardsRef.current) {
+        const el = document.querySelector(
+          `[data-playtester-instance="${CSS.escape(item.instanceId)}"]`
+        )
+        if (!(el instanceof HTMLElement)) continue
+        const r = el.getBoundingClientRect()
+        if (
+          rectsIntersect(box, {
+            left: r.left,
+            top: r.top,
+            right: r.right,
+            bottom: r.bottom,
+          })
+        ) {
+          hit.push(item.instanceId)
+        }
+      }
+      onSelectionRef.current?.(hit)
+    }
+
+    marqueeListenersRef.current = { move: onMove, up: onUp }
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", onUp)
+    window.addEventListener("pointercancel", onUp)
   }
 
   function onCardPointerDown(
@@ -254,49 +287,58 @@ export function PlayerHand({
     }
     dragRef.current = next
     setDrag(next)
-    event.currentTarget.setPointerCapture(event.pointerId)
-  }
 
-  function onCardPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
-    const current = dragRef.current
-    if (!current || current.pointerId !== event.pointerId) return
+    function onMove(moveEvent: PointerEvent) {
+      const current = dragRef.current
+      if (!current || current.pointerId !== moveEvent.pointerId) return
 
-    const dist = Math.hypot(
-      event.clientX - current.startX,
-      event.clientY - current.startY
-    )
-    const next: HandDrag = {
-      ...current,
-      moved: current.moved || dist > DRAG_THRESHOLD_PX,
-      ghostX: event.clientX,
-      ghostY: event.clientY,
+      const dist = Math.hypot(
+        moveEvent.clientX - current.startX,
+        moveEvent.clientY - current.startY
+      )
+      if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
+
+      const updated: HandDrag = {
+        ...current,
+        moved: true,
+        ghostX: moveEvent.clientX,
+        ghostY: moveEvent.clientY,
+      }
+      dragRef.current = updated
+      setDrag(updated)
     }
-    dragRef.current = next
-    setDrag(next)
-  }
 
-  function endDrag(event: ReactPointerEvent<HTMLDivElement>) {
-    const current = dragRef.current
-    if (!current || current.pointerId !== event.pointerId) return
+    function onUp(upEvent: PointerEvent) {
+      const current = dragRef.current
+      if (!current || current.pointerId !== upEvent.pointerId) return
+      detachWindowCardDrag()
 
-    const groupIds = current.groupIds
-    const moved = current.moved
-    const clientX = event.clientX
-    const clientY = event.clientY
+      const groupIdsAtRelease = current.groupIds
+      const moved = current.moved
+      const clientX = upEvent.clientX
+      const clientY = upEvent.clientY
 
-    dragRef.current = null
-    setDrag(null)
+      dragRef.current = null
+      setDrag(null)
+
+      if (moved) {
+        onReleaseRef.current(groupIdsAtRelease, clientX, clientY)
+      } else {
+        onSelectionRef.current?.([current.instanceId])
+      }
+    }
+
+    // Capture helps suppress scroll/gestures; window listeners (capture phase)
+    // keep the ghost tracking after Safari drops element capture.
     try {
-      event.currentTarget.releasePointerCapture(event.pointerId)
+      event.currentTarget.setPointerCapture(event.pointerId)
     } catch {
-      /* already released */
+      /* some browsers reject capture on certain targets */
     }
-
-    if (moved) {
-      onReleaseRef.current(groupIds, clientX, clientY)
-    } else {
-      onSelectionRef.current?.([current.instanceId])
-    }
+    cardDragListenersRef.current = { move: onMove, up: onUp }
+    window.addEventListener("pointermove", onMove, true)
+    window.addEventListener("pointerup", onUp, true)
+    window.addEventListener("pointercancel", onUp, true)
   }
 
   const marqueeBox = marquee
@@ -382,9 +424,6 @@ export function PlayerHand({
                         "ring-2 ring-cyan-300 ring-offset-1 ring-offset-black/80"
                     )}
                     onPointerDown={(event) => onCardPointerDown(event, card)}
-                    onPointerMove={onCardPointerMove}
-                    onPointerUp={endDrag}
-                    onPointerCancel={endDrag}
                     onContextMenu={(event) => {
                       event.preventDefault()
                       event.stopPropagation()

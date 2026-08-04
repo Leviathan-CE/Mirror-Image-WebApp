@@ -45,7 +45,10 @@ export function PlayingCard({
   const time = card.timeCounters ?? 0
   const damage = card.damageCounters ?? 0
   const tlv = card.tlvCounters ?? 0
-  const hasCounters = time > 0 || damage > 0 || tlv > 0
+  const generic = card.genericCounters ?? 0
+  const depletion = card.depletionCounters ?? 0
+  const hasCounters =
+    time > 0 || damage > 0 || tlv > 0 || generic > 0 || depletion > 0
   const interactive = Boolean(onCounterAdjust)
 
   function adjust(kind: CardCounterKind, delta: number) {
@@ -115,48 +118,6 @@ export function PlayingCard({
               {card.name}
             </span>
           )}
-
-          {!classified && hasCounters ? (
-            <div className="absolute top-1 right-1 bottom-1 flex flex-col items-end justify-end gap-1">
-              {time > 0 ? (
-                <CounterBadge
-                  kind="time"
-                  count={time}
-                  interactive={interactive}
-                  className="border-emerald-400/70 bg-emerald-950/90 text-emerald-200"
-                  label="Time"
-                  onAdjust={adjust}
-                >
-                  {time}
-                </CounterBadge>
-              ) : null}
-              {damage > 0 ? (
-                <CounterBadge
-                  kind="damage"
-                  count={damage}
-                  interactive={interactive}
-                  className="border-red-400/70 bg-red-950/90 text-red-200"
-                  label="Damage"
-                  onAdjust={adjust}
-                >
-                  {damage}
-                </CounterBadge>
-              ) : null}
-              {tlv > 0 ? (
-                <CounterBadge
-                  kind="tlv"
-                  count={tlv}
-                  interactive={interactive}
-                  className="border-amber-400/70 bg-black/85 text-amber-100"
-                  label="TLV"
-                  onAdjust={adjust}
-                >
-                  <GameIcon name="threat_lvl" className="h-4 w-auto" />
-                  {tlv}
-                </CounterBadge>
-              ) : null}
-            </div>
-          ) : null}
         </div>
 
         {/* Back */}
@@ -176,6 +137,78 @@ export function PlayingCard({
           />
         </div>
       </div>
+
+      {/*
+        Outside the flip container on purpose: inside it the badges would ride
+        the front face and vanish (backface-visibility) whenever the card is
+        turned over. `pointer-events-none` keeps the empty part of the column
+        from swallowing drags — badges opt back in themselves.
+      */}
+      {!classified && hasCounters ? (
+        <div className="pointer-events-none absolute top-1 right-1 bottom-1 z-10 flex flex-col items-end justify-end gap-1">
+          {time > 0 ? (
+            <CounterBadge
+              kind="time"
+              count={time}
+              interactive={interactive}
+              className="border-emerald-400/70 bg-emerald-950/90 text-emerald-200"
+              label="Time"
+              onAdjust={adjust}
+            >
+              {time}
+            </CounterBadge>
+          ) : null}
+          {damage > 0 ? (
+            <CounterBadge
+              kind="damage"
+              count={damage}
+              interactive={interactive}
+              className="border-red-400/70 bg-red-950/90 text-red-200"
+              label="Damage"
+              onAdjust={adjust}
+            >
+              {damage}
+            </CounterBadge>
+          ) : null}
+          {tlv > 0 ? (
+            <CounterBadge
+              kind="tlv"
+              count={tlv}
+              interactive={interactive}
+              className="border-amber-400/70 bg-black/85 text-amber-100"
+              label="TLV"
+              onAdjust={adjust}
+            >
+              <GameIcon name="threat_lvl" className="h-4 w-auto" />
+              {tlv}
+            </CounterBadge>
+          ) : null}
+          {generic > 0 ? (
+            <CounterBadge
+              kind="generic"
+              count={generic}
+              interactive={interactive}
+              className="clip-angled border-zinc-300/70 bg-zinc-800/90 text-zinc-100"
+              label="Generic"
+              onAdjust={adjust}
+            >
+              {generic}
+            </CounterBadge>
+          ) : null}
+          {depletion > 0 ? (
+            <CounterBadge
+              kind="depletion"
+              count={depletion}
+              interactive={interactive}
+              className="clip-angled border-orange-400/80 bg-orange-950/90 text-orange-200"
+              label="Depletion"
+              onAdjust={adjust}
+            >
+              {depletion}
+            </CounterBadge>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }

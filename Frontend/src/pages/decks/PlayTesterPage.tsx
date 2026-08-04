@@ -73,6 +73,7 @@ import {
   toggleExpended,
   setCardsFaceDown,
   readyBattlefieldAndStockpile,
+  type CardCounterKind,
   type PlayingCardInstance,
 } from "@/components/Playtester/types"
 import { ContextMenu } from "@/components/ui/ContextMenu"
@@ -651,7 +652,7 @@ export function PlayTesterPage() {
 
   function onFloatCardCounterAdjust(
     instanceId: string,
-    kind: "time" | "damage" | "tlv",
+    kind: CardCounterKind,
     delta: number
   ) {
     setSessionCards((prev) => adjustCardCounter(prev, instanceId, kind, delta))
@@ -838,14 +839,9 @@ export function PlayTesterPage() {
             label="← BACK TO DECK"
             className="font-buahs93 h-7 rounded-none bg-cyan-700 px-3 text-xs hover:bg-cyan-900"
             onClick={() => {
-              // Prefer history back so we do not push a second /decks/:id entry.
-              // (Pushing made DeckPage's navigate(-1) return to the playtester.)
-              if (window.history.length > 1) {
-                navigate(-1)
-                return
-              }
               if (Number.isFinite(deckId) && deckId > 0) {
-                navigate(ROUTES.deck(deckId))
+                // Replace so browser Back from the deck does not reopen playtester.
+                navigate(ROUTES.deck(deckId), { replace: true })
                 return
               }
               navigate(ROUTES.MAIN)

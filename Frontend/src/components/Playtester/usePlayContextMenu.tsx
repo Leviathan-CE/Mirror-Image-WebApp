@@ -19,10 +19,12 @@ import {
 import {
   selectableActionTargets,
   cardsInZone,
+  type CardCounterKind,
   type PlayingCardInstance,
 } from "@/components/Playtester/types"
 import type { DropdownMenuItem } from "@/components/ui/DropdownMenu"
 import type { CardLibraryItem } from "@/lib/api/cards"
+import { cn } from "@/lib/utils"
 
 /** Cost colour → GameIcon asset name. */
 export const RESOURCE_COLOR_ICON: Record<ResourceColor, GameIconName> = {
@@ -39,6 +41,21 @@ export function genIconForCount(n: number): GameIconName {
   if (n <= 0) return "gen0"
   if (n >= 10) return "gen10"
   return `gen${n}` as GameIconName
+}
+
+/** Miniature of the counter badge it adds, so the row reads like the card. */
+function CounterSwatch({ className }: { className: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "clip-angled inline-flex min-h-6 min-w-6 items-center justify-center border px-1 font-glitch text-sm leading-none",
+        className
+      )}
+    >
+      1
+    </span>
+  )
 }
 
 export type CtxMenuState =
@@ -59,7 +76,7 @@ export type PlayContextMenuActions = {
   startAccumulate: (instanceId: string) => void
   adjustCounter: (
     instanceId: string,
-    kind: "time" | "damage" | "tlv",
+    kind: CardCounterKind,
     delta: number
   ) => void
   duplicateCard: (instanceId: string) => void
@@ -148,6 +165,10 @@ export function usePlayContextMenu({
           onChange: (value: string) => setDeckActionCount(key, value),
           min: 1,
           max: Math.max(1, librarySize),
+          // Deliberately not the row's disabled: the row also turns off for an
+          // empty or out-of-range count, and locking the field then would leave
+          // no way to type a valid one.
+          disabled: empty || animBusy,
         },
       }
     }
@@ -322,6 +343,35 @@ export function usePlayContextMenu({
           </>
         ),
         onSelect: () => actions.adjustCounter(card.instanceId, "tlv", 1),
+      },
+      {
+        id: CTX_MENU_ACTION.addOtherCounter,
+        label: "Add other counter",
+        submenu: [
+          {
+            id: CTX_MENU_ACTION.addGeneric,
+            label: (
+              <>
+                Add <CounterSwatch className="border-zinc-300/70 bg-zinc-800/90 text-zinc-100" />{" "}
+                generic counter
+              </>
+            ),
+            onSelect: () =>
+              actions.adjustCounter(card.instanceId, "generic", 1),
+          },
+          {
+            id: CTX_MENU_ACTION.addDepletion,
+            label: (
+              <>
+                Add{" "}
+                <CounterSwatch className="border-orange-400/80 bg-orange-950/90 text-orange-200" />{" "}
+                depletion counter
+              </>
+            ),
+            onSelect: () =>
+              actions.adjustCounter(card.instanceId, "depletion", 1),
+          },
+        ],
       },
       {
         id: CTX_MENU_ACTION.createCopy,

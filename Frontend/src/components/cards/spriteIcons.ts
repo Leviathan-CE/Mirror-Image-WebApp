@@ -42,6 +42,7 @@ const SPRITE_TO_ICON: Record<string, GameIconName> = {
   GEN9: "gen9",
   GEN10: "gen10",
   GENX: "genX",
+  HS: "hand_size",
 }
 
 export function spriteNameToIcon(sprite: string): GameIconName | null {
