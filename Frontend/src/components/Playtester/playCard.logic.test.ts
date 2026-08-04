@@ -6,6 +6,7 @@ import {
   CARD_COUNTER_FIELD,
   cardsInZone,
   duplicatePlayingCard,
+  extractStockpileTimeCompletions,
   readyBattlefieldAndStockpile,
   selectableActionTargets,
   deckEntryToPlayInstance,
@@ -179,6 +180,91 @@ describe("readyBattlefieldAndStockpile", () => {
     const next = readyBattlefieldAndStockpile(cards)
     expect(next[0]?.expended).toBe(false)
     expect(next[0]?.timeCounters).toBe(1)
+  })
+})
+
+describe("extractStockpileTimeCompletions", () => {
+  it("pulls stockpile cards that just hit 0 time for launch", () => {
+    const before = [
+      card({
+        instanceId: "done",
+        zone: PLAY_ZONE.stockpile,
+        expended: true,
+        timeCounters: 1,
+        x: 10,
+        y: 20,
+      }),
+      card({
+        instanceId: "still",
+        zone: PLAY_ZONE.stockpile,
+        expended: true,
+        timeCounters: 2,
+      }),
+      card({
+        instanceId: "bf",
+        zone: PLAY_ZONE.battlefield,
+        expended: true,
+        timeCounters: 1,
+      }),
+    ]
+    const after = readyBattlefieldAndStockpile(before)
+    const { cards, launching } = extractStockpileTimeCompletions(before, after)
+
+    expect(launching.map((c) => c.instanceId)).toEqual(["done"])
+    expect(launching[0]?.timeCounters).toBe(0)
+    expect(launching[0]?.expended).toBe(true)
+    expect(cards.map((c) => c.instanceId).sort()).toEqual(["bf", "still"])
+    expect(cards.find((c) => c.instanceId === "still")?.timeCounters).toBe(1)
+    expect(cards.find((c) => c.instanceId === "bf")?.zone).toBe(
+      PLAY_ZONE.battlefield
+    )
+  })
+
+  it("ignores cards already at 0 and non-stockpile zones", () => {
+    const before = [
+      card({
+        instanceId: "idle",
+        zone: PLAY_ZONE.stockpile,
+        timeCounters: 0,
+      }),
+      card({
+        instanceId: "bf",
+        zone: PLAY_ZONE.battlefield,
+        timeCounters: 1,
+      }),
+    ]
+    const after = [
+      card({
+        instanceId: "idle",
+        zone: PLAY_ZONE.stockpile,
+        timeCounters: 0,
+      }),
+      card({
+        instanceId: "bf",
+        zone: PLAY_ZONE.battlefield,
+        timeCounters: 0,
+        expended: true,
+      }),
+    ]
+    const { cards, launching } = extractStockpileTimeCompletions(before, after)
+    expect(launching).toEqual([])
+    expect(cards.map((c) => c.instanceId)).toEqual(["idle", "bf"])
+  })
+
+  it("works for a manual -1 time adjust on the last counter", () => {
+    const before = [
+      card({
+        instanceId: "sp",
+        zone: PLAY_ZONE.stockpile,
+        expended: true,
+        timeCounters: 1,
+      }),
+    ]
+    const after = adjustCardCounter(before, "sp", "time", -1)
+    const { cards, launching } = extractStockpileTimeCompletions(before, after)
+    expect(launching).toHaveLength(1)
+    expect(launching[0]?.instanceId).toBe("sp")
+    expect(cards).toEqual([])
   })
 })
 

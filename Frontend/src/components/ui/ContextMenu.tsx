@@ -3,6 +3,9 @@
  * Controlled: parent opens it at (x, y) and closes via onClose.
  * Renders in a portal so overflow:hidden ancestors do not clip it.
  * Items may declare `submenu` for a nested flyout.
+ *
+ * Placement: the root menu is clamped into the viewport; open submenus portal
+ * with fixed coords and flip to the left / shift up when they would clip.
  */
 
 import {
@@ -11,10 +14,16 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type RefObject,
 } from "react"
 import { createPortal } from "react-dom"
 
 import type { DropdownMenuItem } from "@/components/ui/DropdownMenu"
+import {
+  clampMenuPosition,
+  CONTEXT_MENU_VIEWPORT_PAD,
+  planSubmenuFixedPosition,
+} from "@/components/ui/contextMenuPosition.logic"
 import { cn } from "@/lib/utils"
 
 export type ContextMenuProps = {
@@ -30,7 +39,76 @@ export type ContextMenuProps = {
   className?: string
 }
 
-const VIEWPORT_PAD = 8
+function SubmenuFlyout({
+  anchorRef,
+  panelRef,
+  items,
+  onRun,
+}: {
+  anchorRef: RefObject<HTMLElement | null>
+  panelRef: RefObject<HTMLDivElement | null>
+  items: DropdownMenuItem[]
+  onRun: (item: DropdownMenuItem) => void
+}) {
+  const [coords, setCoords] = useState<{ left: number; top: number } | null>(
+    null
+  )
+
+  useLayoutEffect(() => {
+    const anchor = anchorRef.current
+    const panel = panelRef.current
+    if (!anchor || !panel) return
+
+    const parent = anchor.getBoundingClientRect()
+    const { width, height } = panel.getBoundingClientRect()
+    const next = planSubmenuFixedPosition(
+      parent,
+      { width, height },
+      window.innerWidth,
+      window.innerHeight,
+      CONTEXT_MENU_VIEWPORT_PAD
+    )
+    setCoords({ left: next.left, top: next.top })
+  }, [anchorRef, panelRef, items])
+
+  if (typeof document === "undefined") return null
+
+  return createPortal(
+    <div
+      ref={panelRef}
+      role="menu"
+      className="fixed z-[10101] min-w-[9rem] border border-cyan-500/30 bg-black/95 py-1 shadow-lg"
+      style={{
+        left: coords?.left ?? -9999,
+        top: coords?.top ?? 0,
+        visibility: coords ? "visible" : "hidden",
+      }}
+    >
+      {items.map((sub) => (
+        <button
+          key={sub.id}
+          type="button"
+          role="menuitem"
+          disabled={sub.disabled}
+          className={cn(
+            "font-buahs93 inline-flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs hover:bg-cyan-500/15 disabled:opacity-50",
+            sub.tone === "danger"
+              ? "text-red-300/90 hover:bg-red-500/15"
+              : "text-cyan-100"
+          )}
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            onRun(sub)
+          }}
+        >
+          {sub.label}
+        </button>
+      ))}
+    </div>,
+    document.body
+  )
+}
 
 export function ContextMenu({
   open,
@@ -43,12 +121,16 @@ export function ContextMenu({
 }: ContextMenuProps) {
   const menuId = useId()
   const menuRef = useRef<HTMLDivElement>(null)
+  const submenuPanelRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ left: x, top: y })
   const [openSubmenuId, setOpenSubmenuId] = useState<string | null>(null)
+  /** Anchor row for the open submenu (viewport rect → fixed flyout). */
+  const submenuAnchorRef = useRef<HTMLDivElement | null>(null)
 
   useLayoutEffect(() => {
     if (!open) {
       setOpenSubmenuId(null)
+      submenuAnchorRef.current = null
       return
     }
     const el = menuRef.current
@@ -58,27 +140,34 @@ export function ContextMenu({
     }
 
     const { width, height } = el.getBoundingClientRect()
-    const maxLeft = window.innerWidth - width - VIEWPORT_PAD
-    const maxTop = window.innerHeight - height - VIEWPORT_PAD
-    setPos({
-      left: Math.max(VIEWPORT_PAD, Math.min(x, maxLeft)),
-      top: Math.max(VIEWPORT_PAD, Math.min(y, maxTop)),
-    })
-  }, [open, x, y, items.length])
+    setPos(
+      clampMenuPosition(
+        x,
+        y,
+        width,
+        height,
+        window.innerWidth,
+        window.innerHeight,
+        CONTEXT_MENU_VIEWPORT_PAD
+      )
+    )
+  }, [open, x, y, items])
 
   useEffect(() => {
     if (!open) return
 
     function onPointerDown(event: PointerEvent) {
-      if (!menuRef.current?.contains(event.target as Node)) {
-        onClose()
-      }
+      const target = event.target as Node
+      if (menuRef.current?.contains(target)) return
+      if (submenuPanelRef.current?.contains(target)) return
+      onClose()
     }
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return
       if (openSubmenuId) {
         setOpenSubmenuId(null)
+        submenuAnchorRef.current = null
         return
       }
       onClose()
@@ -107,131 +196,127 @@ export function ContextMenu({
     queueMicrotask(() => item.onSelect?.())
   }
 
+  const openSubmenu = items.find((item) => item.id === openSubmenuId)
+
   return createPortal(
-    <div
-      ref={menuRef}
-      id={menuId}
-      role="menu"
-      aria-label={label}
-      className={cn(
-        "fixed z-[10100] min-w-[9rem] border border-cyan-500/30 bg-black/95 py-1 shadow-lg",
-        className
-      )}
-      style={{ left: pos.left, top: pos.top }}
-      onContextMenu={(event) => event.preventDefault()}
-    >
-      {items.map((item) => {
-        const hasSubmenu = Boolean(item.submenu?.length)
-        const submenuOpen = openSubmenuId === item.id
-        const countInput = item.countInput
+    <>
+      <div
+        ref={menuRef}
+        id={menuId}
+        role="menu"
+        aria-label={label}
+        className={cn(
+          "fixed z-[10100] max-h-[calc(100vh-16px)] min-w-[9rem] overflow-y-auto border border-cyan-500/30 bg-black/95 py-1 shadow-lg",
+          className
+        )}
+        style={{ left: pos.left, top: pos.top }}
+        onContextMenu={(event) => event.preventDefault()}
+      >
+        {items.map((item) => {
+          const hasSubmenu = Boolean(item.submenu?.length)
+          const submenuOpen = openSubmenuId === item.id
+          const countInput = item.countInput
 
-        return (
-          <div key={item.id} className="relative">
+          return (
             <div
-              className={cn(
-                "flex w-full items-center gap-1",
-                countInput ? "px-2 py-1" : undefined
-              )}
+              key={item.id}
+              className="relative"
+              ref={submenuOpen ? submenuAnchorRef : undefined}
             >
-              <button
-                type="button"
-                role="menuitem"
-                aria-haspopup={hasSubmenu ? "menu" : undefined}
-                aria-expanded={hasSubmenu ? submenuOpen : undefined}
-                disabled={item.disabled}
-                className={cn(
-                  "font-buahs93 flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs hover:bg-cyan-500/15 disabled:opacity-50",
-                  countInput ? "px-1.5 py-1.5" : "px-3 py-2",
-                  item.tone === "danger"
-                    ? "text-red-300/90 hover:bg-red-500/15"
-                    : "text-cyan-100"
-                )}
-                onClick={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  if (item.disabled) {
-                    onClose()
-                    return
-                  }
-                  if (hasSubmenu) {
-                    setOpenSubmenuId((prev) =>
-                      prev === item.id ? null : item.id
-                    )
-                    return
-                  }
-                  runLeaf(item)
-                }}
-              >
-                <span className="inline-flex min-w-0 flex-1 items-center gap-1.5">
-                  {item.label}
-                </span>
-                {hasSubmenu ? (
-                  <span className="shrink-0 text-cyan-300/70" aria-hidden>
-                    ›
-                  </span>
-                ) : null}
-              </button>
-
-              {countInput ? (
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={countInput.min ?? 1}
-                  max={countInput.max}
-                  value={countInput.value}
-                  aria-label={countInput.ariaLabel ?? `${String(item.label)} count`}
-                  disabled={countInput.disabled ?? item.disabled}
-                  className={cn(
-                    "h-7 w-12 shrink-0 border border-cyan-500/40 bg-black/80 px-1",
-                    "font-mono text-xs text-cyan-50 outline-none",
-                    "focus:border-cyan-300 disabled:opacity-50"
-                  )}
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={(event) => event.stopPropagation()}
-                  onChange={(event) => countInput.onChange(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      if (!item.disabled) runLeaf(item)
-                    }
-                  }}
-                />
-              ) : null}
-            </div>
-
-            {hasSubmenu && submenuOpen ? (
               <div
-                role="menu"
-                className="absolute top-0 left-full z-10 ml-1 min-w-[9rem] border border-cyan-500/30 bg-black/95 py-1 shadow-lg"
+                className={cn(
+                  "flex w-full items-center gap-1",
+                  countInput ? "px-2 py-1" : undefined
+                )}
               >
-                {item.submenu!.map((sub) => (
-                  <button
-                    key={sub.id}
-                    type="button"
-                    role="menuitem"
-                    disabled={sub.disabled}
+                <button
+                  type="button"
+                  role="menuitem"
+                  aria-haspopup={hasSubmenu ? "menu" : undefined}
+                  aria-expanded={hasSubmenu ? submenuOpen : undefined}
+                  disabled={item.disabled}
+                  className={cn(
+                    "font-buahs93 flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs hover:bg-cyan-500/15 disabled:opacity-50",
+                    countInput ? "px-1.5 py-1.5" : "px-3 py-2",
+                    item.tone === "danger"
+                      ? "text-red-300/90 hover:bg-red-500/15"
+                      : "text-cyan-100"
+                  )}
+                  onClick={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    if (item.disabled) {
+                      onClose()
+                      return
+                    }
+                    if (hasSubmenu) {
+                      setOpenSubmenuId((prev) => {
+                        if (prev === item.id) {
+                          submenuAnchorRef.current = null
+                          return null
+                        }
+                        return item.id
+                      })
+                      return
+                    }
+                    runLeaf(item)
+                  }}
+                >
+                  <span className="inline-flex min-w-0 flex-1 items-center gap-1.5">
+                    {item.label}
+                  </span>
+                  {hasSubmenu ? (
+                    <span className="shrink-0 text-cyan-300/70" aria-hidden>
+                      ›
+                    </span>
+                  ) : null}
+                </button>
+
+                {countInput ? (
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={countInput.min ?? 1}
+                    max={countInput.max}
+                    value={countInput.value}
+                    aria-label={
+                      countInput.ariaLabel ?? `${String(item.label)} count`
+                    }
+                    disabled={countInput.disabled ?? item.disabled}
                     className={cn(
-                      "font-buahs93 inline-flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs hover:bg-cyan-500/15 disabled:opacity-50",
-                      sub.tone === "danger"
-                        ? "text-red-300/90 hover:bg-red-500/15"
-                        : "text-cyan-100"
+                      "h-7 w-12 shrink-0 border border-cyan-500/40 bg-black/80 px-1",
+                      "font-mono text-xs text-cyan-50 outline-none",
+                      "focus:border-cyan-300 disabled:opacity-50"
                     )}
-                    onClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      runLeaf(sub)
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => event.stopPropagation()}
+                    onChange={(event) =>
+                      countInput.onChange(event.target.value)
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        if (!item.disabled) runLeaf(item)
+                      }
                     }}
-                  >
-                    {sub.label}
-                  </button>
-                ))}
+                  />
+                ) : null}
               </div>
-            ) : null}
-          </div>
-        )
-      })}
-    </div>,
+            </div>
+          )
+        })}
+      </div>
+
+      {openSubmenu?.submenu ? (
+        <SubmenuFlyout
+          anchorRef={submenuAnchorRef}
+          panelRef={submenuPanelRef}
+          items={openSubmenu.submenu}
+          onRun={runLeaf}
+        />
+      ) : null}
+    </>,
     document.body
   )
 }
