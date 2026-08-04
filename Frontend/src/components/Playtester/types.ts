@@ -20,6 +20,7 @@ export {
   setCardsFaceDown,
   selectableActionTargets,
   readyBattlefieldAndStockpile,
+  extractStockpileTimeCompletions,
   cardsInZone,
   removeCard,
   adjustCardCounter,
@@ -32,6 +33,10 @@ export {
   destroyResourceCardIfLeaving,
 } from "./sessionResources.logic"
 
+export type {
+  MoveAllSourceZone,
+  MoveAllDestinationZone,
+} from "./zoneMoves.logic"
 export {
   moveToBattlefield,
   moveToHand,
@@ -40,6 +45,7 @@ export {
   putCardOnLibraryTop,
   putCardOnLibraryBottom,
   putCardsOnLibraryBottom,
+  moveAllFromZone,
   moveToTrashyard,
   putCardInTrashyard,
   moveToDismantled,

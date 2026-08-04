@@ -67,12 +67,14 @@ import {
   moveCardtoBack,
   moveCardtoFront,
   putCardsOnLibraryBottom,
+  moveAllFromZone,
   removeCard,
   adjustCardCounter,
   duplicatePlayingCard,
   toggleExpended,
   setCardsFaceDown,
   readyBattlefieldAndStockpile,
+  extractStockpileTimeCompletions,
   type CardCounterKind,
   type PlayingCardInstance,
 } from "@/components/Playtester/types"
@@ -225,6 +227,7 @@ export function PlayTesterPage() {
     onDrawFromDeck,
     queueDrawsToHand,
     queueDegradeToTrashyard,
+    queueStockpileTimeCompletions,
     onDeckTopRelease,
     onFlipAnimComplete,
     startBottomSlide,
@@ -495,13 +498,23 @@ export function PlayTesterPage() {
     )
   }
 
+  function commitWithStockpileTimeCompletions(
+    before: PlayingCardInstance[],
+    after: PlayingCardInstance[]
+  ) {
+    const { cards, launching } = extractStockpileTimeCompletions(before, after)
+    sessionCardsRef.current = cards
+    setSessionCards(cards)
+    queueStockpileTimeCompletions(launching)
+  }
+
   function onStartTurn() {
     if (mulliganOpen || bottomAnim) return
-    setSessionCards((prev) => {
-      const next = readyBattlefieldAndStockpile(prev)
-      sessionCardsRef.current = next
-      return next
-    })
+    const before = sessionCardsRef.current
+    commitWithStockpileTimeCompletions(
+      before,
+      readyBattlefieldAndStockpile(before)
+    )
   }
 
   /**
@@ -655,7 +668,26 @@ export function PlayTesterPage() {
     kind: CardCounterKind,
     delta: number
   ) {
-    setSessionCards((prev) => adjustCardCounter(prev, instanceId, kind, delta))
+    adjustCardCounters([instanceId], kind, delta)
+  }
+
+  function adjustCardCounters(
+    instanceIds: string[],
+    kind: CardCounterKind,
+    delta: number
+  ) {
+    if (instanceIds.length === 0) return
+    const before = sessionCardsRef.current
+    const after = instanceIds.reduce(
+      (cards, id) => adjustCardCounter(cards, id, kind, delta),
+      before
+    )
+    if (kind === "time") {
+      commitWithStockpileTimeCompletions(before, after)
+      return
+    }
+    sessionCardsRef.current = after
+    setSessionCards(after)
   }
 
   /** Cheat / helper: spawn one resource token onto the stockpile. */
@@ -694,6 +726,15 @@ export function PlayTesterPage() {
   function onDeckContextMenu(clientX: number, clientY: number) {
     setPlayNotice(null)
     setCtxMenu({ kind: "deck", x: clientX, y: clientY })
+  }
+
+  function onFaceUpPileContextMenu(
+    zone: typeof PLAY_ZONE.trashyard | typeof PLAY_ZONE.dismantled,
+    clientX: number,
+    clientY: number
+  ) {
+    setPlayNotice(null)
+    setCtxMenu({ kind: "faceUpPile", zone, x: clientX, y: clientY })
   }
 
   function degradeDeck(count: number) {
@@ -807,8 +848,8 @@ export function PlayTesterPage() {
       },
       deleteSessionCards,
       startAccumulate,
-      adjustCounter: (instanceId, kind, delta) => {
-        setSessionCards((prev) => adjustCardCounter(prev, instanceId, kind, delta))
+      adjustCounter: (instanceIds, kind, delta) => {
+        adjustCardCounters(instanceIds, kind, delta)
       },
       duplicateCard: (instanceId) => {
         setSessionCards((prev) => duplicatePlayingCard(prev, instanceId))
@@ -821,6 +862,13 @@ export function PlayTesterPage() {
       shuffleDeck,
       toggleDeckTopRevealed,
       openDeckSearch,
+      moveAllFromZone: (from, to) => {
+        setSessionCards((prev) => {
+          const next = moveAllFromZone(prev, from, to)
+          sessionCardsRef.current = next
+          return next
+        })
+      },
     },
   })
 
@@ -1031,6 +1079,9 @@ export function PlayTesterPage() {
                 label="Trashyard"
                 onReleaseCard={onFaceUpPileRelease}
                 onCardContextMenu={onFloatCardContextMenu}
+                onPileContextMenu={(x, y) =>
+                  onFaceUpPileContextMenu(PLAY_ZONE.trashyard, x, y)
+                }
               />
               <TrashyardPile
                 ref={dismantledRef}
@@ -1038,6 +1089,9 @@ export function PlayTesterPage() {
                 label="Dismantled"
                 onReleaseCard={onFaceUpPileRelease}
                 onCardContextMenu={onFloatCardContextMenu}
+                onPileContextMenu={(x, y) =>
+                  onFaceUpPileContextMenu(PLAY_ZONE.dismantled, x, y)
+                }
               />
             </div>
 

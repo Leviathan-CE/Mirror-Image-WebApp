@@ -15,6 +15,7 @@ import {
 } from "react"
 
 import { sharedImages } from "@/assets/shared"
+import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
@@ -167,6 +168,7 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
   ) {
     const [hovered, setHovered] = useState(false)
     const [drag, setDrag] = useState<TopDrag | null>(null)
+    const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
     const dragRef = useRef<TopDrag | null>(null)
     const onReleaseRef = useRef(onTopCardRelease)
     const onClickRef = useRef(onClickDraw)
@@ -224,7 +226,27 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
       }
     }, [drag])
 
+    // Hold middle-mouse to peek (same as hand / trash / free-float).
+    useEffect(() => {
+      if (!enlarged) return
+      function release() {
+        setEnlarged(null)
+      }
+      window.addEventListener("pointerup", release)
+      window.addEventListener("blur", release)
+      return () => {
+        window.removeEventListener("pointerup", release)
+        window.removeEventListener("blur", release)
+      }
+    }, [enlarged])
+
     function onTopPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+      if (event.button === 1 && topRevealed && topCard) {
+        event.preventDefault()
+        event.stopPropagation()
+        setEnlarged(topCard)
+        return
+      }
       if (event.button !== 0 || !interactive) return
       event.preventDefault()
       event.stopPropagation()
@@ -359,6 +381,22 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
             <CardBackFace className="border-cyan-400/60 shadow-lg shadow-cyan-500/20" />
           </div>
         ) : null}
+
+        <CardEnlargeOverlay
+          open={enlarged != null}
+          name={enlarged?.name ?? ""}
+          artSrc={
+            enlarged?.isClassified
+              ? null
+              : enlarged
+                ? cardArtUrl(enlarged.artPath, enlarged.artVersion)
+                : null
+          }
+          classification={
+            enlarged?.classification ??
+            (enlarged?.isClassified ? "classified" : null)
+          }
+        />
       </>
     )
   }

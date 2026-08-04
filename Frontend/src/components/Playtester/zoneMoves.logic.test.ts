@@ -21,6 +21,7 @@ import {
   putCardOnPilot,
   putCardOnStockpile,
   putCardsOnLibraryBottom,
+  moveAllFromZone,
   takeTopLibraryCard,
 } from "@/components/Playtester/zoneMoves.logic"
 
@@ -296,6 +297,52 @@ describe("counters do not survive a zone change", () => {
   })
 })
 
+describe("expended persists across in-play zones", () => {
+  it("keeps expended when moving battlefield ↔ stockpile", () => {
+    const onBf = [
+      card({
+        instanceId: "a",
+        zone: PLAY_ZONE.battlefield,
+        expended: true,
+      }),
+    ]
+    const toSp = moveToStockpile(onBf, "a", 8, 9)
+    expect(toSp[0]?.expended).toBe(true)
+    expect(toSp[0]?.zone).toBe(PLAY_ZONE.stockpile)
+
+    const back = moveToBattlefield(toSp, "a", 1, 2)
+    expect(back[0]?.expended).toBe(true)
+    expect(back[0]?.zone).toBe(PLAY_ZONE.battlefield)
+  })
+
+  it("readies when leaving in play for hand", () => {
+    const cards = [
+      card({
+        instanceId: "a",
+        zone: PLAY_ZONE.battlefield,
+        expended: true,
+      }),
+    ]
+    expect(moveToHand(cards, "a")[0]?.expended).toBe(false)
+  })
+
+  it("readies when entering battlefield from hand", () => {
+    const cards = [
+      card({ instanceId: "a", zone: PLAY_ZONE.hand, expended: true }),
+    ]
+    expect(moveToBattlefield(cards, "a", 0, 0)[0]?.expended).toBe(false)
+  })
+
+  it("readies when seating from library onto stockpile", () => {
+    const flying = card({
+      instanceId: "a",
+      zone: PLAY_ZONE.library,
+      expended: true,
+    })
+    expect(putCardOnStockpile([], flying, 1, 2)[0]?.expended).toBe(false)
+  })
+})
+
 describe("moveToPilot", () => {
   it("seats the card and bumps an existing pilot to hand", () => {
     const cards = [
@@ -316,5 +363,74 @@ describe("moveToPilot", () => {
       }),
     ]
     expect(moveToPilot(cards, "tim")).toEqual([])
+  })
+})
+
+describe("moveAllFromZone", () => {
+  it("moves every trashyard card onto the library top, keeping pile order", () => {
+    const cards = [
+      card({ instanceId: "lib", zone: PLAY_ZONE.library, cardId: 9 }),
+      card({ instanceId: "t-bottom", zone: PLAY_ZONE.trashyard, cardId: 1 }),
+      card({ instanceId: "t-top", zone: PLAY_ZONE.trashyard, cardId: 2 }),
+      card({ instanceId: "hand", zone: PLAY_ZONE.hand, cardId: 3 }),
+    ]
+    const next = moveAllFromZone(cards, PLAY_ZONE.trashyard, PLAY_ZONE.library)
+    expect(next.filter((c) => c.zone === PLAY_ZONE.trashyard)).toEqual([])
+    const libIds = next
+      .filter((c) => c.zone === PLAY_ZONE.library)
+      .map((c) => c.instanceId)
+    // Bottom of trash placed first, then top — so former top remains top.
+    expect(libIds).toEqual(["t-top", "t-bottom", "lib"])
+    expect(next.find((c) => c.instanceId === "hand")?.zone).toBe(PLAY_ZONE.hand)
+  })
+
+  it("omits a no-op when destination matches source", () => {
+    const cards = [
+      card({ instanceId: "t1", zone: PLAY_ZONE.trashyard }),
+    ]
+    expect(
+      moveAllFromZone(cards, PLAY_ZONE.trashyard, PLAY_ZONE.trashyard)
+    ).toBe(cards)
+  })
+
+  it("moves dismantled cards to trashyard and stockpile", () => {
+    const cards = [
+      card({ instanceId: "d1", zone: PLAY_ZONE.dismantled, cardId: 1 }),
+      card({ instanceId: "d2", zone: PLAY_ZONE.dismantled, cardId: 2 }),
+    ]
+    const toTrash = moveAllFromZone(
+      cards,
+      PLAY_ZONE.dismantled,
+      PLAY_ZONE.trashyard
+    )
+    expect(toTrash.map((c) => c.zone)).toEqual([
+      PLAY_ZONE.trashyard,
+      PLAY_ZONE.trashyard,
+    ])
+
+    const toStock = moveAllFromZone(
+      cards,
+      PLAY_ZONE.dismantled,
+      PLAY_ZONE.stockpile
+    )
+    expect(toStock.every((c) => c.zone === PLAY_ZONE.stockpile)).toBe(true)
+    expect(toStock[0]?.x).toBe(20)
+    expect(toStock[1]?.x).toBe(48)
+  })
+
+  it("moves every library card to the trashyard (top mills first)", () => {
+    const cards = [
+      card({ instanceId: "top", zone: PLAY_ZONE.library, cardId: 1 }),
+      card({ instanceId: "bottom", zone: PLAY_ZONE.library, cardId: 2 }),
+    ]
+    const next = moveAllFromZone(
+      cards,
+      PLAY_ZONE.library,
+      PLAY_ZONE.trashyard
+    )
+    expect(next.filter((c) => c.zone === PLAY_ZONE.library)).toEqual([])
+    expect(
+      next.filter((c) => c.zone === PLAY_ZONE.trashyard).map((c) => c.instanceId)
+    ).toEqual(["top", "bottom"])
   })
 })

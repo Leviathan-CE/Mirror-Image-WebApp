@@ -255,6 +255,34 @@ export function readyBattlefieldAndStockpile(
   })
 }
 
+/**
+ * After a time-counter change: pull stockpile cards that just hit 0 off the
+ * board so the caller can fly them to the battlefield. Cards that were already
+ * at 0 are left alone.
+ */
+export function extractStockpileTimeCompletions(
+  before: PlayingCardInstance[],
+  after: PlayingCardInstance[]
+): { cards: PlayingCardInstance[]; launching: PlayingCardInstance[] } {
+  const beforeById = new Map(before.map((c) => [c.instanceId, c]))
+  const launching: PlayingCardInstance[] = []
+  const cards = after.filter((c) => {
+    const prev = beforeById.get(c.instanceId)
+    if (
+      prev &&
+      prev.zone === PLAY_ZONE.stockpile &&
+      c.zone === PLAY_ZONE.stockpile &&
+      (prev.timeCounters ?? 0) > 0 &&
+      (c.timeCounters ?? 0) === 0
+    ) {
+      launching.push(c)
+      return false
+    }
+    return true
+  })
+  return { cards, launching }
+}
+
 export function cardsInZone(
   cards: PlayingCardInstance[],
   zone: PlayZone

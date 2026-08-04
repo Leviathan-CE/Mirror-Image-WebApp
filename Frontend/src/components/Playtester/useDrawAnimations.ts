@@ -577,6 +577,58 @@ export function useDrawAnimations({
     }
   }
 
+  /**
+   * Last time counter left a stockpile card: slide it onto the battlefield
+   * (no flip — keeps its current face).
+   */
+  function queueStockpileTimeCompletions(launching: PlayingCardInstance[]) {
+    if (launching.length === 0) return
+
+    const stockEl = zoneRefs.stockpile.current
+    const surfaceEl = zoneRefs.surface.current
+    const deckEl = zoneRefs.deck.current
+    const deckRect = deckEl?.getBoundingClientRect()
+    const cardW = deckRect?.width ?? 112
+    const cardH = deckRect?.height ?? 144
+
+    if (!stockEl || !surfaceEl) {
+      setSessionCards((prev) => {
+        let next = prev
+        launching.forEach((card, index) => {
+          next = putCardOnBattlefield(next, card, 24 + index * 28, 48)
+        })
+        sessionCardsRef.current = next
+        return next
+      })
+      return
+    }
+
+    const stockRect = stockEl.getBoundingClientRect()
+    const surfaceRect = surfaceEl.getBoundingClientRect()
+
+    launching.forEach((card, index) => {
+      const landX = 24 + index * 28
+      const landY = 48
+      pushFlipAnim({
+        card,
+        mode: FLIP_FLY_MODE.faceDown,
+        from: {
+          x: stockRect.left + (card.x ?? 0),
+          y: stockRect.top + (card.y ?? 0),
+          w: cardW,
+          h: cardH,
+        },
+        to: {
+          x: surfaceRect.left + landX,
+          y: surfaceRect.top + landY,
+        },
+        landZone: PLAY_ZONE.battlefield,
+        landX,
+        landY,
+      })
+    })
+  }
+
   function startBottomSlide(
     card: PlayingCardInstance,
     from: { x: number; y: number; w: number; h: number }
@@ -618,6 +670,7 @@ export function useDrawAnimations({
     onDrawFromDeck,
     queueDrawsToHand,
     queueDegradeToTrashyard,
+    queueStockpileTimeCompletions,
     onDeckTopRelease,
     onFlipAnimComplete,
     startBottomSlide,

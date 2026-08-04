@@ -5,7 +5,7 @@ import {
   destroyResourceTokenIfLeaving,
   isResourceTokenInstance,
 } from "./sessionResources.logic"
-import type { PlayZone } from "./playtesterConstants"
+import { PLAY_ZONE, type PlayZone } from "./playtesterConstants"
 import {
   CARD_COUNTER_FIELD,
   type CardCounterField,
@@ -26,6 +26,12 @@ const NO_COUNTERS: CardCounters = Object.fromEntries(
   COUNTER_FIELDS.map((field) => [field, undefined])
 ) as CardCounters
 
+/** Battlefield + stockpile ("in play") — expended persists across these only. */
+const IN_PLAY_ZONES: ReadonlySet<PlayZone> = new Set([
+  PLAY_ZONE.battlefield,
+  PLAY_ZONE.stockpile,
+])
+
 /**
  * Counters last only as long as a card stays put: entering a new zone clears
  * every kind of counter. Repositioning inside the same zone keeps them.
@@ -44,6 +50,20 @@ function countersOnEnter(
   ) as CardCounters
 }
 
+/**
+ * Expended survives moves that stay in play (battlefield ↔ stockpile).
+ * Leaving in play, or entering from anywhere else, readies the card.
+ */
+function expendedOnEnter(
+  card: PlayingCardInstance,
+  target: PlayZone
+): boolean {
+  if (IN_PLAY_ZONES.has(card.zone) && IN_PLAY_ZONES.has(target)) {
+    return Boolean(card.expended)
+  }
+  return false
+}
+
 export function moveToBattlefield(
   cards: PlayingCardInstance[],
   instanceId: string,
@@ -58,7 +78,7 @@ export function moveToBattlefield(
           zone: "battlefield" as const,
           x,
           y,
-          expended: false,
+          expended: expendedOnEnter(c, PLAY_ZONE.battlefield),
           selected: false,
         }
       : c
@@ -347,7 +367,7 @@ export function putCardOnBattlefield(
       zone: "battlefield",
       x,
       y,
-      expended: false,
+      expended: expendedOnEnter(card, PLAY_ZONE.battlefield),
       selected: false,
     },
   ]
@@ -368,7 +388,7 @@ export function moveToStockpile(
           zone: "stockpile" as const,
           x,
           y,
-          expended: false,
+          expended: expendedOnEnter(c, PLAY_ZONE.stockpile),
           selected: false,
         }
       : c
@@ -391,7 +411,7 @@ export function putCardOnStockpile(
       zone: "stockpile",
       x,
       y,
-      expended: false,
+      expended: expendedOnEnter(card, PLAY_ZONE.stockpile),
       selected: false,
     },
   ]
@@ -484,5 +504,63 @@ export function putCardOnPilot(
       ...countersOnEnter(card, "pilot"),
     },
   ]
+}
+
+/** Piles that expose a bulk "Move all" context action. */
+export type MoveAllSourceZone =
+  | typeof PLAY_ZONE.library
+  | typeof PLAY_ZONE.trashyard
+  | typeof PLAY_ZONE.dismantled
+
+/** Destinations offered by "Move all" (never includes dismantled). */
+export type MoveAllDestinationZone =
+  | typeof PLAY_ZONE.library
+  | typeof PLAY_ZONE.stockpile
+  | typeof PLAY_ZONE.trashyard
+
+const STOCKPILE_MOVE_ALL_STEP_X = 28
+const STOCKPILE_MOVE_ALL_STEP_Y = 16
+const STOCKPILE_MOVE_ALL_COLS = 8
+
+/**
+ * Move every card in `from` into `to`. No-op when the pile is empty or when
+ * source and destination are the same (e.g. trash → trash).
+ *
+ * Library: cards are placed on top in bottom→top pile order so the former top
+ * of the source pile stays on top of the deck.
+ */
+export function moveAllFromZone(
+  cards: PlayingCardInstance[],
+  from: MoveAllSourceZone,
+  to: MoveAllDestinationZone
+): PlayingCardInstance[] {
+  if (from === to) return cards
+  const moving = cards.filter((c) => c.zone === from)
+  if (moving.length === 0) return cards
+
+  let next = cards
+  if (to === PLAY_ZONE.library) {
+    for (const card of moving) {
+      next = putCardOnLibraryTop(next, card)
+    }
+    return next
+  }
+
+  if (to === PLAY_ZONE.trashyard) {
+    for (const card of moving) {
+      next = moveToTrashyard(next, card.instanceId)
+    }
+    return next
+  }
+
+  let seq = next.filter((c) => c.zone === PLAY_ZONE.stockpile).length
+  for (const card of moving) {
+    const x = 20 + (seq % STOCKPILE_MOVE_ALL_COLS) * STOCKPILE_MOVE_ALL_STEP_X
+    const y =
+      24 + Math.floor(seq / STOCKPILE_MOVE_ALL_COLS) * STOCKPILE_MOVE_ALL_STEP_Y
+    next = moveToStockpile(next, card.instanceId, x, y)
+    seq += 1
+  }
+  return next
 }
 

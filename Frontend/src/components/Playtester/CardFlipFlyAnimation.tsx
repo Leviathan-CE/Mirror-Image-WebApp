@@ -3,7 +3,7 @@
  *
  * - draw: library → zone  (back → face)
  * - put:  zone → library  (face → back)
- * - faceDown: either direction, already back — slides with no flip
+ * - faceDown: slide with no flip — shows back or front from `card.faceDown`
  *
  * Completion must not rely only on transitionend: if from ≈ to (e.g. drop on
  * the battlefield under the cursor), the outer translate never runs and the
@@ -104,8 +104,9 @@ export function CardFlipFlyAnimation({
     </div>
   )
 
-  // faceDown: slide with the back only — no rotateY reveal.
+  // faceDown mode: slide with no rotateY — keep the face the card already has.
   if (mode === FLIP_FLY_MODE.faceDown) {
+    const slideFace = card.faceDown ? backFace : frontFace
     return (
       <div
         className="pointer-events-none fixed z-[90]"
@@ -121,7 +122,7 @@ export function CardFlipFlyAnimation({
         }}
         onTransitionEnd={onFlyEnd}
       >
-        <div className="relative h-full w-full">{backFace}</div>
+        <div className="relative h-full w-full">{slideFace}</div>
       </div>
     )
   }

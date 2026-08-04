@@ -6,39 +6,49 @@ from typing import Any
 
 from psycopg2.extras import Json
 
-_CHROMATIC_COST_TOKENS = ("LIF", "MET", "POW", "RAM", "TIM")
-
 
 def escape_like(value: str) -> str:
     """Escape %, _, and \\ for ILIKE patterns."""
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+def cost_has_stl_identity(tokens: list[str]) -> bool:
+    """
+    Whether invoke-cost pips count as steel for library colour filters.
+
+    Bare GEN is steel (same as playtester / Unity). Numbered GEN0–GEN10 are
+    generic mana and do not count. Explicit STL / hybrids (e.g. LIF-STL) do.
+    """
+    for raw in tokens:
+        token = (raw or "").strip().upper()
+        if not token:
+            continue
+        if token == "GEN":
+            return True
+        # Solid STL or a hybrid segment (LIF-STL, STL-TIM, …).
+        parts = token.split("-")
+        if "STL" in parts:
+            return True
+    return False
+
+
 def sql_card_matches_stl(alias: str = "cards") -> str:
     """
     STL identity for library colour filters (resources/tokens excluded):
     - cost includes an STL symbol (including hybrids like LIF-STL), or
-    - cost has no chromatic colours (empty, GEN-only, and/or STL-only).
+    - cost includes bare GEN (steel pip — not GEN1 / GEN2 / …).
     """
-    chromatic = "|".join(_CHROMATIC_COST_TOKENS)
     return f"""
     (
       NOT (
         {alias}.super_types @> '["Resource"]'::jsonb
         OR {alias}.super_types @> '["Token"]'::jsonb
       )
-      AND (
-        EXISTS (
-          SELECT 1
-            FROM jsonb_array_elements_text({alias}.cost) AS token(value)
-           WHERE UPPER(BTRIM(token.value)) ~ '(^|[-])STL([-]|$)'
-        )
-        OR NOT EXISTS (
-          SELECT 1
-            FROM jsonb_array_elements_text({alias}.cost) AS token(value)
-           WHERE UPPER(BTRIM(token.value)) = 'MULTI'
-              OR UPPER(BTRIM(token.value)) ~ '(^|[-])({chromatic})([-]|$)'
-        )
+      AND EXISTS (
+        SELECT 1
+          FROM jsonb_array_elements_text({alias}.cost) AS token(value)
+         WHERE UPPER(BTRIM(token.value)) = 'GEN'
+            OR UPPER(BTRIM(token.value)) ~ '(^|[-])STL([-]|$)'
       )
     )
     """

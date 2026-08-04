@@ -384,10 +384,18 @@ export function PlayerHand({
           horizontal
           vertical={false}
           className="flex min-h-0 w-full flex-1 flex-col border border-cyan-500/25 bg-black/55"
-          viewportClassName="flex min-h-32 flex-1 items-end gap-1.5 overflow-x-auto px-2 pb-1 pt-1"
+          // Scrollport stays a plain overflow box (not a centering flex). Padding
+          // on the row is part of scrollWidth so first/last cards can scroll fully
+          // into view. before/after + m-auto centers when there is spare width and
+          // collapses when the row overflows (unlike justify-center, which clips
+          // the start and makes it unreachable).
+          viewportClassName="min-h-32 flex-1 overflow-x-auto pb-1 pt-2"
         >
           <div
-            className="flex h-full w-max min-w-full items-end justify-center gap-1.5"
+            className={cn(
+              "flex h-full w-max min-w-full items-end gap-1.5 px-3",
+              "before:m-auto before:content-[''] after:m-auto after:content-['']"
+            )}
             data-playtester-hand
             onPointerDown={onEmptyPointerDown}
             onContextMenu={(event) => {

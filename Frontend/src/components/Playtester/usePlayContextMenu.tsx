@@ -20,6 +20,8 @@ import {
   selectableActionTargets,
   cardsInZone,
   type CardCounterKind,
+  type MoveAllDestinationZone,
+  type MoveAllSourceZone,
   type PlayingCardInstance,
 } from "@/components/Playtester/types"
 import type { DropdownMenuItem } from "@/components/ui/DropdownMenu"
@@ -67,6 +69,55 @@ export type CtxMenuState =
       y: number
     }
   | { kind: "deck"; x: number; y: number }
+  | {
+      kind: "faceUpPile"
+      zone: typeof PLAY_ZONE.trashyard | typeof PLAY_ZONE.dismantled
+      x: number
+      y: number
+    }
+
+/** Shared "Move all" submenu — omits the pile you are already on. */
+function buildMoveAllMenuItem(
+  from: MoveAllSourceZone,
+  sessionCards: PlayingCardInstance[],
+  animBusy: boolean,
+  onMoveAll: (from: MoveAllSourceZone, to: MoveAllDestinationZone) => void
+): DropdownMenuItem {
+  const pileCount = cardsInZone(sessionCards, from).length
+  const destinations: Array<{
+    id: string
+    label: string
+    to: MoveAllDestinationZone
+  }> = [
+    {
+      id: CTX_MENU_ACTION.moveAllToDeck,
+      label: "Deck",
+      to: PLAY_ZONE.library,
+    },
+    {
+      id: CTX_MENU_ACTION.moveAllToStockpile,
+      label: "Stockpile",
+      to: PLAY_ZONE.stockpile,
+    },
+    {
+      id: CTX_MENU_ACTION.moveAllToTrashyard,
+      label: "Trashyard",
+      to: PLAY_ZONE.trashyard,
+    },
+  ].filter((dest) => dest.to !== from)
+
+  return {
+    id: CTX_MENU_ACTION.moveAll,
+    label: "Move all",
+    disabled: pileCount === 0 || animBusy,
+    submenu: destinations.map((dest) => ({
+      id: dest.id,
+      label: dest.label,
+      disabled: pileCount === 0 || animBusy,
+      onSelect: () => onMoveAll(from, dest.to),
+    })),
+  }
+}
 
 export type PlayContextMenuActions = {
   spawnResourceColor: (color: ResourceColor) => void
@@ -75,7 +126,7 @@ export type PlayContextMenuActions = {
   deleteSessionCards: (instanceIds: string[]) => void
   startAccumulate: (instanceId: string) => void
   adjustCounter: (
-    instanceId: string,
+    instanceIds: string[],
     kind: CardCounterKind,
     delta: number
   ) => void
@@ -90,6 +141,10 @@ export type PlayContextMenuActions = {
   /** Play with the deck's top card face up on the pile (flip in place). */
   toggleDeckTopRevealed: () => void
   openDeckSearch: () => void
+  moveAllFromZone: (
+    from: MoveAllSourceZone,
+    to: MoveAllDestinationZone
+  ) => void
 }
 
 /** Deck rows that carry their own count field. */
@@ -154,6 +209,8 @@ export function usePlayContextMenu({
   if (ctxMenu.kind === "deck") {
     const librarySize = cardsInZone(sessionCards, PLAY_ZONE.library).length
     const empty = librarySize === 0
+    const topCard =
+      sessionCards.find((c) => c.zone === PLAY_ZONE.library) ?? null
 
     function countFor(key: DeckCountKey) {
       const parsed = Number.parseInt(deckActionCounts[key], 10)
@@ -211,12 +268,38 @@ export function usePlayContextMenu({
         disabled: empty || animBusy,
         onSelect: () => actions.toggleDeckTopRevealed(),
       },
+      ...(topRevealed && topCard
+        ? [
+            {
+              id: CTX_MENU_ACTION.cardDetails,
+              label: "View details",
+              onSelect: () => actions.inspectCard(topCard),
+            } satisfies DropdownMenuItem,
+          ]
+        : []),
       {
         id: CTX_MENU_ACTION.deckSearch,
         label: "Search deck…",
         disabled: empty || animBusy,
         onSelect: () => actions.openDeckSearch(),
       },
+      buildMoveAllMenuItem(
+        PLAY_ZONE.library,
+        sessionCards,
+        animBusy,
+        actions.moveAllFromZone
+      ),
+    ]
+  }
+
+  if (ctxMenu.kind === "faceUpPile") {
+    return [
+      buildMoveAllMenuItem(
+        ctxMenu.zone,
+        sessionCards,
+        animBusy,
+        actions.moveAllFromZone
+      ),
     ]
   }
 
@@ -236,10 +319,7 @@ export function usePlayContextMenu({
   const putBottomTargets = selectableActionTargets(sessionCards, card)
   const putOnBottomItem: DropdownMenuItem = {
     id: CTX_MENU_ACTION.putBottom,
-    label:
-      putBottomTargets.length > 1
-        ? `Put on bottom (${putBottomTargets.length})`
-        : "Put on bottom",
+    label: "Put on bottom",
     disabled: animBusy,
     onSelect: () => actions.putOnLibraryBottom(putBottomTargets),
   }
@@ -248,12 +328,7 @@ export function usePlayContextMenu({
   const nextFaceDown = !card.faceDown
   const flipFaceItem: DropdownMenuItem = {
     id: CTX_MENU_ACTION.flipFace,
-    label: (() => {
-      const verb = nextFaceDown ? "Flip face down" : "Flip face up"
-      return flipTargets.length > 1
-        ? `${verb} (${flipTargets.length})`
-        : verb
-    })(),
+    label: nextFaceDown ? "Flip face down" : "Flip face up",
     onSelect: () => actions.setFaceDown(flipTargets, nextFaceDown),
   }
 
@@ -262,7 +337,7 @@ export function usePlayContextMenu({
     id: CTX_MENU_ACTION.deleteCard,
     label:
       deleteTargets.length > 1
-        ? `Delete (${deleteTargets.length})`
+        ? `Delete [${deleteTargets.length}]`
         : "Delete",
     tone: "danger",
     onSelect: () => actions.deleteSessionCards(deleteTargets),
@@ -302,6 +377,7 @@ export function usePlayContextMenu({
     card.zone === PLAY_ZONE.battlefield ||
     card.zone === PLAY_ZONE.stockpile
   ) {
+    const counterTargets = selectableActionTargets(sessionCards, card)
     return [
       {
         id: CTX_MENU_ACTION.addTime,
@@ -317,7 +393,7 @@ export function usePlayContextMenu({
             time counter
           </>
         ),
-        onSelect: () => actions.adjustCounter(card.instanceId, "time", 1),
+        onSelect: () => actions.adjustCounter(counterTargets, "time", 1),
       },
       {
         id: CTX_MENU_ACTION.addDamage,
@@ -333,7 +409,7 @@ export function usePlayContextMenu({
             damage counter
           </>
         ),
-        onSelect: () => actions.adjustCounter(card.instanceId, "damage", 1),
+        onSelect: () => actions.adjustCounter(counterTargets, "damage", 1),
       },
       {
         id: CTX_MENU_ACTION.addTlv,
@@ -342,7 +418,7 @@ export function usePlayContextMenu({
             Add <GameIcon name="threat_lvl" className="h-4 w-auto" /> counter
           </>
         ),
-        onSelect: () => actions.adjustCounter(card.instanceId, "tlv", 1),
+        onSelect: () => actions.adjustCounter(counterTargets, "tlv", 1),
       },
       {
         id: CTX_MENU_ACTION.addOtherCounter,
@@ -357,7 +433,7 @@ export function usePlayContextMenu({
               </>
             ),
             onSelect: () =>
-              actions.adjustCounter(card.instanceId, "generic", 1),
+              actions.adjustCounter(counterTargets, "generic", 1),
           },
           {
             id: CTX_MENU_ACTION.addDepletion,
@@ -369,7 +445,7 @@ export function usePlayContextMenu({
               </>
             ),
             onSelect: () =>
-              actions.adjustCounter(card.instanceId, "depletion", 1),
+              actions.adjustCounter(counterTargets, "depletion", 1),
           },
         ],
       },
@@ -390,7 +466,16 @@ export function usePlayContextMenu({
     card.zone === PLAY_ZONE.trashyard ||
     card.zone === PLAY_ZONE.dismantled
   ) {
-    return [putOnBottomItem, viewCardDetails]
+    return [
+      putOnBottomItem,
+      buildMoveAllMenuItem(
+        card.zone,
+        sessionCards,
+        animBusy,
+        actions.moveAllFromZone
+      ),
+      viewCardDetails,
+    ]
   }
 
   if (card.zone === PLAY_ZONE.pilot) {

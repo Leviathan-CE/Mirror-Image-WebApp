@@ -80,6 +80,8 @@ export type TrashyardPileProps = {
     clientX: number,
     clientY: number
   ) => void
+  /** Right-click empty pile space (e.g. Move all). */
+  onPileContextMenu?: (clientX: number, clientY: number) => void
   /**
    * Optional badge drawn on top of the pile (e.g. pilot +GEN).
    * Shown even when the pile is empty so zone-persistent counters stay visible.
@@ -106,6 +108,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       size = "md",
       onReleaseCard,
       onCardContextMenu,
+      onPileContextMenu,
       cardOverlay,
     },
     ref
@@ -257,6 +260,11 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
                   "border border-dashed border-cyan-500/25 bg-black/40 clip-angled"
                 )}
                 style={{ height: cardH }}
+                onContextMenu={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  onPileContextMenu?.(event.clientX, event.clientY)
+                }}
               >
                 <span className="font-mono text-[10px] text-white/35">Empty</span>
               </div>

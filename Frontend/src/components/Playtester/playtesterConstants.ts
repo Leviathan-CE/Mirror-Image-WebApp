@@ -88,6 +88,10 @@ export const CTX_MENU_ACTION = {
   deckShuffle: "deck-shuffle",
   deckRevealTop: "deck-reveal-top",
   deckSearch: "deck-search",
+  moveAll: "move-all",
+  moveAllToDeck: "move-all-to-deck",
+  moveAllToStockpile: "move-all-to-stockpile",
+  moveAllToTrashyard: "move-all-to-trashyard",
 } as const
 
 export type CtxMenuActionId =
