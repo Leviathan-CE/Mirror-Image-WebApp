@@ -214,13 +214,13 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
         onReleaseRef.current?.(event.clientX, event.clientY)
       }
 
-      window.addEventListener("pointermove", onMove)
-      window.addEventListener("pointerup", onUp)
-      window.addEventListener("pointercancel", onUp)
+      window.addEventListener("pointermove", onMove, true)
+      window.addEventListener("pointerup", onUp, true)
+      window.addEventListener("pointercancel", onUp, true)
       return () => {
-        window.removeEventListener("pointermove", onMove)
-        window.removeEventListener("pointerup", onUp)
-        window.removeEventListener("pointercancel", onUp)
+        window.removeEventListener("pointermove", onMove, true)
+        window.removeEventListener("pointerup", onUp, true)
+        window.removeEventListener("pointercancel", onUp, true)
       }
     }, [drag])
 
@@ -238,6 +238,11 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
       }
       dragRef.current = next
       setDrag(next)
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId)
+      } catch {
+        /* ignore */
+      }
     }
 
     return (

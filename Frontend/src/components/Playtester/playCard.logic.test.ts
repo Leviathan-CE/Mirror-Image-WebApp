@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import { PLAY_ZONE } from "@/components/Playtester/playtesterConstants"
 import {
   adjustCardCounter,
+  CARD_COUNTER_FIELD,
   cardsInZone,
   duplicatePlayingCard,
   readyBattlefieldAndStockpile,
@@ -11,6 +12,8 @@ import {
   setCardsFaceDown,
   toggleExpended,
   toggleFaceDown,
+  type CardCounterField,
+  type CardCounterKind,
   type PlayingCardInstance,
 } from "@/components/Playtester/playCard.logic"
 
@@ -93,7 +96,25 @@ describe("selectableActionTargets", () => {
 })
 
 describe("readyBattlefieldAndStockpile", () => {
-  it("readies BF/stockpile and ticks time counters down by 1", () => {
+  it("readies BF/stockpile cards with no time counters", () => {
+    const cards = [
+      card({
+        instanceId: "bf",
+        zone: PLAY_ZONE.battlefield,
+        expended: true,
+        selected: true,
+      }),
+      card({ instanceId: "sp", zone: PLAY_ZONE.stockpile, expended: true }),
+      card({ instanceId: "hand", zone: PLAY_ZONE.hand, expended: true }),
+    ]
+    const next = readyBattlefieldAndStockpile(cards)
+    expect(next.find((c) => c.instanceId === "bf")?.expended).toBe(false)
+    expect(next.find((c) => c.instanceId === "bf")?.selected).toBe(false)
+    expect(next.find((c) => c.instanceId === "sp")?.expended).toBe(false)
+    expect(next.find((c) => c.instanceId === "hand")?.expended).toBe(true)
+  })
+
+  it("keeps cards that still hold a time counter expended, and ticks by 1", () => {
     const cards = [
       card({
         instanceId: "bf",
@@ -119,12 +140,45 @@ describe("readyBattlefieldAndStockpile", () => {
     const bf = next.find((c) => c.instanceId === "bf")!
     const sp = next.find((c) => c.instanceId === "sp")!
     const hand = next.find((c) => c.instanceId === "hand")!
-    expect(bf.expended).toBe(false)
+    expect(bf.expended).toBe(true)
     expect(bf.selected).toBe(false)
     expect(bf.timeCounters).toBe(1)
+    expect(sp.expended).toBe(true)
     expect(sp.timeCounters).toBe(0)
     expect(hand.expended).toBe(true)
     expect(hand.timeCounters).toBe(3)
+  })
+
+  it("readies a card on the turn after its last counter is removed", () => {
+    const cards = [
+      card({
+        instanceId: "bf",
+        zone: PLAY_ZONE.battlefield,
+        expended: true,
+        timeCounters: 1,
+      }),
+    ]
+    const thisTurn = readyBattlefieldAndStockpile(cards)
+    expect(thisTurn[0]?.expended).toBe(true)
+    expect(thisTurn[0]?.timeCounters).toBe(0)
+
+    const nextTurn = readyBattlefieldAndStockpile(thisTurn)
+    expect(nextTurn[0]?.expended).toBe(false)
+    expect(nextTurn[0]?.timeCounters).toBe(0)
+  })
+
+  it("leaves a waiting card ready if it was not expended", () => {
+    const cards = [
+      card({
+        instanceId: "sp",
+        zone: PLAY_ZONE.stockpile,
+        expended: false,
+        timeCounters: 2,
+      }),
+    ]
+    const next = readyBattlefieldAndStockpile(cards)
+    expect(next[0]?.expended).toBe(false)
+    expect(next[0]?.timeCounters).toBe(1)
   })
 })
 
@@ -135,6 +189,23 @@ describe("adjustCardCounter", () => {
     expect(up[0]?.damageCounters).toBe(2)
     const down = adjustCardCounter(up, "a", "damage", -5)
     expect(down[0]?.damageCounters).toBe(0)
+  })
+
+  it.each(
+    Object.entries(CARD_COUNTER_FIELD) as Array<
+      [CardCounterKind, CardCounterField]
+    >
+  )("routes the %s kind to %s only", (kind, field) => {
+    const cards = [card({ instanceId: "a", zone: PLAY_ZONE.battlefield })]
+    const next = adjustCardCounter(cards, "a", kind, 3)[0]!
+    expect(next[field]).toBe(3)
+
+    const others = Object.values(CARD_COUNTER_FIELD).filter(
+      (other) => other !== field
+    )
+    for (const other of others) {
+      expect(next[other]).toBeUndefined()
+    }
   })
 })
 

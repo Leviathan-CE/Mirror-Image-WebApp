@@ -5,7 +5,44 @@ import {
   destroyResourceTokenIfLeaving,
   isResourceTokenInstance,
 } from "./sessionResources.logic"
-import type { PlayingCardInstance } from "./playCard.logic"
+import type { PlayZone } from "./playtesterConstants"
+import {
+  CARD_COUNTER_FIELD,
+  type CardCounterField,
+  type PlayingCardInstance,
+} from "./playCard.logic"
+
+type CardCounters = Pick<PlayingCardInstance, CardCounterField>
+
+const COUNTER_FIELDS = Object.values(
+  CARD_COUNTER_FIELD
+) as readonly CardCounterField[]
+
+/**
+ * Derived from `CARD_COUNTER_FIELD` rather than written out, so a new counter
+ * kind is cleared on zone change without anyone remembering to come here.
+ */
+const NO_COUNTERS: CardCounters = Object.fromEntries(
+  COUNTER_FIELDS.map((field) => [field, undefined])
+) as CardCounters
+
+/**
+ * Counters last only as long as a card stays put: entering a new zone clears
+ * every kind of counter. Repositioning inside the same zone keeps them.
+ *
+ * The pilot's cost increase on defeat is deliberately not covered here — it is
+ * session state (`pilotGenBonus`), not a card counter, so it survives every
+ * move by construction.
+ */
+function countersOnEnter(
+  card: PlayingCardInstance,
+  target: PlayZone
+): CardCounters {
+  if (card.zone !== target) return NO_COUNTERS
+  return Object.fromEntries(
+    COUNTER_FIELDS.map((field) => [field, card[field]])
+  ) as CardCounters
+}
 
 export function moveToBattlefield(
   cards: PlayingCardInstance[],
@@ -17,6 +54,7 @@ export function moveToBattlefield(
     c.instanceId === instanceId
       ? {
           ...c,
+          ...countersOnEnter(c, "battlefield"),
           zone: "battlefield" as const,
           x,
           y,
@@ -47,6 +85,7 @@ export function moveToHand(
       expended: false,
       selected: false,
       isResourceToken: c.isResourceToken,
+      ...countersOnEnter(c, "hand"),
     }
   })
 }
@@ -86,6 +125,7 @@ export function putCardInHand(
       expended: false,
       selected: false,
       isResourceToken: card.isResourceToken,
+      ...countersOnEnter(card, "hand"),
     },
   ]
 }
@@ -109,6 +149,7 @@ export function putCardOnLibraryTop(
     expended: false,
     selected: false,
     isResourceToken: card.isResourceToken,
+    ...countersOnEnter(card, "library"),
   }
   const firstLib = without.findIndex((c) => c.zone === "library")
   if (firstLib < 0) return [...without, asLib]
@@ -140,6 +181,7 @@ export function putCardOnLibraryBottom(
     zone: "library",
     expended: false,
     selected: false,
+    ...countersOnEnter(card, "library"),
   }
   const lastLib = (() => {
     let idx = -1
@@ -195,6 +237,7 @@ export function moveToTrashyard(
     expended: false,
     selected: false,
     isResourceToken: card.isResourceToken,
+    ...countersOnEnter(card, "trashyard"),
   }
   // Append so the newest discard is last in array = top of the pile UI.
   return [...without, asTrash]
@@ -221,6 +264,8 @@ export function putCardInTrashyard(
         expended: false,
         selected: false,
         isResourceToken: card.isResourceToken,
+        // Seated from an animation overlay, so it is entering the pile fresh.
+        ...NO_COUNTERS,
       },
     ],
     card.instanceId
@@ -252,6 +297,7 @@ export function moveToDismantled(
     expended: false,
     selected: false,
     isResourceToken: card.isResourceToken,
+    ...countersOnEnter(card, "dismantled"),
   }
   return [...without, asDismantled]
 }
@@ -277,6 +323,8 @@ export function putCardInDismantled(
         expended: false,
         selected: false,
         isResourceToken: card.isResourceToken,
+        // Seated from an animation overlay, so it is entering the pile fresh.
+        ...NO_COUNTERS,
       },
     ],
     card.instanceId
@@ -295,6 +343,7 @@ export function putCardOnBattlefield(
     ...without,
     {
       ...card,
+      ...countersOnEnter(card, "battlefield"),
       zone: "battlefield",
       x,
       y,
@@ -315,6 +364,7 @@ export function moveToStockpile(
     c.instanceId === instanceId
       ? {
           ...c,
+          ...countersOnEnter(c, "stockpile"),
           zone: "stockpile" as const,
           x,
           y,
@@ -337,6 +387,7 @@ export function putCardOnStockpile(
     ...without,
     {
       ...card,
+      ...countersOnEnter(card, "stockpile"),
       zone: "stockpile",
       x,
       y,
@@ -363,6 +414,7 @@ export function moveToPilot(
     if (c.instanceId === instanceId) {
       next.push({
         ...c,
+        ...countersOnEnter(c, "pilot"),
         zone: "pilot" as const,
         x: undefined,
         y: undefined,
@@ -376,6 +428,7 @@ export function moveToPilot(
       if (isResourceTokenInstance(c)) continue
       next.push({
         ...c,
+        ...countersOnEnter(c, "hand"),
         zone: "hand" as const,
         x: undefined,
         y: undefined,
@@ -406,6 +459,7 @@ export function putCardOnPilot(
     return [
       {
         ...c,
+        ...countersOnEnter(c, "hand"),
         zone: "hand" as const,
         x: undefined,
         y: undefined,
@@ -427,6 +481,7 @@ export function putCardOnPilot(
       expended: false,
       selected: false,
       isResourceToken: card.isResourceToken,
+      ...countersOnEnter(card, "pilot"),
     },
   ]
 }

@@ -5,6 +5,8 @@
  *
  * Pointer listeners for marquee + card drag are attached synchronously on
  * pointerdown (not in useEffect) so a quick click cannot miss pointerup.
+ * Card drag uses window capture-phase listeners + setPointerCapture so macOS
+ * Safari keeps tracking after the pointer leaves the surface.
  */
 
 import {
@@ -197,10 +199,38 @@ export function FreeFloatSurface({
   onMoveCardsRef.current = onMoveCards
   const onCardsReleasedRef = useRef(onCardsReleased)
   onCardsReleasedRef.current = onCardsReleased
+  const cardDragListenersRef = useRef<{
+    move: (event: PointerEvent) => void
+    up: (event: PointerEvent) => void
+  } | null>(null)
+  const marqueeListenersRef = useRef<{
+    move: (event: PointerEvent) => void
+    up: (event: PointerEvent) => void
+  } | null>(null)
+
+  function detachWindowDrag() {
+    const listeners = cardDragListenersRef.current
+    if (!listeners) return
+    window.removeEventListener("pointermove", listeners.move, true)
+    window.removeEventListener("pointerup", listeners.up, true)
+    window.removeEventListener("pointercancel", listeners.up, true)
+    cardDragListenersRef.current = null
+  }
+
+  function detachWindowMarquee() {
+    const listeners = marqueeListenersRef.current
+    if (!listeners) return
+    window.removeEventListener("pointermove", listeners.move)
+    window.removeEventListener("pointerup", listeners.up)
+    window.removeEventListener("pointercancel", listeners.up)
+    marqueeListenersRef.current = null
+  }
 
   // Tear down any leftover window listeners on unmount.
   useEffect(() => {
     return () => {
+      detachWindowDrag()
+      detachWindowMarquee()
       dragRef.current = null
       marqueeRef.current = null
     }
@@ -229,117 +259,6 @@ export function FreeFloatSurface({
     }
   }
 
-  function detachWindowDrag() {
-    window.removeEventListener("pointermove", onWindowCardMove)
-    window.removeEventListener("pointerup", onWindowCardUp)
-    window.removeEventListener("pointercancel", onWindowCardUp)
-  }
-
-  function detachWindowMarquee() {
-    window.removeEventListener("pointermove", onWindowMarqueeMove)
-    window.removeEventListener("pointerup", onWindowMarqueeUp)
-    window.removeEventListener("pointercancel", onWindowMarqueeUp)
-  }
-
-  function onWindowMarqueeMove(event: PointerEvent) {
-    const current = marqueeRef.current
-    if (!current || current.pointerId !== event.pointerId) return
-    const local = clientToLocal(event.clientX, event.clientY)
-    const next = { ...current, x1: local.x, y1: local.y }
-    marqueeRef.current = next
-    setMarquee(next)
-  }
-
-  function onWindowMarqueeUp(event: PointerEvent) {
-    const current = marqueeRef.current
-    if (!current || current.pointerId !== event.pointerId) return
-    detachWindowMarquee()
-    marqueeRef.current = null
-    setMarquee(null)
-
-    const draggedFar =
-      Math.hypot(current.x1 - current.x0, current.y1 - current.y0) >
-      DRAG_THRESHOLD_PX
-
-    if (!draggedFar) {
-      onSelectionRef.current?.([])
-      return
-    }
-
-    const box = normalizeRect(current.x0, current.y0, current.x1, current.y1)
-    const hit = cardsRef.current
-      .filter((card) => rectsIntersect(box, cardHitBox(card)))
-      .map((card) => card.instanceId)
-    onSelectionRef.current?.(hit)
-  }
-
-  function onWindowCardMove(event: PointerEvent) {
-    const current = dragRef.current
-    if (!current || current.pointerId !== event.pointerId) return
-
-    const dist = Math.hypot(
-      event.clientX - current.startX,
-      event.clientY - current.startY
-    )
-    if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
-
-    const next: DragState = {
-      ...current,
-      moved: true,
-      ghostX: event.clientX - current.offsetX,
-      ghostY: event.clientY - current.offsetY,
-    }
-    dragRef.current = next
-    setDrag(next)
-  }
-
-  function onWindowCardUp(event: PointerEvent) {
-    const current = dragRef.current
-    if (!current || current.pointerId !== event.pointerId) return
-    detachWindowDrag()
-
-    const clientX = event.clientX
-    const clientY = event.clientY
-    const moved = current.moved
-    const groupIds = current.groupIds
-
-    // Commit positions while ghosts still match the cursor, then clear drag.
-    if (moved) {
-      const local = clientToLocal(clientX, clientY)
-      const primaryX = local.x - current.offsetX
-      const primaryY = local.y - current.offsetY
-      const originPrimary = current.origins[current.instanceId] ?? {
-        x: 0,
-        y: 0,
-      }
-      const dx = primaryX - originPrimary.x
-      const dy = primaryY - originPrimary.y
-
-      const proposed: CardMove[] = groupIds.map((id) => {
-        const origin = current.origins[id] ?? { x: 0, y: 0 }
-        return {
-          instanceId: id,
-          x: origin.x + dx,
-          y: origin.y + dy,
-        }
-      })
-
-      const surface = surfaceRef.current
-      const bounds = surface?.getBoundingClientRect()
-      const moves = clampMovesToSurface(
-        proposed,
-        cardsRef.current,
-        bounds?.width ?? 0,
-        bounds?.height ?? 0
-      )
-      onMoveCardsRef.current(moves)
-      onCardsReleasedRef.current?.(groupIds, clientX, clientY)
-    }
-
-    dragRef.current = null
-    setDrag(null)
-  }
-
   function onSurfacePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.button !== 0) return
     if (dragRef.current || marqueeRef.current) return
@@ -356,10 +275,42 @@ export function FreeFloatSurface({
     marqueeRef.current = next
     setMarquee(next)
 
-    // Attach immediately so a click’s pointerup is never missed.
-    window.addEventListener("pointermove", onWindowMarqueeMove)
-    window.addEventListener("pointerup", onWindowMarqueeUp)
-    window.addEventListener("pointercancel", onWindowMarqueeUp)
+    function onMove(moveEvent: PointerEvent) {
+      const current = marqueeRef.current
+      if (!current || current.pointerId !== moveEvent.pointerId) return
+      const point = clientToLocal(moveEvent.clientX, moveEvent.clientY)
+      const updated = { ...current, x1: point.x, y1: point.y }
+      marqueeRef.current = updated
+      setMarquee(updated)
+    }
+
+    function onUp(upEvent: PointerEvent) {
+      const current = marqueeRef.current
+      if (!current || current.pointerId !== upEvent.pointerId) return
+      detachWindowMarquee()
+      marqueeRef.current = null
+      setMarquee(null)
+
+      const draggedFar =
+        Math.hypot(current.x1 - current.x0, current.y1 - current.y0) >
+        DRAG_THRESHOLD_PX
+
+      if (!draggedFar) {
+        onSelectionRef.current?.([])
+        return
+      }
+
+      const box = normalizeRect(current.x0, current.y0, current.x1, current.y1)
+      const hit = cardsRef.current
+        .filter((card) => rectsIntersect(box, cardHitBox(card)))
+        .map((card) => card.instanceId)
+      onSelectionRef.current?.(hit)
+    }
+
+    marqueeListenersRef.current = { move: onMove, up: onUp }
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", onUp)
+    window.addEventListener("pointercancel", onUp)
   }
 
   function onCardPointerDown(
@@ -428,9 +379,82 @@ export function FreeFloatSurface({
     dragRef.current = next
     setDrag(next)
 
-    window.addEventListener("pointermove", onWindowCardMove)
-    window.addEventListener("pointerup", onWindowCardUp)
-    window.addEventListener("pointercancel", onWindowCardUp)
+    function onMove(moveEvent: PointerEvent) {
+      const current = dragRef.current
+      if (!current || current.pointerId !== moveEvent.pointerId) return
+
+      const dist = Math.hypot(
+        moveEvent.clientX - current.startX,
+        moveEvent.clientY - current.startY
+      )
+      if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
+
+      const updated: DragState = {
+        ...current,
+        moved: true,
+        ghostX: moveEvent.clientX - current.offsetX,
+        ghostY: moveEvent.clientY - current.offsetY,
+      }
+      dragRef.current = updated
+      setDrag(updated)
+    }
+
+    function onUp(upEvent: PointerEvent) {
+      const current = dragRef.current
+      if (!current || current.pointerId !== upEvent.pointerId) return
+      detachWindowDrag()
+
+      const clientX = upEvent.clientX
+      const clientY = upEvent.clientY
+      const moved = current.moved
+      const groupIdsAtRelease = current.groupIds
+
+      // Commit positions while ghosts still match the cursor, then clear drag.
+      if (moved) {
+        const point = clientToLocal(clientX, clientY)
+        const primaryX = point.x - current.offsetX
+        const primaryY = point.y - current.offsetY
+        const originPrimary = current.origins[current.instanceId] ?? {
+          x: 0,
+          y: 0,
+        }
+        const dx = primaryX - originPrimary.x
+        const dy = primaryY - originPrimary.y
+
+        const proposed: CardMove[] = groupIdsAtRelease.map((id) => {
+          const origin = current.origins[id] ?? { x: 0, y: 0 }
+          return {
+            instanceId: id,
+            x: origin.x + dx,
+            y: origin.y + dy,
+          }
+        })
+
+        const surface = surfaceRef.current
+        const bounds = surface?.getBoundingClientRect()
+        const moves = clampMovesToSurface(
+          proposed,
+          cardsRef.current,
+          bounds?.width ?? 0,
+          bounds?.height ?? 0
+        )
+        onMoveCardsRef.current(moves)
+        onCardsReleasedRef.current?.(groupIdsAtRelease, clientX, clientY)
+      }
+
+      dragRef.current = null
+      setDrag(null)
+    }
+
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId)
+    } catch {
+      /* some browsers reject capture on certain targets */
+    }
+    cardDragListenersRef.current = { move: onMove, up: onUp }
+    window.addEventListener("pointermove", onMove, true)
+    window.addEventListener("pointerup", onUp, true)
+    window.addEventListener("pointercancel", onUp, true)
   }
 
   const marqueeBox = marquee

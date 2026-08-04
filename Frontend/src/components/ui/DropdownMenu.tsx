@@ -33,6 +33,13 @@ export type DropdownMenuItem = {
     min?: number
     max?: number
     ariaLabel?: string
+    /**
+     * Locks the field itself, separately from the row. Defaults to the row's
+     * `disabled` — pass it explicitly whenever the row is disabled *because of*
+     * this value (empty, out of range), or clearing the field would disable the
+     * only control that can fix it.
+     */
+    disabled?: boolean
   }
 }
 

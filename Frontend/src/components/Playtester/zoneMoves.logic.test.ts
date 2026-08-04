@@ -1,13 +1,24 @@
 import { describe, expect, it } from "vitest"
 
-import { PLAY_ZONE } from "@/components/Playtester/playtesterConstants"
+import {
+  PLAY_ZONE,
+  type PlayZone,
+} from "@/components/Playtester/playtesterConstants"
 import type { PlayingCardInstance } from "@/components/Playtester/playCard.logic"
 import {
+  moveToBattlefield,
+  moveToDismantled,
   moveToHand,
   moveToPilot,
+  moveToStockpile,
+  moveToTrashyard,
+  putCardInDismantled,
+  putCardInHand,
+  putCardInTrashyard,
   putCardOnBattlefield,
   putCardOnLibraryBottom,
   putCardOnLibraryTop,
+  putCardOnPilot,
   putCardOnStockpile,
   putCardsOnLibraryBottom,
   takeTopLibraryCard,
@@ -122,6 +133,166 @@ describe("moveToHand destroys resource tokens", () => {
     ]
     const next = moveToHand(cards, "tim")
     expect(next).toEqual([])
+  })
+})
+
+describe("counters do not survive a zone change", () => {
+  const COUNTERS = {
+    timeCounters: 2,
+    damageCounters: 3,
+    tlvCounters: 1,
+    genericCounters: 4,
+    depletionCounters: 5,
+  }
+  const CLEARED = {
+    timeCounters: undefined,
+    damageCounters: undefined,
+    tlvCounters: undefined,
+    genericCounters: undefined,
+    depletionCounters: undefined,
+  }
+
+  function counted(
+    overrides: Partial<PlayingCardInstance> &
+      Pick<PlayingCardInstance, "instanceId" | "zone">
+  ): PlayingCardInstance {
+    return card({ ...COUNTERS, ...overrides })
+  }
+
+  function countersOf(target: PlayingCardInstance | undefined) {
+    return {
+      timeCounters: target?.timeCounters,
+      damageCounters: target?.damageCounters,
+      tlvCounters: target?.tlvCounters,
+      genericCounters: target?.genericCounters,
+      depletionCounters: target?.depletionCounters,
+    }
+  }
+
+  const moves: Array<{
+    name: string
+    from: PlayZone
+    run: (cards: PlayingCardInstance[]) => PlayingCardInstance[]
+  }> = [
+    {
+      name: "moveToBattlefield",
+      from: PLAY_ZONE.hand,
+      run: (cards) => moveToBattlefield(cards, "a", 1, 2),
+    },
+    {
+      name: "moveToStockpile",
+      from: PLAY_ZONE.battlefield,
+      run: (cards) => moveToStockpile(cards, "a", 1, 2),
+    },
+    {
+      name: "moveToHand",
+      from: PLAY_ZONE.battlefield,
+      run: (cards) => moveToHand(cards, "a"),
+    },
+    {
+      name: "moveToTrashyard",
+      from: PLAY_ZONE.battlefield,
+      run: (cards) => moveToTrashyard(cards, "a"),
+    },
+    {
+      name: "moveToDismantled",
+      from: PLAY_ZONE.battlefield,
+      run: (cards) => moveToDismantled(cards, "a"),
+    },
+    {
+      name: "moveToPilot",
+      from: PLAY_ZONE.hand,
+      run: (cards) => moveToPilot(cards, "a"),
+    },
+  ]
+
+  it.each(moves)("$name clears every counter", ({ from, run }) => {
+    const next = run([counted({ instanceId: "a", zone: from })])
+    expect(countersOf(next.find((c) => c.instanceId === "a"))).toEqual(CLEARED)
+  })
+
+  // `from` mirrors where each seating helper is really called from: draw and
+  // degrade animations hand it a card taken off the library, while the deck
+  // put-backs receive one from hand or the battlefield.
+  const seatings: Array<{
+    name: string
+    from: PlayZone
+    run: (flying: PlayingCardInstance) => PlayingCardInstance[]
+  }> = [
+    {
+      name: "putCardInHand",
+      from: PLAY_ZONE.library,
+      run: (flying) => putCardInHand([], flying),
+    },
+    {
+      name: "putCardOnLibraryTop",
+      from: PLAY_ZONE.battlefield,
+      run: (flying) => putCardOnLibraryTop([], flying),
+    },
+    {
+      name: "putCardOnLibraryBottom",
+      from: PLAY_ZONE.hand,
+      run: (flying) => putCardOnLibraryBottom([], flying),
+    },
+    {
+      name: "putCardInTrashyard",
+      from: PLAY_ZONE.library,
+      run: (flying) => putCardInTrashyard([], flying),
+    },
+    {
+      name: "putCardInDismantled",
+      from: PLAY_ZONE.library,
+      run: (flying) => putCardInDismantled([], flying),
+    },
+    {
+      name: "putCardOnBattlefield",
+      from: PLAY_ZONE.library,
+      run: (flying) => putCardOnBattlefield([], flying, 1, 2),
+    },
+    {
+      name: "putCardOnStockpile",
+      from: PLAY_ZONE.library,
+      run: (flying) => putCardOnStockpile([], flying, 1, 2),
+    },
+    {
+      name: "putCardOnPilot",
+      from: PLAY_ZONE.library,
+      run: (flying) => putCardOnPilot([], flying),
+    },
+  ]
+
+  it.each(seatings)("$name clears every counter", ({ from, run }) => {
+    const next = run(counted({ instanceId: "a", zone: from }))
+    expect(countersOf(next.find((c) => c.instanceId === "a"))).toEqual(CLEARED)
+  })
+
+  it("keeps counters when repositioning inside the battlefield", () => {
+    const cards = [counted({ instanceId: "a", zone: PLAY_ZONE.battlefield })]
+    const next = moveToBattlefield(cards, "a", 40, 50)
+    expect(countersOf(next[0])).toEqual(COUNTERS)
+    expect(next[0]).toMatchObject({ x: 40, y: 50 })
+  })
+
+  it("keeps counters when repositioning inside the stockpile", () => {
+    const cards = [counted({ instanceId: "a", zone: PLAY_ZONE.stockpile })]
+    expect(countersOf(moveToStockpile(cards, "a", 8, 9)[0])).toEqual(COUNTERS)
+  })
+
+  it("clears counters on a pilot bumped back to hand", () => {
+    const cards = [
+      counted({ instanceId: "old", zone: PLAY_ZONE.pilot }),
+      card({ instanceId: "new", zone: PLAY_ZONE.hand }),
+    ]
+    const next = moveToPilot(cards, "new")
+    expect(countersOf(next.find((c) => c.instanceId === "old"))).toEqual(CLEARED)
+  })
+
+  it("clears counters on a pilot bumped to hand while seating a flyer", () => {
+    const next = putCardOnPilot(
+      [counted({ instanceId: "old", zone: PLAY_ZONE.pilot })],
+      card({ instanceId: "new", zone: PLAY_ZONE.library })
+    )
+    expect(countersOf(next.find((c) => c.instanceId === "old"))).toEqual(CLEARED)
   })
 })
 

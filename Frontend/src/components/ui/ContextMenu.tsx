@@ -180,7 +180,7 @@ export function ContextMenu({
                   max={countInput.max}
                   value={countInput.value}
                   aria-label={countInput.ariaLabel ?? `${String(item.label)} count`}
-                  disabled={item.disabled}
+                  disabled={countInput.disabled ?? item.disabled}
                   className={cn(
                     "h-7 w-12 shrink-0 border border-cyan-500/40 bg-black/80 px-1",
                     "font-mono text-xs text-cyan-50 outline-none",

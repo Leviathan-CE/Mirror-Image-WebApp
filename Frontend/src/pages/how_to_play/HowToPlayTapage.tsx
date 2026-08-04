@@ -761,18 +761,22 @@ export function HowToPlayPage() {
                                     (another unit or an opponent), and trigger the
                                     <GameIcon name="attack" /> abilities of the attacking units. When
                                     declaring the target of your attack you must target a readied unit
-                                    the defending player controls if able.
-                                    <Note>If you cannot target the a readied unit a defending player controls, example: a readied unit with airborn per say then you may choose targets
-                                        as if it was not there.</Note></li>
+                                    the defending player controls if able. 
+                                    <Note>If you cannot target the a readied unit a defending player controls, you cannot make the attack.</Note></li>
+                                <li> The unit(s), cyberspell, or weapon is now considered attacking. In this step you must choose whether to pay additional costs for cards with them such as stealth.</li>
                                 <li>Players may play Quick Hacks or activate abilities,
-                                    starting with the active player, until no one adds more effects.</li>
+                                    starting with the active player, until no one wants to adds more effects.
+                                    <Note>The Active player is usually the one attacking see the lock for details.</Note>
+                                    
+                                </li>
+                                    
                                 <li>
                                     Block incoming damage. you can do so only for attacks
                                     that target you directly. You may, in any order:
                                     <ul className="list-disc space-y-1 pl-6 pt-1">
                                         <li>Discard any number of cards in hand with a
-                                            <GameIcon name="threat_lvl" /> rating. The maximuim a
-                                            card can block using its <GameIcon name="threat_lvl" />
+                                        {" "}<GameIcon name="threat_lvl" /> rating. The maximuim a
+                                            card can block using its <GameIcon name="threat_lvl" />{" "}
                                             is 3, however the block keyword can increase this limit.
                                             add the discarded cards together, and reduce the damage
                                             from an attacker of your choice by that total.</li>
@@ -801,12 +805,7 @@ export function HowToPlayPage() {
                                         </li>
                                         <li>
                                             If it is <span className="font-semibold text-cyan-200">expended</span>,
-                                            it deals damage equal to half its{" "}
-                                            <GameIcon name="threat_lvl" />, rounded down. For
-                                            this damage, ignore modifiers that add damage when
-                                            the unit deals damage (such as Lethal), but still
-                                            apply modifiers that change its{" "}
-                                            <GameIcon name="threat_lvl" /> directly.
+                                            it deals 0 damage.
                                         </li>
                                     </ul>
                                     If there are
@@ -1082,13 +1081,13 @@ export function HowToPlayPage() {
                                     <tbody className="divide-y divide-white/10">
                                         <tr>
                                             <td className="py-2 pr-4">Heavy weight</td>
-                                            <td className="py-2 pr-4">30&ndash;39</td>
+                                            <td className="py-2 pr-4">30</td>
                                             <td className="py-2">3</td>
 
                                         </tr>
                                         <tr>
                                             <td className="py-2 pr-4">Medium weight</td>
-                                            <td className="py-2 pr-4">40&ndash;59</td>
+                                            <td className="py-2 pr-4">40&ndash;50</td>
                                             <td className="py-2">2</td>
 
                                         </tr>
