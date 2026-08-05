@@ -921,9 +921,7 @@ export function HowToPlayPage() {
                                 has by adding those effects to the lock/queue (but not the card
                                 itself); then move the card to the battlefield if it's an entity, or
                                 to the discard pile if it's a cyberspell. You may have up to 3 cards
-                                with time counters on them in your stockpile at any given time. Cards
-                                with time counters on them in your stockpile cannot be the target of
-                                cyberspells or abilities.
+                                with time counters on them in your stockpile at any given time. 
                             </p>
                         </Section>
 

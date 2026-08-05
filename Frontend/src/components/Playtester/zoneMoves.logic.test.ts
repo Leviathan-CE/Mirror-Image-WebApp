@@ -393,7 +393,7 @@ describe("moveAllFromZone", () => {
     ).toBe(cards)
   })
 
-  it("moves dismantled cards to trashyard and stockpile", () => {
+  it("moves dismantled cards to trashyard and trash to dismantled", () => {
     const cards = [
       card({ instanceId: "d1", zone: PLAY_ZONE.dismantled, cardId: 1 }),
       card({ instanceId: "d2", zone: PLAY_ZONE.dismantled, cardId: 2 }),
@@ -408,14 +408,18 @@ describe("moveAllFromZone", () => {
       PLAY_ZONE.trashyard,
     ])
 
-    const toStock = moveAllFromZone(
-      cards,
-      PLAY_ZONE.dismantled,
-      PLAY_ZONE.stockpile
+    const trashCards = [
+      card({ instanceId: "t1", zone: PLAY_ZONE.trashyard, cardId: 1 }),
+      card({ instanceId: "t2", zone: PLAY_ZONE.trashyard, cardId: 2 }),
+    ]
+    const toDismantled = moveAllFromZone(
+      trashCards,
+      PLAY_ZONE.trashyard,
+      PLAY_ZONE.dismantled
     )
-    expect(toStock.every((c) => c.zone === PLAY_ZONE.stockpile)).toBe(true)
-    expect(toStock[0]?.x).toBe(20)
-    expect(toStock[1]?.x).toBe(48)
+    expect(toDismantled.every((c) => c.zone === PLAY_ZONE.dismantled)).toBe(
+      true
+    )
   })
 
   it("moves every library card to the trashyard (top mills first)", () => {
