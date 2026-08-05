@@ -1076,6 +1076,7 @@ export function HowToPlayPage() {
                                             <th className="py-2 pr-4">Deck size</th>
                                             <th className="py-2 pr-4">Capacity (# cards)</th>
                                             <th className="py-2">Equip slots (# augments)</th>
+                                            <th className="py-2">Modifier</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/10">
@@ -1083,18 +1084,21 @@ export function HowToPlayPage() {
                                             <td className="py-2 pr-4">Heavy weight</td>
                                             <td className="py-2 pr-4">30</td>
                                             <td className="py-2">3</td>
+                                            <td className="py-2">Max 2 copies instead of three per named card</td>
 
                                         </tr>
                                         <tr>
                                             <td className="py-2 pr-4">Medium weight</td>
                                             <td className="py-2 pr-4">40&ndash;50</td>
                                             <td className="py-2">2</td>
+                                            <td className="py-2">NA</td>
 
                                         </tr>
                                         <tr>
                                             <td className="py-2 pr-4">Light weight</td>
                                             <td className="py-2 pr-4">60&ndash;70</td>
                                             <td className="py-2">1</td>
+                                            <td className="py-2">Your Pilots coloured invoke cost count as double for determining your colour combination</td>
 
                                         </tr>
                                     </tbody>
