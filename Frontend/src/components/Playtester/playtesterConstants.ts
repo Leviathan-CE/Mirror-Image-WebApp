@@ -90,7 +90,7 @@ export const CTX_MENU_ACTION = {
   deckSearch: "deck-search",
   moveAll: "move-all",
   moveAllToDeck: "move-all-to-deck",
-  moveAllToStockpile: "move-all-to-stockpile",
+  moveAllToDismantled: "move-all-to-dismantled",
   moveAllToTrashyard: "move-all-to-trashyard",
 } as const
 

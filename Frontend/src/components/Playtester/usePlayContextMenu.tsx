@@ -95,9 +95,9 @@ function buildMoveAllMenuItem(
       to: PLAY_ZONE.library,
     },
     {
-      id: CTX_MENU_ACTION.moveAllToStockpile,
-      label: "Stockpile",
-      to: PLAY_ZONE.stockpile,
+      id: CTX_MENU_ACTION.moveAllToDismantled,
+      label: "Dismantled",
+      to: PLAY_ZONE.dismantled,
     },
     {
       id: CTX_MENU_ACTION.moveAllToTrashyard,

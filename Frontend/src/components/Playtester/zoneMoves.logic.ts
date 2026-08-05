@@ -512,15 +512,11 @@ export type MoveAllSourceZone =
   | typeof PLAY_ZONE.trashyard
   | typeof PLAY_ZONE.dismantled
 
-/** Destinations offered by "Move all" (never includes dismantled). */
+/** Destinations offered by "Move all" (never includes stockpile). */
 export type MoveAllDestinationZone =
   | typeof PLAY_ZONE.library
-  | typeof PLAY_ZONE.stockpile
+  | typeof PLAY_ZONE.dismantled
   | typeof PLAY_ZONE.trashyard
-
-const STOCKPILE_MOVE_ALL_STEP_X = 28
-const STOCKPILE_MOVE_ALL_STEP_Y = 16
-const STOCKPILE_MOVE_ALL_COLS = 8
 
 /**
  * Move every card in `from` into `to`. No-op when the pile is empty or when
@@ -553,13 +549,8 @@ export function moveAllFromZone(
     return next
   }
 
-  let seq = next.filter((c) => c.zone === PLAY_ZONE.stockpile).length
   for (const card of moving) {
-    const x = 20 + (seq % STOCKPILE_MOVE_ALL_COLS) * STOCKPILE_MOVE_ALL_STEP_X
-    const y =
-      24 + Math.floor(seq / STOCKPILE_MOVE_ALL_COLS) * STOCKPILE_MOVE_ALL_STEP_Y
-    next = moveToStockpile(next, card.instanceId, x, y)
-    seq += 1
+    next = moveToDismantled(next, card.instanceId)
   }
   return next
 }
