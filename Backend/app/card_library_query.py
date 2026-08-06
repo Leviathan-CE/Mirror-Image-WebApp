@@ -12,13 +12,27 @@ def escape_like(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-def cost_has_stl_identity(tokens: list[str]) -> bool:
+_NUMBERED_GEN = frozenset(f"GEN{i}" for i in range(11))  # GEN0 … GEN10
+
+
+def cost_is_pure_numbered_gen(tokens: list[str]) -> bool:
+    """True when every cost pip is GEN0–GEN10 (no chromatic / bare GEN / STL)."""
+    cleaned = [(raw or "").strip().upper() for raw in tokens if (raw or "").strip()]
+    return bool(cleaned) and all(token in _NUMBERED_GEN for token in cleaned)
+
+
+def cost_has_stl_identity(
+    tokens: list[str], *, include_pure_numbered_gen: bool = False
+) -> bool:
     """
     Whether invoke-cost pips count as steel for library colour filters.
 
-    Bare GEN is steel (same as playtester / Unity). Numbered GEN0–GEN10 are
-    generic mana and do not count. Explicit STL / hybrids (e.g. LIF-STL) do.
+    Always: bare GEN, explicit STL, STL hybrids (e.g. LIF-STL).
+    When include_pure_numbered_gen (STL filter alone): also pure GEN0–GEN10
+    costs with no other colours.
     """
+    if include_pure_numbered_gen and cost_is_pure_numbered_gen(tokens):
+        return True
     for raw in tokens:
         token = (raw or "").strip().upper()
         if not token:
@@ -32,23 +46,41 @@ def cost_has_stl_identity(tokens: list[str]) -> bool:
     return False
 
 
-def sql_card_matches_stl(alias: str = "cards") -> str:
+def sql_card_matches_stl(
+    alias: str = "cards", *, include_pure_numbered_gen: bool = False
+) -> str:
     """
     STL identity for library colour filters (resources/tokens excluded):
     - cost includes an STL symbol (including hybrids like LIF-STL), or
-    - cost includes bare GEN (steel pip — not GEN1 / GEN2 / …).
+    - cost includes bare GEN (steel pip — not GEN1 / GEN2 / …), or
+    - when include_pure_numbered_gen: every cost pip is GEN0–GEN10 only.
     """
+    pure_numbered = ""
+    if include_pure_numbered_gen:
+        pure_numbered = f"""
+        OR (
+          jsonb_array_length(COALESCE({alias}.cost, '[]'::jsonb)) > 0
+          AND NOT EXISTS (
+            SELECT 1
+              FROM jsonb_array_elements_text({alias}.cost) AS token(value)
+             WHERE UPPER(BTRIM(token.value)) !~ '^GEN(10|[0-9])$'
+          )
+        )
+        """
     return f"""
     (
       NOT (
         {alias}.super_types @> '["Resource"]'::jsonb
         OR {alias}.super_types @> '["Token"]'::jsonb
       )
-      AND EXISTS (
-        SELECT 1
-          FROM jsonb_array_elements_text({alias}.cost) AS token(value)
-         WHERE UPPER(BTRIM(token.value)) = 'GEN'
-            OR UPPER(BTRIM(token.value)) ~ '(^|[-])STL([-]|$)'
+      AND (
+        EXISTS (
+          SELECT 1
+            FROM jsonb_array_elements_text({alias}.cost) AS token(value)
+           WHERE UPPER(BTRIM(token.value)) = 'GEN'
+              OR UPPER(BTRIM(token.value)) ~ '(^|[-])STL([-]|$)'
+        )
+        {pure_numbered}
       )
     )
     """
@@ -94,9 +126,15 @@ def apply_catalogue_filters(
         token = raw.strip().upper()
         if token and token not in colors:
             colors.append(token)
+    # Pure GEN0–GEN10 only count as STL when STL is the sole colour filter.
+    stl_include_pure_numbered = colors == ["STL"]
     for index, token in enumerate(colors):
         if token == "STL":
-            where.append(sql_card_matches_stl(alias))
+            where.append(
+                sql_card_matches_stl(
+                    alias, include_pure_numbered_gen=stl_include_pure_numbered
+                )
+            )
             continue
         key = f"color_{index}"
         where.append(
