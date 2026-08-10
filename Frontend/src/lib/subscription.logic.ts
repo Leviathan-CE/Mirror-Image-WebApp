@@ -17,6 +17,19 @@ export function isUserSubscribed(user: AuthUser | null | undefined): boolean {
   return ENTITLED_STATUSES.has(user.subscription_status ?? "none")
 }
 
+/** Effective feature unlock from /auth/me (grants ∪ subscriber defaults ∪ admin). */
+export function userHasFeature(
+  user: AuthUser | null | undefined,
+  featureKey: string
+): boolean {
+  if (!user) return false
+  if (user.role === ADMIN_ROLE) return true
+  if (user.features?.includes(featureKey)) return true
+  // Fallback when older /me payloads omit features[]:
+  if (featureKey === "preview_cards") return isUserSubscribed(user)
+  return false
+}
+
 export type PeriodLabelStatus = {
   subscription_status: string
   cancel_at_period_end?: boolean

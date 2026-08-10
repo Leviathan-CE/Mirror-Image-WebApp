@@ -8,7 +8,9 @@ from fastapi.staticfiles import StaticFiles
 from app.routers import health
 from app.routers import card_manager
 from app.routers import admin_cards
+from app.routers import admin_users
 from app.routers import auth
+from app.routers import email_auth
 from app.routers import billing
 from app.routers import decks
 from app.settings import frontend_origins, is_dev
@@ -69,9 +71,11 @@ async def thumbnail_cache_headers(request, call_next):
 
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(email_auth.router)
 app.include_router(billing.router)
 app.include_router(decks.router)
 app.include_router(admin_cards.router)
+app.include_router(admin_users.router)
 app.include_router(card_manager.router)
 
 thumbnails_dir = Path(__file__).resolve().parent / "thumbnails"

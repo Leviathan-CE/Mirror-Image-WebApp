@@ -1,17 +1,12 @@
 /**
  * Create-account route (`/register`).
- *
- * 1. User submits username + email + password → `createAccount`.
- * 2. On success: `setSession`, then show `LoginBootScreen`.
- * 3. Boot `onComplete` navigates to the intended page (or `/main`).
+ * Creates the account and requires email verification before login.
  */
 
-import { useCallback, useState, type SubmitEvent } from "react"
-import { Link, useLocation, useNavigate } from "react-router-dom"
+import { useState, type SubmitEvent } from "react"
+import { Link } from "react-router-dom"
 
-import { useAuth } from "@/app/providers/AuthProvider"
 import { sharedImages } from "@/assets"
-import { LoginBootScreen } from "@/components/auth/loginBoot"
 import {
   HELP_TONE_CLASS,
   type HelpTone,
@@ -27,6 +22,10 @@ function helpMessageForError(detail: string): string {
   switch (detail) {
     case "username_or_email_taken":
       return "That username or email is already registered."
+    case "email_not_configured":
+      return "Email is not configured on the server. Contact an admin."
+    case "email_send_failed":
+      return "Could not send the verification email. Try again later."
     case "database_unavailable":
       return "Server database is unavailable. Try again in a moment."
     default:
@@ -35,12 +34,6 @@ function helpMessageForError(detail: string): string {
 }
 
 export function CreateAccountPage() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { setSession } = useAuth()
-  const redirectTo =
-    (location.state as { from?: string } | null)?.from || ROUTES.MAIN
-
   const [userName, setUserName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -49,13 +42,7 @@ export function CreateAccountPage() {
     "Choose a username, email, and password (8+ characters)."
   )
   const [submitting, setSubmitting] = useState(false)
-  /** When true, the boot overlay covers the form until navigation. */
-  const [booting, setBooting] = useState(false)
-  const [bootName, setBootName] = useState("")
-
-  const finishBoot = useCallback(() => {
-    navigate(redirectTo, { replace: true })
-  }, [navigate, redirectTo])
+  const [done, setDone] = useState(false)
 
   async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -81,16 +68,11 @@ export function CreateAccountPage() {
 
     try {
       const result = await createAccount(trimmedName, trimmedEmail, password)
-      setSession(result.access_token, {
-        id: result.id,
-        user_name: result.user_name,
-        email: result.email,
-        role: result.role,
-      })
       setHelpTone("success")
-      setHelpText(`Welcome, ${result.user_name}. Account created.`)
-      setBootName(result.user_name)
-      setBooting(true)
+      setHelpText(
+        `Account created for ${result.user_name}. Check ${result.email} for a verification link before logging in.`
+      )
+      setDone(true)
     } catch (error) {
       setHelpTone("error")
       if (error instanceof ApiError) {
@@ -103,25 +85,29 @@ export function CreateAccountPage() {
     }
   }
 
-  const formLocked = submitting || booting
-
   return (
-    <>
-      {booting ? (
-        <LoginBootScreen userName={bootName} onComplete={finishBoot} />
-      ) : null}
+    <section
+      className="relative min-h-screen bg-cover bg-center bg-no-repeat px-6 py-12"
+      style={{ backgroundImage: `url(${sharedImages.ZONE_BACKGROUND})` }}
+    >
+      <div className="absolute inset-0 bg-black/60" aria-hidden />
 
-      <section
-        className="relative min-h-screen bg-cover bg-center bg-no-repeat px-6 py-12"
-        style={{ backgroundImage: `url(${sharedImages.ZONE_BACKGROUND})` }}
-      >
-        <div className="absolute inset-0 bg-black/60" aria-hidden />
+      <div className="relative z-10 mx-auto flex w-full max-w-md flex-col gap-6 pt-16">
+        <h1 className="font-glitch text-center text-3xl text-cyan-300 lg:text-4xl">
+          CREATE ACCOUNT
+        </h1>
 
-        <div className="relative z-10 mx-auto flex w-full max-w-md flex-col gap-6 pt-16">
-          <h1 className="font-glitch text-center text-3xl text-cyan-300 lg:text-4xl">
-            CREATE ACCOUNT
-          </h1>
-
+        {done ? (
+          <div className="border border-cyan-500/20 bg-black/50 p-6 text-center">
+            <p className={cn("text-sm", HELP_TONE_CLASS.success)}>{helpText}</p>
+            <Link
+              to={ROUTES.LOGIN}
+              className="mt-4 inline-block text-cyan-300 underline hover:text-cyan-200"
+            >
+              GO TO LOGIN
+            </Link>
+          </div>
+        ) : (
           <form
             onSubmit={onSubmit}
             className="flex flex-col gap-4 border border-cyan-500/20 bg-black/50 p-6"
@@ -136,7 +122,7 @@ export function CreateAccountPage() {
                 placeholder="username"
                 value={userName}
                 onChange={(event) => setUserName(event.target.value)}
-                disabled={formLocked}
+                disabled={submitting}
               />
             </label>
 
@@ -150,7 +136,7 @@ export function CreateAccountPage() {
                 placeholder="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                disabled={formLocked}
+                disabled={submitting}
               />
             </label>
 
@@ -165,7 +151,7 @@ export function CreateAccountPage() {
                 placeholder="password (8+ characters)"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                disabled={formLocked}
+                disabled={submitting}
               />
             </label>
 
@@ -183,7 +169,7 @@ export function CreateAccountPage() {
             <GlitchFx
               type="submit"
               label={submitting ? "CREATING ACCOUNT…" : "CREATE ACCOUNT"}
-              disabled={formLocked}
+              disabled={submitting}
               size="lg"
               className="font-buahs93 h-10 w-full rounded-none bg-cyan-700 px-8 hover:bg-cyan-900 active:bg-cyan-400 disabled:opacity-60"
             />
@@ -198,8 +184,8 @@ export function CreateAccountPage() {
               </Link>
             </p>
           </form>
-        </div>
-      </section>
-    </>
+        )}
+      </div>
+    </section>
   )
 }

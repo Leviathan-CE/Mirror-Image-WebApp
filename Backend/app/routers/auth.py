@@ -13,6 +13,12 @@ from psycopg2 import OperationalError
 from psycopg2.errors import UniqueViolation
 
 from app.db import get_connection
+from app.email_tokens import email_http_error, issue_and_send_verify
+from app.features import (
+    effective_feature_keys,
+    load_feature_catalog,
+    load_granted_feature_keys,
+)
 from app.security import (
     UNITY_TOKEN_EXPIRE_MINUTES,
     create_access_token,
@@ -64,6 +70,8 @@ class UserPublic(BaseModel):
     subscription_status: str = "none"
     subscription_type: str = ""
     is_subscribed: bool = False
+    email_verified: bool = False
+    features: list[str] = Field(default_factory=list)
 
 
 class AuthResponse(BaseModel):
@@ -79,14 +87,15 @@ class RegisterResponse(BaseModel):
     user_name: str
     email: str
     role: str
-    subscription_status: str = "none"
-    subscription_type: str = ""
-    is_subscribed: bool = False
-    access_token: str
-    token_type: str = "bearer"
+    message: str = "verification_email_sent"
 
 
-def _user_public_from_row(row: tuple) -> UserPublic:
+def _user_public_from_row(
+    row: tuple,
+    *,
+    email_verified: bool = False,
+    features: list[str] | None = None,
+) -> UserPublic:
     """
     Map a users SELECT row:
     id, user_name, email, role, subscription_status, subscription_type
@@ -104,13 +113,16 @@ def _user_public_from_row(row: tuple) -> UserPublic:
         is_subscribed=is_subscription_entitled(
             role=role, subscription_status=sub_status
         ),
+        email_verified=email_verified,
+        features=features or [],
     )
 
 
 def _fetch_user_by_login(cur, identifier: str) -> tuple | None:
     sql = """
         SELECT id, user_name, email, password, role,
-               subscription_status, subscription_type
+               subscription_status, subscription_type,
+               is_active, email_verification_received
         FROM users
         WHERE lower(email) = lower(%(id)s)
            OR lower(user_name) = lower(%(id)s)
@@ -120,16 +132,27 @@ def _fetch_user_by_login(cur, identifier: str) -> tuple | None:
     return cur.fetchone()
 
 
+def _features_for_user(cur, user_id: int, role: str, sub_status: str) -> list[str]:
+    granted = load_granted_feature_keys(cur, user_id)
+    catalog = [key for key, _label, _desc in load_feature_catalog(cur)]
+    return effective_feature_keys(
+        role=role,
+        subscription_status=sub_status,
+        granted_keys=granted,
+        catalog_keys=catalog,
+    )
+
+
 @router.post("/register", response_model=RegisterResponse, status_code=201)
 def register(body: RegisterRequest):
-    """Create a new account and return a JWT."""
+    """Create a new account and send a verification email (no JWT until verified)."""
     password_hash = hash_password(body.password)
     email = str(body.email).lower()
 
     sql = """
         INSERT INTO users (user_name, email, password)
         VALUES (%(user_name)s, %(email)s, %(password)s)
-        RETURNING id, user_name, email, role, subscription_status, subscription_type
+        RETURNING id, user_name, email, role
     """
     try:
         with get_connection() as conn:
@@ -143,6 +166,20 @@ def register(body: RegisterRequest):
                     },
                 )
                 row = cur.fetchone()
+                try:
+                    issue_and_send_verify(
+                        cur,
+                        user_id=int(row[0]),
+                        email=email,
+                        user_name=body.user_name,
+                    )
+                except Exception as e:
+                    conn.rollback()
+                    mapped = email_http_error(e)
+                    raise HTTPException(
+                        status_code=mapped["status_code"],
+                        detail=mapped["detail"],
+                    ) from e
             conn.commit()
     except UniqueViolation as e:
         logger.info("register conflict: %s", e)
@@ -150,6 +187,8 @@ def register(body: RegisterRequest):
             status_code=status.HTTP_409_CONFLICT,
             detail="username_or_email_taken",
         ) from e
+    except HTTPException:
+        raise
     except OperationalError as e:
         logger.warning("db error on register: %s", e)
         raise HTTPException(
@@ -157,22 +196,11 @@ def register(body: RegisterRequest):
             detail="database_unavailable",
         ) from e
 
-    public = _user_public_from_row(row)
-    token = create_access_token(
-        user_id=public.id,
-        user_name=public.user_name,
-        email=public.email,
-        role=public.role,
-    )
     return RegisterResponse(
-        id=public.id,
-        user_name=public.user_name,
-        email=public.email,
-        role=public.role,
-        subscription_status=public.subscription_status,
-        subscription_type=public.subscription_type,
-        is_subscribed=public.is_subscribed,
-        access_token=token,
+        id=row[0],
+        user_name=row[1],
+        email=row[2],
+        role=row[3],
     )
 
 
@@ -183,25 +211,51 @@ def login(body: LoginRequest):
         with get_connection() as conn:
             with conn.cursor() as cur:
                 row = _fetch_user_by_login(cur, body.identifier)
+                if row is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="invalid_credentials",
+                    )
+
+                (
+                    user_id,
+                    user_name,
+                    email,
+                    password_hash,
+                    role,
+                    sub_status,
+                    sub_type,
+                    is_active,
+                    email_verified,
+                ) = row
+                if not password_hash or not verify_password(
+                    body.password, password_hash
+                ):
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="invalid_credentials",
+                    )
+                if not is_active:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="account_disabled",
+                    )
+                if not email_verified:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="email_not_verified",
+                    )
+                features = _features_for_user(
+                    cur, int(user_id), role, sub_status or "none"
+                )
+    except HTTPException:
+        raise
     except OperationalError as e:
         logger.warning("db error on login: %s", e)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="database_unavailable",
         ) from e
-
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="invalid_credentials",
-        )
-
-    user_id, user_name, email, password_hash, role, sub_status, sub_type = row
-    if not password_hash or not verify_password(body.password, password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="invalid_credentials",
-        )
 
     token = create_access_token(
         user_id=user_id,
@@ -215,7 +269,9 @@ def login(body: LoginRequest):
         ),
     )
     public = _user_public_from_row(
-        (user_id, user_name, email, role, sub_status or "none", sub_type or "")
+        (user_id, user_name, email, role, sub_status or "none", sub_type or ""),
+        email_verified=True,
+        features=features,
     )
     expires_in = (
         UNITY_TOKEN_EXPIRE_MINUTES * 60
@@ -229,7 +285,8 @@ def login(body: LoginRequest):
 def me(user_id: int = Depends(get_current_user_id)):
     """Return the current user from the Bearer token."""
     sql = """
-        SELECT id, user_name, email, role, subscription_status, subscription_type
+        SELECT id, user_name, email, role, subscription_status, subscription_type,
+               email_verification_received, is_active
         FROM users
         WHERE id = %(user_id)s
     """
@@ -238,6 +295,26 @@ def me(user_id: int = Depends(get_current_user_id)):
             with conn.cursor() as cur:
                 cur.execute(sql, {"user_id": user_id})
                 row = cur.fetchone()
+                if row is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="user_not_found",
+                    )
+                if not row[7]:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="account_disabled",
+                    )
+                features = _features_for_user(
+                    cur, int(row[0]), row[3], row[4] or "none"
+                )
+                public = _user_public_from_row(
+                    row[:6],
+                    email_verified=bool(row[6]),
+                    features=features,
+                )
+    except HTTPException:
+        raise
     except OperationalError as e:
         logger.warning("db error on /me: %s", e)
         raise HTTPException(
@@ -245,9 +322,4 @@ def me(user_id: int = Depends(get_current_user_id)):
             detail="database_unavailable",
         ) from e
 
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="user_not_found",
-        )
-    return _user_public_from_row(row)
+    return public

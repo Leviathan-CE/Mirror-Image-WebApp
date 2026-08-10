@@ -41,6 +41,14 @@ services:
       APP_ENV: ${APP_ENV:-development}
       FRONTEND_URL: ${FRONTEND_URL:-http://127.0.0.1:3000}
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-${FRONTEND_URL:-http://127.0.0.1:3000}}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      SMTP_USE_SSL: ${SMTP_USE_SSL:-false}
+      MAIL_FROM: ${MAIL_FROM:-}
     ports:
       - "8000:8000"
     # Named volume — same idea as production: art lives in the container

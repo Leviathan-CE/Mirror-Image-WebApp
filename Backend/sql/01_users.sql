@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS users (
     password TEXT NOT NULL,  -- bcrypt password hash (never store plaintext)
     email TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'user',
+    -- Soft-disable: false blocks login; rows and decks are retained.
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
 
     -- Stripe subscription entitlement (feature unlocks). Separate from role.
     stripe_customer_id TEXT DEFAULT NULL,
@@ -61,3 +63,5 @@ COMMENT ON COLUMN users.subscription_type IS
     'Human-readable subscription tier label (e.g. standard, premium).';
 COMMENT ON COLUMN users.subscription_cancel_at_period_end IS
     'True when Stripe will end the subscription at current_period_end (cancel scheduled).';
+COMMENT ON COLUMN users.is_active IS
+    'False blocks login (soft-disable). Decks and data are retained.';
