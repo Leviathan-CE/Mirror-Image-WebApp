@@ -10,6 +10,9 @@ import type { AuthUser } from "@/lib/api/auth"
 
 const ENTITLED_STATUSES = new Set(["active", "trialing"])
 
+/** Always available — no account / no grant (mirrors backend PUBLIC_FEATURES). */
+const PUBLIC_FEATURES = new Set(["playtester"])
+
 export function isUserSubscribed(user: AuthUser | null | undefined): boolean {
   if (!user) return false
   if (typeof user.is_subscribed === "boolean") return user.is_subscribed
@@ -17,11 +20,12 @@ export function isUserSubscribed(user: AuthUser | null | undefined): boolean {
   return ENTITLED_STATUSES.has(user.subscription_status ?? "none")
 }
 
-/** Effective feature unlock from /auth/me (grants ∪ subscriber defaults ∪ admin). */
+/** Effective feature unlock (public ∪ /auth/me grants ∪ subscriber defaults ∪ admin). */
 export function userHasFeature(
   user: AuthUser | null | undefined,
   featureKey: string
 ): boolean {
+  if (PUBLIC_FEATURES.has(featureKey)) return true
   if (!user) return false
   if (user.role === ADMIN_ROLE) return true
   if (user.features?.includes(featureKey)) return true

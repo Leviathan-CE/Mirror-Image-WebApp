@@ -53,8 +53,21 @@ def smtp_config() -> dict[str, str | int | bool]:
     }
 
 
-def send_email(*, to: str, subject: str, text_body: str, html_body: str) -> None:
-    """Send a multipart text/html message. Raises on config or SMTP failure."""
+def send_email(
+    *,
+    to: str,
+    subject: str,
+    text_body: str,
+    html_body: str,
+    inline_images: list[tuple[str, bytes, str]] | None = None,
+) -> None:
+    """
+    Send a multipart text/html message. Raises on config or SMTP failure.
+
+    ``inline_images`` is a list of ``(cid, data, image_subtype)`` for CID embeds
+    (e.g. ``("mi-logo@mirrorimage", png_bytes, "png")``). HTML should use
+    ``src="cid:mi-logo@mirrorimage"`` (no angle brackets).
+    """
     cfg = smtp_config()
     msg = EmailMessage()
     msg["Subject"] = subject
@@ -62,6 +75,17 @@ def send_email(*, to: str, subject: str, text_body: str, html_body: str) -> None
     msg["To"] = to
     msg.set_content(text_body)
     msg.add_alternative(html_body, subtype="html")
+
+    if inline_images:
+        html_part = msg.get_body(preferencelist=("html",))
+        if html_part is not None:
+            for cid, data, subtype in inline_images:
+                html_part.add_related(
+                    data,
+                    maintype="image",
+                    subtype=subtype,
+                    cid=f"<{cid}>",
+                )
 
     host = str(cfg["host"])
     port = int(cfg["port"])

@@ -50,7 +50,7 @@ INSERT INTO features (key, label, description)
 SELECT
     'playtester',
     'Playtester',
-    'Reserved unlock for playtester access (gate when paywalled).'
+    'Public playtester — available without an account; not grantable by admins.'
 WHERE NOT EXISTS (
     SELECT 1 FROM features WHERE key = 'playtester'
 );

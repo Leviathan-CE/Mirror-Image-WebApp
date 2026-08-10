@@ -1,6 +1,6 @@
 /**
  * Account subscription page — Standard Supporter plan + Stripe Checkout.
- * Preview cards + Playtester unlocks gate on entitlement once those features ship.
+ * Preview cards gate on entitlement; playtester stays public (no account).
  */
 
 import { useEffect, useState } from "react"
