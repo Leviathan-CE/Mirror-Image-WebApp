@@ -48,7 +48,7 @@ def auth_headers(user_token: str) -> dict[str, str]:
 
 @pytest.fixture
 def other_auth_headers(client: TestClient, require_db: None) -> dict[str, str]:
-    """JWT for a freshly registered non-owner account."""
+    """JWT for a freshly registered non-owner account (email verified via SQL)."""
     suffix = uuid.uuid4().hex[:8]
     user_name = f"deck_tester_{suffix}"
     email = f"deck_tester_{suffix}@example.com"
@@ -62,9 +62,47 @@ def other_auth_headers(client: TestClient, require_db: None) -> dict[str, str]:
             "password": password,
         },
     )
-    if register.status_code == 201:
-        token = register.json()["access_token"]
-        return {"Authorization": f"Bearer {token}"}
+    # Register may fail without SMTP — create the user row directly for tests.
+    if register.status_code != 201:
+        from app.security import hash_password
+
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO users (
+                        user_name, email, password, role, is_active,
+                        email_verification_sent, email_verification_received,
+                        email_verified_at
+                    )
+                    SELECT
+                        %(user_name)s, %(email)s, %(password)s, 'user', TRUE,
+                        TRUE, TRUE, NOW()
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM users WHERE lower(email) = lower(%(email)s)
+                    )
+                    """,
+                    {
+                        "user_name": user_name,
+                        "email": email,
+                        "password": hash_password(password),
+                    },
+                )
+            conn.commit()
+    else:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE users
+                       SET email_verification_received = TRUE,
+                           email_verified_at = NOW(),
+                           email_verification_sent = TRUE
+                     WHERE lower(email) = lower(%(email)s)
+                    """,
+                    {"email": email},
+                )
+            conn.commit()
 
     login = client.post(
         "/auth/login",

@@ -6,8 +6,8 @@ from fastapi import Depends
 from psycopg2 import OperationalError
 
 from app.db import get_connection
+from app.features import FEATURE_PREVIEW_CARDS, load_granted_feature_keys, user_has_feature
 from app.security import get_optional_is_admin, get_optional_user_id
-from app.subscription import is_subscription_entitled
 
 PUBLISHED_STATUS = "published"
 PREVIEW_STATUS = "preview"
@@ -68,8 +68,7 @@ def get_optional_include_preview(
     True when the caller is entitled to see preview-status cards.
 
     Admins use ``bypass`` instead; this stays False for them so SQL stays simple.
-    Looks up live ``subscription_status`` (not JWT) so post-checkout sync works
-    without re-login.
+    Looks up live role / subscription / grants (not JWT).
     """
     if is_admin or user_id is None:
         return False
@@ -86,15 +85,20 @@ def get_optional_include_preview(
                     {"user_id": user_id},
                 )
                 row = cur.fetchone()
+                if row is None:
+                    return False
+                role = row[0] or "user"
+                sub_status = row[1] or "none"
+                granted = load_granted_feature_keys(cur, user_id)
     except OperationalError:
         return False
 
-    if row is None:
-        return False
-
-    role = row[0] or "user"
-    sub_status = row[1] or "none"
-    return is_subscription_entitled(role=role, subscription_status=sub_status)
+    return user_has_feature(
+        role=role,
+        subscription_status=sub_status,
+        granted_keys=granted,
+        feature_key=FEATURE_PREVIEW_CARDS,
+    )
 
 
 def should_classify_publish_status(

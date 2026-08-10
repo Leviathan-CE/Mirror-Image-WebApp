@@ -4,7 +4,54 @@ import {
   formatSubscriptionDate,
   isUserSubscribed,
   subscriptionPeriodLabel,
+  userHasFeature,
 } from "./subscription.logic"
+
+describe("userHasFeature", () => {
+  it("uses features[] from /auth/me", () => {
+    expect(
+      userHasFeature(
+        {
+          id: 1,
+          user_name: "a",
+          email: "a@x",
+          role: "user",
+          features: ["preview_cards"],
+        },
+        "preview_cards"
+      )
+    ).toBe(true)
+    expect(
+      userHasFeature(
+        {
+          id: 1,
+          user_name: "a",
+          email: "a@x",
+          role: "user",
+          features: [],
+          subscription_status: "none",
+          is_subscribed: false,
+        },
+        "playtester"
+      )
+    ).toBe(false)
+  })
+
+  it("admins always pass", () => {
+    expect(
+      userHasFeature(
+        {
+          id: 1,
+          user_name: "a",
+          email: "a@x",
+          role: "admin",
+          features: [],
+        },
+        "playtester"
+      )
+    ).toBe(true)
+  })
+})
 
 describe("isUserSubscribed", () => {
   it("uses is_subscribed when present", () => {

@@ -12,6 +12,8 @@ export type AuthUser = {
   subscription_status?: string
   subscription_type?: string
   is_subscribed?: boolean
+  email_verified?: boolean
+  features?: string[]
 }
 
 export type LoginResponse = {
@@ -25,8 +27,7 @@ export type RegisterResponse = {
   user_name: string
   email: string
   role: string
-  access_token: string
-  token_type: string
+  message?: string
 }
 
 export async function loginRequest(

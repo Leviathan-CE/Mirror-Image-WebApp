@@ -17,8 +17,10 @@ import {
   type HelpTone,
 } from "@/components/auth/authFormStyles"
 import { GlitchFx } from "@/components/effects/GlitchFx"
+import { Button } from "@/components/ui/button"
 import { EditBox } from "@/components/ui/EditBox"
 import { loginRequest } from "@/lib/api/auth"
+import { resendVerificationRequest } from "@/lib/api/email_auth"
 import { ApiError } from "@/lib/api/client"
 import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
@@ -27,6 +29,10 @@ function helpMessageForError(detail: string): string {
   switch (detail) {
     case "invalid_credentials":
       return "Login failed — wrong username/email or password."
+    case "email_not_verified":
+      return "Email not verified. Check your inbox or resend verification below."
+    case "account_disabled":
+      return "This account has been disabled."
     case "database_unavailable":
       return "Server database is unavailable. Try again in a moment."
     default:
@@ -51,10 +57,36 @@ export function LoginPage() {
   /** When true, the boot overlay covers the form until navigation. */
   const [booting, setBooting] = useState(false)
   const [bootName, setBootName] = useState("")
+  const [needsVerify, setNeedsVerify] = useState(false)
+  const [resendEmail, setResendEmail] = useState("")
 
   const finishBoot = useCallback(() => {
     navigate(redirectTo, { replace: true })
   }, [navigate, redirectTo])
+
+  async function onResendVerify() {
+    const target = resendEmail.trim() || identifier.trim()
+    if (!target.includes("@")) {
+      setHelpTone("error")
+      setHelpText("Enter the account email to resend verification.")
+      return
+    }
+    setSubmitting(true)
+    try {
+      await resendVerificationRequest(target)
+      setHelpTone("success")
+      setHelpText("If that account needs verification, a new email was sent.")
+    } catch (error) {
+      setHelpTone("error")
+      if (error instanceof ApiError) {
+        setHelpText(helpMessageForError(error.detail))
+      } else {
+        setHelpText("Could not reach the server.")
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -68,6 +100,7 @@ export function LoginPage() {
     setSubmitting(true)
     setHelpTone("pending")
     setHelpText("Checking credentials…")
+    setNeedsVerify(false)
 
     try {
       const result = await loginRequest(identifier.trim(), password)
@@ -80,6 +113,10 @@ export function LoginPage() {
       setHelpTone("error")
       if (error instanceof ApiError) {
         setHelpText(helpMessageForError(error.detail))
+        if (error.detail === "email_not_verified") {
+          setNeedsVerify(true)
+          if (identifier.includes("@")) setResendEmail(identifier.trim())
+        }
       } else {
         setHelpText("Could not reach the server. Is the API running?")
       }
@@ -160,6 +197,13 @@ export function LoginPage() {
             />
 
             <p className="text-center text-sm text-white/50">
+              <Link
+                to={ROUTES.FORGOT_PASSWORD}
+                className="text-cyan-300 underline hover:text-cyan-200"
+              >
+                FORGOT PASSWORD
+              </Link>
+              {" · "}
               Need an account?{" "}
               <Link
                 to={ROUTES.REGISTER}
@@ -168,6 +212,30 @@ export function LoginPage() {
                 CREATE ACCOUNT
               </Link>
             </p>
+
+            {needsVerify ? (
+              <div className="border border-amber-500/30 bg-black/40 p-3">
+                <label className="flex flex-col gap-2">
+                  <span className="font-buahs93 text-xs text-amber-200/80">
+                    RESEND VERIFICATION EMAIL
+                  </span>
+                  <EditBox
+                    value={resendEmail}
+                    onChange={(e) => setResendEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    disabled={formLocked}
+                  />
+                </label>
+                <Button
+                  type="button"
+                  disabled={formLocked}
+                  className="font-buahs93 mt-2 h-9 w-full rounded-none bg-amber-800 px-4 text-sm text-white hover:bg-amber-700 disabled:opacity-60"
+                  onClick={() => void onResendVerify()}
+                >
+                  RESEND
+                </Button>
+              </div>
+            ) : null}
           </form>
         </div>
       </section>

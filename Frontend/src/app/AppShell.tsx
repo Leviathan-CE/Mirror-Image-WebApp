@@ -7,6 +7,10 @@ import { AppHeader } from "@/components/common/AppHeader"
 import { HomePage, HowToPlayPage, MainPage } from "@/pages"
 import { LoginPage } from "@/pages/auth/LoginPage"
 import { CreateAccountPage } from "@/pages/auth/CreateAccountPage"
+import { VerifyEmailPage } from "@/pages/auth/VerifyEmailPage"
+import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage"
+import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage"
+import { AcceptInvitePage } from "@/pages/auth/AcceptInvitePage"
 import { CardLibraryPage } from "@/pages/cards/CardLibraryPage"
 import { DeckPage } from "@/pages/decks/DeckPage"
 import { LorePage } from "@/pages/lore/LorePage"
@@ -40,6 +44,19 @@ export function AppShell() {
             <Route path={ROUTES.LORE} element={<LorePage />} />
             <Route path={ROUTES.LOGIN} element={<LoginPage />} />
             <Route path={ROUTES.REGISTER} element={<CreateAccountPage />} />
+            <Route path={ROUTES.VERIFY_EMAIL} element={<VerifyEmailPage />} />
+            <Route
+              path={ROUTES.FORGOT_PASSWORD}
+              element={<ForgotPasswordPage />}
+            />
+            <Route
+              path={ROUTES.RESET_PASSWORD}
+              element={<ResetPasswordPage />}
+            />
+            <Route
+              path={ROUTES.ACCEPT_INVITE}
+              element={<AcceptInvitePage />}
+            />
             <Route path={ROUTES.DECK_COMUNITY} element={<ComunityDecksPage />} />
             <Route path={ROUTES.PLAY_TESTER} element={<PlayTesterPage/>}/>
             <Route path={ROUTES.PLAY_TESTER_PATTERN} element={<PlayTesterPage />} />

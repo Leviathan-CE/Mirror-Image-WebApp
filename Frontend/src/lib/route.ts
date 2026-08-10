@@ -10,6 +10,10 @@ export const ROUTES = {
   LORE: "/lore",
   LOGIN: "/login",
   REGISTER: "/register",
+  VERIFY_EMAIL: "/verify-email",
+  FORGOT_PASSWORD: "/forgot-password",
+  RESET_PASSWORD: "/reset-password",
+  ACCEPT_INVITE: "/accept-invite",
   DECK_COMUNITY: "/comunity_decks",
   PLAY_TESTER: "/play_tester",
 
