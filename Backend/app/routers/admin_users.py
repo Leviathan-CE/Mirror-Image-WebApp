@@ -14,7 +14,7 @@ from psycopg2.errors import UniqueViolation
 from app.db import get_connection
 from app.email_tokens import email_http_error, issue_and_send_invite, issue_and_send_verify
 from app.features import (
-    load_feature_catalog,
+    load_grantable_feature_catalog,
     load_granted_feature_keys,
     sync_user_feature_grants,
 )
@@ -172,11 +172,11 @@ def _load_user_admin_row(cur, user_id: int) -> tuple | None:
 
 @router.get("/features", response_model=list[FeatureCatalogItem])
 def list_features(_admin_id: int = Depends(get_current_admin_user_id)):
-    """Feature catalog for admin grant toggles (DB is source of truth)."""
+    """Grantable feature catalog for admin toggles (excludes always-public keys)."""
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
-                rows = load_feature_catalog(cur)
+                rows = load_grantable_feature_catalog(cur)
     except OperationalError as e:
         logger.warning("db error on admin features: %s", e)
         raise HTTPException(status_code=503, detail="database_unavailable") from e

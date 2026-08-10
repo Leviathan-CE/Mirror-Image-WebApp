@@ -10,8 +10,16 @@ from app.subscription import is_subscription_entitled
 FEATURE_PREVIEW_CARDS = "preview_cards"
 FEATURE_PLAYTESTER = "playtester"
 
+# Always available (no account / no grant). Kept in the catalog for /auth/me
+# but excluded from admin grant toggles.
+PUBLIC_FEATURES = frozenset({FEATURE_PLAYTESTER})
+
 # Features unlocked automatically for Stripe active/trialing (and admins via role).
 SUBSCRIBER_DEFAULT_FEATURES = frozenset({FEATURE_PREVIEW_CARDS})
+
+
+def is_public_feature(feature_key: str) -> bool:
+    return feature_key in PUBLIC_FEATURES
 
 
 def user_has_feature(
@@ -24,8 +32,10 @@ def user_has_feature(
     """
     True when the user may use ``feature_key``.
 
-    Order: admin → explicit grant → subscriber defaults (Stripe entitled).
+    Order: public → admin → explicit grant → subscriber defaults (Stripe entitled).
     """
+    if feature_key in PUBLIC_FEATURES:
+        return True
     if role == "admin":
         return True
     granted = {k for k in granted_keys if k}
@@ -85,6 +95,13 @@ def load_feature_catalog(cur) -> list[tuple[str, str, str]]:
     return [(row[0], row[1], row[2] or "") for row in cur.fetchall()]
 
 
+def load_grantable_feature_catalog(cur) -> list[tuple[str, str, str]]:
+    """Catalog rows admins can grant (excludes always-public features)."""
+    return [
+        row for row in load_feature_catalog(cur) if row[0] not in PUBLIC_FEATURES
+    ]
+
+
 def sync_user_feature_grants(
     cur,
     *,
@@ -97,7 +114,13 @@ def sync_user_feature_grants(
 
     Unknown keys raise ValueError. Returns the sorted granted keys.
     """
-    wanted = sorted({k.strip() for k in feature_keys if k and k.strip()})
+    wanted = sorted(
+        {
+            k.strip()
+            for k in feature_keys
+            if k and k.strip() and k.strip() not in PUBLIC_FEATURES
+        }
+    )
     if wanted:
         cur.execute(
             """

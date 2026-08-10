@@ -4,6 +4,7 @@ from app.features import (
     FEATURE_PLAYTESTER,
     FEATURE_PREVIEW_CARDS,
     effective_feature_keys,
+    is_public_feature,
     user_has_feature,
 )
 
@@ -18,14 +19,25 @@ def test_admin_has_all_catalog_features():
     assert keys == [FEATURE_PREVIEW_CARDS, FEATURE_PLAYTESTER]
 
 
-def test_subscriber_gets_preview_not_playtester_by_default():
+def test_playtester_is_always_public():
+    assert is_public_feature(FEATURE_PLAYTESTER)
+    assert not is_public_feature(FEATURE_PREVIEW_CARDS)
+    assert user_has_feature(
+        role="user",
+        subscription_status="none",
+        granted_keys=[],
+        feature_key=FEATURE_PLAYTESTER,
+    )
+
+
+def test_subscriber_gets_preview_and_public_playtester():
     assert user_has_feature(
         role="user",
         subscription_status="active",
         granted_keys=[],
         feature_key=FEATURE_PREVIEW_CARDS,
     )
-    assert not user_has_feature(
+    assert user_has_feature(
         role="user",
         subscription_status="active",
         granted_keys=[],

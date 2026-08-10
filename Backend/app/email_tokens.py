@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 
@@ -14,6 +15,10 @@ from app.settings import frontend_url
 PURPOSE_VERIFY = "verify_email"
 PURPOSE_RESET = "password_reset"
 PURPOSE_INVITE = "invite"
+
+# Content-ID for the header logo (must match img src="cid:…").
+_LOGO_CID = "mi-logo@mirrorimage"
+_LOGO_PATH = Path(__file__).resolve().parent / "static" / "email" / "logo.png"
 
 TOKEN_TTL = {
     PURPOSE_VERIFY: timedelta(hours=48),
@@ -159,12 +164,31 @@ def mark_verification_sent(cur, user_id: int) -> None:
     )
 
 
+def _logo_inline() -> list[tuple[str, bytes, str]]:
+    """
+    Embed logo bytes in the message (CID).
+
+    Works in local and production inboxes — clients do not need to fetch
+    http://127.0.0.1 or a live site URL for the header image.
+    """
+    if not _LOGO_PATH.is_file():
+        return []
+    return [(_LOGO_CID, _LOGO_PATH.read_bytes(), "png")]
+
+
 def _html_wrap(title: str, body_html: str) -> str:
+    # CID image travels with the email (see send_email inline_images).
     return (
-        f"<html><body style='font-family:sans-serif;line-height:1.5'>"
-        f"<h2>{title}</h2>{body_html}"
-        f"<p style='color:#666;font-size:12px'>Mirror Image</p>"
-        f"</body></html>"
+        "<html><body style='font-family:sans-serif;line-height:1.5;margin:0;padding:0'>"
+        "<table role='presentation' width='100%' cellpadding='0' cellspacing='0' "
+        "style='max-width:560px;margin:0 auto;padding:24px'>"
+        "<tr><td style='padding-bottom:16px'>"
+        f"<img src='cid:{_LOGO_CID}' alt='Mirror Image' width='160' "
+        "style='display:block;width:160px;max-width:100%;height:auto;border:0'>"
+        "</td></tr>"
+        f"<tr><td><h2 style='margin:0 0 12px'>{title}</h2>{body_html}</td></tr>"
+        "<tr><td style='padding-top:24px;color:#666;font-size:12px'>Mirror Image</td></tr>"
+        "</table></body></html>"
     )
 
 
@@ -182,7 +206,13 @@ def send_verify_email(*, to: str, user_name: str, raw_token: str) -> None:
         f"<p><a href=\"{link}\">Verify your email</a> to sign in.</p>"
         f"<p>Or open: {link}</p>",
     )
-    send_email(to=to, subject=subject, text_body=text, html_body=html)
+    send_email(
+        to=to,
+        subject=subject,
+        text_body=text,
+        html_body=html,
+        inline_images=_logo_inline(),
+    )
 
 
 def send_reset_email(*, to: str, user_name: str, raw_token: str) -> None:
@@ -199,7 +229,13 @@ def send_reset_email(*, to: str, user_name: str, raw_token: str) -> None:
         f"<p><a href=\"{link}\">Reset your password</a>.</p>"
         f"<p>Or open: {link}</p>",
     )
-    send_email(to=to, subject=subject, text_body=text, html_body=html)
+    send_email(
+        to=to,
+        subject=subject,
+        text_body=text,
+        html_body=html,
+        inline_images=_logo_inline(),
+    )
 
 
 def send_invite_email(*, to: str, user_name: str, raw_token: str) -> None:
@@ -215,7 +251,13 @@ def send_invite_email(*, to: str, user_name: str, raw_token: str) -> None:
         f"<p><a href=\"{link}\">Accept invite</a> and set your password.</p>"
         f"<p>Or open: {link}</p>",
     )
-    send_email(to=to, subject=subject, text_body=text, html_body=html)
+    send_email(
+        to=to,
+        subject=subject,
+        text_body=text,
+        html_body=html,
+        inline_images=_logo_inline(),
+    )
 
 
 def issue_and_send_verify(cur, *, user_id: int, email: str, user_name: str) -> None:

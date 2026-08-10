@@ -231,7 +231,7 @@ export function AdminUsersPage() {
   return (
     <AdminPageShell
       title="USERS"
-      description="Create and invite accounts, change roles, grant features without Stripe, disable or permanently delete users."
+      description="Create and invite accounts, change roles, grant paid features without Stripe, disable or permanently delete users. Playtester is always public and is not listed here."
     >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
         <label className="flex w-full min-w-0 flex-col gap-1 lg:min-w-[14rem] lg:flex-1">

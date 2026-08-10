@@ -21,6 +21,10 @@ describe("userHasFeature", () => {
         "preview_cards"
       )
     ).toBe(true)
+  })
+
+  it("treats playtester as always public (even logged out)", () => {
+    expect(userHasFeature(null, "playtester")).toBe(true)
     expect(
       userHasFeature(
         {
@@ -34,10 +38,10 @@ describe("userHasFeature", () => {
         },
         "playtester"
       )
-    ).toBe(false)
+    ).toBe(true)
   })
 
-  it("admins always pass", () => {
+  it("admins always pass gated features", () => {
     expect(
       userHasFeature(
         {
@@ -47,7 +51,7 @@ describe("userHasFeature", () => {
           role: "admin",
           features: [],
         },
-        "playtester"
+        "preview_cards"
       )
     ).toBe(true)
   })
