@@ -23,7 +23,6 @@ import {
   type DeckCardDragPayload,
 } from "@/components/decks/DeckCardStack"
 import { CardLibraryBrowser } from "@/components/cards/CardLibraryBrowser"
-import { MiddleMouseScroll } from "@/components/ui/MiddleMouseScroll"
 import "@/components/decks/DeckCardStack.css"
 import {
   augmentCategory,
@@ -1164,30 +1163,23 @@ export function DeckPage() {
                   className="relative flex w-full shrink-0 flex-col border border-cyan-500/25 bg-black/55 p-3 xl:sticky xl:top-4 xl:h-[calc(100vh-2rem)] xl:max-h-[calc(100vh-2rem)] xl:w-[var(--browse-w)] xl:overflow-hidden"
                   style={{ ["--browse-w" as string]: `${browseWidth}px` }}
                 >
-                  <MiddleMouseScroll
-                    label="Card library"
-                    horizontal={false}
-                    vertical
+                  <CardLibraryBrowser
                     className="min-h-0 w-full flex-1"
-                    viewportClassName="pr-2"
-                  >
-                    <CardLibraryBrowser
-                      token={token}
-                      compact
-                      draggable
-                      title="CARD LIBRARY"
-                      onCardActivate={(card) =>
-                        void onAddCardFromSearch({
-                          id: card.id,
-                          card_name: card.card_name,
-                          card_set_name: card.card_set_name,
-                          rarity: card.rarity,
-                          card_art_path: card.card_art_path,
-                          card_art_version: card.card_art_version,
-                        })
-                      }
-                    />
-                  </MiddleMouseScroll>
+                    token={token}
+                    compact
+                    draggable
+                    title="CARD LIBRARY"
+                    onCardActivate={(card) =>
+                      void onAddCardFromSearch({
+                        id: card.id,
+                        card_name: card.card_name,
+                        card_set_name: card.card_set_name,
+                        rarity: card.rarity,
+                        card_art_path: card.card_art_path,
+                        card_art_version: card.card_art_version,
+                      })
+                    }
+                  />
                   <div
                     role="separator"
                     aria-orientation="vertical"

@@ -8,6 +8,7 @@ import { useAuth } from "@/app/providers/AuthProvider"
 import { CardDetailOverlay } from "@/components/cards/CardDetailOverlay"
 import { costTokenToIcon } from "@/components/cards/CardCostIcons"
 import { CardSearchBar } from "@/components/cards/CardSearchBar"
+import { SearchPaginationBar } from "@/components/cards/SearchPaginationBar"
 import { GameIcon } from "@/components/common/GameIcon"
 import { Button } from "@/components/ui/button"
 import { EditBox } from "@/components/ui/EditBox"
@@ -56,45 +57,6 @@ function publishTone(status: string): string {
   if (status === "published") return "text-emerald-300/90"
   if (status === "preview") return "text-amber-300/90"
   return "text-white/45"
-}
-
-type PaginationBarProps = {
-  canPrev: boolean
-  canNext: boolean
-  disabled: boolean
-  onPrev: () => void
-  onNext: () => void
-  className?: string
-}
-
-function PaginationBar({
-  canPrev,
-  canNext,
-  disabled,
-  onPrev,
-  onNext,
-  className,
-}: PaginationBarProps) {
-  return (
-    <div className={cn("flex items-center justify-between gap-3", className)}>
-      <Button
-        type="button"
-        className={secondaryActionClassName}
-        disabled={!canPrev || disabled}
-        onClick={onPrev}
-      >
-        PREV
-      </Button>
-      <Button
-        type="button"
-        className={secondaryActionClassName}
-        disabled={!canNext || disabled}
-        onClick={onNext}
-      >
-        NEXT
-      </Button>
-    </div>
-  )
 }
 
 export function AdminCardsPage() {
@@ -615,7 +577,8 @@ export function AdminCardsPage() {
         </p>
       ) : null}
 
-      <PaginationBar
+      <SearchPaginationBar
+        variant="plain"
         className="mb-3"
         canPrev={canPrev}
         canNext={canNext}
@@ -737,7 +700,8 @@ export function AdminCardsPage() {
         </table>
       </div>
 
-      <PaginationBar
+      <SearchPaginationBar
+        variant="plain"
         className="mt-4"
         canPrev={canPrev}
         canNext={canNext}
