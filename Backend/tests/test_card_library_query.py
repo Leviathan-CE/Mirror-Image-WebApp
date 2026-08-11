@@ -24,6 +24,13 @@ def test_numbered_gen_is_not_steel_when_paired():
     assert cost_has_stl_identity(["LIF", "GEN3"], include_pure_numbered_gen=True) is False
 
 
+def test_empty_cost_counts_only_when_stl_alone():
+    """Colorless / no-cost cards (e.g. free augments) match STL-only filter."""
+    assert cost_has_stl_identity([], include_pure_numbered_gen=True) is True
+    assert cost_has_stl_identity([""], include_pure_numbered_gen=True) is True
+    assert cost_has_stl_identity([], include_pure_numbered_gen=False) is False
+
+
 def test_pure_numbered_gen_counts_only_when_stl_alone():
     assert cost_is_pure_numbered_gen(["GEN0"]) is True
     assert cost_is_pure_numbered_gen(["GEN3", "GEN10"]) is True
@@ -47,6 +54,7 @@ def test_sql_stl_alone_includes_pure_numbered_gen():
     assert "= 'GEN'" in alone
     assert "STL" in alone
     assert "^GEN(10|[0-9])$" in alone
+    assert "jsonb_array_length(COALESCE(cards.cost, '[]'::jsonb)) = 0" in alone
 
 
 def test_sql_stl_paired_excludes_pure_numbered_gen_branch():
@@ -54,6 +62,7 @@ def test_sql_stl_paired_excludes_pure_numbered_gen_branch():
     assert "= 'GEN'" in paired
     assert "STL" in paired
     assert "^GEN(10|[0-9])$" not in paired
+    assert "jsonb_array_length(COALESCE(cards.cost, '[]'::jsonb)) = 0" not in paired
     # Old “no chromatic ⇒ STL” branch must stay gone.
     assert "MULTI" not in paired
     assert "LIF|MET|POW|RAM|TIM" not in paired
