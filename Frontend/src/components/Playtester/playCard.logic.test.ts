@@ -106,12 +106,14 @@ describe("readyBattlefieldAndStockpile", () => {
         selected: true,
       }),
       card({ instanceId: "sp", zone: PLAY_ZONE.stockpile, expended: true }),
+      card({ instanceId: "pilot", zone: PLAY_ZONE.pilot, expended: true }),
       card({ instanceId: "hand", zone: PLAY_ZONE.hand, expended: true }),
     ]
     const next = readyBattlefieldAndStockpile(cards)
     expect(next.find((c) => c.instanceId === "bf")?.expended).toBe(false)
     expect(next.find((c) => c.instanceId === "bf")?.selected).toBe(false)
     expect(next.find((c) => c.instanceId === "sp")?.expended).toBe(false)
+    expect(next.find((c) => c.instanceId === "pilot")?.expended).toBe(false)
     expect(next.find((c) => c.instanceId === "hand")?.expended).toBe(true)
   })
 

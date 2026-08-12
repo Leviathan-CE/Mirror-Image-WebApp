@@ -354,6 +354,19 @@ describe("moveToPilot", () => {
     expect(next.find((c) => c.instanceId === "old")?.zone).toBe(PLAY_ZONE.hand)
   })
 
+  it("is a no-op when the card is already seated (keeps expended)", () => {
+    const cards = [
+      card({
+        instanceId: "pilot",
+        zone: PLAY_ZONE.pilot,
+        expended: true,
+      }),
+    ]
+    const next = moveToPilot(cards, "pilot")
+    expect(next).toBe(cards)
+    expect(next[0]?.expended).toBe(true)
+  })
+
   it("destroys a resource targeting pilot", () => {
     const cards = [
       card({

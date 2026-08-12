@@ -636,10 +636,8 @@ export function HowToPlayPage() {
                                 How to Allocate a Resource to a Unit
                             </h3>
                             <p>
-                                This ability can be used any time a Quick Hack can, including {" "}
-                                while the lock is full&mdash;but only if
-                                you control no units that already have an expended resource allocated
-                                to them. Each resource allocated to a unit gives it a +1<GameIcon name="threat_lvl" /> rating for
+                                This ability can be used any time you can play a cyberspell process, and only once per turn, on your turn.
+                                Each resource allocated to a unit gives it a +1<GameIcon name="threat_lvl" /> rating for
                                 each resource allocated. To allocate a resource, expend it "<GameIcon name="expend" />" and choose
                                 a target. This ability does not use the lock and thus happens immediately. An
                                 Example of what a unit looks like with a resource allocated to it found below:
