@@ -856,6 +856,7 @@ export function PlayTesterPage() {
       },
       inspectCard: (card) => setInspectCard(card),
       adjustPilotGenBonus,
+      toggleExpended: onToggleExpended,
       degradeDeck,
       lookAtDeckTop,
       putDeckTopOnBottom,
@@ -1003,6 +1004,9 @@ export function PlayTesterPage() {
                   size="lg"
                   onReleaseCard={onFaceUpPileRelease}
                   onCardContextMenu={onFloatCardContextMenu}
+                  onToggleExpended={(instanceId) =>
+                    onToggleExpended([instanceId])
+                  }
                   cardOverlay={
                     pilotGenBonus > 0 ? (
                       <span

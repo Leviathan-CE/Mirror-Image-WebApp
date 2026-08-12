@@ -426,6 +426,9 @@ export function moveToPilot(
   cards: PlayingCardInstance[],
   instanceId: string
 ): PlayingCardInstance[] {
+  const seated = cards.find((c) => c.instanceId === instanceId)
+  if (seated?.zone === PLAY_ZONE.pilot) return cards
+
   const destroyed = destroyResourceTokenIfLeaving(cards, instanceId, "pilot")
   if (destroyed) return destroyed
 

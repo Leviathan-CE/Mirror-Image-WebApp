@@ -82,6 +82,7 @@ export const CTX_MENU_ACTION = {
   createCopy: "create-copy",
   addPilotGen: "add-pilot-gen",
   removePilotGen: "remove-pilot-gen",
+  toggleExpended: "toggle-expended",
   deckDegrade: "deck-degrade",
   deckLookTop: "deck-look-top",
   deckPutTopBottom: "deck-put-top-bottom",

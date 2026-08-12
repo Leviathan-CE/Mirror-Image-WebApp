@@ -231,9 +231,9 @@ export function selectableActionTargets(
 }
 
 /**
- * Start-of-turn cleanup for free-float zones:
- * ready (un-expend) every battlefield + stockpile card, and remove 1 time
- * counter from each that still has at least one.
+ * Start-of-turn cleanup for in-play expend zones:
+ * ready (un-expend) every battlefield + stockpile + pilot card, and remove 1
+ * time counter from each that still has at least one.
  *
  * The maintenance phase readies *before* removing counters, so a card still
  * holding a counter at that moment keeps its expended state and only readies
@@ -243,7 +243,13 @@ export function readyBattlefieldAndStockpile(
   cards: PlayingCardInstance[]
 ): PlayingCardInstance[] {
   return cards.map((c) => {
-    if (c.zone !== PLAY_ZONE.battlefield && c.zone !== PLAY_ZONE.stockpile) return c
+    if (
+      c.zone !== PLAY_ZONE.battlefield &&
+      c.zone !== PLAY_ZONE.stockpile &&
+      c.zone !== PLAY_ZONE.pilot
+    ) {
+      return c
+    }
     const time = c.timeCounters ?? 0
     const waiting = time > 0
     return {

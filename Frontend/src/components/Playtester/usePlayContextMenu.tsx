@@ -133,6 +133,7 @@ export type PlayContextMenuActions = {
   duplicateCard: (instanceId: string) => void
   inspectCard: (card: PlayingCardInstance) => void
   adjustPilotGenBonus: (delta: number) => void
+  toggleExpended: (instanceIds: string[]) => void
   /** Deck pile actions */
   degradeDeck: (count: number) => void
   lookAtDeckTop: (count: number) => void
@@ -480,6 +481,11 @@ export function usePlayContextMenu({
 
   if (card.zone === PLAY_ZONE.pilot) {
     return [
+      {
+        id: CTX_MENU_ACTION.toggleExpended,
+        label: card.expended ? "Ready" : "Expend",
+        onSelect: () => actions.toggleExpended([card.instanceId]),
+      },
       {
         id: CTX_MENU_ACTION.addPilotGen,
         label: (

@@ -13,6 +13,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react"
@@ -87,6 +88,11 @@ export type TrashyardPileProps = {
    * Shown even when the pile is empty so zone-persistent counters stay visible.
    */
   cardOverlay?: ReactNode
+  /**
+   * Double-click a pile card to expend / ready (pilot slot).
+   * Omit on trashyard / dismantled — those cards are not in-play.
+   */
+  onToggleExpended?: (instanceId: string) => void
 }
 
 type TrashDrag = {
@@ -110,6 +116,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       onCardContextMenu,
       onPileContextMenu,
       cardOverlay,
+      onToggleExpended,
     },
     ref
   ) {
@@ -167,6 +174,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
         setFanLocked(false)
         setPileHovered(false)
         setHoveredIndex(null)
+        if (!current.moved) return
         onReleaseRef.current(
           current.instanceId,
           event.clientX,
@@ -228,6 +236,16 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
 
     function dragInstanceIdForGroup(group: TrashGroup): string {
       return group.instances[group.instances.length - 1]!.instanceId
+    }
+
+    function onCardDoubleClick(
+      event: ReactMouseEvent<HTMLDivElement>,
+      instanceId: string
+    ) {
+      if (!onToggleExpended) return
+      event.preventDefault()
+      event.stopPropagation()
+      onToggleExpended(instanceId)
     }
 
     return (
@@ -298,11 +316,16 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
                       width: cardW,
                       height: cardH,
                       zIndex: index + 1,
-                      transform: isHovered
-                        ? "scale(1.06)"
-                        : isCovering
-                          ? `translateY(-${revealShift}px)`
-                          : "translateY(0) scale(1)",
+                      transform: [
+                        isHovered
+                          ? "scale(1.06)"
+                          : isCovering
+                            ? `translateY(-${revealShift}px)`
+                            : "translateY(0) scale(1)",
+                        group.display.expended ? "rotate(90deg)" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" "),
                       filter: isHovered
                         ? "brightness(1.08)"
                         : isCovering
@@ -314,6 +337,9 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
                     }}
                     onPointerDown={(event) =>
                       onCardPointerDown(event, instanceId)
+                    }
+                    onDoubleClick={(event) =>
+                      onCardDoubleClick(event, instanceId)
                     }
                     onContextMenu={(event) => {
                       event.preventDefault()
@@ -346,12 +372,16 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
             ) : (
               <div
                 className={cn(
-                  "absolute inset-x-0 bottom-0 touch-none select-none",
-                  dragging?.moved ? "cursor-grabbing opacity-30" : "cursor-grab"
+                  "absolute inset-x-0 bottom-0 touch-none select-none origin-center transition-transform duration-250 ease-out",
+                  dragging?.moved ? "cursor-grabbing opacity-30" : "cursor-grab",
+                  topCard?.expended && "rotate-90"
                 )}
                 style={{ width: cardW, height: cardH }}
                 onPointerDown={(event) => {
                   if (topCard) onCardPointerDown(event, topCard.instanceId)
+                }}
+                onDoubleClick={(event) => {
+                  if (topCard) onCardDoubleClick(event, topCard.instanceId)
                 }}
                 onContextMenu={(event) => {
                   if (!topCard) return
@@ -393,7 +423,11 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
           >
             <PlayingCard
               card={ghostCard}
-              className={cn(cardBoxClass, "shadow-lg shadow-cyan-500/20")}
+              className={cn(
+                cardBoxClass,
+                "shadow-lg shadow-cyan-500/20",
+                ghostCard.expended && "rotate-90"
+              )}
             />
           </div>
         ) : null}
