@@ -99,7 +99,7 @@ def admin_browse_cards(
         default=None,
         description="Filter by publish status: published | preview | not published",
     ),
-    limit: int = Query(default=48, ge=1, le=100),
+    limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     _admin_id: int = Depends(get_current_admin_user_id),
 ):

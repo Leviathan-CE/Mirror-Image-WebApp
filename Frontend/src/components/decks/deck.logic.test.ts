@@ -4,6 +4,7 @@ import { DECK_CARD_MAX_COPIES } from "./DeckCardStack"
 import {
   applyCardMove,
   augmentCards,
+  canAddCopyToDeck,
   canAddCopyToMain,
   cardsByCategory,
   clampQuantityToMax,
@@ -13,6 +14,7 @@ import {
   isReservedCategory,
   mainCategoryId,
   maxCopiesForCategory,
+  maxQuantityForStackEntry,
   nextCardQuantity,
   nextNewSectionName,
   orderedSelectionKeys,
@@ -21,6 +23,7 @@ import {
   selectionRangeKeys,
   sortDeckCards,
   toggleSelectionKey,
+  totalCopiesOfCard,
   withCardEntry,
 } from "./deck.logic"
 import type { DeckCardEntry, DeckCategoryOut, DeckDetail } from "@/lib/api/decks"
@@ -233,7 +236,41 @@ describe("quantity rules", () => {
     expect(nextCardQuantity(1, -1, DECK_CARD_MAX_COPIES)).toBe(0)
   })
 
-  it("canAddCopyToMain blocks at max", () => {
+  it("sums copies of a card across all sections", () => {
+    const cards = [
+      card({ card_id: 7, category_id: 1, quantity: 2 }),
+      card({ card_id: 7, category_id: 2, quantity: 1 }),
+      card({ card_id: 8, category_id: 1, quantity: 3 }),
+    ]
+    expect(totalCopiesOfCard(cards, 7)).toBe(3)
+    expect(totalCopiesOfCard(cards, 8)).toBe(3)
+    expect(totalCopiesOfCard(cards, 9)).toBe(0)
+  })
+
+  it("caps a stack entry by copies already held elsewhere", () => {
+    const cards = [
+      card({ card_id: 7, category_id: 1, quantity: 2 }),
+      card({ card_id: 7, category_id: 2, quantity: 1 }),
+    ]
+    // Side already has 1 elsewhere → this Main stack may stay at 2, not grow.
+    expect(
+      maxQuantityForStackEntry(cards, 7, 2, DECK_CARD_MAX_COPIES)
+    ).toBe(2)
+    expect(nextCardQuantity(2, 1, 2)).toBeNull()
+    // With only 1 elsewhere, Side stack of 1 may grow to 2.
+    expect(
+      maxQuantityForStackEntry(
+        [card({ card_id: 7, category_id: 1, quantity: 1 }), cards[1]],
+        7,
+        1,
+        DECK_CARD_MAX_COPIES
+      )
+    ).toBe(2)
+  })
+
+  it("canAddCopyToDeck blocks at deck-wide max", () => {
+    expect(canAddCopyToDeck(3).ok).toBe(false)
+    expect(canAddCopyToDeck(2).ok).toBe(true)
     expect(canAddCopyToMain(3).ok).toBe(false)
     expect(canAddCopyToMain(2).ok).toBe(true)
   })

@@ -2,7 +2,8 @@ CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
     -- User primary data
     user_name TEXT NOT NULL,
-    password TEXT NOT NULL,  -- bcrypt password hash (never store plaintext)
+    -- bcrypt hash when set; NULL for OAuth-only accounts (Google/Apple).
+    password TEXT,
     email TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'user',
     -- Soft-disable: false blocks login; rows and decks are retained.
@@ -30,7 +31,9 @@ CREATE TABLE IF NOT EXISTS users (
 
     CONSTRAINT users_user_name_not_blank CHECK (length(trim(user_name)) > 0),
     CONSTRAINT users_email_not_blank CHECK (length(trim(email)) > 0),
-    CONSTRAINT users_password_not_blank CHECK (length(password) > 0),
+    CONSTRAINT users_password_not_blank CHECK (
+        password IS NULL OR length(trim(password)) > 0
+    ),
     CONSTRAINT users_role_allowed CHECK (role IN ('user', 'admin', 'distributor')),
     CONSTRAINT users_subscription_status_allowed CHECK (
         subscription_status IN (

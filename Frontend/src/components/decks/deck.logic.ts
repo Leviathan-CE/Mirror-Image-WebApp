@@ -173,6 +173,33 @@ export function maxCopiesForCategory(category: DeckCategoryOut): number {
   return isAugmentCategory(category) ? 1 : DECK_CARD_MAX_COPIES
 }
 
+/** Sum of quantity for one `card_id` across every section in the deck. */
+export function totalCopiesOfCard(
+  cards: readonly Pick<DeckCardEntry, "card_id" | "quantity">[],
+  cardId: number
+): number {
+  let total = 0
+  for (const card of cards) {
+    if (card.card_id === cardId) total += card.quantity
+  }
+  return total
+}
+
+/**
+ * Highest quantity one stack entry may hold without exceeding the
+ * deck-wide (or category) copy cap. Copies in other sections count
+ * against the same budget.
+ */
+export function maxQuantityForStackEntry(
+  cards: readonly Pick<DeckCardEntry, "card_id" | "quantity">[],
+  cardId: number,
+  stackQuantity: number,
+  maxCopies: number
+): number {
+  const elsewhere = totalCopiesOfCard(cards, cardId) - stackQuantity
+  return Math.max(0, maxCopies - Math.max(0, elsewhere))
+}
+
 /**
  * Next quantity after ±1, or `null` when the change is not allowed,
  * or `0` when the card should be removed from the deck.
@@ -200,16 +227,25 @@ export function nextNewSectionName(existingNames: Iterable<string>): string {
   return name
 }
 
-export function canAddCopyToMain(
-  existingQuantity: number | undefined
+/** Whether another copy may be added given the deck-wide total already held. */
+export function canAddCopyToDeck(
+  deckTotalQuantity: number,
+  maxCopies: number = DECK_CARD_MAX_COPIES
 ): { ok: true } | { ok: false; message: string } {
-  if ((existingQuantity ?? 0) >= DECK_CARD_MAX_COPIES) {
+  if (deckTotalQuantity >= maxCopies) {
     return {
       ok: false,
-      message: `Main already has ${DECK_CARD_MAX_COPIES} copies of that card.`,
+      message: `Deck already has ${maxCopies} copies of that card across all sections.`,
     }
   }
   return { ok: true }
+}
+
+/** @deprecated Prefer `canAddCopyToDeck` + `totalCopiesOfCard`. */
+export function canAddCopyToMain(
+  existingQuantity: number | undefined
+): { ok: true } | { ok: false; message: string } {
+  return canAddCopyToDeck(existingQuantity ?? 0)
 }
 
 export function clampQuantityToMax(

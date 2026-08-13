@@ -26,16 +26,19 @@ import { CardLibraryBrowser } from "@/components/cards/CardLibraryBrowser"
 import "@/components/decks/DeckCardStack.css"
 import {
   augmentCategory,
-  canAddCopyToMain,
+  canAddCopyToDeck,
   clampQuantityToMax,
   deckCardCount,
   mainCategoryId,
   maxCopiesForCategory,
+  maxQuantityForStackEntry,
   nextCardQuantity,
   nextNewSectionName,
   pilotCard,
   pilotCategory,
+  applyCardMove,
   removeCardEntry,
+  totalCopiesOfCard,
   withCardEntry,
 } from "@/components/decks/deck.logic"
 import { useCardSelection } from "@/hooks/useCardSelection"
@@ -292,7 +295,7 @@ export function DeckPage() {
           continue
         }
         if (item.fromCategoryId === created.id) continue
-        workingCards = await moveOneCopyBetweenCategories(
+        workingCards = await moveStackBetweenCategories(
           workingCards,
           item.cardId,
           item.fromCategoryId,
@@ -380,10 +383,11 @@ export function DeckPage() {
   }
 
   /**
-   * Move a single copy of a card between sections.
-   * Stacks stay behind (qty − 1); only one copy lands in the destination.
+   * Move an entire stack between sections (all copies of that card in the
+   * source category). If the destination already has the card, quantities
+   * merge up to the section max; leftovers stay in the source.
    */
-  async function moveOneCopyBetweenCategories(
+  async function moveStackBetweenCategories(
     workingCards: DeckCardEntry[],
     cardId: number,
     fromCategoryId: number,
@@ -408,43 +412,75 @@ export function DeckPage() {
       (card) =>
         card.card_id === cardId && card.category_id === toCategoryId
     )
-    if ((existingDest?.quantity ?? 0) >= maxCopies) {
+    const destQty = existingDest?.quantity ?? 0
+    if (destQty >= maxCopies) {
       throw new Error("max_copies")
     }
 
-    let nextCards = workingCards
+    const moveQty = Math.min(source.quantity, maxCopies - destQty)
+    if (moveQty <= 0) throw new Error("max_copies")
 
-    if (source.quantity <= 1) {
-      await removeDeckCard(deck.id, cardId, fromCategoryId, token)
-      nextCards = removeCardEntry(nextCards, cardId, fromCategoryId)
-    } else {
-      const reduced = await updateDeckCard(
+    // Empty destination: one PATCH relocates the whole stack (keeps quantity).
+    if (!existingDest && moveQty === source.quantity) {
+      const moved = await updateDeckCard(
         deck.id,
         cardId,
         fromCategoryId,
         token,
-        { quantity: source.quantity - 1 }
+        { category_id: toCategoryId }
       )
-      nextCards = [
-        ...removeCardEntry(nextCards, cardId, fromCategoryId),
-        reduced,
-      ]
+      return applyCardMove(workingCards, fromCategoryId, moved)
     }
 
-    const added = await addDeckCard(deck.id, token, {
-      card_id: cardId,
-      category_id: toCategoryId,
-      quantity: 1,
-    })
-    const clampedQty = clampQuantityToMax(added.quantity, maxCopies)
-    const entry =
-      clampedQty < added.quantity
-        ? await updateDeckCard(deck.id, cardId, toCategoryId, token, {
-            quantity: clampedQty,
-          })
-        : added
+    // Merge into an existing dest stack (or partial move when capped).
+    const mergedQty = destQty + moveQty
+    let nextCards = workingCards
 
-    return withCardEntry({ ...deck, cards: nextCards }, entry).cards
+    if (existingDest) {
+      const updatedDest = await updateDeckCard(
+        deck.id,
+        cardId,
+        toCategoryId,
+        token,
+        { quantity: mergedQty }
+      )
+      nextCards = [
+        ...removeCardEntry(nextCards, cardId, toCategoryId),
+        updatedDest,
+      ]
+    } else {
+      const added = await addDeckCard(deck.id, token, {
+        card_id: cardId,
+        category_id: toCategoryId,
+        quantity: moveQty,
+      })
+      const clampedQty = clampQuantityToMax(added.quantity, maxCopies)
+      const entry =
+        clampedQty < added.quantity
+          ? await updateDeckCard(deck.id, cardId, toCategoryId, token, {
+              quantity: clampedQty,
+            })
+          : added
+      nextCards = withCardEntry({ ...deck, cards: nextCards }, entry).cards
+    }
+
+    const remaining = source.quantity - moveQty
+    if (remaining <= 0) {
+      await removeDeckCard(deck.id, cardId, fromCategoryId, token)
+      return removeCardEntry(nextCards, cardId, fromCategoryId)
+    }
+
+    const reduced = await updateDeckCard(
+      deck.id,
+      cardId,
+      fromCategoryId,
+      token,
+      { quantity: remaining }
+    )
+    return [
+      ...removeCardEntry(nextCards, cardId, fromCategoryId),
+      reduced,
+    ]
   }
 
   async function onMoveCards(
@@ -460,7 +496,7 @@ export function DeckPage() {
     try {
       let workingCards = deck.cards
       for (const item of toMove) {
-        workingCards = await moveOneCopyBetweenCategories(
+        workingCards = await moveStackBetweenCategories(
           workingCards,
           item.cardId,
           item.fromCategoryId,
@@ -508,10 +544,16 @@ export function DeckPage() {
     )
 
     if (existing) {
-      const nextQty = nextCardQuantity(existing.quantity, 1, maxCopies)
+      const stackMax = maxQuantityForStackEntry(
+        deck.cards,
+        cardId,
+        existing.quantity,
+        maxCopies
+      )
+      const nextQty = nextCardQuantity(existing.quantity, 1, stackMax)
       if (nextQty === null) {
         setErrorText(
-          `${category.name} already has the maximum copies of that card.`
+          `Deck already has the maximum copies of that card across all sections.`
         )
         return
       }
@@ -532,6 +574,15 @@ export function DeckPage() {
       } finally {
         setSaving(false)
       }
+      return
+    }
+
+    const canAdd = canAddCopyToDeck(
+      totalCopiesOfCard(deck.cards, cardId),
+      maxCopies
+    )
+    if (!canAdd.ok) {
+      setErrorText(canAdd.message)
       return
     }
 
@@ -584,7 +635,16 @@ export function DeckPage() {
       sort_order: 0,
     }
     const maxCopies = maxCopiesForCategory(category)
-    const nextQty = nextCardQuantity(card.quantity, delta, maxCopies)
+    const stackMax =
+      delta > 0
+        ? maxQuantityForStackEntry(
+            deck.cards,
+            card.card_id,
+            card.quantity,
+            maxCopies
+          )
+        : maxCopies
+    const nextQty = nextCardQuantity(card.quantity, delta, stackMax)
     if (nextQty === null) return
 
     setErrorText("")
@@ -656,10 +716,7 @@ export function DeckPage() {
         return
       }
 
-      const existing = deck.cards.find(
-        (card) => card.card_id === hit.id && card.category_id === categoryId
-      )
-      const canAdd = canAddCopyToMain(existing?.quantity)
+      const canAdd = canAddCopyToDeck(totalCopiesOfCard(deck.cards, hit.id))
       if (!canAdd.ok) {
         setErrorText(canAdd.message)
         return
