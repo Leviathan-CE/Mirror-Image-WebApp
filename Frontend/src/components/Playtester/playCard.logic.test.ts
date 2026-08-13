@@ -6,6 +6,7 @@ import {
   CARD_COUNTER_FIELD,
   cardsInZone,
   duplicatePlayingCard,
+  duplicatePlayingCards,
   extractStockpileTimeCompletions,
   readyBattlefieldAndStockpile,
   selectableActionTargets,
@@ -34,6 +35,7 @@ function card(
     timeCounters: overrides.timeCounters,
     damageCounters: overrides.damageCounters,
     tlvCounters: overrides.tlvCounters,
+    tlvMinusCounters: overrides.tlvMinusCounters,
     x: overrides.x,
     y: overrides.y,
     ...overrides,
@@ -292,8 +294,39 @@ describe("adjustCardCounter", () => {
       (other) => other !== field
     )
     for (const other of others) {
-      expect(next[other]).toBeUndefined()
+      expect(next[other] ?? undefined).toBeUndefined()
     }
+  })
+
+  it("cancels +TLV against −1 TLV when adding either", () => {
+    const withTlv = [
+      card({
+        instanceId: "a",
+        zone: PLAY_ZONE.battlefield,
+        tlvCounters: 2,
+      }),
+    ]
+    const afterMinus = adjustCardCounter(withTlv, "a", "tlvMinus", 1)[0]!
+    expect(afterMinus.tlvCounters).toBe(1)
+    expect(afterMinus.tlvMinusCounters).toBeUndefined()
+
+    const withMinus = [
+      card({
+        instanceId: "b",
+        zone: PLAY_ZONE.battlefield,
+        tlvMinusCounters: 2,
+      }),
+    ]
+    const afterPlus = adjustCardCounter(withMinus, "b", "tlv", 1)[0]!
+    expect(afterPlus.tlvMinusCounters).toBe(1)
+    expect(afterPlus.tlvCounters).toBeUndefined()
+  })
+
+  it("stacks −1 TLV when there is no +TLV to cancel", () => {
+    const cards = [card({ instanceId: "a", zone: PLAY_ZONE.battlefield })]
+    const next = adjustCardCounter(cards, "a", "tlvMinus", 2)[0]!
+    expect(next.tlvMinusCounters).toBe(2)
+    expect(next.tlvCounters).toBeUndefined()
   })
 })
 
@@ -315,7 +348,7 @@ describe("cardsInZone / toggleExpended / duplicatePlayingCard", () => {
     expect(toggleExpended(cards, "a")[0]?.expended).toBe(true)
   })
 
-  it("duplicates free-float cards and preserves faceDown", () => {
+  it("duplicates free-float cards as tokens and preserves faceDown", () => {
     const cards = [
       card({
         instanceId: "a",
@@ -330,8 +363,37 @@ describe("cardsInZone / toggleExpended / duplicatePlayingCard", () => {
     const copy = next[1]!
     expect(copy.instanceId).not.toBe("a")
     expect(copy.faceDown).toBe(true)
+    expect(copy.isResourceToken).toBe(true)
     expect(copy.x).toBe(38)
     expect(copy.y).toBe(48)
+  })
+
+  it("duplicates each selected free-float card", () => {
+    const cards = [
+      card({
+        instanceId: "a",
+        zone: PLAY_ZONE.battlefield,
+        x: 0,
+        y: 0,
+        selected: true,
+      }),
+      card({
+        instanceId: "b",
+        zone: PLAY_ZONE.stockpile,
+        x: 100,
+        y: 40,
+        selected: true,
+      }),
+    ]
+    const next = duplicatePlayingCards(cards, ["a", "b"])
+    expect(next).toHaveLength(4)
+    const copies = next.filter((c) => c.instanceId !== "a" && c.instanceId !== "b")
+    expect(copies).toHaveLength(2)
+    expect(copies.every((c) => c.isResourceToken)).toBe(true)
+    expect(copies.map((c) => c.zone).sort()).toEqual([
+      PLAY_ZONE.battlefield,
+      PLAY_ZONE.stockpile,
+    ])
   })
 
   it("does not duplicate hand cards", () => {

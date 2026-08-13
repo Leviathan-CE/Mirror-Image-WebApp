@@ -1,6 +1,7 @@
 /**
  * Bottom hand strip — cards fan in a row; drag upward onto the battlefield.
  * Empty-area drag draws a marquee to multi-select.
+ * Ctrl/Cmd+click toggles a card in or out of the selection.
  * Dragging a selected card moves the whole hand selection as a group.
  *
  * Card drag move/up listen on `window` (capture). Relying only on the card
@@ -265,6 +266,16 @@ export function PlayerHand({
     const selectedIds = cards
       .filter((c) => c.selected)
       .map((c) => c.instanceId)
+
+    // Ctrl/Cmd+click toggles membership without starting a drag.
+    if (event.ctrlKey || event.metaKey) {
+      const nextIds = card.selected
+        ? selectedIds.filter((id) => id !== card.instanceId)
+        : [...selectedIds, card.instanceId]
+      onSelectionRef.current?.(nextIds)
+      return
+    }
+
     const groupIds =
       card.selected && selectedIds.length > 0
         ? selectedIds

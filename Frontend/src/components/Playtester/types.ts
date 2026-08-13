@@ -25,6 +25,7 @@ export {
   removeCard,
   adjustCardCounter,
   duplicatePlayingCard,
+  duplicatePlayingCards,
 } from "./playCard.logic"
 
 export {

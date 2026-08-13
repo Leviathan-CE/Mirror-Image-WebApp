@@ -70,7 +70,7 @@ import {
   moveAllFromZone,
   removeCard,
   adjustCardCounter,
-  duplicatePlayingCard,
+  duplicatePlayingCards,
   toggleExpended,
   setCardsFaceDown,
   readyBattlefieldAndStockpile,
@@ -851,8 +851,8 @@ export function PlayTesterPage() {
       adjustCounter: (instanceIds, kind, delta) => {
         adjustCardCounters(instanceIds, kind, delta)
       },
-      duplicateCard: (instanceId) => {
-        setSessionCards((prev) => duplicatePlayingCard(prev, instanceId))
+      duplicateCard: (instanceIds) => {
+        setSessionCards((prev) => duplicatePlayingCards(prev, instanceIds))
       },
       inspectCard: (card) => setInspectCard(card),
       adjustPilotGenBonus,

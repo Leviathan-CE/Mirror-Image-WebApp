@@ -38,6 +38,10 @@ export type PlayingCardInstance = {
   damageCounters?: number
   /** Extra TLV (threat level) counters. */
   tlvCounters?: number
+  /**
+   * −1 TLV counters (separate from +TLV). Adding one cancels one of the other.
+   */
+  tlvMinusCounters?: number
   /** Grey catch-all counters for effects with no dedicated counter. */
   genericCounters?: number
   /** Orange depletion counters. */
@@ -308,6 +312,7 @@ export type CardCounterKind =
   | "time"
   | "damage"
   | "tlv"
+  | "tlvMinus"
   | "generic"
   | "depletion"
 
@@ -320,11 +325,49 @@ export const CARD_COUNTER_FIELD = {
   time: "timeCounters",
   damage: "damageCounters",
   tlv: "tlvCounters",
+  tlvMinus: "tlvMinusCounters",
   generic: "genericCounters",
   depletion: "depletionCounters",
 } as const satisfies Record<CardCounterKind, keyof PlayingCardInstance>
 
 export type CardCounterField = (typeof CARD_COUNTER_FIELD)[CardCounterKind]
+
+/**
+ * +TLV and −1 TLV cancel each other when *adding*.
+ * Removing from a badge (negative delta) only reduces that kind.
+ */
+function applyTlvPairAdjust(
+  card: PlayingCardInstance,
+  kind: "tlv" | "tlvMinus",
+  delta: number
+): PlayingCardInstance {
+  let tlv = card.tlvCounters ?? 0
+  let tlvMinus = card.tlvMinusCounters ?? 0
+
+  if (delta < 0) {
+    if (kind === "tlv") tlv = Math.max(0, tlv + delta)
+    else tlvMinus = Math.max(0, tlvMinus + delta)
+  } else {
+    let remaining = delta
+    if (kind === "tlv") {
+      const cancelled = Math.min(tlvMinus, remaining)
+      tlvMinus -= cancelled
+      remaining -= cancelled
+      tlv += remaining
+    } else {
+      const cancelled = Math.min(tlv, remaining)
+      tlv -= cancelled
+      remaining -= cancelled
+      tlvMinus += remaining
+    }
+  }
+
+  return {
+    ...card,
+    tlvCounters: tlv > 0 ? tlv : undefined,
+    tlvMinusCounters: tlvMinus > 0 ? tlvMinus : undefined,
+  }
+}
 
 /** Add (or subtract) counters on a session card. Counts never go below 0. */
 export function adjustCardCounter(
@@ -335,6 +378,9 @@ export function adjustCardCounter(
 ): PlayingCardInstance[] {
   return cards.map((c) => {
     if (c.instanceId !== instanceId) return c
+    if (kind === "tlv" || kind === "tlvMinus") {
+      return applyTlvPairAdjust(c, kind, delta)
+    }
     const key = CARD_COUNTER_FIELD[kind]
     const current = c[key] ?? 0
     const next = Math.max(0, current + delta)
@@ -349,6 +395,10 @@ const COPY_OFFSET_Y = 28
  * Spawn a second physical copy of a free-float card (battlefield / stockpile).
  * New `instanceId` so React/drag treat it as a separate object; offset so it
  * is visible beside the original. Starts ready with no counters.
+ *
+ * Created copies are session tokens (`isResourceToken`): they stay on
+ * battlefield / stockpile, but are destroyed if moved into hand, library,
+ * trash, dismantled, or pilot — same leave-zone rules as resource tokens.
  */
 export function duplicatePlayingCard(
   cards: PlayingCardInstance[],
@@ -370,11 +420,23 @@ export function duplicatePlayingCard(
     y: (card.y ?? 0) + COPY_OFFSET_Y,
     expended: false,
     selected: false,
-    isResourceToken: card.isResourceToken,
+    isResourceToken: true,
     faceDown: card.faceDown,
     isClassified: card.isClassified,
     classification: card.classification,
   }
   // Append so the copy paints above the original (same as moveCardtoFront).
   return [...cards, copy]
+}
+
+/** Duplicate each free-float id (multi-select “Create copy”). */
+export function duplicatePlayingCards(
+  cards: PlayingCardInstance[],
+  instanceIds: string[]
+): PlayingCardInstance[] {
+  let next = cards
+  for (const id of instanceIds) {
+    next = duplicatePlayingCard(next, id)
+  }
+  return next
 }
