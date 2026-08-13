@@ -14,8 +14,9 @@ import {
 } from "@/components/decks/DeckCardStack"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu } from "@/components/ui/DropdownMenu"
-import { EditBox } from "@/components/ui/EditBox"
+import { PublicTextField } from "@/components/ui/PublicTextField"
 import type { DeckCardEntry, DeckCategoryOut } from "@/lib/api/decks"
+import { isPublicTextClean } from "@/lib/profanity"
 import { cn } from "@/lib/utils"
 
 type DeckCategorySectionProps = {
@@ -71,6 +72,7 @@ export function DeckCategorySection({
       setDraftName(category.name)
       return
     }
+    if (!isPublicTextClean(next)) return
     setBusy(true)
     try {
       await onRename(next)
@@ -141,9 +143,9 @@ export function DeckCategorySection({
       <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-cyan-500/15 pb-2">
         {renaming && canEdit && !reserved ? (
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <EditBox
+            <PublicTextField
               value={draftName}
-              onChange={(e) => setDraftName(e.target.value)}
+              onChange={setDraftName}
               size="sm"
               autoWidth
               disabled={locked}
@@ -162,7 +164,9 @@ export function DeckCategorySection({
             <Button
               type="button"
               className="font-buahs93 h-8 rounded-none bg-cyan-800 px-3 text-xs text-white hover:bg-cyan-900"
-              disabled={locked || !draftName.trim()}
+              disabled={
+                locked || !draftName.trim() || !isPublicTextClean(draftName)
+              }
               onClick={() => void commitRename()}
             >
               SAVE

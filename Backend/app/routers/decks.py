@@ -3,6 +3,7 @@ Deck builder API.
 
 Read (public decks — anyone; private — owner only):
   GET    /decks/default-categories
+  GET    /decks/tags
   GET    /decks/public
   GET    /decks/{deck_id}
   GET    /decks/{deck_id}/categories
@@ -11,6 +12,7 @@ Read (public decks — anyone; private — owner only):
 Write (owner only, Bearer JWT required):
   GET    /decks/me
   POST   /decks
+  POST   /decks/{deck_id}/copy
   PATCH  /decks/{deck_id}
   DELETE /decks/{deck_id}
   POST   /decks/{deck_id}/cover
@@ -36,6 +38,17 @@ from psycopg2 import OperationalError
 from psycopg2.errors import ForeignKeyViolation, UniqueViolation
 
 from app.db import get_connection
+from app.profanity import reject_if_profane
+from app.deck_community import (
+    community_fields,
+    ensure_deck_tag,
+    add_deck_like,
+    fetch_deck_tags,
+    increment_deck_view,
+    remove_deck_like,
+    remove_deck_tag,
+    suggest_deck_tags,
+)
 from app.deck_defaults import DEFAULT_DECK_CATEGORY_NAMES
 from app.card_publish import (
     catalogue_visibility_sql,
@@ -71,6 +84,32 @@ class DeckSummary(BaseModel):
     author_name: str
     cover_image_path: str | None
     card_count: int
+    like_count: int = 0
+    view_count: int = 0
+    tags: list[str] = Field(default_factory=list)
+    liked_by_me: bool = False
+
+
+class DeckListPage(BaseModel):
+    items: list[DeckSummary]
+    total: int
+    limit: int
+    offset: int
+
+
+class DeckTagBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    tag: str = Field(min_length=1, max_length=32)
+
+
+class DeckTagSuggestion(BaseModel):
+    tag: str
+    uses: int = 0
+
+
+class DeckTagSuggestResponse(BaseModel):
+    tags: list[DeckTagSuggestion]
 
 
 class DeckCreateRequest(BaseModel):
@@ -203,6 +242,7 @@ def _normalize_category_name(name: str) -> str:
     normalized = name.strip()
     if not normalized:
         raise HTTPException(status_code=400, detail="invalid_category_name")
+    reject_if_profane(normalized, field="category_name")
     return normalized
 
 
@@ -239,6 +279,8 @@ def _require_readable_deck(cur, *, deck_id: int, user_id: int | None) -> tuple:
     Readable when:
     - `is_public` is true (anyone, including anonymous), or
     - `user_id` owns the deck (private decks).
+
+    Row: id, name, description, cover_path, cover_mime, is_public, author, owner_id
     """
     cur.execute(
         """
@@ -266,7 +308,7 @@ def _require_readable_deck(cur, *, deck_id: int, user_id: int | None) -> tuple:
     is_public = bool(row[5])
     owner_id = int(row[7])
     if is_public or (user_id is not None and user_id == owner_id):
-        return row[:7]
+        return row
 
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="deck_not_found")
 
@@ -478,7 +520,15 @@ def _next_category_sort_order(cur, deck_id: int) -> int:
     return int(cur.fetchone()[0])
 
 
-def _summary_from_owner_row(row: tuple, card_count: int) -> DeckSummary:
+def _summary_from_owner_row(
+    row: tuple,
+    card_count: int,
+    *,
+    like_count: int = 0,
+    view_count: int = 0,
+    tags: list[str] | None = None,
+    liked_by_me: bool = False,
+) -> DeckSummary:
     return DeckSummary(
         id=row[0],
         name=row[1],
@@ -487,7 +537,22 @@ def _summary_from_owner_row(row: tuple, card_count: int) -> DeckSummary:
         is_public=bool(row[5]),
         author_name=row[6],
         card_count=card_count,
+        like_count=like_count,
+        view_count=view_count,
+        tags=list(tags or []),
+        liked_by_me=liked_by_me,
     )
+
+
+def _summary_with_community(
+    cur,
+    row: tuple,
+    card_count: int,
+    *,
+    viewer_id: int | None = None,
+) -> DeckSummary:
+    stats = community_fields(cur, int(row[0]), viewer_id=viewer_id)
+    return _summary_from_owner_row(row, card_count, **stats)
 
 
 # --- routes ------------------------------------------------------------------
@@ -498,10 +563,128 @@ def list_default_categories():
     return DefaultCategoriesResponse(categories=list(DEFAULT_DECK_CATEGORY_NAMES))
 
 
-@router.get("/public", response_model=list[DeckSummary])
-def list_public_decks():
-    """Browse all public decks (no auth required). Read-only catalogue."""
-    sql = """
+@router.get("/tags", response_model=DeckTagSuggestResponse)
+def list_deck_tag_suggestions(
+    q: str | None = Query(default=None, max_length=32),
+    limit: int = Query(default=12, ge=1, le=40),
+    exclude: str | None = Query(
+        default=None,
+        max_length=400,
+        description="Comma-separated tags already on the deck (hidden from suggestions).",
+    ),
+):
+    """Typeahead for existing deck tags (public; used when adding tags)."""
+    excluded = [part.strip() for part in (exclude or "").split(",") if part.strip()]
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                rows = suggest_deck_tags(
+                    cur, q=q or "", limit=limit, exclude=excluded
+                )
+    except OperationalError as e:
+        raise _db_unavailable(e) from e
+
+    return DeckTagSuggestResponse(
+        tags=[DeckTagSuggestion(tag=r["tag"], uses=r["uses"]) for r in rows]
+    )
+
+
+@router.get("/public", response_model=DeckListPage)
+def list_public_decks(
+    q: str | None = Query(default=None, max_length=120),
+    author: str | None = Query(default=None, max_length=64),
+    tag: str | None = Query(default=None, max_length=32),
+    card: str | None = Query(
+        default=None,
+        max_length=120,
+        description="Deck must contain a card whose name matches (ILIKE).",
+    ),
+    card_id: int | None = Query(default=None, gt=0),
+    sort: str = Query(
+        default="newest",
+        pattern="^(newest|likes|views|name)$",
+    ),
+    limit: int = Query(default=24, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    user_id: int | None = Depends(get_optional_user_id),
+):
+    """
+    Browse public decks with optional search filters.
+
+    Filters (AND):
+    - q: deck name / description
+    - author: username contains
+    - tag: exact tag (case-insensitive)
+    - card / card_id: deck contains that card
+    """
+    where = ["uhd.is_public = TRUE"]
+    params: dict[str, Any] = {
+        "limit": limit,
+        "offset": offset,
+        "viewer_id": user_id,
+    }
+
+    q_trim = (q or "").strip()
+    if q_trim:
+        where.append(
+            "(d.name ILIKE %(q)s OR COALESCE(d.description, '') ILIKE %(q)s)"
+        )
+        params["q"] = f"%{q_trim}%"
+
+    author_trim = (author or "").strip()
+    if author_trim:
+        where.append("u.user_name ILIKE %(author)s")
+        params["author"] = f"%{author_trim}%"
+
+    tag_trim = (tag or "").strip()
+    if tag_trim:
+        where.append(
+            """
+            EXISTS (
+                SELECT 1 FROM deck_tags dt
+                 WHERE dt.deck_id = d.id
+                   AND lower(trim(dt.tag)) = lower(%(tag)s)
+            )
+            """
+        )
+        params["tag"] = tag_trim
+
+    if card_id is not None:
+        where.append(
+            """
+            EXISTS (
+                SELECT 1 FROM deck_has_cards dhc
+                 WHERE dhc.deck_id = d.id
+                   AND dhc.card_id = %(card_id)s
+            )
+            """
+        )
+        params["card_id"] = card_id
+    else:
+        card_trim = (card or "").strip()
+        if card_trim:
+            where.append(
+                """
+                EXISTS (
+                    SELECT 1
+                      FROM deck_has_cards dhc
+                      JOIN cards c ON c.id = dhc.card_id
+                     WHERE dhc.deck_id = d.id
+                       AND c.card_name ILIKE %(card)s
+                )
+                """
+            )
+            params["card"] = f"%{card_trim}%"
+
+    where_sql = " AND ".join(where)
+    order_sql = {
+        "newest": "d.id DESC",
+        "likes": "like_count DESC, d.id DESC",
+        "views": "view_count DESC, d.id DESC",
+        "name": "lower(COALESCE(d.name, '')) ASC, d.id DESC",
+    }[sort]
+
+    sql = f"""
         SELECT
             d.id,
             d.name,
@@ -516,22 +699,44 @@ def list_public_decks():
                     WHERE dhc.deck_id = d.id
                 ),
                 0
-            ) AS card_count
+            ) AS card_count,
+            COALESCE(d.like_count, 0)::int AS like_count,
+            COALESCE(d.view_count, 0)::int AS view_count,
+            COALESCE(
+                (
+                    SELECT array_agg(dt.tag ORDER BY lower(dt.tag), dt.tag)
+                      FROM deck_tags dt
+                     WHERE dt.deck_id = d.id
+                ),
+                '{{}}'::text[]
+            ) AS tags,
+            (
+                %(viewer_id)s IS NOT NULL
+                AND EXISTS (
+                    SELECT 1 FROM deck_likes dl2
+                     WHERE dl2.deck_id = d.id
+                       AND dl2.user_id = %(viewer_id)s
+                )
+            ) AS liked_by_me,
+            COUNT(*) OVER() AS total_count
         FROM user_has_decks uhd
         JOIN decks d ON d.id = uhd.deck_id
         JOIN users u ON u.id = uhd.user_id
-        WHERE uhd.is_public = TRUE
-        ORDER BY d.id DESC
+        WHERE {where_sql}
+        ORDER BY {order_sql}
+        LIMIT %(limit)s OFFSET %(offset)s
     """
+
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(sql)
+                cur.execute(sql, params)
                 rows = cur.fetchall()
     except OperationalError as e:
         raise _db_unavailable(e) from e
 
-    return [
+    total = int(rows[0][11]) if rows else 0
+    items = [
         DeckSummary(
             id=row[0],
             name=row[1],
@@ -540,9 +745,14 @@ def list_public_decks():
             is_public=bool(row[4]),
             author_name=row[5],
             card_count=int(row[6] or 0),
+            like_count=int(row[7] or 0),
+            view_count=int(row[8] or 0),
+            tags=list(row[9] or []),
+            liked_by_me=bool(row[10]) if user_id is not None else False,
         )
         for row in rows
     ]
+    return DeckListPage(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.get("/me", response_model=list[DeckSummary])
@@ -598,6 +808,8 @@ def create_deck(
     user_id: int = Depends(get_current_user_id),
 ):
     """Create a deck owned by the current user (optional cover via /cover later)."""
+    reject_if_profane(body.name, field="name")
+    reject_if_profane(body.description, field="description")
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
@@ -643,6 +855,176 @@ def create_deck(
     )
 
 
+@router.post(
+    "/{deck_id}/copy",
+    response_model=DeckSummary,
+    status_code=status.HTTP_201_CREATED,
+)
+def copy_deck(
+    deck_id: int,
+    user_id: int = Depends(get_current_user_id),
+):
+    """
+    Duplicate a readable deck into the current user's collection.
+
+    Copies categories, cards (with quantities), cover path, and tags.
+    Likes/views start at 0. New deck is private so the owner can edit safely.
+    """
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                source = _require_readable_deck(
+                    cur, deck_id=deck_id, user_id=user_id
+                )
+                source_name = (source[1] or f"Deck #{deck_id}").strip()
+                copy_name = f"Copy of {source_name}"
+                if len(copy_name) > 120:
+                    copy_name = copy_name[:120].rstrip()
+
+                cur.execute(
+                    """
+                    SELECT cover_image_path, cover_image_mime_type, description
+                      FROM decks
+                     WHERE id = %(deck_id)s
+                    """,
+                    {"deck_id": deck_id},
+                )
+                meta = cur.fetchone()
+                cover_path = meta[0] if meta else None
+                cover_mime = meta[1] if meta else None
+                description = meta[2] if meta else source[2]
+
+                cur.execute(
+                    """
+                    INSERT INTO decks (
+                        name, description,
+                        cover_image_path, cover_image_mime_type,
+                        like_count, view_count
+                    )
+                    VALUES (
+                        %(name)s, %(description)s,
+                        %(cover_path)s, %(cover_mime)s,
+                        0, 0
+                    )
+                    RETURNING id, name, description, cover_image_path
+                    """,
+                    {
+                        "name": copy_name,
+                        "description": description,
+                        "cover_path": cover_path,
+                        "cover_mime": cover_mime,
+                    },
+                )
+                created = cur.fetchone()
+                new_id = int(created[0])
+
+                cur.execute(
+                    """
+                    INSERT INTO user_has_decks (user_id, deck_id, is_public)
+                    VALUES (%(user_id)s, %(deck_id)s, FALSE)
+                    """,
+                    {"user_id": user_id, "deck_id": new_id},
+                )
+
+                # Categories: map old id → new id
+                cur.execute(
+                    """
+                    SELECT id, name, sort_order
+                      FROM deck_categories
+                     WHERE deck_id = %(deck_id)s
+                     ORDER BY sort_order ASC, id ASC
+                    """,
+                    {"deck_id": deck_id},
+                )
+                category_map: dict[int, int] = {}
+                for old_cat_id, cat_name, sort_order in cur.fetchall():
+                    cur.execute(
+                        """
+                        INSERT INTO deck_categories (deck_id, name, sort_order)
+                        VALUES (%(deck_id)s, %(name)s, %(sort_order)s)
+                        RETURNING id
+                        """,
+                        {
+                            "deck_id": new_id,
+                            "name": cat_name,
+                            "sort_order": int(sort_order),
+                        },
+                    )
+                    category_map[int(old_cat_id)] = int(cur.fetchone()[0])
+
+                if not category_map:
+                    _seed_default_categories(cur, new_id)
+
+                cur.execute(
+                    """
+                    SELECT card_id, category_id, quantity, sort_order
+                      FROM deck_has_cards
+                     WHERE deck_id = %(deck_id)s
+                    """,
+                    {"deck_id": deck_id},
+                )
+                for card_id, old_cat_id, quantity, sort_order in cur.fetchall():
+                    new_cat_id = category_map.get(int(old_cat_id))
+                    if new_cat_id is None:
+                        continue
+                    cur.execute(
+                        """
+                        INSERT INTO deck_has_cards
+                            (deck_id, card_id, category_id, quantity, sort_order)
+                        VALUES
+                            (%(deck_id)s, %(card_id)s, %(category_id)s,
+                             %(quantity)s, %(sort_order)s)
+                        """,
+                        {
+                            "deck_id": new_id,
+                            "card_id": int(card_id),
+                            "category_id": new_cat_id,
+                            "quantity": int(quantity),
+                            "sort_order": int(sort_order),
+                        },
+                    )
+
+                cur.execute(
+                    """
+                    INSERT INTO deck_tags (deck_id, tag, created_by)
+                    SELECT %(new_id)s, tag, %(user_id)s
+                      FROM deck_tags
+                     WHERE deck_id = %(old_id)s
+                    """,
+                    {
+                        "new_id": new_id,
+                        "old_id": deck_id,
+                        "user_id": user_id,
+                    },
+                )
+
+                cur.execute(
+                    "SELECT user_name FROM users WHERE id = %(user_id)s",
+                    {"user_id": user_id},
+                )
+                author = cur.fetchone()[0]
+                count = _card_count(cur, new_id)
+                # Build a row shaped like owned-deck summary source
+                row = (
+                    new_id,
+                    created[1],
+                    created[2],
+                    created[3],
+                    None,
+                    False,
+                    author,
+                    user_id,
+                )
+                summary = _summary_with_community(
+                    cur, row, count, viewer_id=user_id
+                )
+            conn.commit()
+    except OperationalError as e:
+        raise _db_unavailable(e) from e
+
+    return summary
+
+
 @router.get("/{deck_id}", response_model=DeckDetail)
 def get_deck(
     deck_id: int,
@@ -657,11 +1039,17 @@ def get_deck(
     Preview / unpublished cards are classified stubs unless the viewer
     is entitled (subscriber preview or admin bypass).
     Mutations still require ownership on write routes.
+
+    Increments `view_count` when a non-owner opens the deck.
     """
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
                 row = _require_readable_deck(cur, deck_id=deck_id, user_id=user_id)
+                owner_id = int(row[7])
+                if user_id is None or user_id != owner_id:
+                    increment_deck_view(cur, deck_id)
+
                 categories = _fetch_deck_categories(cur, deck_id)
                 cards = _fetch_deck_cards(
                     cur,
@@ -670,11 +1058,111 @@ def get_deck(
                     include_preview=include_preview,
                 )
                 count = _card_count(cur, deck_id)
+                summary = _summary_with_community(
+                    cur, row, count, viewer_id=user_id
+                )
+            conn.commit()
     except OperationalError as e:
         raise _db_unavailable(e) from e
 
-    summary = _summary_from_owner_row(row, count)
     return DeckDetail(**summary.model_dump(), categories=categories, cards=cards)
+
+
+@router.post("/{deck_id}/like", response_model=DeckSummary)
+def like_deck(
+    deck_id: int,
+    user_id: int = Depends(get_current_user_id),
+):
+    """Like a readable deck (idempotent)."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                row = _require_readable_deck(cur, deck_id=deck_id, user_id=user_id)
+                add_deck_like(cur, deck_id=deck_id, user_id=user_id)
+                summary = _summary_with_community(
+                    cur, row, _card_count(cur, deck_id), viewer_id=user_id
+                )
+            conn.commit()
+    except OperationalError as e:
+        raise _db_unavailable(e) from e
+    return summary
+
+
+@router.delete("/{deck_id}/like", response_model=DeckSummary)
+def unlike_deck(
+    deck_id: int,
+    user_id: int = Depends(get_current_user_id),
+):
+    """Remove your like from a readable deck (idempotent)."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                row = _require_readable_deck(cur, deck_id=deck_id, user_id=user_id)
+                remove_deck_like(cur, deck_id=deck_id, user_id=user_id)
+                summary = _summary_with_community(
+                    cur, row, _card_count(cur, deck_id), viewer_id=user_id
+                )
+            conn.commit()
+    except OperationalError as e:
+        raise _db_unavailable(e) from e
+    return summary
+
+
+@router.post("/{deck_id}/tags", response_model=DeckSummary)
+def add_tag_to_deck(
+    deck_id: int,
+    body: DeckTagBody,
+    user_id: int = Depends(get_current_user_id),
+):
+    """Owner adds a user-generated tag to their deck."""
+    reject_if_profane(body.tag, field="tag")
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                row = _require_owned_deck(cur, user_id=user_id, deck_id=deck_id)
+                try:
+                    ensure_deck_tag(
+                        cur, deck_id=deck_id, tag=body.tag, created_by=user_id
+                    )
+                except UniqueViolation as e:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT, detail="tag_exists"
+                    ) from e
+                summary = _summary_with_community(
+                    cur, row, _card_count(cur, deck_id), viewer_id=user_id
+                )
+            conn.commit()
+    except HTTPException:
+        raise
+    except OperationalError as e:
+        raise _db_unavailable(e) from e
+    return summary
+
+
+@router.delete("/{deck_id}/tags/{tag}", response_model=DeckSummary)
+def delete_tag_from_deck(
+    deck_id: int,
+    tag: str,
+    user_id: int = Depends(get_current_user_id),
+):
+    """Owner removes a tag from their deck."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                row = _require_owned_deck(cur, user_id=user_id, deck_id=deck_id)
+                if not remove_deck_tag(cur, deck_id=deck_id, tag=tag):
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND, detail="tag_not_found"
+                    )
+                summary = _summary_with_community(
+                    cur, row, _card_count(cur, deck_id), viewer_id=user_id
+                )
+            conn.commit()
+    except HTTPException:
+        raise
+    except OperationalError as e:
+        raise _db_unavailable(e) from e
+    return summary
 
 
 @router.patch("/{deck_id}", response_model=DeckSummary)
@@ -687,10 +1175,29 @@ def update_deck(
     if body.name is None and body.description is None and body.is_public is None:
         raise HTTPException(status_code=400, detail="no_fields_to_update")
 
+    reject_if_profane(body.name, field="name")
+    reject_if_profane(body.description, field="description")
+
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
-                _require_owned_deck(cur, user_id=user_id, deck_id=deck_id)
+                owned = _require_owned_deck(cur, user_id=user_id, deck_id=deck_id)
+
+                # Publishing re-checks stored text so private drafts can't sneak
+                # blocked language onto the community list.
+                if body.is_public is True:
+                    effective_name = (
+                        body.name if body.name is not None else owned[1]
+                    )
+                    effective_desc = (
+                        body.description
+                        if body.description is not None
+                        else owned[2]
+                    )
+                    reject_if_profane(effective_name, field="name")
+                    reject_if_profane(effective_desc, field="description")
+                    for tag in fetch_deck_tags(cur, deck_id):
+                        reject_if_profane(tag, field="tag")
 
                 if body.name is not None or body.description is not None:
                     cur.execute(
@@ -724,11 +1231,14 @@ def update_deck(
 
                 row = _require_owned_deck(cur, user_id=user_id, deck_id=deck_id)
                 count = _card_count(cur, deck_id)
+                summary = _summary_with_community(
+                    cur, row, count, viewer_id=user_id
+                )
             conn.commit()
     except OperationalError as e:
         raise _db_unavailable(e) from e
 
-    return _summary_from_owner_row(row, count)
+    return summary
 
 
 @router.delete("/{deck_id}", status_code=status.HTTP_204_NO_CONTENT)

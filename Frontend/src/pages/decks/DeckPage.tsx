@@ -43,20 +43,34 @@ import {
 } from "@/components/decks/deck.logic"
 import { useCardSelection } from "@/hooks/useCardSelection"
 import { useDeckDetail } from "@/hooks/useDeckDetail"
+import { DeckTagSuggestInput } from "@/components/decks/DeckTagSuggestInput"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import { DropdownMenu } from "@/components/ui/DropdownMenu"
-import { EditBox } from "@/components/ui/EditBox"
+import {
+  PublicTextArea,
+  PublicTextField,
+} from "@/components/ui/PublicTextField"
 import { ApiError } from "@/lib/api/client"
+import {
+  isPublicTextClean,
+  PROFANITY_REJECTED,
+  PUBLIC_TEXT_BLOCKED_MESSAGE,
+} from "@/lib/profanity"
 import { fetchCardById, type CardSearchHit } from "@/lib/api/cards"
 import {
   addDeckCard,
+  addDeckTag,
   AUGMENT_SECTION_NAME,
+  copyDeck,
   createDeckCategory,
   deleteDeck,
   deleteDeckCategory,
   deckCoverUrl,
+  likeDeck,
   PILOT_SECTION_NAME,
   removeDeckCard,
+  removeDeckTag,
+  unlikeDeck,
   updateDeck,
   updateDeckCard,
   updateDeckCategory,
@@ -111,6 +125,7 @@ export function DeckPage() {
   const [browseOpen, setBrowseOpen] = useState(true)
   const [browseWidth, setBrowseWidth] = useState(BROWSE_WIDTH_DEFAULT)
   const [cardSortMode, setCardSortMode] = useState<DeckCardSortMode>("type")
+  const [tagDraft, setTagDraft] = useState("")
   const browseResizeRef = useRef<{
     pointerId: number
     startX: number
@@ -171,6 +186,105 @@ export function DeckPage() {
   const canEdit =
     Boolean(deck && user && deck.author_name === user.user_name && token)
 
+  async function onCopyDeck() {
+    if (!token || !deck || saving) return
+    setSaving(true)
+    setErrorText("")
+    try {
+      const copied = await copyDeck(deck.id, token)
+      navigate(ROUTES.deck(copied.id), { replace: false })
+    } catch {
+      setErrorText("Could not copy this deck.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function onToggleLike() {
+    if (!token || !deck || saving) return
+    setSaving(true)
+    setErrorText("")
+    try {
+      const summary = deck.liked_by_me
+        ? await unlikeDeck(deck.id, token)
+        : await likeDeck(deck.id, token)
+      setDeck((prev) =>
+        prev
+          ? {
+              ...prev,
+              like_count: summary.like_count,
+              liked_by_me: summary.liked_by_me,
+              view_count: summary.view_count,
+              tags: summary.tags,
+            }
+          : prev
+      )
+    } catch {
+      setErrorText("Could not update like.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function onAddTag(rawTag?: string) {
+    if (!token || !deck || !canEdit || saving) return
+    const next = (rawTag ?? tagDraft).trim()
+    if (!next) return
+    if (!isPublicTextClean(next)) {
+      setErrorText(PUBLIC_TEXT_BLOCKED_MESSAGE)
+      return
+    }
+    setSaving(true)
+    setErrorText("")
+    try {
+      const summary = await addDeckTag(deck.id, token, next)
+      setDeck((prev) =>
+        prev
+          ? {
+              ...prev,
+              tags: summary.tags,
+              like_count: summary.like_count,
+              view_count: summary.view_count,
+            }
+          : prev
+      )
+      setTagDraft("")
+    } catch (error) {
+      setErrorText(
+        error instanceof ApiError && error.detail === "invalid_tag"
+          ? "Tags: 1–32 chars, letters/numbers/spaces/-/_."
+          : error instanceof ApiError && error.detail === PROFANITY_REJECTED
+            ? PUBLIC_TEXT_BLOCKED_MESSAGE
+            : "Could not add tag."
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function onRemoveTag(tag: string) {
+    if (!token || !deck || !canEdit || saving) return
+    setSaving(true)
+    setErrorText("")
+    try {
+      const summary = await removeDeckTag(deck.id, token, tag)
+      setDeck((prev) =>
+        prev
+          ? {
+              ...prev,
+              tags: summary.tags,
+              like_count: summary.like_count,
+              view_count: summary.view_count,
+            }
+          : prev
+      )
+    } catch {
+      setErrorText("Could not remove tag.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const { selectedKeys, selectCard, clearCardSelection } = useCardSelection({
     deck,
     sortMode: cardSortMode,
@@ -214,6 +328,10 @@ export function DeckPage() {
 
   async function onSaveMeta() {
     if (!token || !deck || !canEdit) return
+    if (!isPublicTextClean(name, description)) {
+      setErrorText(PUBLIC_TEXT_BLOCKED_MESSAGE)
+      return
+    }
     setSaving(true)
     setErrorText("")
     try {
@@ -235,7 +353,11 @@ export function DeckPage() {
       setEditing(false)
     } catch (error) {
       setErrorText(
-        error instanceof ApiError ? "Could not save deck details." : "Save failed."
+        error instanceof ApiError && error.detail === PROFANITY_REJECTED
+          ? PUBLIC_TEXT_BLOCKED_MESSAGE
+          : error instanceof ApiError
+            ? "Could not save deck details."
+            : "Save failed."
       )
     } finally {
       setSaving(false)
@@ -327,6 +449,10 @@ export function DeckPage() {
     if (!token || !deck || !canEdit) return
     const name = nextName.trim()
     if (!name) return
+    if (!isPublicTextClean(name)) {
+      setErrorText(PUBLIC_TEXT_BLOCKED_MESSAGE)
+      throw new Error("profanity_rejected")
+    }
     setSaving(true)
     setErrorText("")
     try {
@@ -348,8 +474,12 @@ export function DeckPage() {
           }
           : prev
       )
-    } catch {
-      setErrorText("Could not rename category.")
+    } catch (error) {
+      setErrorText(
+        error instanceof ApiError && error.detail === PROFANITY_REJECTED
+          ? PUBLIC_TEXT_BLOCKED_MESSAGE
+          : "Could not rename category."
+      )
       throw new Error("rename_failed")
     } finally {
       setSaving(false)
@@ -1040,19 +1170,18 @@ export function DeckPage() {
                 <div className="min-w-0 flex-1">
                   {editing && canEdit ? (
                     <div className="flex flex-col gap-3">
-                      <EditBox
+                      <PublicTextField
                         value={name}
-                        onChange={(e) => setName(e.target.value)}
+                        onChange={setName}
                         placeholder="deck name"
                         disabled={saving}
                       />
-                      <textarea
+                      <PublicTextArea
                         value={description}
-                        onChange={(e) => setDescription(e.target.value)}
+                        onChange={setDescription}
                         placeholder="description"
                         disabled={saving}
                         rows={3}
-                        className="w-full border border-white/40 bg-black/80 px-3 py-2 font-mono text-sm text-white outline-none placeholder:text-white/40 focus-visible:border-white"
                       />
                       <label className="flex items-center gap-2 font-buahs93 text-sm text-cyan-200/80">
                         <input
@@ -1068,7 +1197,9 @@ export function DeckPage() {
                         <GlitchFx
                           type="button"
                           label={saving ? "SAVING…" : "SAVE"}
-                          disabled={saving}
+                          disabled={
+                            saving || !isPublicTextClean(name, description)
+                          }
                           className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900 disabled:opacity-60"
                           onClick={() => void onSaveMeta()}
                         />
@@ -1135,9 +1266,55 @@ export function DeckPage() {
                         </p>
                       ) : null}
                       <p className="mt-3 font-mono text-xs text-cyan-300/60">
-                        {deck.card_count} cards · {deck.categories.length} sections
+                        {deck.card_count} cards · {deck.categories.length}{" "}
+                        sections · {deck.like_count ?? 0} likes ·{" "}
+                        {deck.view_count ?? 0} views
                       </p>
 
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        {(deck.tags ?? []).map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center gap-1 border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-mono text-[11px] text-cyan-100"
+                          >
+                            {tag}
+                            {canEdit ? (
+                              <button
+                                type="button"
+                                className="text-cyan-300/70 hover:text-red-300"
+                                disabled={saving}
+                                aria-label={`Remove tag ${tag}`}
+                                onClick={() => void onRemoveTag(tag)}
+                              >
+                                ×
+                              </button>
+                            ) : null}
+                          </span>
+                        ))}
+                      </div>
+
+                      {canEdit ? (
+                        <div className="mt-3 flex max-w-lg items-center gap-2">
+                          <DeckTagSuggestInput
+                            value={tagDraft}
+                            onChange={setTagDraft}
+                            exclude={deck.tags ?? []}
+                            disabled={saving}
+                            onPick={(tag) => void onAddTag(tag)}
+                          />
+                          <GlitchFx
+                            type="button"
+                            label="ADD TAG"
+                            disabled={
+                              saving ||
+                              !tagDraft.trim() ||
+                              !isPublicTextClean(tagDraft)
+                            }
+                            className="font-buahs93 h-8 shrink-0 rounded-none border border-cyan-500/40 bg-black/70 px-4 text-xs text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 disabled:opacity-60"
+                            onClick={() => void onAddTag()}
+                          />
+                        </div>
+                      ) : null}
                     </>
                   )}
 
@@ -1145,6 +1322,33 @@ export function DeckPage() {
               </div>
 
               <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+                {isAuthenticated && token ? (
+                  <GlitchFx
+                    type="button"
+                    label={saving ? "COPYING…" : "COPY TO MY DECKS"}
+                    disabled={saving}
+                    className="font-buahs93 h-9 rounded-none border border-cyan-500/40 bg-black/70 px-4 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 disabled:opacity-60"
+                    onClick={() => void onCopyDeck()}
+                  />
+                ) : null}
+                {isAuthenticated && token ? (
+                  <GlitchFx
+                    type="button"
+                    label={
+                      deck.liked_by_me
+                        ? `LIKED (${deck.like_count ?? 0})`
+                        : `LIKE (${deck.like_count ?? 0})`
+                    }
+                    disabled={saving}
+                    className={cn(
+                      "font-buahs93 h-9 rounded-none px-4",
+                      deck.liked_by_me
+                        ? "bg-cyan-600 hover:bg-cyan-800"
+                        : "border border-cyan-500/40 bg-black/70 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10"
+                    )}
+                    onClick={() => void onToggleLike()}
+                  />
+                ) : null}
                 {canEdit ? (
                   <>
                     <GlitchFx

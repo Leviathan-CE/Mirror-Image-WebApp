@@ -6,7 +6,10 @@ import { useAuth } from "@/app/providers/AuthProvider"
 import { Tabs } from "@/components/ui/Tabs"
 import { DeckListCard } from "@/components/decks/DeckListCard"
 import { GlitchFx } from "@/components/effects/GlitchFx"
-import { EditBox } from "@/components/ui/EditBox"
+import {
+  PublicTextArea,
+  PublicTextField,
+} from "@/components/ui/PublicTextField"
 import { ApiError } from "@/lib/api/client"
 import {
   createDeck,
@@ -14,6 +17,11 @@ import {
   fetchPublicDecks,
   type DeckSummary,
 } from "@/lib/api/decks"
+import {
+  isPublicTextClean,
+  PROFANITY_REJECTED,
+  PUBLIC_TEXT_BLOCKED_MESSAGE,
+} from "@/lib/profanity"
 import { ROUTES } from "@/lib/route"
 
 type DeckTab = "mine" | "community"
@@ -83,9 +91,9 @@ export function MainPage() {
     setErrorText("")
 
     fetchPublicDecks()
-      .then((list) => {
+      .then((page) => {
         if (cancelled) return
-        setCommunityDecks(list)
+        setCommunityDecks(page.items)
         setCommunityStatus("ready")
       })
       .catch(() => {
@@ -117,6 +125,10 @@ export function MainPage() {
     if (!token) return
     const name = newName.trim()
     if (!name) return
+    if (!isPublicTextClean(name, newDescription)) {
+      setErrorText(PUBLIC_TEXT_BLOCKED_MESSAGE)
+      return
+    }
 
     setSaving(true)
     setErrorText("")
@@ -135,9 +147,11 @@ export function MainPage() {
       navigate(ROUTES.deck(created.id))
     } catch (error) {
       setErrorText(
-        error instanceof ApiError
-          ? "Could not create deck."
-          : "Create failed."
+        error instanceof ApiError && error.detail === PROFANITY_REJECTED
+          ? PUBLIC_TEXT_BLOCKED_MESSAGE
+          : error instanceof ApiError
+            ? "Could not create deck."
+            : "Create failed."
       )
     } finally {
       setSaving(false)
@@ -233,20 +247,19 @@ export function MainPage() {
               NEW DECK
             </h3>
             <div className="flex flex-col gap-3">
-              <EditBox
+              <PublicTextField
                 value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+                onChange={setNewName}
                 placeholder="deck name"
                 disabled={saving}
                 autoFocus
               />
-              <textarea
+              <PublicTextArea
                 value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
+                onChange={setNewDescription}
                 placeholder="description (optional)"
                 disabled={saving}
                 rows={3}
-                className="w-full border border-white/40 bg-black/80 px-3 py-2 font-mono text-sm text-white outline-none placeholder:text-white/40 focus-visible:border-white"
               />
               <label className="flex items-center gap-2 font-buahs93 text-sm text-cyan-200/80">
                 <input
@@ -262,7 +275,11 @@ export function MainPage() {
                 <GlitchFx
                   type="button"
                   label={saving ? "CREATING…" : "CREATE"}
-                  disabled={saving || !newName.trim()}
+                  disabled={
+                    saving ||
+                    !newName.trim() ||
+                    !isPublicTextClean(newName, newDescription)
+                  }
                   className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900 disabled:opacity-60"
                   onClick={() => void onCreateDeck()}
                 />

@@ -18,6 +18,29 @@ export type DeckSummary = {
   author_name: string
   cover_image_path: string | null
   card_count: number
+  like_count?: number
+  view_count?: number
+  tags?: string[]
+  liked_by_me?: boolean
+}
+
+export type DeckListPage = {
+  items: DeckSummary[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export type PublicDeckQuery = {
+  q?: string
+  author?: string
+  tag?: string
+  card?: string
+  cardId?: number
+  sort?: "newest" | "likes" | "views" | "name"
+  limit?: number
+  offset?: number
+  token?: string | null
 }
 
 /** Names seeded on new decks — users can rename/add/remove per deck. */
@@ -100,10 +123,102 @@ export async function fetchMyDecks(token: string): Promise<DeckSummary[]> {
   return readJsonOrThrow<DeckSummary[]>(response, "decks_fetch_failed")
 }
 
-/** Public deck catalogue — no auth required. */
-export async function fetchPublicDecks(): Promise<DeckSummary[]> {
-  const response = await fetch(`${apiBaseUrl()}/decks/public`)
-  return readJsonOrThrow<DeckSummary[]>(response, "public_decks_fetch_failed")
+/** Public deck catalogue — no auth required (send token for liked_by_me). */
+export async function fetchPublicDecks(
+  query: PublicDeckQuery = {}
+): Promise<DeckListPage> {
+  const url = new URL(`${apiBaseUrl()}/decks/public`)
+  if (query.q?.trim()) url.searchParams.set("q", query.q.trim())
+  if (query.author?.trim()) url.searchParams.set("author", query.author.trim())
+  if (query.tag?.trim()) url.searchParams.set("tag", query.tag.trim())
+  if (query.card?.trim()) url.searchParams.set("card", query.card.trim())
+  if (query.cardId != null) url.searchParams.set("card_id", String(query.cardId))
+  if (query.sort) url.searchParams.set("sort", query.sort)
+  url.searchParams.set("limit", String(query.limit ?? 24))
+  url.searchParams.set("offset", String(query.offset ?? 0))
+
+  const response = await fetch(url.toString(), {
+    headers: authHeaders(query.token),
+  })
+  return readJsonOrThrow<DeckListPage>(response, "public_decks_fetch_failed")
+}
+
+export async function likeDeck(
+  deckId: number,
+  token: string
+): Promise<DeckSummary> {
+  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}/like`, {
+    method: "POST",
+    headers: authHeaders(token),
+  })
+  return readJsonOrThrow<DeckSummary>(response, "deck_like_failed")
+}
+
+export async function unlikeDeck(
+  deckId: number,
+  token: string
+): Promise<DeckSummary> {
+  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}/like`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  })
+  return readJsonOrThrow<DeckSummary>(response, "deck_unlike_failed")
+}
+
+export async function addDeckTag(
+  deckId: number,
+  token: string,
+  tag: string
+): Promise<DeckSummary> {
+  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}/tags`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(token),
+    },
+    body: JSON.stringify({ tag }),
+  })
+  return readJsonOrThrow<DeckSummary>(response, "deck_tag_add_failed")
+}
+
+export async function removeDeckTag(
+  deckId: number,
+  token: string,
+  tag: string
+): Promise<DeckSummary> {
+  const response = await fetch(
+    `${apiBaseUrl()}/decks/${deckId}/tags/${encodeURIComponent(tag)}`,
+    {
+      method: "DELETE",
+      headers: authHeaders(token),
+    }
+  )
+  return readJsonOrThrow<DeckSummary>(response, "deck_tag_remove_failed")
+}
+
+export type DeckTagSuggestion = {
+  tag: string
+  uses: number
+}
+
+/** Typeahead existing tags across all decks. */
+export async function fetchDeckTagSuggestions(opts: {
+  q?: string
+  limit?: number
+  exclude?: string[]
+}): Promise<DeckTagSuggestion[]> {
+  const url = new URL(`${apiBaseUrl()}/decks/tags`)
+  if (opts.q?.trim()) url.searchParams.set("q", opts.q.trim())
+  url.searchParams.set("limit", String(opts.limit ?? 12))
+  if (opts.exclude?.length) {
+    url.searchParams.set("exclude", opts.exclude.join(","))
+  }
+  const response = await fetch(url.toString())
+  const body = await readJsonOrThrow<{ tags: DeckTagSuggestion[] }>(
+    response,
+    "deck_tag_suggest_failed"
+  )
+  return body.tags
 }
 
 export async function createDeck(
@@ -119,6 +234,18 @@ export async function createDeck(
     body: JSON.stringify(payload),
   })
   return readJsonOrThrow<DeckSummary>(response, "deck_create_failed")
+}
+
+/** Clone a readable deck into your collection (private copy you can edit). */
+export async function copyDeck(
+  deckId: number,
+  token: string
+): Promise<DeckSummary> {
+  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}/copy`, {
+    method: "POST",
+    headers: authHeaders(token),
+  })
+  return readJsonOrThrow<DeckSummary>(response, "deck_copy_failed")
 }
 
 /** Public or owned deck detail (send token when logged in). */

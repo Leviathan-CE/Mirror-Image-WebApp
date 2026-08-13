@@ -31,8 +31,10 @@ def test_readable_public_deck_allows_anonymous():
 
     result = _require_readable_deck(cur, deck_id=10, user_id=None)
 
-    assert result == row[:7]
+    # Full row including owner_id (needed for view-count / ownership checks).
+    assert result == row
     assert result[5] is True
+    assert result[7] == 3
 
 
 def test_readable_private_deck_rejects_anonymous():
