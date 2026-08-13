@@ -333,7 +333,7 @@ export function DeckCardStack({
                 onClearSelect?.(card)
 
                 if (!canAdjust) return
-                if (card.quantity >= DECK_CARD_MAX_COPIES) return
+                // Parent enforces the deck-wide copy cap (all sections).
                 onQuantityDelta?.(card, 1)
               }}
               onContextMenu={(event) => {

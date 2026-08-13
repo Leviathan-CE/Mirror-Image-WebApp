@@ -158,7 +158,10 @@ export function GameIcon({ name, className }: GameIconProps) {
       src={icon.src}
       alt={icon.label}
       title={icon.label}
-      className={cn("inline-block h-5 w-auto align-text-bottom lg:h-6 2xl:h-7", className)}
+      className={cn(
+        "inline-block h-5 w-auto shrink-0 object-contain align-text-bottom lg:h-6 2xl:h-7",
+        className
+      )}
     />
   )
 }
