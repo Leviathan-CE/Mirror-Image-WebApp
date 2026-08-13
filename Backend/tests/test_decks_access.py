@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from fastapi import HTTPException
 
-from app.routers.decks import _require_readable_deck
+from app.decks.access import require_readable_deck
 from app.security import create_access_token, get_optional_user_id
 from fastapi.security import HTTPAuthorizationCredentials
 
@@ -29,7 +29,7 @@ def test_readable_public_deck_allows_anonymous():
     row = (10, "Public Ops", "desc", None, None, True, "pilot", 3)
     cur = _FakeCursor(row)
 
-    result = _require_readable_deck(cur, deck_id=10, user_id=None)
+    result = require_readable_deck(cur, deck_id=10, user_id=None)
 
     # Full row including owner_id (needed for view-count / ownership checks).
     assert result == row
@@ -42,7 +42,7 @@ def test_readable_private_deck_rejects_anonymous():
     cur = _FakeCursor(row)
 
     with pytest.raises(HTTPException) as exc:
-        _require_readable_deck(cur, deck_id=11, user_id=None)
+        require_readable_deck(cur, deck_id=11, user_id=None)
 
     assert exc.value.status_code == 404
     assert exc.value.detail == "deck_not_found"
@@ -52,7 +52,7 @@ def test_readable_private_deck_allows_owner():
     row = (11, "Secret", None, None, None, False, "pilot", 3)
     cur = _FakeCursor(row)
 
-    result = _require_readable_deck(cur, deck_id=11, user_id=3)
+    result = require_readable_deck(cur, deck_id=11, user_id=3)
 
     assert result[0] == 11
     assert result[6] == "pilot"
@@ -63,7 +63,7 @@ def test_readable_private_deck_rejects_other_user():
     cur = _FakeCursor(row)
 
     with pytest.raises(HTTPException) as exc:
-        _require_readable_deck(cur, deck_id=11, user_id=99)
+        require_readable_deck(cur, deck_id=11, user_id=99)
 
     assert exc.value.status_code == 404
 
@@ -72,7 +72,7 @@ def test_readable_missing_deck_raises_404():
     cur = _FakeCursor(None)
 
     with pytest.raises(HTTPException) as exc:
-        _require_readable_deck(cur, deck_id=404, user_id=1)
+        require_readable_deck(cur, deck_id=404, user_id=1)
 
     assert exc.value.status_code == 404
 
