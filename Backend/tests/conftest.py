@@ -46,9 +46,40 @@ def auth_headers(user_token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {user_token}"}
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _purge_orphan_deck_testers() -> None:
+    """
+    Remove leftover `deck_tester_*` accounts from prior test runs that did
+    not tear down (and again when the session ends).
+    """
+    def _delete_testers() -> None:
+        try:
+            with get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        DELETE FROM users
+                         WHERE user_name LIKE 'deck_tester\\_%' ESCAPE '\\'
+                            OR email LIKE 'deck_tester\\_%@example.com' ESCAPE '\\'
+                        """
+                    )
+                conn.commit()
+        except OperationalError:
+            # DB down — unit-only sessions still run.
+            pass
+
+    _delete_testers()
+    yield
+    _delete_testers()
+
+
 @pytest.fixture
-def other_auth_headers(client: TestClient, require_db: None) -> dict[str, str]:
-    """JWT for a freshly registered non-owner account (email verified via SQL)."""
+def other_auth_headers(client: TestClient, require_db: None):
+    """
+    JWT for a freshly registered non-owner account (email verified via SQL).
+
+    Yields headers for the test, then deletes that user (cascades their decks).
+    """
     suffix = uuid.uuid4().hex[:8]
     user_name = f"deck_tester_{suffix}"
     email = f"deck_tester_{suffix}@example.com"
@@ -110,16 +141,42 @@ def other_auth_headers(client: TestClient, require_db: None) -> dict[str, str]:
     )
     if login.status_code != 200:
         pytest.skip(f"could not create other test user: {register.text} / {login.text}")
-    return {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    try:
+        yield {"Authorization": f"Bearer {login.json()['access_token']}"}
+    finally:
+        try:
+            with get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        DELETE FROM users
+                         WHERE lower(email) = lower(%(email)s)
+                            OR lower(user_name) = lower(%(user_name)s)
+                        """,
+                        {"email": email, "user_name": user_name},
+                    )
+                conn.commit()
+        except OperationalError:
+            pass
 
 
 @pytest.fixture
 def sample_card_id(require_db: None) -> int:
-    """Any existing card id for add/remove tests."""
+    """A published catalogue card id (add-to-deck rejects unpublished/preview)."""
     with get_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT id FROM cards ORDER BY id ASC LIMIT 1")
+            cur.execute(
+                """
+                SELECT c.id
+                  FROM cards c
+                  JOIN publish_cards pc ON pc.card_id = c.id
+                 WHERE pc.published = 'published'
+                 ORDER BY c.id ASC
+                 LIMIT 1
+                """
+            )
             row = cur.fetchone()
     if row is None:
-        pytest.skip("no cards in database — seed cards first")
+        pytest.skip("no published cards in database — seed/publish cards first")
     return int(row[0])

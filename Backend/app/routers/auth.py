@@ -27,6 +27,7 @@ from app.google_oauth import (
     resolve_google_login,
     verify_google_id_token,
 )
+from app.profanity import reject_if_profane
 from app.security import (
     UNITY_TOKEN_EXPIRE_MINUTES,
     create_access_token,
@@ -223,6 +224,7 @@ def _http_for_google_token_error(exc: GoogleTokenError) -> HTTPException:
 @router.post("/register", response_model=RegisterResponse, status_code=201)
 def register(body: RegisterRequest):
     """Create a new account and send a verification email (no JWT until verified)."""
+    reject_if_profane(body.user_name, field="user_name")
     password_hash = hash_password(body.password)
     email = str(body.email).lower()
 

@@ -21,6 +21,8 @@ from typing import Any, Literal
 import jwt
 from jwt import PyJWKClient
 
+from app.profanity import contains_profanity
+
 logger = logging.getLogger(__name__)
 
 PROVIDER_GOOGLE = "google"
@@ -114,8 +116,12 @@ def username_seed_from_email(email: str) -> str:
 def allocate_unique_username(cur, email: str) -> str:
     """Pick a free username based on the email local-part."""
     base = username_seed_from_email(email)
+    if contains_profanity(base):
+        base = f"user_{secrets.token_hex(3)}"
     candidate = base
     for _ in range(12):
+        if contains_profanity(candidate):
+            candidate = f"user_{secrets.token_hex(4)}"
         cur.execute(
             """
             SELECT 1 FROM users WHERE lower(user_name) = lower(%(name)s) LIMIT 1

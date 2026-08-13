@@ -121,7 +121,10 @@ def test_public_deck_readable_without_auth(
 
         catalogue = client.get("/decks/public")
         assert catalogue.status_code == 200
-        assert any(d["id"] == deck_id for d in catalogue.json())
+        page = catalogue.json()
+        assert "items" in page
+        assert any(d["id"] == deck_id for d in page["items"])
+        assert isinstance(page["total"], int)
 
         cards = client.get(f"/decks/{deck_id}/cards")
         assert cards.status_code == 200

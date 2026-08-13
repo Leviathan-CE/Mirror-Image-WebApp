@@ -18,6 +18,7 @@ import {
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { Button } from "@/components/ui/button"
 import { EditBox } from "@/components/ui/EditBox"
+import { PublicTextField } from "@/components/ui/PublicTextField"
 import {
   createAccount,
   googleLinkWithPasswordRequest,
@@ -25,6 +26,7 @@ import {
   type AuthUser,
 } from "@/lib/api/auth"
 import { ApiError } from "@/lib/api/client"
+import { isPublicTextClean } from "@/lib/profanity"
 import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
 
@@ -32,6 +34,8 @@ function helpMessageForError(detail: string): string {
   switch (detail) {
     case "username_or_email_taken":
       return "That username or email is already registered."
+    case "profanity_rejected":
+      return "That username can’t be used. Choose a different one."
     case "email_not_configured":
       return "Email is not configured on the server. Contact an admin."
     case "email_send_failed":
@@ -151,6 +155,12 @@ export function CreateAccountPage() {
       return
     }
 
+    if (!isPublicTextClean(trimmedName)) {
+      setHelpTone("error")
+      setHelpText("That username can’t be used. Choose a different one.")
+      return
+    }
+
     if (password.length < 8) {
       setHelpTone("error")
       setHelpText("Password must be at least 8 characters.")
@@ -226,12 +236,12 @@ export function CreateAccountPage() {
                     <span className="font-buahs93 text-sm text-cyan-200/80">
                       USERNAME
                     </span>
-                    <EditBox
+                    <PublicTextField
                       name="username"
                       autoComplete="username"
                       placeholder="username"
                       value={userName}
-                      onChange={(event) => setUserName(event.target.value)}
+                      onChange={setUserName}
                       disabled={formLocked}
                     />
                   </label>
