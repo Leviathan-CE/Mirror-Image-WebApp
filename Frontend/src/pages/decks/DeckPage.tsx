@@ -81,11 +81,24 @@ import { cn } from "@/lib/utils"
 
 const BROWSE_WIDTH_STORAGE_KEY = "mi-deck-browse-width-px"
 const BROWSE_WIDTH_MIN = 280
-const BROWSE_WIDTH_MAX = 640
+/** Leave this much horizontal room for the deck board while resizing. */
+const BROWSE_WIDTH_DECK_REMAIN_MIN = 280
 const BROWSE_WIDTH_DEFAULT = 352
 
+/** Widest the library panel may grow — viewport minus a thin deck strip. */
+function maxBrowseWidth(): number {
+  if (typeof window === "undefined") return BROWSE_WIDTH_MIN
+  return Math.max(
+    BROWSE_WIDTH_MIN,
+    window.innerWidth - BROWSE_WIDTH_DECK_REMAIN_MIN
+  )
+}
+
 function clampBrowseWidth(width: number): number {
-  return Math.min(BROWSE_WIDTH_MAX, Math.max(BROWSE_WIDTH_MIN, Math.round(width)))
+  return Math.min(
+    maxBrowseWidth(),
+    Math.max(BROWSE_WIDTH_MIN, Math.round(width))
+  )
 }
 
 function readStoredBrowseWidth(): number {
@@ -134,6 +147,15 @@ export function DeckPage() {
 
   useEffect(() => {
     setBrowseWidth(readStoredBrowseWidth())
+  }, [])
+
+  // If the window shrinks, pull the panel back so it still leaves room for the board.
+  useEffect(() => {
+    function onWindowResize() {
+      setBrowseWidth((w) => clampBrowseWidth(w))
+    }
+    window.addEventListener("resize", onWindowResize)
+    return () => window.removeEventListener("resize", onWindowResize)
   }, [])
 
   useEffect(() => {
