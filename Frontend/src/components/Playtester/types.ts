@@ -29,7 +29,10 @@ export {
 } from "./playCard.logic"
 
 export {
+  isSessionTokenInstance,
   isResourceTokenInstance,
+  destroySessionTokenIfLeaving,
+  destroySessionCardIfLeaving,
   destroyResourceTokenIfLeaving,
   destroyResourceCardIfLeaving,
 } from "./sessionResources.logic"

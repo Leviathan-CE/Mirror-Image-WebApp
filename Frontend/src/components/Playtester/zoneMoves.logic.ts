@@ -1,9 +1,9 @@
 /** Zone transfer helpers (move / put / take) for the playtester session. */
 
 import {
-  destroyResourceCardIfLeaving,
-  destroyResourceTokenIfLeaving,
-  isResourceTokenInstance,
+  destroySessionCardIfLeaving,
+  destroySessionTokenIfLeaving,
+  isSessionTokenInstance,
 } from "./sessionResources.logic"
 import { PLAY_ZONE, type PlayZone } from "./playtesterConstants"
 import {
@@ -64,25 +64,206 @@ function expendedOnEnter(
   return false
 }
 
+/** How identity fields are built when seating into a zone. */
+type SeatShape = "float" | "reconstruct" | "reconstructOmitTokenFlag"
+
+type ZoneSeatSpec = {
+  zone: PlayZone
+  /** Session tokens are removed instead of seating here. */
+  destroyOnEnter: boolean
+  shape: SeatShape
+  expended: "inPlay" | "ready"
+  /** Free-float zones need x/y; others clear them. */
+  float?: true
+}
+
+const FLOAT_BATTLEFIELD: ZoneSeatSpec = {
+  zone: PLAY_ZONE.battlefield,
+  destroyOnEnter: false,
+  shape: "float",
+  expended: "inPlay",
+  float: true,
+}
+
+const FLOAT_STOCKPILE: ZoneSeatSpec = {
+  zone: PLAY_ZONE.stockpile,
+  destroyOnEnter: false,
+  shape: "float",
+  expended: "inPlay",
+  float: true,
+}
+
+const SEAT_HAND: ZoneSeatSpec = {
+  zone: PLAY_ZONE.hand,
+  destroyOnEnter: true,
+  shape: "reconstruct",
+  expended: "ready",
+}
+
+const SEAT_LIBRARY: ZoneSeatSpec = {
+  zone: PLAY_ZONE.library,
+  destroyOnEnter: true,
+  shape: "reconstruct",
+  expended: "ready",
+}
+
+/** Library bottom historically omitted the token flag (tokens already destroyed). */
+const SEAT_LIBRARY_BOTTOM: ZoneSeatSpec = {
+  zone: PLAY_ZONE.library,
+  destroyOnEnter: true,
+  shape: "reconstructOmitTokenFlag",
+  expended: "ready",
+}
+
+const SEAT_TRASH: ZoneSeatSpec = {
+  zone: PLAY_ZONE.trashyard,
+  destroyOnEnter: true,
+  shape: "reconstruct",
+  expended: "ready",
+}
+
+const SEAT_DISMANTLED: ZoneSeatSpec = {
+  zone: PLAY_ZONE.dismantled,
+  destroyOnEnter: true,
+  shape: "reconstruct",
+  expended: "ready",
+}
+
+function seatCard(
+  card: PlayingCardInstance,
+  spec: ZoneSeatSpec,
+  xy?: { x: number; y: number }
+): PlayingCardInstance {
+  const counters = countersOnEnter(card, spec.zone)
+  const expended =
+    spec.expended === "inPlay"
+      ? expendedOnEnter(card, spec.zone)
+      : false
+
+  if (spec.shape === "float") {
+    return {
+      ...card,
+      ...counters,
+      zone: spec.zone,
+      x: xy?.x,
+      y: xy?.y,
+      expended,
+      selected: false,
+    }
+  }
+
+  const base: PlayingCardInstance = {
+    instanceId: card.instanceId,
+    cardId: card.cardId,
+    name: card.name,
+    artPath: card.artPath,
+    artVersion: card.artVersion,
+    cost: card.cost ?? [],
+    zone: spec.zone,
+    expended,
+    selected: false,
+    ...counters,
+  }
+  if (spec.shape === "reconstruct") {
+    base.isToken = card.isToken
+  }
+  return base
+}
+
+function placeLibraryTop(
+  without: PlayingCardInstance[],
+  seated: PlayingCardInstance
+): PlayingCardInstance[] {
+  const firstLib = without.findIndex((c) => c.zone === "library")
+  if (firstLib < 0) return [...without, seated]
+  return [
+    ...without.slice(0, firstLib),
+    seated,
+    ...without.slice(firstLib),
+  ]
+}
+
+function placeLibraryBottom(
+  without: PlayingCardInstance[],
+  seated: PlayingCardInstance
+): PlayingCardInstance[] {
+  let lastLib = -1
+  without.forEach((c, i) => {
+    if (c.zone === "library") lastLib = i
+  })
+  if (lastLib < 0) return [...without, seated]
+  return [
+    ...without.slice(0, lastLib + 1),
+    seated,
+    ...without.slice(lastLib + 1),
+  ]
+}
+
+/** In-place map seating (card stays in the array; update fields). */
+function moveCardToZone(
+  cards: PlayingCardInstance[],
+  instanceId: string,
+  spec: ZoneSeatSpec,
+  xy?: { x: number; y: number }
+): PlayingCardInstance[] {
+  if (spec.destroyOnEnter) {
+    const destroyed = destroySessionTokenIfLeaving(
+      cards,
+      instanceId,
+      spec.zone
+    )
+    if (destroyed) return destroyed
+  }
+
+  if (
+    (spec.zone === PLAY_ZONE.trashyard ||
+      spec.zone === PLAY_ZONE.dismantled) &&
+    cards.find((c) => c.instanceId === instanceId)?.zone === spec.zone
+  ) {
+    return cards
+  }
+
+  if (spec.float) {
+    return cards.map((c) =>
+      c.instanceId === instanceId ? seatCard(c, spec, xy) : c
+    )
+  }
+
+  // Reconstruct piles: pull out then append (newest = top).
+  const card = cards.find((c) => c.instanceId === instanceId)
+  if (!card) return cards
+  const without = cards.filter((c) => c.instanceId !== instanceId)
+  return [...without, seatCard(card, spec)]
+}
+
+/** Limbo / put seating (filter duplicate id, then append or library insert). */
+function putCardInZone(
+  cards: PlayingCardInstance[],
+  card: PlayingCardInstance,
+  spec: ZoneSeatSpec,
+  xy?: { x: number; y: number },
+  libraryPlacement?: "top" | "bottom"
+): PlayingCardInstance[] {
+  if (spec.destroyOnEnter) {
+    const destroyed = destroySessionCardIfLeaving(cards, card, spec.zone)
+    if (destroyed) return destroyed
+  }
+
+  const without = cards.filter((c) => c.instanceId !== card.instanceId)
+  const seated = seatCard(card, spec, xy)
+
+  if (libraryPlacement === "top") return placeLibraryTop(without, seated)
+  if (libraryPlacement === "bottom") return placeLibraryBottom(without, seated)
+  return [...without, seated]
+}
+
 export function moveToBattlefield(
   cards: PlayingCardInstance[],
   instanceId: string,
   x: number,
   y: number
 ): PlayingCardInstance[] {
-  return cards.map((c) =>
-    c.instanceId === instanceId
-      ? {
-          ...c,
-          ...countersOnEnter(c, "battlefield"),
-          zone: "battlefield" as const,
-          x,
-          y,
-          expended: expendedOnEnter(c, PLAY_ZONE.battlefield),
-          selected: false,
-        }
-      : c
-  )
+  return moveCardToZone(cards, instanceId, FLOAT_BATTLEFIELD, { x, y })
 }
 
 /** Return a battlefield card to hand (clears free-float position). */
@@ -90,24 +271,12 @@ export function moveToHand(
   cards: PlayingCardInstance[],
   instanceId: string
 ): PlayingCardInstance[] {
-  const destroyed = destroyResourceTokenIfLeaving(cards, instanceId, "hand")
+  const destroyed = destroySessionTokenIfLeaving(cards, instanceId, "hand")
   if (destroyed) return destroyed
-  return cards.map((c) => {
-    if (c.instanceId !== instanceId) return c
-    return {
-      instanceId: c.instanceId,
-      cardId: c.cardId,
-      name: c.name,
-      artPath: c.artPath,
-      artVersion: c.artVersion,
-      cost: c.cost ?? [],
-      zone: "hand" as const,
-      expended: false,
-      selected: false,
-      isResourceToken: c.isResourceToken,
-      ...countersOnEnter(c, "hand"),
-    }
-  })
+  // Hand uses map-in-place (preserves relative order among non-moved cards).
+  return cards.map((c) =>
+    c.instanceId === instanceId ? seatCard(c, SEAT_HAND) : c
+  )
 }
 
 /**
@@ -130,24 +299,7 @@ export function putCardInHand(
   cards: PlayingCardInstance[],
   card: PlayingCardInstance
 ): PlayingCardInstance[] {
-  const destroyed = destroyResourceCardIfLeaving(cards, card, "hand")
-  if (destroyed) return destroyed
-  return [
-    ...cards,
-    {
-      instanceId: card.instanceId,
-      cardId: card.cardId,
-      name: card.name,
-      artPath: card.artPath,
-      artVersion: card.artVersion,
-      cost: card.cost ?? [],
-      zone: "hand" as const,
-      expended: false,
-      selected: false,
-      isResourceToken: card.isResourceToken,
-      ...countersOnEnter(card, "hand"),
-    },
-  ]
+  return putCardInZone(cards, card, SEAT_HAND)
 }
 
 /** Remove a card from the session (held in an animation overlay). */
@@ -155,29 +307,7 @@ export function putCardOnLibraryTop(
   cards: PlayingCardInstance[],
   card: PlayingCardInstance
 ): PlayingCardInstance[] {
-  const destroyed = destroyResourceCardIfLeaving(cards, card, "library")
-  if (destroyed) return destroyed
-  const without = cards.filter((c) => c.instanceId !== card.instanceId)
-  const asLib: PlayingCardInstance = {
-    instanceId: card.instanceId,
-    cardId: card.cardId,
-    name: card.name,
-    artPath: card.artPath,
-    artVersion: card.artVersion,
-    cost: card.cost ?? [],
-    zone: "library",
-    expended: false,
-    selected: false,
-    isResourceToken: card.isResourceToken,
-    ...countersOnEnter(card, "library"),
-  }
-  const firstLib = without.findIndex((c) => c.zone === "library")
-  if (firstLib < 0) return [...without, asLib]
-  return [
-    ...without.slice(0, firstLib),
-    asLib,
-    ...without.slice(firstLib),
-  ]
+  return putCardInZone(cards, card, SEAT_LIBRARY, undefined, "top")
 }
 
 /**
@@ -188,37 +318,10 @@ export function putCardOnLibraryBottom(
   cards: PlayingCardInstance[],
   card: PlayingCardInstance
 ): PlayingCardInstance[] {
-  const destroyed = destroyResourceCardIfLeaving(cards, card, "library")
-  if (destroyed) return destroyed
-  const without = cards.filter((c) => c.instanceId !== card.instanceId)
-  const asLib: PlayingCardInstance = {
-    instanceId: card.instanceId,
-    cardId: card.cardId,
-    name: card.name,
-    artPath: card.artPath,
-    artVersion: card.artVersion,
-    cost: card.cost ?? [],
-    zone: "library",
-    expended: false,
-    selected: false,
-    ...countersOnEnter(card, "library"),
-  }
-  const lastLib = (() => {
-    let idx = -1
-    without.forEach((c, i) => {
-      if (c.zone === "library") idx = i
-    })
-    return idx
-  })()
-  if (lastLib < 0) return [...without, asLib]
-  return [
-    ...without.slice(0, lastLib + 1),
-    asLib,
-    ...without.slice(lastLib + 1),
-  ]
+  return putCardInZone(cards, card, SEAT_LIBRARY_BOTTOM, undefined, "bottom")
 }
 
-/** Put several cards on the library bottom (resource tokens are destroyed). */
+/** Put several cards on the library bottom (session tokens are destroyed). */
 export function putCardsOnLibraryBottom(
   cards: PlayingCardInstance[],
   instanceIds: string[]
@@ -237,30 +340,7 @@ export function moveToTrashyard(
   cards: PlayingCardInstance[],
   instanceId: string
 ): PlayingCardInstance[] {
-  const destroyed = destroyResourceTokenIfLeaving(
-    cards,
-    instanceId,
-    "trashyard"
-  )
-  if (destroyed) return destroyed
-  const card = cards.find((c) => c.instanceId === instanceId)
-  if (!card || card.zone === "trashyard") return cards
-  const without = cards.filter((c) => c.instanceId !== instanceId)
-  const asTrash: PlayingCardInstance = {
-    instanceId: card.instanceId,
-    cardId: card.cardId,
-    name: card.name,
-    artPath: card.artPath,
-    artVersion: card.artVersion,
-    cost: card.cost ?? [],
-    zone: "trashyard",
-    expended: false,
-    selected: false,
-    isResourceToken: card.isResourceToken,
-    ...countersOnEnter(card, "trashyard"),
-  }
-  // Append so the newest discard is last in array = top of the pile UI.
-  return [...without, asTrash]
+  return moveCardToZone(cards, instanceId, SEAT_TRASH)
 }
 
 /** Seat a limbo card into the trashyard after a draw animation. */
@@ -268,27 +348,18 @@ export function putCardInTrashyard(
   cards: PlayingCardInstance[],
   card: PlayingCardInstance
 ): PlayingCardInstance[] {
-  const destroyed = destroyResourceCardIfLeaving(cards, card, "trashyard")
+  const destroyed = destroySessionCardIfLeaving(cards, card, "trashyard")
   if (destroyed) return destroyed
-  return moveToTrashyard(
-    [
-      ...cards,
-      {
-        instanceId: card.instanceId,
-        cardId: card.cardId,
-        name: card.name,
-        artPath: card.artPath,
-        artVersion: card.artVersion,
-        cost: card.cost ?? [],
-        zone: "hand",
-        expended: false,
-        selected: false,
-        isResourceToken: card.isResourceToken,
-        // Seated from an animation overlay, so it is entering the pile fresh.
-        ...NO_COUNTERS,
-      },
-    ],
-    card.instanceId
+  return putCardInZone(
+    cards,
+    {
+      ...card,
+      zone: "hand",
+      expended: false,
+      selected: false,
+      ...NO_COUNTERS,
+    },
+    SEAT_TRASH
   )
 }
 
@@ -297,29 +368,7 @@ export function moveToDismantled(
   cards: PlayingCardInstance[],
   instanceId: string
 ): PlayingCardInstance[] {
-  const destroyed = destroyResourceTokenIfLeaving(
-    cards,
-    instanceId,
-    "dismantled"
-  )
-  if (destroyed) return destroyed
-  const card = cards.find((c) => c.instanceId === instanceId)
-  if (!card || card.zone === "dismantled") return cards
-  const without = cards.filter((c) => c.instanceId !== instanceId)
-  const asDismantled: PlayingCardInstance = {
-    instanceId: card.instanceId,
-    cardId: card.cardId,
-    name: card.name,
-    artPath: card.artPath,
-    artVersion: card.artVersion,
-    cost: card.cost ?? [],
-    zone: "dismantled",
-    expended: false,
-    selected: false,
-    isResourceToken: card.isResourceToken,
-    ...countersOnEnter(card, "dismantled"),
-  }
-  return [...without, asDismantled]
+  return moveCardToZone(cards, instanceId, SEAT_DISMANTLED)
 }
 
 /** Seat a limbo card into dismantled after a draw animation. */
@@ -327,27 +376,18 @@ export function putCardInDismantled(
   cards: PlayingCardInstance[],
   card: PlayingCardInstance
 ): PlayingCardInstance[] {
-  const destroyed = destroyResourceCardIfLeaving(cards, card, "dismantled")
+  const destroyed = destroySessionCardIfLeaving(cards, card, "dismantled")
   if (destroyed) return destroyed
-  return moveToDismantled(
-    [
-      ...cards,
-      {
-        instanceId: card.instanceId,
-        cardId: card.cardId,
-        name: card.name,
-        artPath: card.artPath,
-        artVersion: card.artVersion,
-        cost: card.cost ?? [],
-        zone: "hand",
-        expended: false,
-        selected: false,
-        isResourceToken: card.isResourceToken,
-        // Seated from an animation overlay, so it is entering the pile fresh.
-        ...NO_COUNTERS,
-      },
-    ],
-    card.instanceId
+  return putCardInZone(
+    cards,
+    {
+      ...card,
+      zone: "hand",
+      expended: false,
+      selected: false,
+      ...NO_COUNTERS,
+    },
+    SEAT_DISMANTLED
   )
 }
 
@@ -358,19 +398,7 @@ export function putCardOnBattlefield(
   x: number,
   y: number
 ): PlayingCardInstance[] {
-  const without = cards.filter((c) => c.instanceId !== card.instanceId)
-  return [
-    ...without,
-    {
-      ...card,
-      ...countersOnEnter(card, "battlefield"),
-      zone: "battlefield",
-      x,
-      y,
-      expended: expendedOnEnter(card, PLAY_ZONE.battlefield),
-      selected: false,
-    },
-  ]
+  return putCardInZone(cards, card, FLOAT_BATTLEFIELD, { x, y })
 }
 
 /** Move a card into the stockpile free-float zone. */
@@ -380,19 +408,7 @@ export function moveToStockpile(
   x: number,
   y: number
 ): PlayingCardInstance[] {
-  return cards.map((c) =>
-    c.instanceId === instanceId
-      ? {
-          ...c,
-          ...countersOnEnter(c, "stockpile"),
-          zone: "stockpile" as const,
-          x,
-          y,
-          expended: expendedOnEnter(c, PLAY_ZONE.stockpile),
-          selected: false,
-        }
-      : c
-  )
+  return moveCardToZone(cards, instanceId, FLOAT_STOCKPILE, { x, y })
 }
 
 /** Seat a limbo card onto the stockpile after a draw animation. */
@@ -402,25 +418,13 @@ export function putCardOnStockpile(
   x: number,
   y: number
 ): PlayingCardInstance[] {
-  const without = cards.filter((c) => c.instanceId !== card.instanceId)
-  return [
-    ...without,
-    {
-      ...card,
-      ...countersOnEnter(card, "stockpile"),
-      zone: "stockpile",
-      x,
-      y,
-      expended: expendedOnEnter(card, PLAY_ZONE.stockpile),
-      selected: false,
-    },
-  ]
+  return putCardInZone(cards, card, FLOAT_STOCKPILE, { x, y })
 }
 
 /**
  * Seat a card in the pilot slot (capacity 1).
  * Any card already in pilot is bumped back to hand.
- * Resource tokens targeting pilot (or bumped into hand) are destroyed.
+ * Session tokens targeting pilot (or bumped into hand) are destroyed.
  */
 export function moveToPilot(
   cards: PlayingCardInstance[],
@@ -429,7 +433,7 @@ export function moveToPilot(
   const seated = cards.find((c) => c.instanceId === instanceId)
   if (seated?.zone === PLAY_ZONE.pilot) return cards
 
-  const destroyed = destroyResourceTokenIfLeaving(cards, instanceId, "pilot")
+  const destroyed = destroySessionTokenIfLeaving(cards, instanceId, "pilot")
   if (destroyed) return destroyed
 
   const next: PlayingCardInstance[] = []
@@ -447,8 +451,8 @@ export function moveToPilot(
       continue
     }
     if (c.zone === "pilot") {
-      // Bump to hand — resource tokens leave play instead.
-      if (isResourceTokenInstance(c)) continue
+      // Bump to hand — session tokens leave play instead.
+      if (isSessionTokenInstance(c)) continue
       next.push({
         ...c,
         ...countersOnEnter(c, "hand"),
@@ -473,12 +477,12 @@ export function putCardOnPilot(
   cards: PlayingCardInstance[],
   card: PlayingCardInstance
 ): PlayingCardInstance[] {
-  const destroyed = destroyResourceCardIfLeaving(cards, card, "pilot")
+  const destroyed = destroySessionCardIfLeaving(cards, card, "pilot")
   if (destroyed) return destroyed
   const without = cards.filter((c) => c.instanceId !== card.instanceId)
   const bumped = without.flatMap((c) => {
     if (c.zone !== "pilot") return [c]
-    if (isResourceTokenInstance(c)) return []
+    if (isSessionTokenInstance(c)) return []
     return [
       {
         ...c,
@@ -493,19 +497,12 @@ export function putCardOnPilot(
   })
   return [
     ...bumped,
-    {
-      instanceId: card.instanceId,
-      cardId: card.cardId,
-      name: card.name,
-      artPath: card.artPath,
-      artVersion: card.artVersion,
-      cost: card.cost ?? [],
-      zone: "pilot",
-      expended: false,
-      selected: false,
-      isResourceToken: card.isResourceToken,
-      ...countersOnEnter(card, "pilot"),
-    },
+    seatCard(card, {
+      zone: PLAY_ZONE.pilot,
+      destroyOnEnter: false,
+      shape: "reconstruct",
+      expended: "ready",
+    }),
   ]
 }
 
@@ -557,4 +554,3 @@ export function moveAllFromZone(
   }
   return next
 }
-

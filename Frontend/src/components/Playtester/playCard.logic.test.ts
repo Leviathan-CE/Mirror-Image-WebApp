@@ -31,7 +31,7 @@ function card(
     expended: overrides.expended ?? false,
     selected: overrides.selected,
     faceDown: overrides.faceDown,
-    isResourceToken: overrides.isResourceToken,
+    isToken: overrides.isToken,
     timeCounters: overrides.timeCounters,
     damageCounters: overrides.damageCounters,
     tlvCounters: overrides.tlvCounters,
@@ -363,7 +363,7 @@ describe("cardsInZone / toggleExpended / duplicatePlayingCard", () => {
     const copy = next[1]!
     expect(copy.instanceId).not.toBe("a")
     expect(copy.faceDown).toBe(true)
-    expect(copy.isResourceToken).toBe(true)
+    expect(copy.isToken).toBe(true)
     expect(copy.x).toBe(38)
     expect(copy.y).toBe(48)
   })
@@ -389,7 +389,7 @@ describe("cardsInZone / toggleExpended / duplicatePlayingCard", () => {
     expect(next).toHaveLength(4)
     const copies = next.filter((c) => c.instanceId !== "a" && c.instanceId !== "b")
     expect(copies).toHaveLength(2)
-    expect(copies.every((c) => c.isResourceToken)).toBe(true)
+    expect(copies.every((c) => c.isToken)).toBe(true)
     expect(copies.map((c) => c.zone).sort()).toEqual([
       PLAY_ZONE.battlefield,
       PLAY_ZONE.stockpile,

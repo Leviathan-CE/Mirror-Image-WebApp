@@ -199,6 +199,6 @@ export function spawnResourceTokenInstance(
     y,
     expended: false,
     selected: false,
-    isResourceToken: true,
+    isToken: true,
   }
 }

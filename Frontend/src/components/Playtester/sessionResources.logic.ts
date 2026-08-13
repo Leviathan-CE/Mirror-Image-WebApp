@@ -1,10 +1,16 @@
-/** Resource-token session rules (destroy on illegal zone entry). */
+/**
+ * Session-token rules: Resource Token spawns and Create Copy share one flag
+ * (`isResourceToken`) and leave-zone destroy policy.
+ */
 
 import { PLAY_ZONE, type PlayZone } from "./playtesterConstants"
 import { removeCard, type PlayingCardInstance } from "./playCard.logic"
 
-/** Resource tokens cease to exist in these zones (do not relocate there). */
-const RESOURCE_DESTROY_ZONES: ReadonlySet<PlayZone> = new Set([
+/**
+ * Session tokens cease to exist in these zones (do not relocate there).
+ * Battlefield / stockpile are intentional homes — not listed.
+ */
+const SESSION_TOKEN_DESTROY_ZONES: ReadonlySet<PlayZone> = new Set([
   PLAY_ZONE.library,
   PLAY_ZONE.hand,
   PLAY_ZONE.trashyard,
@@ -12,37 +18,47 @@ const RESOURCE_DESTROY_ZONES: ReadonlySet<PlayZone> = new Set([
   PLAY_ZONE.pilot,
 ])
 
-export function isResourceTokenInstance(
+/** True for Resource Token spawns and Create Copy tokens. */
+export function isSessionTokenInstance(
   card: PlayingCardInstance | undefined | null
 ): boolean {
-  return Boolean(card?.isResourceToken)
+  return Boolean(card?.isToken)
 }
 
+/** @deprecated Prefer `isSessionTokenInstance` — same check. */
+export const isResourceTokenInstance = isSessionTokenInstance
+
 /**
- * If `instanceId` is a resource token and `targetZone` destroys tokens,
+ * If `instanceId` is a session token and `targetZone` destroys tokens,
  * remove it and return the new list. Otherwise return null (caller moves normally).
  */
-export function destroyResourceTokenIfLeaving(
+export function destroySessionTokenIfLeaving(
   cards: PlayingCardInstance[],
   instanceId: string,
   targetZone: PlayZone
 ): PlayingCardInstance[] | null {
-  if (!RESOURCE_DESTROY_ZONES.has(targetZone)) return null
+  if (!SESSION_TOKEN_DESTROY_ZONES.has(targetZone)) return null
   const card = cards.find((c) => c.instanceId === instanceId)
-  if (!isResourceTokenInstance(card)) return null
+  if (!isSessionTokenInstance(card)) return null
   return removeCard(cards, instanceId)
 }
 
 /**
- * If `card` is a resource token headed to a destroy zone, drop it from the
+ * If `card` is a session token headed to a destroy zone, drop it from the
  * session instead of seating it. Otherwise return null.
  */
-export function destroyResourceCardIfLeaving(
+export function destroySessionCardIfLeaving(
   cards: PlayingCardInstance[],
   card: PlayingCardInstance,
   targetZone: PlayZone
 ): PlayingCardInstance[] | null {
-  if (!RESOURCE_DESTROY_ZONES.has(targetZone)) return null
-  if (!isResourceTokenInstance(card)) return null
+  if (!SESSION_TOKEN_DESTROY_ZONES.has(targetZone)) return null
+  if (!isSessionTokenInstance(card)) return null
   return removeCard(cards, card.instanceId)
 }
+
+/** @deprecated Prefer `destroySessionTokenIfLeaving`. */
+export const destroyResourceTokenIfLeaving = destroySessionTokenIfLeaving
+
+/** @deprecated Prefer `destroySessionCardIfLeaving`. */
+export const destroyResourceCardIfLeaving = destroySessionCardIfLeaving

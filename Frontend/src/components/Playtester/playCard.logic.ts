@@ -28,10 +28,11 @@ export type PlayingCardInstance = {
   /** True when the card shows its back instead of art. */
   faceDown?: boolean
   /**
-   * Created Resource Token (not a deck card). Destroyed if it would enter
-   * library / hand / trashyard / dismantled / pilot.
+   * Session token flag (Resource Token spawns + Create Copy). Destroyed if it
+   * would enter library / hand / trashyard / dismantled / pilot. Battlefield
+   * and stockpile are valid homes.
    */
-  isResourceToken?: boolean
+  isToken?: boolean
   /** Green time counters (stockpile / lock timing). */
   timeCounters?: number
   /** Red damage counters marked on the card. */
@@ -420,7 +421,7 @@ export function duplicatePlayingCard(
     y: (card.y ?? 0) + COPY_OFFSET_Y,
     expended: false,
     selected: false,
-    isResourceToken: true,
+    isToken: true,
     faceDown: card.faceDown,
     isClassified: card.isClassified,
     classification: card.classification,
