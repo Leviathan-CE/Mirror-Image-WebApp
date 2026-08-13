@@ -130,7 +130,7 @@ export type PlayContextMenuActions = {
     kind: CardCounterKind,
     delta: number
   ) => void
-  duplicateCard: (instanceId: string) => void
+  duplicateCard: (instanceIds: string[]) => void
   inspectCard: (card: PlayingCardInstance) => void
   adjustPilotGenBonus: (delta: number) => void
   toggleExpended: (instanceIds: string[]) => void
@@ -412,15 +412,8 @@ export function usePlayContextMenu({
         ),
         onSelect: () => actions.adjustCounter(counterTargets, "damage", 1),
       },
-      {
-        id: CTX_MENU_ACTION.addTlv,
-        label: (
-          <>
-            Add <GameIcon name="threat_lvl" className="h-4 w-auto" /> counter
-          </>
-        ),
-        onSelect: () => actions.adjustCounter(counterTargets, "tlv", 1),
-      },
+      
+     
       {
         id: CTX_MENU_ACTION.addOtherCounter,
         label: "Add other counter",
@@ -448,12 +441,35 @@ export function usePlayContextMenu({
             onSelect: () =>
               actions.adjustCounter(counterTargets, "depletion", 1),
           },
+          {
+            id: CTX_MENU_ACTION.addTlv,
+            label: (
+              <>
+                Add +1 <GameIcon name="threat_lvl" className="h-4 w-auto" />{" "}
+                counter
+              </>
+            ),
+            onSelect: () => actions.adjustCounter(counterTargets, "tlv", 1),
+          },
+          {
+            id: CTX_MENU_ACTION.addTlvMinus,
+            label: (
+              <>
+                Add −1 <GameIcon name="threat_lvl" className="h-4 w-auto" />{" "}
+                counter
+              </>
+            ),
+            onSelect: () => actions.adjustCounter(counterTargets, "tlvMinus", 1),
+          },
         ],
       },
       {
         id: CTX_MENU_ACTION.createCopy,
-        label: "Create copy",
-        onSelect: () => actions.duplicateCard(card.instanceId),
+        label:
+          counterTargets.length > 1
+            ? `Create copies [${counterTargets.length}]`
+            : "Create copy",
+        onSelect: () => actions.duplicateCard(counterTargets),
       },
       generateResourceItem,
       putOnBottomItem,

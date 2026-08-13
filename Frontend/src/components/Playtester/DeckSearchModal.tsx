@@ -16,6 +16,7 @@ import {
 } from "react"
 import { createPortal } from "react-dom"
 
+import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import { PlayingCard } from "@/components/Playtester/PlayingCard"
 import {
   filterLibraryByName,
@@ -31,6 +32,7 @@ import {
 } from "@/components/Playtester/deckSearchPanel.logic"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { MiddleMouseScroll } from "@/components/ui/MiddleMouseScroll"
+import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
 const CARD_W = 72
@@ -84,6 +86,8 @@ export function DeckSearchModal({
   const [query, setQuery] = useState("")
   const [drag, setDrag] = useState<DragState | null>(null)
   const dragRef = useRef<DragState | null>(null)
+  /** Middle-mouse hold zoom — local to this panel (same as hand / float zones). */
+  const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
   /** Position + size survive closing the panel and reloads. */
   const [box, setBox] = useState<DeckSearchBox>(() =>
     readStoredDeckSearchBox(currentViewport())
@@ -103,6 +107,7 @@ export function DeckSearchModal({
       setQuery("")
       setDrag(null)
       dragRef.current = null
+      setEnlarged(null)
     }
   }, [open])
 
@@ -119,9 +124,27 @@ export function DeckSearchModal({
   }, [])
 
   useEffect(() => {
+    if (!enlarged) return
+    function release() {
+      setEnlarged(null)
+    }
+    window.addEventListener("pointerup", release)
+    window.addEventListener("blur", release)
+    return () => {
+      window.removeEventListener("pointerup", release)
+      window.removeEventListener("blur", release)
+    }
+  }, [enlarged])
+
+  useEffect(() => {
     if (!open) return
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onCancel()
+      if (event.key !== "Escape") return
+      // Sticky “View details” overlay owns Escape; don’t close the search under it.
+      if (document.querySelector('.deck-card-enlarge[aria-modal="true"]')) {
+        return
+      }
+      onCancel()
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
@@ -173,6 +196,13 @@ export function DeckSearchModal({
     event: ReactPointerEvent<HTMLDivElement>,
     card: PlayingCardInstance
   ) {
+    // Hold middle mouse to zoom — stopPropagation so MiddleMouseScroll does not pan.
+    if (event.button === 1) {
+      event.preventDefault()
+      event.stopPropagation()
+      setEnlarged(card)
+      return
+    }
     if (event.button !== 0) return
     event.preventDefault()
     event.stopPropagation()
@@ -410,6 +440,22 @@ export function DeckSearchModal({
           />
         </div>
       ) : null}
+
+      <CardEnlargeOverlay
+        open={enlarged != null}
+        name={enlarged?.name ?? ""}
+        artSrc={
+          enlarged?.isClassified
+            ? null
+            : enlarged
+              ? cardArtUrl(enlarged.artPath, enlarged.artVersion)
+              : null
+        }
+        classification={
+          enlarged?.classification ??
+          (enlarged?.isClassified ? "classified" : null)
+        }
+      />
     </>,
     document.body
   )

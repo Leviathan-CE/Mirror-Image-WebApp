@@ -76,6 +76,7 @@ export const CTX_MENU_ACTION = {
   addTime: "add-time",
   addDamage: "add-damage",
   addTlv: "add-tlv",
+  addTlvMinus: "add-tlv-minus",
   addOtherCounter: "add-other-counter",
   addGeneric: "add-generic",
   addDepletion: "add-depletion",

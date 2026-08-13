@@ -1,6 +1,7 @@
 /**
  * Free-float play surface — drag cards by {x,y}; ghost escapes overflow to reach hand.
  * Empty-surface drag draws a marquee to multi-select cards.
+ * Ctrl/Cmd+click toggles a card in or out of the selection.
  * Dragging a selected card moves / rezones the whole selection as a group.
  *
  * Pointer listeners for marquee + card drag are attached synchronously on
@@ -340,13 +341,23 @@ export function FreeFloatSurface({
     onBringToFront(card.instanceId)
     event.preventDefault()
 
+    const selectedIds = cards
+      .filter((c) => c.selected)
+      .map((c) => c.instanceId)
+
+    // Ctrl/Cmd+click toggles membership without starting a drag.
+    if (event.ctrlKey || event.metaKey) {
+      const nextIds = card.selected
+        ? selectedIds.filter((id) => id !== card.instanceId)
+        : [...selectedIds, card.instanceId]
+      onSelectionRef.current?.(nextIds)
+      return
+    }
+
     const local = clientToLocal(event.clientX, event.clientY)
     const x = card.x ?? 0
     const y = card.y ?? 0
 
-    const selectedIds = cards
-      .filter((c) => c.selected)
-      .map((c) => c.instanceId)
     const groupIds =
       card.selected && selectedIds.length > 0
         ? selectedIds

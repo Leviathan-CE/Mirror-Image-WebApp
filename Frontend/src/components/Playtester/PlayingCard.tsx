@@ -45,10 +45,16 @@ export function PlayingCard({
   const time = card.timeCounters ?? 0
   const damage = card.damageCounters ?? 0
   const tlv = card.tlvCounters ?? 0
+  const tlvMinus = card.tlvMinusCounters ?? 0
   const generic = card.genericCounters ?? 0
   const depletion = card.depletionCounters ?? 0
   const hasCounters =
-    time > 0 || damage > 0 || tlv > 0 || generic > 0 || depletion > 0
+    time > 0 ||
+    damage > 0 ||
+    tlv > 0 ||
+    tlvMinus > 0 ||
+    generic > 0 ||
+    depletion > 0
   const interactive = Boolean(onCounterAdjust)
 
   function adjust(kind: CardCounterKind, delta: number) {
@@ -139,6 +145,14 @@ export function PlayingCard({
       </div>
 
       {/*
+        Flat hit plane above the 3D flip. Face-down cards use rotateY +
+        backface-visibility; without this, pointer hits often fall through to
+        the board (marquee) so multi-select / context actions never fire.
+        Counter badges sit at a higher z-index and keep pointer-events-auto.
+      */}
+      <div className="absolute inset-0 z-[1]" aria-hidden />
+
+      {/*
         Outside the flip container on purpose: inside it the badges would ride
         the front face and vanish (backface-visibility) whenever the card is
         turned over. `pointer-events-none` keeps the empty part of the column
@@ -176,11 +190,24 @@ export function PlayingCard({
               count={tlv}
               interactive={interactive}
               className="border-amber-400/70 bg-black/85 text-amber-100"
-              label="TLV"
+              label="+TLV"
               onAdjust={adjust}
             >
+              +{tlv}
               <GameIcon name="threat_lvl" className="h-4 w-auto" />
-              {tlv}
+            </CounterBadge>
+          ) : null}
+          {tlvMinus > 0 ? (
+            <CounterBadge
+              kind="tlvMinus"
+              count={tlvMinus}
+              interactive={interactive}
+              className="border-violet-400/70 bg-black/85 text-violet-100"
+              label="−TLV"
+              onAdjust={adjust}
+            >
+              −{tlvMinus}
+              <GameIcon name="threat_lvl" className="h-4 w-auto" />
             </CounterBadge>
           ) : null}
           {generic > 0 ? (

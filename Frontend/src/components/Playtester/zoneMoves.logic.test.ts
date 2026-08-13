@@ -142,6 +142,7 @@ describe("counters do not survive a zone change", () => {
     timeCounters: 2,
     damageCounters: 3,
     tlvCounters: 1,
+    tlvMinusCounters: 2,
     genericCounters: 4,
     depletionCounters: 5,
   }
@@ -149,6 +150,7 @@ describe("counters do not survive a zone change", () => {
     timeCounters: undefined,
     damageCounters: undefined,
     tlvCounters: undefined,
+    tlvMinusCounters: undefined,
     genericCounters: undefined,
     depletionCounters: undefined,
   }
@@ -165,6 +167,7 @@ describe("counters do not survive a zone change", () => {
       timeCounters: target?.timeCounters,
       damageCounters: target?.damageCounters,
       tlvCounters: target?.tlvCounters,
+      tlvMinusCounters: target?.tlvMinusCounters,
       genericCounters: target?.genericCounters,
       depletionCounters: target?.depletionCounters,
     }
