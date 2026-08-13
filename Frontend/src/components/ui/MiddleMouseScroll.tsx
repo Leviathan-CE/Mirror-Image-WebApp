@@ -301,7 +301,8 @@ export function MiddleMouseScroll({
         role="region"
         aria-label={label}
         className={cn(
-          "mi-middle-scroll min-h-0 min-w-0 flex-1 overflow-auto",
+          "mi-middle-scroll min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain",
+          vertical && "pr-3",
           panning ? "cursor-grabbing select-none" : "cursor-default",
           viewportClassName
         )}
@@ -331,20 +332,24 @@ export function MiddleMouseScroll({
         </div>
       ) : null}
 
-      {vertical && vThumb ? (
+      {/* Always paint the vertical track when enabled so the scroll rect is
+          visible; the thumb only appears once content overflows. */}
+      {vertical ? (
         <div
-          className="absolute top-0 right-0 bottom-0 w-2 border border-cyan-500/25 bg-black/60"
+          className="absolute top-0 right-0 bottom-0 z-10 w-2 border border-cyan-500/25 bg-black/60"
           style={{ bottom: horizontal && hThumb ? 12 : 0 }}
           onPointerDown={onVerticalTrackPointerDown}
           aria-hidden
         >
-          <div
-            className="absolute left-0 w-full cursor-grab bg-cyan-500/55 hover:bg-cyan-400/70 active:cursor-grabbing"
-            style={{
-              height: vThumb.size,
-              top: vThumb.offset,
-            }}
-          />
+          {vThumb ? (
+            <div
+              className="absolute left-0 w-full cursor-grab bg-cyan-500/55 hover:bg-cyan-400/70 active:cursor-grabbing"
+              style={{
+                height: vThumb.size,
+                top: vThumb.offset,
+              }}
+            />
+          ) : null}
         </div>
       ) : null}
     </div>

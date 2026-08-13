@@ -1443,7 +1443,7 @@ export function DeckPage() {
 
               {canEdit && browseOpen ? (
                 <aside
-                  className="relative flex w-full shrink-0 flex-col border border-cyan-500/25 bg-black/55 p-3 xl:sticky xl:top-4 xl:h-[calc(100vh-2rem)] xl:max-h-[calc(100vh-2rem)] xl:w-[var(--browse-w)] xl:overflow-hidden"
+                  className="relative flex w-full shrink-0 flex-col overflow-visible border border-cyan-500/25 bg-black/55 p-3 xl:w-[var(--browse-w)]"
                   style={{ ["--browse-w" as string]: `${browseWidth}px` }}
                 >
                   <CardLibraryBrowser

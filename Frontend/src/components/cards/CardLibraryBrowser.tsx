@@ -20,7 +20,6 @@ import {
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { Button } from "@/components/ui/button"
 import { EditBox } from "@/components/ui/EditBox"
-import { MiddleMouseScroll } from "@/components/ui/MiddleMouseScroll"
 import { ApiError } from "@/lib/api/client"
 import {
   fetchCardFacets,
@@ -669,105 +668,99 @@ export function CardLibraryBrowser({
         </button>
         {filtersOpen ? (
           <div className="mt-2 space-y-3 border border-cyan-500/20 border-t-0 bg-black/40 p-3">
-            {/* Reuse advanced-only fields: open advanced by default when this opens */}
-            <div
-              className={cn(
-                "grid gap-3",
-                !compact && "sm:grid-cols-2"
-              )}
-            >
-              <label className="block">
-                <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-                  DESCRIPTION
-                </span>
-                <EditBox
-                  value={descriptionQuery}
-                  onChange={(e) => setDescriptionQuery(e.target.value)}
-                  placeholder="Rules text…"
-                  size="sm"
-                  autoComplete="off"
-                />
-              </label>
-              <label className="block">
-                <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-                  INVOKE MIN
-                </span>
-                <EditBox
-                  value={invokeMin}
-                  onChange={(e) =>
-                    setInvokeMin(e.target.value.replace(/\D/g, ""))
-                  }
-                  placeholder={`${facets.invoke_cost_min}`}
-                  size="sm"
-                  inputMode="numeric"
-                />
-              </label>
-              <label className="block">
-                <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-                  INVOKE MAX
-                </span>
-                <EditBox
-                  value={invokeMax}
-                  onChange={(e) =>
-                    setInvokeMax(e.target.value.replace(/\D/g, ""))
-                  }
-                  placeholder={`${facets.invoke_cost_max}`}
-                  size="sm"
-                  inputMode="numeric"
-                />
-              </label>
-              <label className="block">
-                <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-                  TYPE LINE
-                </span>
-                <select
-                  value={typesLine}
-                  onChange={(e) => setTypesLine(e.target.value)}
-                  className={filterSelectClassName}
-                >
-                  <option value="">Any</option>
-                  {facets.types_lines.map((line) => (
-                    <option key={line} value={line}>
-                      {line}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-                  SUPER TYPE
-                </span>
-                <select
-                  value={superType}
-                  onChange={(e) => setSuperType(e.target.value)}
-                  className={filterSelectClassName}
-                >
-                  <option value="">Any</option>
-                  {facets.super_types.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-                  SUB TYPE
-                </span>
-                <select
-                  value={subType}
-                  onChange={(e) => setSubType(e.target.value)}
-                  className={filterSelectClassName}
-                >
-                  <option value="">Any</option>
-                  {facets.sub_types.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
+            <div className="grid gap-3">
+            <label className="block">
+              <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                DESCRIPTION
+              </span>
+              <EditBox
+                value={descriptionQuery}
+                onChange={(e) => setDescriptionQuery(e.target.value)}
+                placeholder="Rules text…"
+                size="sm"
+                autoComplete="off"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                INVOKE MIN
+              </span>
+              <EditBox
+                value={invokeMin}
+                onChange={(e) =>
+                  setInvokeMin(e.target.value.replace(/\D/g, ""))
+                }
+                placeholder={`${facets.invoke_cost_min}`}
+                size="sm"
+                inputMode="numeric"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                INVOKE MAX
+              </span>
+              <EditBox
+                value={invokeMax}
+                onChange={(e) =>
+                  setInvokeMax(e.target.value.replace(/\D/g, ""))
+                }
+                placeholder={`${facets.invoke_cost_max}`}
+                size="sm"
+                inputMode="numeric"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                TYPE LINE
+              </span>
+              <select
+                value={typesLine}
+                onChange={(e) => setTypesLine(e.target.value)}
+                className={filterSelectClassName}
+              >
+                <option value="">Any</option>
+                {facets.types_lines.map((line) => (
+                  <option key={line} value={line}>
+                    {line}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                SUPER TYPE
+              </span>
+              <select
+                value={superType}
+                onChange={(e) => setSuperType(e.target.value)}
+                className={filterSelectClassName}
+              >
+                <option value="">Any</option>
+                {facets.super_types.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                SUB TYPE
+              </span>
+              <select
+                value={subType}
+                onChange={(e) => setSubType(e.target.value)}
+                className={filterSelectClassName}
+              >
+                <option value="">Any</option>
+                {facets.sub_types.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
           </div>
         ) : null}
       </div>
@@ -864,23 +857,14 @@ export function CardLibraryBrowser({
     </>
   )
 
-  // Deck side panel: pin PREV/NEXT above + below the scrollable grid so they
-  // stay visible (filters + bars are outside the scroll region).
+  // Deck side panel: grow with the grid. Advanced filters expand in-flow.
   if (compact) {
     return (
-      <div className={cn("flex h-full min-h-0 flex-col", className)}>
+      <div className={cn("flex min-h-0 flex-col", className)}>
         {header}
         {filters}
         {paginationBar("top")}
-        <MiddleMouseScroll
-          label="Card library results"
-          horizontal={false}
-          vertical
-          className="min-h-0 w-full flex-1"
-          viewportClassName="pr-2"
-        >
-          {results}
-        </MiddleMouseScroll>
+        {results}
         {paginationBar("bottom")}
         <CardDetailOverlay card={selected} onClose={() => setSelected(null)} />
       </div>
