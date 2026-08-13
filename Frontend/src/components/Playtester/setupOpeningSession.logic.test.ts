@@ -89,7 +89,7 @@ describe("spawnGroupedStockpileResources", () => {
     expect(spawned).toHaveLength(3)
     expect(spawned.filter((c) => c.name === "Natural Time")).toHaveLength(2)
     expect(spawned.filter((c) => c.name === "Steel")).toHaveLength(1)
-    expect(spawned.every((c) => c.isResourceToken && c.zone === "stockpile")).toBe(
+    expect(spawned.every((c) => c.isToken && c.zone === "stockpile")).toBe(
       true
     )
   })

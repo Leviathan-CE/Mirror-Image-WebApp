@@ -125,7 +125,7 @@ describe("libraryPutFlyMode / shouldFlipIntoHand", () => {
           instanceId: "tim",
           zone: PLAY_ZONE.stockpile,
           faceDown: true,
-          isResourceToken: true,
+          isToken: true,
         }),
         false
       )
@@ -149,7 +149,7 @@ describe("planLibraryDrop", () => {
         card({
           instanceId: "tim",
           zone: PLAY_ZONE.stockpile,
-          isResourceToken: true,
+          isToken: true,
         }),
       ],
       false
@@ -189,7 +189,7 @@ describe("planLibraryDrop", () => {
         card({
           instanceId: "tim",
           zone: PLAY_ZONE.stockpile,
-          isResourceToken: true,
+          isToken: true,
         }),
         card({ instanceId: "a", zone: PLAY_ZONE.hand }),
         card({ instanceId: "b", zone: PLAY_ZONE.hand }),
@@ -234,7 +234,7 @@ describe("planHandDrop", () => {
           instanceId: "tim",
           zone: PLAY_ZONE.stockpile,
           faceDown: true,
-          isResourceToken: true,
+          isToken: true,
         }),
       ],
       false

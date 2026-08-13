@@ -10,7 +10,7 @@ import {
   PLAY_ZONE,
   type FlipFlyMode,
 } from "@/components/Playtester/playtesterConstants"
-import { isResourceTokenInstance } from "@/components/Playtester/sessionResources.logic"
+import { isSessionTokenInstance } from "@/components/Playtester/sessionResources.logic"
 import type { PlayingCardInstance } from "@/components/Playtester/playCard.logic"
 
 export type ZoneRect = {
@@ -125,7 +125,7 @@ export function shouldFlipIntoHand(
   card: PlayingCardInstance,
   flipBusy: boolean
 ): boolean {
-  return Boolean(card.faceDown) && !isResourceTokenInstance(card) && !flipBusy
+  return Boolean(card.faceDown) && !isSessionTokenInstance(card) && !flipBusy
 }
 
 export function clearFloatSelection(
@@ -159,8 +159,8 @@ export function splitResourceAndCards(movable: PlayingCardInstance[]): {
   cards: PlayingCardInstance[]
 } {
   return {
-    resources: movable.filter((c) => isResourceTokenInstance(c)),
-    cards: movable.filter((c) => !isResourceTokenInstance(c)),
+    resources: movable.filter((c) => isSessionTokenInstance(c)),
+    cards: movable.filter((c) => !isSessionTokenInstance(c)),
   }
 }
 

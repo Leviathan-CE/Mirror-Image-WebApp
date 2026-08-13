@@ -38,33 +38,35 @@ export type CardMove = {
   y: number
 }
 
+/** Shared callbacks for battlefield + stockpile FreeFloat mounts. */
+export type FloatSurfaceActions = {
+  onMoveCards: (moves: CardMove[]) => void
+  onBringToFront: (instanceId: string) => void
+  onToggleExpended: (instanceIds: string[]) => void
+  onCardContextMenu?: (
+    instanceId: string,
+    clientX: number,
+    clientY: number
+  ) => void
+  onCardCounterAdjust?: (
+    instanceId: string,
+    kind: CardCounterKind,
+    delta: number
+  ) => void
+}
+
 export type FreeFloatSurfaceProps = {
   cards: PlayingCardInstance[]
   className?: string
-  onMoveCards: (moves: CardMove[]) => void
-  onBringToFront: (instanceId: string) => void
-  onSendToBack: (instanceId: string) => void
-  onToggleExpended: (instanceIds: string[]) => void
+  actions: FloatSurfaceActions
   onSelectionChange?: (instanceIds: string[]) => void
   onCardsReleased?: (
     instanceIds: string[],
     clientX: number,
     clientY: number
   ) => void
-  /** Right-click a free-float card (zone actions / counters). */
-  onCardContextMenu?: (
-    instanceId: string,
-    clientX: number,
-    clientY: number
-  ) => void
   /** Right-click empty surface (not on a card). */
   onEmptyContextMenu?: (clientX: number, clientY: number) => void
-  /** Left-click / right-click a counter badge on a free-float card. */
-  onCardCounterAdjust?: (
-    instanceId: string,
-    kind: CardCounterKind,
-    delta: number
-  ) => void
 }
 
 type DragState = {
@@ -175,16 +177,18 @@ function clampMovesToSurface(
 export function FreeFloatSurface({
   cards,
   className,
-  onMoveCards,
-  onBringToFront,
-  onSendToBack: _onSendToBack,
-  onToggleExpended,
+  actions,
   onSelectionChange,
   onCardsReleased,
-  onCardContextMenu,
   onEmptyContextMenu,
-  onCardCounterAdjust,
 }: FreeFloatSurfaceProps) {
+  const {
+    onMoveCards,
+    onBringToFront,
+    onToggleExpended,
+    onCardContextMenu,
+    onCardCounterAdjust,
+  } = actions
   const surfaceRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragState | null>(null)
   const marqueeRef = useRef<MarqueeState | null>(null)

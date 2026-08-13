@@ -14,7 +14,6 @@ import {
   buildResourceTokenMap,
   canAutoResolvePips,
   extractGainablePips,
-  spawnResourceTokenInstance,
   type GainablePip,
   type ResourceColor,
 } from "@/components/Playtester/accumulateResources.logic"
@@ -25,7 +24,6 @@ import {
   CardFlipFlyAnimation,
 } from "@/components/Playtester/CardFlipFlyAnimation"
 import {
-  PILOT_GEN_MAX,
   PLAY_ZONE,
   PLAYTESTER_STORAGE,
   SELECTABLE_ACTION_ZONES,
@@ -33,6 +31,10 @@ import {
 } from "@/components/Playtester/playtesterConstants"
 import { useCardDragDrop } from "@/components/Playtester/useCardDragDrop"
 import { useDrawAnimations } from "@/components/Playtester/useDrawAnimations"
+import {
+  usePlaySession,
+  type PlaySessionEffects,
+} from "@/components/Playtester/usePlaySession"
 import {
   genIconForCount,
   usePlayContextMenu,
@@ -47,37 +49,16 @@ import { DeckSearchModal } from "@/components/Playtester/DeckSearchModal"
 import {
   clampDeckCount,
   peekTopLibrary,
-  putTopLibraryOnBottom,
-  reorderTopLibrary,
-  shuffleLibrary,
 } from "@/components/Playtester/deckActions.logic"
-import { FreeFloatSurface } from "@/components/Playtester/FreeFloatSurface"
+import {
+  FreeFloatSurface,
+  type FloatSurfaceActions,
+} from "@/components/Playtester/FreeFloatSurface"
 import { LifeCounter } from "@/components/Playtester/LifeCounter"
 import { MulliganModal } from "@/components/Playtester/MulliganModal"
 import { PlayerHand } from "@/components/Playtester/PlayerHand"
 import { TrashyardPile } from "@/components/Playtester/TrashyardPile"
-import {
-  applyMulliganToBottom,
-  setupOpeningSession,
-  startingLifeFromPilot,
-} from "@/components/Playtester/setupOpeningSession.logic"
-import { pilotCard } from "@/components/decks/deck.logic"
-import {
-  cardsInZone,
-  moveCardtoBack,
-  moveCardtoFront,
-  putCardsOnLibraryBottom,
-  moveAllFromZone,
-  removeCard,
-  adjustCardCounter,
-  duplicatePlayingCards,
-  toggleExpended,
-  setCardsFaceDown,
-  readyBattlefieldAndStockpile,
-  extractStockpileTimeCompletions,
-  type CardCounterKind,
-  type PlayingCardInstance,
-} from "@/components/Playtester/types"
+import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { ContextMenu } from "@/components/ui/ContextMenu"
 import {
   fetchCardLibrary,
@@ -126,9 +107,6 @@ export function PlayTesterPage() {
   const deckId = Number(deckIdParam)
 
   const { deck, status, errorText } = useDeckDetail(deckId, token)
-  const [sessionCards, setSessionCards] = useState<PlayingCardInstance[]>([])
-  const sessionCardsRef = useRef<PlayingCardInstance[]>([])
-  sessionCardsRef.current = sessionCards
   const [ctxMenu, setCtxMenu] = useState<CtxMenuState | null>(null)
   /** Sticky zoom from context menu (middle-mouse zoom stays local to each zone). */
   const [inspectCard, setInspectCard] = useState<PlayingCardInstance | null>(
@@ -144,17 +122,9 @@ export function PlayTesterPage() {
   })
   const [deckPeek, setDeckPeek] = useState<DeckPeekState | null>(null)
   const [deckSearchOpen, setDeckSearchOpen] = useState(false)
-  /** Deck plays with its top card face up on the pile until turned off. */
-  const [topRevealed, setTopRevealed] = useState(false)
   const [resourceTokens, setResourceTokens] = useState<CardLibraryItem[]>([])
   const [resourcesReady, setResourcesReady] = useState(false)
   const [playNotice, setPlayNotice] = useState<string | null>(null)
-  const [life, setLife] = useState(0)
-  const [turn, setTurn] = useState(1)
-  /** Zone-persistent pilot invoke tax (+GEN). Survives pilot card swaps. */
-  const [pilotGenBonus, setPilotGenBonus] = useState(0)
-  const [pilotHandSize, setPilotHandSize] = useState(0)
-  const [mulliganOpen, setMulliganOpen] = useState(false)
   const [stockpileHeightPx, setStockpileHeightPx] = useState<number>(
     STOCKPILE_HEIGHT.default
   )
@@ -179,6 +149,54 @@ export function PlayTesterPage() {
     () => new Set(resourceByColor.keys()),
     [resourceByColor]
   )
+
+  const effectsRef = useRef<Partial<PlaySessionEffects>>({})
+  const {
+    sessionCards,
+    setSessionCards,
+    sessionCardsRef,
+    life,
+    setLife,
+    turn,
+    pilotGenBonus,
+    mulliganOpen,
+    topRevealed,
+    setTopRevealed,
+    handCards,
+    battlefieldCards,
+    stockpileCards,
+    pilotCards,
+    libraryCount,
+    topLibraryCard,
+    trashCards,
+    dismantledCards,
+    moveCards: onMoveCards,
+    bringToFront: onBringToFront,
+    toggleExpendedIds: onToggleExpended,
+    changeFloatSelection: onFloatSelectionChange,
+    changeHandSelection: onHandSelectionChange,
+    startTurn,
+    endTurn,
+    deleteCards: deleteSessionCards,
+    adjustCounters: adjustCardCounters,
+    spawnResourceColor: spawnResourceColorCore,
+    adjustPilotGenBonus,
+    putOnLibraryBottom,
+    setFaceDown,
+    duplicateCards,
+    moveAll,
+    putDeckTopOnBottom: putDeckTopOnBottomCards,
+    shuffleLibraryCards,
+    reorderTop,
+    confirmMulligan,
+    finishAccumulateSpawn,
+  } = usePlaySession({
+    status,
+    deck,
+    resourceByColor,
+    resourcesReady,
+    effectsRef,
+  })
 
   function clientToLocalIn(
     el: HTMLElement | null,
@@ -241,6 +259,12 @@ export function PlayTesterPage() {
     clientToStockpileLocal,
     mulliganOpen,
   })
+
+  effectsRef.current = {
+    clearDrawTimers,
+    queueStockpileTimeCompletions,
+    queueDrawsToHand,
+  }
 
   const {
     onHandRelease,
@@ -310,32 +334,6 @@ export function PlayTesterPage() {
       /* already released */
     }
   }
-
-  useEffect(() => {
-    if (status !== "ready" || !deck) {
-      setSessionCards([])
-      setLife(0)
-      setTurn(1)
-      setPilotGenBonus(0)
-      setPilotHandSize(0)
-      setMulliganOpen(false)
-      setTopRevealed(false)
-      clearDrawTimers()
-      return
-    }
-    if (!resourcesReady) return
-
-    const opening = setupOpeningSession(deck, resourceByColor)
-    const pilot = pilotCard(deck.cards, deck.categories)
-    sessionCardsRef.current = opening
-    setSessionCards(opening)
-    setLife(startingLifeFromPilot(pilot))
-    setTurn(1)
-    setPilotGenBonus(0)
-    setPilotHandSize(Math.max(0, Math.floor(pilot?.hand_size ?? 0)))
-    setMulliganOpen(cardsInZone(opening, "hand").length > 0)
-    setTopRevealed(false)
-  }, [status, deck, resourcesReady, resourceByColor])
 
   useEffect(() => {
     if (status !== "ready") {
@@ -413,133 +411,23 @@ export function PlayTesterPage() {
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [status, mulliganOpen, accumulateChooser, inspectCard, deckPeek, deckSearchOpen])
-
-  const handCards = cardsInZone(sessionCards, PLAY_ZONE.hand)
-  const battlefieldCards = cardsInZone(sessionCards, PLAY_ZONE.battlefield)
-  const stockpileCards = cardsInZone(sessionCards, PLAY_ZONE.stockpile)
-  const pilotCards = cardsInZone(sessionCards, PLAY_ZONE.pilot)
-  const libraryCount = cardsInZone(sessionCards, PLAY_ZONE.library).length
-  const topLibraryCard = topRevealed
-    ? (peekTopLibrary(sessionCards, 1)[0] ?? null)
-    : null
-  const trashCards = cardsInZone(sessionCards, PLAY_ZONE.trashyard)
-  const dismantledCards = cardsInZone(sessionCards, PLAY_ZONE.dismantled)
-
-  function onMoveCards(
-    moves: { instanceId: string; x: number; y: number }[]
-  ) {
-    if (moves.length === 0) return
-    const byId = new Map(moves.map((m) => [m.instanceId, m]))
-    setSessionCards((prev) =>
-      prev.map((card) => {
-        const move = byId.get(card.instanceId)
-        return move ? { ...card, x: move.x, y: move.y } : card
-      })
-    )
-  }
-
-  function onBringToFront(instanceId: string) {
-    setSessionCards((prev) => moveCardtoFront(prev, instanceId))
-  }
-
-  function onSendToBack(instanceId: string) {
-    setSessionCards((prev) => moveCardtoBack(prev, instanceId))
-  }
-
-  function onToggleExpended(instanceIds: string[]) {
-    setSessionCards((prev) => {
-      let next = prev
-      for (const id of instanceIds) {
-        next = toggleExpended(next, id)
-      }
-      return next
-    })
-  }
-
-  /** Marquee selection on a free-float zone. */
-  function onFloatSelectionChange(
-    zone: "battlefield" | "stockpile",
-    instanceIds: string[]
-  ) {
-    const selected = new Set(instanceIds)
-    setSessionCards((prev) =>
-      prev.map((card) => {
-        if (card.zone !== zone) {
-          return card.selected ? { ...card, selected: false } : card
-        }
-        const nextSelected = selected.has(card.instanceId)
-        return card.selected === nextSelected
-          ? card
-          : { ...card, selected: nextSelected }
-      })
-    )
-  }
-
-  /** Click / marquee selection on the hand strip. */
-  function onHandSelectionChange(instanceIds: string[]) {
-    const selected = new Set(instanceIds)
-    setSessionCards((prev) =>
-      prev.map((card) => {
-        if (card.zone === PLAY_ZONE.hand) {
-          const nextSelected = selected.has(card.instanceId)
-          return card.selected === nextSelected
-            ? card
-            : { ...card, selected: nextSelected }
-        }
-        if (
-          (card.zone === "battlefield" || card.zone === "stockpile") &&
-          card.selected
-        ) {
-          return { ...card, selected: false }
-        }
-        return card
-      })
-    )
-  }
-
-  function commitWithStockpileTimeCompletions(
-    before: PlayingCardInstance[],
-    after: PlayingCardInstance[]
-  ) {
-    const { cards, launching } = extractStockpileTimeCompletions(before, after)
-    sessionCardsRef.current = cards
-    setSessionCards(cards)
-    queueStockpileTimeCompletions(launching)
-  }
+  }, [
+    status,
+    mulliganOpen,
+    accumulateChooser,
+    inspectCard,
+    deckPeek,
+    deckSearchOpen,
+    deleteSessionCards,
+    sessionCardsRef,
+  ])
 
   function onStartTurn() {
-    if (mulliganOpen || bottomAnim) return
-    const before = sessionCardsRef.current
-    commitWithStockpileTimeCompletions(
-      before,
-      readyBattlefieldAndStockpile(before)
-    )
+    startTurn(Boolean(mulliganOpen || bottomAnim))
   }
 
-  /**
-   * End turn: draw up to pilot hand_size − 2, then advance the turn clock.
-   * Each card you cannot draw from an empty library costs 1 life.
-   */
   function onEndTurn() {
-    if (mulliganOpen || bottomAnim) return
-    if (hasPendingDrawTimers()) return
-
-    const targetHand = Math.max(0, pilotHandSize - 2)
-    const handCount = cardsInZone(sessionCardsRef.current, PLAY_ZONE.hand).length
-    const need = Math.max(0, targetHand - handCount)
-
-    if (need > 0) {
-      const libraryCount = cardsInZone(sessionCardsRef.current, PLAY_ZONE.library).length
-      const drawCount = Math.min(need, libraryCount)
-      const lifeLoss = need - drawCount
-      if (lifeLoss > 0) {
-        setLife((prev) => Math.max(0, prev - lifeLoss))
-      }
-      if (drawCount > 0) queueDrawsToHand(drawCount)
-    }
-
-    setTurn((prev) => prev + 1)
+    endTurn(Boolean(mulliganOpen || bottomAnim || hasPendingDrawTimers()))
   }
 
   function cardScreenRect(instanceId: string): {
@@ -569,24 +457,7 @@ export function PlayTesterPage() {
     colors: ResourceColor[],
     from: { x: number; y: number; w: number; h: number }
   ) {
-    setSessionCards((prev) => {
-      let next = removeCard(prev, card.instanceId)
-      colors.forEach((color, index) => {
-        const template = resourceByColor.get(color)
-        if (!template) return
-        next = [
-          ...next,
-          spawnResourceTokenInstance(
-            template,
-            20 + index * 28,
-            24 + index * 12,
-            index
-          ),
-        ]
-      })
-      return next
-    })
-
+    finishAccumulateSpawn(card, colors)
     startBottomSlide(card, from)
   }
 
@@ -652,71 +523,18 @@ export function PlayTesterPage() {
     setCtxMenu({ kind: "zone", zone, x: clientX, y: clientY })
   }
 
-  /** Remove cards from the session (cheat / cleanup — not trashyard). */
-  function deleteSessionCards(instanceIds: string[]) {
-    if (instanceIds.length === 0) return
-    const ids = new Set(instanceIds)
-    setSessionCards((prev) => {
-      const next = prev.filter((c) => !ids.has(c.instanceId))
-      sessionCardsRef.current = next
-      return next
-    })
-  }
-
   function onFloatCardCounterAdjust(
     instanceId: string,
-    kind: CardCounterKind,
+    kind: Parameters<typeof adjustCardCounters>[1],
     delta: number
   ) {
     adjustCardCounters([instanceId], kind, delta)
   }
 
-  function adjustCardCounters(
-    instanceIds: string[],
-    kind: CardCounterKind,
-    delta: number
-  ) {
-    if (instanceIds.length === 0) return
-    const before = sessionCardsRef.current
-    const after = instanceIds.reduce(
-      (cards, id) => adjustCardCounter(cards, id, kind, delta),
-      before
-    )
-    if (kind === "time") {
-      commitWithStockpileTimeCompletions(before, after)
-      return
-    }
-    sessionCardsRef.current = after
-    setSessionCards(after)
-  }
-
-  /** Cheat / helper: spawn one resource token onto the stockpile. */
   function spawnResourceColor(color: ResourceColor) {
-    const template = resourceByColor.get(color)
-    if (!template) {
+    spawnResourceColorCore(color, () => {
       setPlayNotice(`No catalog card loaded for ${color}.`)
-      return
-    }
-    setSessionCards((prev) => {
-      const seq = cardsInZone(prev, PLAY_ZONE.stockpile).length
-      const next = [
-        ...prev,
-        spawnResourceTokenInstance(
-          template,
-          20 + (seq % 8) * 28,
-          24 + Math.floor(seq / 8) * 16,
-          seq
-        ),
-      ]
-      sessionCardsRef.current = next
-      return next
     })
-  }
-
-  function adjustPilotGenBonus(delta: number) {
-    setPilotGenBonus((prev) =>
-      Math.max(0, Math.min(PILOT_GEN_MAX, prev + delta))
-    )
   }
 
   function setDeckActionCount(key: DeckCountKey, value: string) {
@@ -760,11 +578,7 @@ export function PlayTesterPage() {
     const n = clampDeckCount(count, libraryCount)
     if (n <= 0) return
     if (hasPendingDrawTimers() || isFlipFlying()) return
-    setSessionCards((prev) => {
-      const next = putTopLibraryOnBottom(prev, n)
-      sessionCardsRef.current = next
-      return next
-    })
+    putDeckTopOnBottomCards(n)
     queueTuckUnderDeck(n)
     setPlayNotice(
       n === 1
@@ -774,11 +588,7 @@ export function PlayTesterPage() {
   }
 
   function shuffleLibraryNow(notice: string) {
-    setSessionCards((prev) => {
-      const next = shuffleLibrary(prev)
-      sessionCardsRef.current = next
-      return next
-    })
+    shuffleLibraryCards()
     startDeckShuffle()
     setPlayNotice(notice)
   }
@@ -802,14 +612,7 @@ export function PlayTesterPage() {
     const peek = deckPeek
     setDeckPeek(null)
     if (!peek?.allowReorder || orderedCards.length === 0) return
-    setSessionCards((prev) => {
-      const next = reorderTopLibrary(
-        prev,
-        orderedCards.map((c) => c.instanceId)
-      )
-      sessionCardsRef.current = next
-      return next
-    })
+    reorderTop(orderedCards.map((c) => c.instanceId))
   }
 
   function openDeckSearch() {
@@ -824,6 +627,14 @@ export function PlayTesterPage() {
     shuffleLibraryNow("Deck searched — shuffled.")
   }
 
+  const floatSurfaceActions: FloatSurfaceActions = {
+    onMoveCards,
+    onBringToFront,
+    onToggleExpended,
+    onCardContextMenu: onFloatCardContextMenu,
+    onCardCounterAdjust: onFloatCardCounterAdjust,
+  }
+
   const ctxMenuItems = usePlayContextMenu({
     ctxMenu,
     sessionCards,
@@ -836,24 +647,12 @@ export function PlayTesterPage() {
     topRevealed,
     actions: {
       spawnResourceColor,
-      putOnLibraryBottom: (instanceIds) => {
-        setSessionCards((prev) => {
-          const next = putCardsOnLibraryBottom(prev, instanceIds)
-          sessionCardsRef.current = next
-          return next
-        })
-      },
-      setFaceDown: (instanceIds, faceDown) => {
-        setSessionCards((prev) => setCardsFaceDown(prev, instanceIds, faceDown))
-      },
+      putOnLibraryBottom,
+      setFaceDown,
       deleteSessionCards,
       startAccumulate,
-      adjustCounter: (instanceIds, kind, delta) => {
-        adjustCardCounters(instanceIds, kind, delta)
-      },
-      duplicateCard: (instanceIds) => {
-        setSessionCards((prev) => duplicatePlayingCards(prev, instanceIds))
-      },
+      adjustCounter: adjustCardCounters,
+      duplicateCard: duplicateCards,
       inspectCard: (card) => setInspectCard(card),
       adjustPilotGenBonus,
       toggleExpended: onToggleExpended,
@@ -863,16 +662,9 @@ export function PlayTesterPage() {
       shuffleDeck,
       toggleDeckTopRevealed,
       openDeckSearch,
-      moveAllFromZone: (from, to) => {
-        setSessionCards((prev) => {
-          const next = moveAllFromZone(prev, from, to)
-          sessionCardsRef.current = next
-          return next
-        })
-      },
+      moveAllFromZone: moveAll,
     },
   })
-
   return (
     <section
       className="relative flex h-svh flex-col overflow-hidden bg-cover bg-center bg-no-repeat select-none"
@@ -924,19 +716,14 @@ export function PlayTesterPage() {
               <FreeFloatSurface
                 className="h-full min-h-0 w-full border-cyan-500/20"
                 cards={battlefieldCards}
-                onMoveCards={onMoveCards}
-                onBringToFront={onBringToFront}
-                onSendToBack={onSendToBack}
-                onToggleExpended={onToggleExpended}
+                actions={floatSurfaceActions}
                 onSelectionChange={(ids) =>
                   onFloatSelectionChange("battlefield", ids)
                 }
                 onCardsReleased={onBattlefieldRelease}
-                onCardContextMenu={onFloatCardContextMenu}
                 onEmptyContextMenu={(x, y) =>
                   onZoneEmptyContextMenu("battlefield", x, y)
                 }
-                onCardCounterAdjust={onFloatCardCounterAdjust}
               />
             </div>
 
@@ -974,19 +761,14 @@ export function PlayTesterPage() {
                 <FreeFloatSurface
                   className="h-full min-h-0 w-full border-cyan-500/20 pt-3"
                   cards={stockpileCards}
-                  onMoveCards={onMoveCards}
-                  onBringToFront={onBringToFront}
-                  onSendToBack={onSendToBack}
-                  onToggleExpended={onToggleExpended}
+                  actions={floatSurfaceActions}
                   onSelectionChange={(ids) =>
                     onFloatSelectionChange("stockpile", ids)
                   }
                   onCardsReleased={onStockpileRelease}
-                  onCardContextMenu={onFloatCardContextMenu}
                   onEmptyContextMenu={(x, y) =>
                     onZoneEmptyContextMenu("stockpile", x, y)
                   }
-                  onCardCounterAdjust={onFloatCardCounterAdjust}
                 />
               </div>
 
@@ -1190,14 +972,7 @@ export function PlayTesterPage() {
         <MulliganModal
           hand={handCards}
           onConfirm={(selectedIds) => {
-            const result = applyMulliganToBottom(
-              sessionCardsRef.current,
-              selectedIds
-            )
-            sessionCardsRef.current = result.cards
-            setSessionCards(result.cards)
-            setMulliganOpen(false)
-            queueDrawsToHand(result.drawCount)
+            confirmMulligan(selectedIds)
           }}
         />
       ) : null}

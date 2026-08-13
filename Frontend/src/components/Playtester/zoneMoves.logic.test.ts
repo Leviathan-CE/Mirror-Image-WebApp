@@ -84,7 +84,7 @@ describe("library put top / bottom", () => {
       card({
         instanceId: "tim",
         zone: PLAY_ZONE.stockpile,
-        isResourceToken: true,
+        isToken: true,
       }),
       card({ instanceId: "u", zone: PLAY_ZONE.hand }),
     ]
@@ -129,7 +129,7 @@ describe("moveToHand destroys resource tokens", () => {
       card({
         instanceId: "tim",
         zone: PLAY_ZONE.stockpile,
-        isResourceToken: true,
+        isToken: true,
       }),
     ]
     const next = moveToHand(cards, "tim")
@@ -375,7 +375,7 @@ describe("moveToPilot", () => {
       card({
         instanceId: "tim",
         zone: PLAY_ZONE.stockpile,
-        isResourceToken: true,
+        isToken: true,
       }),
     ]
     expect(moveToPilot(cards, "tim")).toEqual([])
