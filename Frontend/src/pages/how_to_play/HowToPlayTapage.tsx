@@ -775,13 +775,17 @@ export function HowToPlayPage() {
                                         <li>Discard any number of cards in hand with a
                                         {" "}<GameIcon name="threat_lvl" /> rating. The maximuim a
                                             card can block using its <GameIcon name="threat_lvl" />{" "}
-                                            is 3, however the block keyword can increase this limit.
+                                            is 4, however the block keyword can increase this limit.
                                             add the discarded cards together, and reduce the damage
                                             from an attacker of your choice by that total.</li>
                                         <li>Expend any number of augments you control, choose an
                                             attacker for each, reduce the incoming damage by that
                                             augment's <GameIcon name="threat_lvl" /> rating, and
                                             add a depletion counter to that augment.</li>
+                                        <li>Expend any number of non-unit entities you control, choose an
+                                            attacker for each, reduce the incoming damage by that
+                                            augment's <GameIcon name="threat_lvl" /> rating, and
+                                            then trash the entity(s) you expended.</li>
                                     </ul>
                                 </li>
                                 <li>
@@ -831,77 +835,130 @@ export function HowToPlayPage() {
 
                         <Section id="lock" title="The Lock & Time Counters">
                             <p>
-                                The lock is a special zone where only one effect or card can be at a
-                                time. Every time you play a card without using time
-                                counters, or activate or trigger an ability, it goes to the lock
-                                before resolving.
+                                The lock is a special zone that holds at most one card or effect.
+                                Playing a card without time counters, or generating an effect that
+                                uses the lock, goes to the lock if it is empty, or to that
+                                controller's queue if the lock is already full (see Scenario 2).
                             </p>
                             <p className="font-semibold text-cyan-200">The lock does 4 things:</p>
                             <ol className="list-decimal space-y-1 pl-6">
                                 <li>Determines timing.</li>
                                 <li>Determines who is the active and non-active player.</li>
-                                <li>Determines who can overwrite an asset with a Quick Hack.</li>
+                                <li>Determines who can overwrite the lock occupant with a Quick Hack.</li>
                                 <li>Determines when an ability or asset resolves its effect.</li>
                             </ol>
                             <p>
-                                All effects, abilities, and cards use the lock. It works like an
-                                imaginary zone before effects resolve, and can only ever hold one
-                                effect at a time. Whoever controls the active effect in the lock
-                                determines who is the active and non-active player. The active player
-                                at the start of each turn is always whoever's turn it is. The active
-                                player may take game actions until an ability or asset is added to the
-                                lock. Then whoever controls that asset or ability becomes the
-                                non-active player, and their opponent becomes the active player. (If
-                                two abilities trigger at the same time, the active player chooses one
-                                of theirs to add to the Lock first.)
+                                Whoever controls the lock occupant is the non-active player; the
+                                other player is the active player. At the start of each the player whos 
+                                turn it is, is the active player. The active player may take game actions until
+                                a card or effect is added to the lock. Then the controller of that
+                                occupant becomes non-active, and their opponent becomes active. If
+                                two effects would enter an empty lock at the same time, the active
+                                player puts one of theirs into the lock first; the rest go to queues.
                             </p>
-                            <p>
-                                There are two scenarios, depending on whether the effect in the lock
-                                is an asset (a physical card) or an ability generated by a card in
-                                play, in hand, or in another zone.
-                            </p>
-                            <Note>Note: the active player is the only one able to take actions.</Note>
+                            <Note>
+                                Note: only the active player may Quick Hack overwrite the lock. Paying
+                                costs, using resource abilities, and activating into your queue are
+                                allowed for whoever is currently adding effects (active batch,
+                                non-active batch, or your turn in Alternate)&mdash;even if you are
+                                the non-active player.
+                            </Note>
 
                             <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
-                                Scenario 1 &mdash; Assets and Quick Hacks
+                                Scenario 1 &mdash; The lock occupant and Quick Hacks
                             </h3>
                             <p>
-                                When the active player adds an asset or effect to the lock, they
-                                become the non-active player, and each player adds their ability
-                                triggers to their queue of effects while the lock is full. The
-                                now-active player may choose to play their own Quick Hack and
-                                overwrite the asset in the lock, preventing it from resolving and
-                                sending it to the discard pile. The non-active player is
-                                the one who controls the asset or effect in the lock; the active
-                                player is the one who does not. The active player may play a Quick
-                                Hack of their own or let the asset in the lock resolve. If they
-                                respond, control passes back and forth, recalculating who has an
-                                asset or effect in the lock. If they decline, the asset in the lock
-                                resolves, handing the opponent a free lock and active-player status.
-                                If that player also declines to act, the active player reverts to
-                                whoever's turn it is, and the turn continues as normal. If the lock is
-                                empty but players have abilities in their queues, move to Scenario 2.
+                                The lock holds at most one card or effect.
+                            </p>
+                            <ul className="list-disc space-y-1 pl-6">
+                                <li>
+                                    <strong className="text-cyan-100">Empty lock:</strong> a card
+                                    you play, or an effect that uses the lock, goes to the lock.
+                                </li>
+                                <li>
+                                    <strong className="text-cyan-100">Full lock:</strong> that same
+                                    effect goes to its controller's queue instead. It does not enter
+                                    the lock.
+                                </li>
+                                <li>
+                                    <strong className="text-cyan-100">Exception:</strong> the active
+                                    player may play a Quick Hack. That card goes to the lock and
+                                    replaces the occupant (card or effect). The old occupant is
+                                    discarded and does not resolve. Recalculate who is active: the
+                                    Quick Hack's controller is non-active; their opponent is active.
+                                    Restart from “while the lock is full.”
+                                </li>
+                            </ul>
+                            <p>
+                                Queued effects never overwrite the lock. Only a Quick Hack can.
                             </p>
 
                             <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
-                                Scenario 2 &mdash; Ability Effects and the Queue
+                                Scenario 2 &mdash; The queue (lock is full)
                             </h3>
                             <p>
-                                This follows the same rules as Scenario 1, with two differences.
-                                First, the turn does not continue (whoever's turn it is becomes the
-                                active player) until all players' queues are empty. Second, effects
-                                cannot be overwritten&mdash;only physical cards that are played
-                                can be overwritten.
+                                Whenever an ability or effect would be added to the lock but the lock
+                                already holds a card or effect, it is not added to the lock. Put it
+                                on its controller's queue. Queues record whose overflow effects are
+                                waiting. The turn does not continue as free play until the lock and
+                                all queues are empty.
+                            </p>
+                            <p>Then, with the lock still occupied:</p>
+                            <ol className="list-decimal space-y-2 pl-6">
+                                <li>
+                                    <strong className="text-cyan-100">Active batch.</strong> The
+                                    active player may add any legal overflow effects to their queue.
+                                    They then resolve their entire queue, one effect at a time, in an
+                                    order they choose. Each effect fully resolves before the next. If
+                                    a resolved effect would go to the lock, it goes to its
+                                    controller's queue instead. Effects that land on the active
+                                    player's queue during this batch are still part of this batch.
+                                    Effects that land on the non-active player's queue wait.
+                                </li>
+                                <li>
+                                    <strong className="text-cyan-100">Non-active batch.</strong> The
+                                    non-active player does the same: add, then resolve their entire
+                                    queue, one at a time, in an order they choose. Same overflow rule.
+                                </li>
+                                <li>
+                                    <strong className="text-cyan-100">Alternate.</strong> Starting
+                                    with the active player, a player either puts one overflow effect
+                                    on their queue and resolves that one effect, or passes. After a
+                                    player resolves one, it is the other player's turn to add-one-or-pass.
+                                    When both players pass in succession, stop. On your
+                                    add-one-or-pass turn you may pay costs and use resource abilities
+                                    to activate an ability into your queue, even if you are the
+                                    non-active player. (Example: the active player passes; you are
+                                    non-active; you may still spend resources, pay the activation
+                                    cost, add that effect to your queue, and resolve it.) You still
+                                    cannot Quick Hack overwrite unless you are the active player.
+                                </li>
+                                <li>
+                                    <strong className="text-cyan-100">Lock occupant resolves.</strong>{" "}
+                                    Then: if the lock is full and any queue is not empty, repeat
+                                    steps 1–4. If the lock is empty, queues must also be empty before
+                                    the player who turn it is, is active again and play continues.
+                                </li>
+                            </ol>
+                            <p>
+                                A Quick Hack during steps 1–3 is not a queue effect: it overwrites
+                                the lock (Scenario 1) and you restart from “while the lock is full.”
+                                Only the active player may play that Quick Hack.
                             </p>
                             <p>
-                                While an effect is in the lock, there are a few things you can do:
+                                While the lock is full, the player who is currently adding effects
+                                (active batch, non-active batch, or their Alternate turn) may:
                             </p>
                             <ol className="list-decimal space-y-1 pl-6">
-                                <li>Pay costs (resource abilities do not use the lock) but still with the timing restriction of a Quick Hack, meaning you must be the active player.</li>
-                                <li>Allocate a resource to a unit you control. This is also Quick Hack speed, but you can only do so if you control no units that already have expended resources allocated to them. Each resource allocated to a unit gives it a +1 <GameIcon name="threat_lvl" /> rating. To allocate a resource, expend it and choose a target. This ability does not use the lock and happens immediately.</li>
-                                <li>Activate an activated ability and add it to your queue.</li>
+                                <li>Pay costs and use resource abilities (those abilities do not use the lock).</li>
+                                <li>Allocate a resource to a unit you control. You can only do so if you control no units that already have expended resources allocated to them. Each resource allocated to a unit gives it a +1 <GameIcon name="threat_lvl" /> rating. To allocate a resource, expend it and choose a target. This ability does not use the lock and happens immediately.</li>
+                                <li>Activate an activated ability that uses the lock: it goes to your queue, not the lock.</li>
                                 <li>Block an attack.</li>
                             </ol>
+                            <p>
+                                Overwriting the lock with a Quick Hack is only legal for the active
+                                player.
+                            </p>
 
                             <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Time Counters</h3>
                             <p>
@@ -994,12 +1051,12 @@ export function HowToPlayPage() {
                             <p>
                                 Activated abilities are formatted (ignoring the brackets) as [cost 1,
                                 cost 2, etc.]: [effect]. Unless they say otherwise, they can be
-                                activated any time you can play a Quick Hack; if you do, add it to
-                                your queue of effects while the lock is full. You must choose legal
-                                targets only when you put the effect into the lock; if no legal
-                                target is found, the ability does nothing. To activate an activated
-                                ability, pay the cost written on the card. Its effect then goes to
-                                the lock and resolves.
+                                activated any time you can play a Quick Hack. To activate one, pay
+                                the cost written on the card. If the lock is empty, the effect goes
+                                to the lock. If the lock is full, the effect goes to your queue
+                                instead (see The Lock). You must choose legal targets when the
+                                effect would enter the lock or queue; if no legal target is found,
+                                the ability does nothing.
                             </p>
                             <p>
                                 Example: the activated ability "<GameIcon name="expend" />, <GameIcon name="power" /> <GameIcon name="gen1" /> : Draw a
