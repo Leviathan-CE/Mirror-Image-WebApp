@@ -513,17 +513,21 @@ export function HowToPlayPage() {
                                 to see whether your opponent overwrites it with a Quick Hack. If they
                                 don't, it goes directly to the battlefield&mdash;provided you chose
                                 not to use time as part of its cost (see Time Counters for how the
-                                time resource works). Units cannot attack the turn they enter the battlefield.
+                                time resource works). Units can attack the turn they enter the battlefield.
                             </p>
                             <p>
                                 <Term>PROGRAM [ Entity ]:</Term> A type of card that tends to be
                                 synergistic, stays in play once played, and has a variety of effects
-                                and abilities.
+                                and abilities. Programs have a <GameIcon name="threat_lvl" /> rating.
+                                They cannot attack. You may use that rating only to block (see How to
+                                Attack).
                             </p>
                             <p>
                                 <Term>TECHNOLOGY [ Entity ]:</Term> A type of card that tends to be a
                                 counter-play or support piece, stays in play once played, and has a
-                                variety of effects and abilities.
+                                variety of effects and abilities. Technologies have a{" "}
+                                <GameIcon name="threat_lvl" /> rating. They cannot attack. You may
+                                use that rating only to block (see How to Attack).
                             </p>
                             <p>
                                 <Term>AUGMENT [ Entity ]:</Term> Pieces of equipment or cybernetic
@@ -558,7 +562,9 @@ export function HowToPlayPage() {
                                 <Term>PROCESS [ Cyberspell ]:</Term> This cyberspell can be played
                                 any time during your main phase. Processes represent a combination of
                                 magic and technology&mdash;complex programs or scripts that take
-                                significant time to play in battle.
+                                significant time to play in battle. Processes have a{" "}
+                                <GameIcon name="threat_lvl" /> rating. They cannot attack. You may
+                                use that rating only to block (see How to Attack).
                             </p>
                             <p>
                                 <Term>STRIKE [ Cyberspell ]:</Term> This cyberspell can be played any
@@ -575,7 +581,9 @@ export function HowToPlayPage() {
                                 when an effect not controlled by you resolves and the lock becomes
                                 empty. (See Using the Lock for details.) Quick Hacks represent the
                                 fastest scripts you can play, letting you disrupt your opponent or
-                                protect yourself.
+                                protect yourself. Quick Hacks have a <GameIcon name="threat_lvl" />{" "}
+                                rating. They cannot attack. You may use that rating only to block
+                                (see How to Attack).
                             </p>
                         </Section>
 
@@ -754,13 +762,17 @@ export function HowToPlayPage() {
                                 <li>Choose unit(s), play a cyberspell strike card, or activate an augment that says it makes an attack.
                                     When attacking with multiple units, the group is considered a
                                     single attack and must share the same target, but each attacker
-                                    is treated separately for blocking purposes. </li>
+                                    is treated separately for blocking purposes.
+                                    Programs, technologies, processes, and quick hacks cannot attack,
+                                    even if they have a <GameIcon name="threat_lvl" /> rating.
+                                </li>
                                 <li>Expend the chosen unit(s), declare an attack target
                                     (another unit or an opponent), and trigger the
                                     <GameIcon name="attack" /> abilities of the attacking units. When
                                     declaring the target of your attack you must target a readied unit
-                                    the defending player controls if able. 
-                                    <Note>If you cannot target the a readied unit a defending player controls, you cannot make the attack.</Note></li>
+                                    the defending player controls if able. (Every readied unit has
+                                    this requirement built in.)
+                                    <Note>If you cannot target the a readied unit a defending player controls, you cannot make the attack. If they control more than one readied unit, you choose which to target.</Note></li>
                                 <li> The unit(s), cyberspell, or weapon is now considered attacking. In this step you must choose whether to pay additional costs for cards with them such as stealth.</li>
                                 <li>Players may play Quick Hacks or activate abilities,
                                     starting with the active player, until no one wants to adds more effects.
@@ -773,7 +785,8 @@ export function HowToPlayPage() {
                                     that target you directly. You may, in any order:
                                     <ul className="list-disc space-y-1 pl-6 pt-1">
                                         <li>Discard any number of cards in hand with a
-                                        {" "}<GameIcon name="threat_lvl" /> rating. The maximuim a
+                                        {" "}<GameIcon name="threat_lvl" /> rating (including
+                                            processes and quick hacks). The maximuim a
                                             card can block using its <GameIcon name="threat_lvl" />{" "}
                                             is 4, however the block keyword can increase this limit.
                                             add the discarded cards together, and reduce the damage
@@ -782,9 +795,10 @@ export function HowToPlayPage() {
                                             attacker for each, reduce the incoming damage by that
                                             augment's <GameIcon name="threat_lvl" /> rating, and
                                             add a depletion counter to that augment.</li>
-                                        <li>Expend any number of non-unit entities you control, choose an
+                                        <li>Expend any number of non-unit entities you control
+                                            (including programs and technologies), choose an
                                             attacker for each, reduce the incoming damage by that
-                                            augment's <GameIcon name="threat_lvl" /> rating, and
+                                            entity's <GameIcon name="threat_lvl" /> rating, and
                                             then trash the entity(s) you expended.</li>
                                     </ul>
                                 </li>
@@ -1067,7 +1081,7 @@ export function HowToPlayPage() {
                             <ul className="space-y-3">
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="expend" className="mt-0.5 shrink-0" />
-                                    <span>The Expend ability and symbol. Turn a card in play 90 degrees from vertical to horizontal. If this is printed on a unit, it cannot be used the turn the unit enters play unless it has Blitz. (Note: to ready an entity is the opposite of expending; a readied entity is vertical.)</span>
+                                    <span>The Expend ability and symbol. Turn a card in play 90 degrees from vertical to horizontal. (Note: to ready an entity is the opposite of expending; a readied entity is vertical.)</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="recycle" className="mt-0.5 shrink-0" />

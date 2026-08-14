@@ -16,13 +16,9 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
     name: "AIRBORNE",
     text: "Only assets with Airborne or Long Range can attack this entity.",
   },
-  // {
-  //   name: "BLITZ",
-  //   text: "This entity can attack the turn it enters the battlefield.",
-  // },
   {
     name: "BLOCK X",
-    text: "When you block with a unit, augment, or cyberspell to reduce the damage an asset would deal, reduce it by an additional X.",
+    text: "When you block with a unit, augment, program, technology, process, or quick hack to reduce the damage an asset would deal, reduce it by an additional X.",
   },
   {
     name: "CORROSIVE BILE",
@@ -118,10 +114,6 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
   {
     name: "SURGE",
     text: "This card can be invoked any time a Quick Hack can be played.",
-  },
-  {
-    name: "TAUNT",
-    text: "When an opponent makes an attack, that attack must target this unit if able. If there are multiple units with Taunt, the attacker chooses which to target.",
   },
   {
     name: "WEAKENED X",
