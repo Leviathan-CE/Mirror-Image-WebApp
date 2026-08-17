@@ -1,18 +1,23 @@
 /** Playtester card instance + card-local session ops (no zone transfers). */
 
 import {
+  LOCAL_SEAT,
+  PLAYER_SLOT,
   PLAY_ZONE,
   SELECTABLE_ACTION_ZONES,
+  type PlayerSlot,
   type PlayZone,
   type SelectableActionZone,
 } from "./playtesterConstants"
 
-export type { PlayZone, SelectableActionZone }
-export { PLAY_ZONE, SELECTABLE_ACTION_ZONES }
+export type { PlayerSlot, PlayZone, SelectableActionZone }
+export { LOCAL_SEAT, PLAYER_SLOT, PLAY_ZONE, SELECTABLE_ACTION_ZONES }
 
 export type PlayingCardInstance = {
   /** Unique even when the deck has multiple copies of the same card. */
   instanceId: string
+  /** Which seat owns this physical copy. Solo sessions stamp p1. */
+  owner: PlayerSlot
   cardId: number
   name: string
   artPath: string | null
@@ -33,6 +38,12 @@ export type PlayingCardInstance = {
    * and stockpile are valid homes.
    */
   isToken?: boolean
+  /**
+   * Equipped augment. Lives in the battlefield zone per the rules, but renders
+   * in its owner's augment row rather than free-floating, so it always sits on
+   * the side of the shared field next to that player's own stockpile.
+   */
+  isAugment?: boolean
   /** Green time counters (stockpile / lock timing). */
   timeCounters?: number
   /** Red damage counters marked on the card. */
@@ -64,7 +75,8 @@ export function deckEntryToPlayInstance(
     is_classified?: boolean
     classification?: "classified" | "top_secret" | null
   },
-  zone: PlayZone = PLAY_ZONE.hand
+  zone: PlayZone = PLAY_ZONE.hand,
+  owner: PlayerSlot = LOCAL_SEAT
 ): PlayingCardInstance {
   const classification =
     entry.classification === "classified" || entry.classification === "top_secret"
@@ -85,6 +97,7 @@ export function deckEntryToPlayInstance(
         ? entry.cost.map(String)
         : [],
     zone,
+    owner,
     expended: false,
     isClassified: classified,
     classification,
@@ -106,15 +119,16 @@ export function expandDeckToPlayInstances(
     is_classified?: boolean
     classification?: "classified" | "top_secret" | null
   }>,
-  zone: PlayZone = PLAY_ZONE.library
+  zone: PlayZone = PLAY_ZONE.library,
+  owner: PlayerSlot = LOCAL_SEAT
 ): PlayingCardInstance[] {
   const out: PlayingCardInstance[] = []
   for (const entry of entries) {
     const qty = Math.max(0, Math.floor(entry.quantity ?? 0))
     for (let copy = 0; copy < qty; copy++) {
       out.push({
-        ...deckEntryToPlayInstance(entry, zone),
-        instanceId: `${zone}-${entry.card_id}-c${copy}-${out.length}`,
+        ...deckEntryToPlayInstance(entry, zone, owner),
+        instanceId: `${owner}-${zone}-${entry.card_id}-c${copy}-${out.length}`,
       })
     }
   }
@@ -122,9 +136,12 @@ export function expandDeckToPlayInstances(
 }
 
 /** In-place Fisher–Yates shuffle (returns the same array). */
-export function shuffleInPlace<T>(items: T[]): T[] {
+export function shuffleInPlace<T>(
+  items: T[],
+  next: () => number = Math.random
+): T[] {
   for (let i = items.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
+    const j = Math.floor(next() * (i + 1))
     const tmp = items[i]!
     items[i] = items[j]!
     items[j] = tmp
@@ -229,7 +246,12 @@ export function selectableActionTargets(
 ): string[] {
   if (focus.selected && isSelectableActionZone(focus.zone)) {
     return cards
-      .filter((c) => c.selected && isSelectableActionZone(c.zone))
+      .filter(
+        (c) =>
+          c.selected &&
+          c.owner === focus.owner &&
+          isSelectableActionZone(c.zone)
+      )
       .map((c) => c.instanceId)
   }
   return [focus.instanceId]
@@ -245,9 +267,11 @@ export function selectableActionTargets(
  * on the following turn, once the counter is gone.
  */
 export function readyBattlefieldAndStockpile(
-  cards: PlayingCardInstance[]
+  cards: PlayingCardInstance[],
+  owner: PlayerSlot = LOCAL_SEAT
 ): PlayingCardInstance[] {
   return cards.map((c) => {
+    if (c.owner !== owner) return c
     if (
       c.zone !== PLAY_ZONE.battlefield &&
       c.zone !== PLAY_ZONE.stockpile &&
@@ -296,9 +320,10 @@ export function extractStockpileTimeCompletions(
 
 export function cardsInZone(
   cards: PlayingCardInstance[],
-  zone: PlayZone
+  zone: PlayZone,
+  owner: PlayerSlot = LOCAL_SEAT
 ): PlayingCardInstance[] {
-  return cards.filter((c) => c.zone === zone)
+  return cards.filter((c) => c.zone === zone && c.owner === owner)
 }
 
 /** Remove a card from the session (held in an animation overlay). */
@@ -412,6 +437,7 @@ export function duplicatePlayingCard(
   const copy: PlayingCardInstance = {
     instanceId: `copy-${card.cardId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     cardId: card.cardId,
+    owner: card.owner,
     name: card.name,
     artPath: card.artPath,
     artVersion: card.artVersion,

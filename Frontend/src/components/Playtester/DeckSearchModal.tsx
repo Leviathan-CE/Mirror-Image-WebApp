@@ -31,6 +31,7 @@ import {
   type DeckSearchBox,
 } from "@/components/Playtester/deckSearchPanel.logic"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
+import { LOCAL_SEAT, type PlayerSlot } from "@/components/Playtester/playtesterConstants"
 import { MiddleMouseScroll } from "@/components/ui/MiddleMouseScroll"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
@@ -42,6 +43,7 @@ const DRAG_THRESHOLD_PX = 5
 export type DeckSearchModalProps = {
   open: boolean
   sessionCards: PlayingCardInstance[]
+  owner?: PlayerSlot
   onCancel: () => void
   /** Drop a library card onto a zone under the floating panel. */
   onCardRelease: (
@@ -79,6 +81,7 @@ type DragState = {
 export function DeckSearchModal({
   open,
   sessionCards,
+  owner = LOCAL_SEAT,
   onCancel,
   onCardRelease,
   onCardContextMenu,
@@ -96,8 +99,8 @@ export function DeckSearchModal({
   const moveRef = useRef<BoxDragState | null>(null)
 
   const visible = useMemo(
-    () => filterLibraryByName(sessionCards, query),
-    [sessionCards, query]
+    () => filterLibraryByName(sessionCards, query, owner),
+    [sessionCards, query, owner]
   )
   /** One tile per printing; copies show as ×N instead of repeating tiles. */
   const groups = useMemo(() => groupCardsByPrinting(visible), [visible])

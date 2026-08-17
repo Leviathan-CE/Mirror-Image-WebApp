@@ -3,7 +3,7 @@
  * Library order = session array order among zone === library (first = top).
  */
 
-import { PLAY_ZONE } from "@/components/Playtester/playtesterConstants"
+import { LOCAL_SEAT, PLAY_ZONE, type PlayerSlot } from "@/components/Playtester/playtesterConstants"
 import {
   cardsInZone,
   shuffleInPlace,
@@ -14,20 +14,22 @@ import {
   takeTopLibraryCard,
 } from "@/components/Playtester/zoneMoves.logic"
 
-/** Library cards in deck order (index 0 = top). */
+/** Library cards in deck order (index 0 = top) for one seat. */
 export function libraryCardsInOrder(
-  cards: PlayingCardInstance[]
+  cards: PlayingCardInstance[],
+  owner: PlayerSlot = LOCAL_SEAT
 ): PlayingCardInstance[] {
-  return cards.filter((c) => c.zone === PLAY_ZONE.library)
+  return cards.filter((c) => c.zone === PLAY_ZONE.library && c.owner === owner)
 }
 
 /** Top `n` library cards without removing them. */
 export function peekTopLibrary(
   cards: PlayingCardInstance[],
-  n: number
+  n: number,
+  owner: PlayerSlot = LOCAL_SEAT
 ): PlayingCardInstance[] {
   const count = Math.max(0, Math.floor(n))
-  return libraryCardsInOrder(cards).slice(0, count)
+  return libraryCardsInOrder(cards, owner).slice(0, count)
 }
 
 /**
@@ -36,13 +38,14 @@ export function peekTopLibrary(
  */
 export function degradeTopLibrary(
   cards: PlayingCardInstance[],
-  n: number
+  n: number,
+  owner: PlayerSlot = LOCAL_SEAT
 ): PlayingCardInstance[] {
-  const available = cardsInZone(cards, PLAY_ZONE.library).length
+  const available = cardsInZone(cards, PLAY_ZONE.library, owner).length
   const count = Math.max(0, Math.min(Math.floor(n), available))
   let next = cards
   for (let i = 0; i < count; i++) {
-    const taken = takeTopLibraryCard(next)
+    const taken = takeTopLibraryCard(next, owner)
     if (!taken) break
     next = putCardInTrashyard(taken.cards, taken.drawn)
   }
@@ -55,31 +58,39 @@ export function degradeTopLibrary(
  */
 export function putTopLibraryOnBottom(
   cards: PlayingCardInstance[],
-  n: number
+  n: number,
+  owner: PlayerSlot = LOCAL_SEAT
 ): PlayingCardInstance[] {
-  const lib = libraryCardsInOrder(cards)
+  const lib = libraryCardsInOrder(cards, owner)
   const count = Math.max(0, Math.min(Math.floor(n), lib.length))
   if (count === 0 || count === lib.length) return cards
-  const nonLib = cards.filter((c) => c.zone !== PLAY_ZONE.library)
-  return [...nonLib, ...lib.slice(count), ...lib.slice(0, count)]
+  const rest = cards.filter(
+    (c) => !(c.zone === PLAY_ZONE.library && c.owner === owner)
+  )
+  return [...rest, ...lib.slice(count), ...lib.slice(0, count)]
 }
 
-/** Fisher–Yates shuffle of library cards only; other zones keep relative order. */
+/** Fisher–Yates shuffle of one seat's library; other cards keep relative order. */
 export function shuffleLibrary(
-  cards: PlayingCardInstance[]
+  cards: PlayingCardInstance[],
+  owner: PlayerSlot = LOCAL_SEAT,
+  next: () => number = Math.random
 ): PlayingCardInstance[] {
-  const lib = libraryCardsInOrder(cards)
-  const rest = cards.filter((c) => c.zone !== PLAY_ZONE.library)
+  const lib = libraryCardsInOrder(cards, owner)
+  const rest = cards.filter(
+    (c) => !(c.zone === PLAY_ZONE.library && c.owner === owner)
+  )
   if (lib.length <= 1) return cards
-  return [...rest, ...shuffleInPlace([...lib])]
+  return [...rest, ...shuffleInPlace([...lib], next)]
 }
 
 /** Filter library cards by name (case-insensitive substring). Empty query = all. */
 export function filterLibraryByName(
   cards: PlayingCardInstance[],
-  query: string
+  query: string,
+  owner: PlayerSlot = LOCAL_SEAT
 ): PlayingCardInstance[] {
-  const lib = libraryCardsInOrder(cards)
+  const lib = libraryCardsInOrder(cards, owner)
   const q = query.trim().toLowerCase()
   if (!q) return lib
   return lib.filter((c) => c.name.toLowerCase().includes(q))
@@ -131,11 +142,12 @@ export function clampDeckCount(raw: number, librarySize: number): number {
  */
 export function reorderTopLibrary(
   cards: PlayingCardInstance[],
-  orderedInstanceIds: string[]
+  orderedInstanceIds: string[],
+  owner: PlayerSlot = LOCAL_SEAT
 ): PlayingCardInstance[] {
   if (orderedInstanceIds.length === 0) return cards
 
-  const lib = libraryCardsInOrder(cards)
+  const lib = libraryCardsInOrder(cards, owner)
   const n = orderedInstanceIds.length
   if (n > lib.length) return cards
 
@@ -152,6 +164,8 @@ export function reorderTopLibrary(
   const byId = new Map(top.map((c) => [c.instanceId, c]))
   const reorderedTop = orderedInstanceIds.map((id) => byId.get(id)!)
   const restLib = lib.slice(n)
-  const nonLib = cards.filter((c) => c.zone !== PLAY_ZONE.library)
-  return [...nonLib, ...reorderedTop, ...restLib]
+  const rest = cards.filter(
+    (c) => !(c.zone === PLAY_ZONE.library && c.owner === owner)
+  )
+  return [...rest, ...reorderedTop, ...restLib]
 }

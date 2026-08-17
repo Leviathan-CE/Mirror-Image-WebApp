@@ -28,6 +28,7 @@ function card(
     name: overrides.name ?? "Test Card",
     artPath: overrides.artPath ?? null,
     cost: overrides.cost ?? [],
+    owner: "p1" as const,
     expended: overrides.expended ?? false,
     selected: overrides.selected,
     faceDown: overrides.faceDown,
@@ -95,6 +96,24 @@ describe("selectableActionTargets", () => {
       "b",
       "c",
     ])
+  })
+
+  it("does not include another seat's selected cards", () => {
+    const focus = card({
+      instanceId: "a",
+      zone: PLAY_ZONE.hand,
+      selected: true,
+    })
+    const cards = [
+      focus,
+      card({
+        instanceId: "opp",
+        zone: PLAY_ZONE.hand,
+        selected: true,
+        owner: "p2",
+      }),
+    ]
+    expect(selectableActionTargets(cards, focus)).toEqual(["a"])
   })
 })
 
@@ -184,6 +203,25 @@ describe("readyBattlefieldAndStockpile", () => {
     const next = readyBattlefieldAndStockpile(cards)
     expect(next[0]?.expended).toBe(false)
     expect(next[0]?.timeCounters).toBe(1)
+  })
+
+  it("does not ready another seat's in-play cards", () => {
+    const cards = [
+      card({
+        instanceId: "mine",
+        zone: PLAY_ZONE.battlefield,
+        expended: true,
+      }),
+      card({
+        instanceId: "theirs",
+        zone: PLAY_ZONE.battlefield,
+        expended: true,
+        owner: "p2",
+      }),
+    ]
+    const next = readyBattlefieldAndStockpile(cards)
+    expect(next.find((c) => c.instanceId === "mine")?.expended).toBe(false)
+    expect(next.find((c) => c.instanceId === "theirs")?.expended).toBe(true)
   })
 })
 
@@ -341,6 +379,19 @@ describe("cardsInZone / toggleExpended / duplicatePlayingCard", () => {
     ])
   })
 
+  it("does not return another seat's cards in the same zone", () => {
+    const cards = [
+      card({ instanceId: "mine", zone: PLAY_ZONE.hand, owner: "p1" }),
+      card({ instanceId: "theirs", zone: PLAY_ZONE.hand, owner: "p2" }),
+    ]
+    expect(
+      cardsInZone(cards, PLAY_ZONE.hand).map((c) => c.instanceId)
+    ).toEqual(["mine"])
+    expect(
+      cardsInZone(cards, PLAY_ZONE.hand, "p2").map((c) => c.instanceId)
+    ).toEqual(["theirs"])
+  })
+
   it("toggles expended", () => {
     const cards = [
       card({ instanceId: "a", zone: PLAY_ZONE.battlefield, expended: false }),
@@ -366,6 +417,7 @@ describe("cardsInZone / toggleExpended / duplicatePlayingCard", () => {
     expect(copy.isToken).toBe(true)
     expect(copy.x).toBe(38)
     expect(copy.y).toBe(48)
+    expect(copy.owner).toBe("p1")
   })
 
   it("duplicates each selected free-float card", () => {

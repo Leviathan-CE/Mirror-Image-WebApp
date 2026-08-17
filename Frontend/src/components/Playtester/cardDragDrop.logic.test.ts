@@ -29,6 +29,7 @@ function card(
     name: overrides.name ?? "Card",
     artPath: null,
     cost: overrides.cost ?? [],
+    owner: "p1" as const,
     expended: false,
     ...overrides,
   }

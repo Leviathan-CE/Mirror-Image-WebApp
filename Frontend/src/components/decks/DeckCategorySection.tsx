@@ -12,6 +12,7 @@ import {
   parseDeckCardDrag,
   type DeckCardDragPayload,
 } from "@/components/decks/DeckCardStack"
+import type { DeckCardViewMode } from "@/components/decks/DeckCardViewControls"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu } from "@/components/ui/DropdownMenu"
 import { PublicTextField } from "@/components/ui/PublicTextField"
@@ -24,8 +25,10 @@ type DeckCategorySectionProps = {
   cards: DeckCardEntry[]
   canEdit: boolean
   disabled?: boolean
+  viewMode?: DeckCardViewMode
   onRename: (name: string) => Promise<void>
   onDelete: () => Promise<void>
+  onSetInDeck?: (inDeck: boolean) => Promise<void>
   onCardDrop?: (payload: DeckCardDragPayload) => void | Promise<void>
   onQuantityDelta?: (card: DeckCardEntry, delta: 1 | -1) => void
   selectedKeys?: ReadonlySet<string>
@@ -43,8 +46,10 @@ export function DeckCategorySection({
   cards,
   canEdit,
   disabled = false,
+  viewMode = "cards",
   onRename,
   onDelete,
+  onSetInDeck,
   onCardDrop,
   onQuantityDelta,
   selectedKeys,
@@ -202,6 +207,34 @@ export function DeckCategorySection({
             >
               {category.name}
             </h2>
+            {reserved ? null : canEdit && onSetInDeck && !locked ? (
+              <button
+                type="button"
+                aria-pressed={category.in_deck !== false}
+                aria-label={
+                  category.in_deck === false
+                    ? "Not listed in deck"
+                    : "Listed in deck"
+                }
+                className="font-mono text-[10px] text-cyan-200/80 hover:text-white"
+                onClick={() => {
+                  void onSetInDeck(category.in_deck === false)
+                }}
+              >
+                {category.in_deck === false ? "✕" : "✓"}
+              </button>
+            ) : (
+              <span
+                className="font-mono text-[10px] text-cyan-200/70"
+                title={
+                  category.in_deck === false
+                    ? "Not listed in deck"
+                    : "Listed in deck"
+                }
+              >
+                {category.in_deck === false ? "✕" : "✓"}
+              </span>
+            )}
             <span className="font-mono text-[10px] text-cyan-500/60">
               {cardTotal} cards
             </span>
@@ -221,6 +254,20 @@ export function DeckCategorySection({
                     },
                   },
                   {
+                    id: "in-deck",
+                    label: (
+                      <span className="flex w-full items-center justify-between gap-3">
+                        In deck
+                        <span className="font-mono">
+                          {category.in_deck === false ? "✕" : "✓"}
+                        </span>
+                      </span>
+                    ),
+                    onSelect: () => {
+                      void onSetInDeck?.(category.in_deck === false)
+                    },
+                  },
+                  {
                     id: "delete",
                     label: "Delete",
                     tone: "danger",
@@ -235,7 +282,15 @@ export function DeckCategorySection({
         )}
       </div>
 
-      <div className={cn(cards.length === 0 ? "min-h-10 py-1" : "flex justify-start")}>
+      <div
+        className={cn(
+          cards.length === 0
+            ? "min-h-10 py-1"
+            : viewMode === "list"
+              ? "w-full"
+              : "flex justify-start"
+        )}
+      >
         {cards.length === 0 ? (
           <p className="font-mono text-xs text-white/35">
             {acceptsDrops
@@ -245,6 +300,7 @@ export function DeckCategorySection({
         ) : (
           <DeckCardStack
             cards={cards}
+            viewMode={viewMode}
             draggable={canEdit}
             disabled={locked}
             selectedKeys={selectedKeys}

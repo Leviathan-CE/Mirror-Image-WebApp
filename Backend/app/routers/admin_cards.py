@@ -11,6 +11,7 @@ from psycopg2 import OperationalError
 
 from app.card_library_query import apply_catalogue_filters, catalogue_order_sql
 from app.db import get_connection
+from app.media_urls import signed_media_path
 from app.security import get_current_admin_user_id
 
 logger = logging.getLogger(__name__)
@@ -191,7 +192,7 @@ def admin_browse_cards(
             lagality=row[4] or "Legal",
             published=row[5] or "not published",
             is_deprecated=bool(row[6]),
-            card_art_path=row[7],
+            card_art_path=signed_media_path(row[7]),
             card_art_version=int(row[8]) if row[8] is not None else None,
         )
         for row in rows
@@ -288,7 +289,7 @@ def admin_get_card(
         keywords=list(row[10] or []),
         show_help_text=bool(row[11]),
         threat_level=str(row[12] if row[12] is not None else "0"),
-        card_art_path=row[13],
+        card_art_path=signed_media_path(row[13]),
         card_art_version=int(row[14]) if row[14] is not None else None,
         lagality=row[15] or "Legal",
         published=row[16] or "not published",

@@ -45,7 +45,7 @@ export function CardRulesText({
           <GameIcon
             key={`s-${key++}`}
             name={icon}
-            className={iconClassName ?? "mx-0.5 h-5 w-auto lg:h-6 2xl:h-6"}
+            className={iconClassName ?? "mx-0 h-6 w-auto lg:h-7 2xl:h-7"}
           />
         ) : (
           <span

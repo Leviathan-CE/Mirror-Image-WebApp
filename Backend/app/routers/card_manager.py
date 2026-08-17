@@ -14,6 +14,7 @@ from psycopg2.extras import Json
 from app.db import get_connection
 from app.card_library_query import apply_catalogue_filters, catalogue_order_sql
 from app.card_publish import catalogue_visibility_sql, get_optional_include_preview
+from app.media_urls import signed_media_path
 from app.security import get_current_admin_user_id, get_optional_is_admin
 
 logger = logging.getLogger(__name__)
@@ -197,7 +198,7 @@ def _card_row_to_response(row) -> CardByNameResponse:
         lif_capacity=row[28],
         hand_size=row[29],
         lagality=row[30],
-        card_art_path=row[31],
+        card_art_path=signed_media_path(row[31]),
         card_art_mime_type=row[32],
     )
 
@@ -375,7 +376,7 @@ def search_cards(
             card_name=row[1],
             card_set_name=row[2],
             rarity=row[3],
-            card_art_path=row[4],
+            card_art_path=signed_media_path(row[4]),
             card_art_version=int(row[5]) if row[5] is not None else None,
         )
         for row in rows
@@ -609,7 +610,7 @@ def browse_card_library(
             keywords=row[10] or [],
             show_help_text=bool(row[11]),
             threat_level=str(row[12] if row[12] is not None else "0"),
-            card_art_path=row[13],
+            card_art_path=signed_media_path(row[13]),
             card_art_version=int(row[14]) if row[14] is not None else None,
         )
         for row in rows
@@ -782,7 +783,7 @@ async def upload_card_thumbnail(
 
     return CardThumbnailUploaded(
         id=card_id,
-        thumbnail_path=relative_path,
+        thumbnail_path=signed_media_path(relative_path) or relative_path,
         thumbnail_size_bytes=len(data),
         card_art_version=int(version_row[0]) if version_row and version_row[0] is not None else None,
     )

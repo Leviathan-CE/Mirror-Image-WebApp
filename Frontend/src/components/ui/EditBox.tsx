@@ -140,7 +140,7 @@ function EditBox({
         type={password ? "password" : type ?? "text"}
         className={cn(
           editBoxVariants({ variant, size }),
-          autoWidth ? "min-w-0 max-w-full" : "min-w-100 w-full",
+          autoWidth ? "min-w-0 max-w-full" : "min-w-0 w-full",
           className
         )}
         style={

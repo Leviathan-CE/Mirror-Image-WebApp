@@ -60,6 +60,7 @@ export function AppShell() {
             <Route path={ROUTES.DECK_COMUNITY} element={<ComunityDecksPage />} />
             <Route path={ROUTES.PLAY_TESTER} element={<PlayTesterPage/>}/>
             <Route path={ROUTES.PLAY_TESTER_PATTERN} element={<PlayTesterPage />} />
+            <Route path={ROUTES.PLAY_TESTER_VS_PATTERN} element={<PlayTesterPage />} />
             <Route
               path={ROUTES.SUBSCRIBE}
               element={

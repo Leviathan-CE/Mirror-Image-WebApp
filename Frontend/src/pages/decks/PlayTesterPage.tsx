@@ -3,12 +3,13 @@
  */
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
 import { sharedImages } from "@/assets/shared"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { AccumulatePipChooser } from "@/components/Playtester/AccumulatePipChooser"
+import { placeAugmentsForView } from "@/components/Playtester/augmentRow.logic"
 import {
   autoResolveColors,
   buildResourceTokenMap,
@@ -28,7 +29,14 @@ import {
   PLAYTESTER_STORAGE,
   SELECTABLE_ACTION_ZONES,
   STOCKPILE_HEIGHT,
+  PLAYER_SLOT,
+  otherSeat,
+  type PlayerSlot,
 } from "@/components/Playtester/playtesterConstants"
+import { viewFor } from "@/components/Playtester/fogView.logic"
+import { intentAllowed } from "@/components/Playtester/playNet.logic"
+import { usePlayNet } from "@/components/Playtester/usePlayNet"
+import type { SessionAction } from "@/components/Playtester/sessionActions.logic"
 import { useCardDragDrop } from "@/components/Playtester/useCardDragDrop"
 import { useDrawAnimations } from "@/components/Playtester/useDrawAnimations"
 import {
@@ -61,6 +69,10 @@ import { TrashyardPile } from "@/components/Playtester/TrashyardPile"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { ContextMenu } from "@/components/ui/ContextMenu"
 import {
+  DropdownMenu,
+  type DropdownMenuItem,
+} from "@/components/ui/DropdownMenu"
+import {
   fetchCardLibrary,
   type CardLibraryItem,
 } from "@/lib/api/cards"
@@ -68,6 +80,13 @@ import { cardArtUrl } from "@/lib/api/decks"
 import { useDeckDetail } from "@/hooks/useDeckDetail"
 import { ROUTES } from "@/lib/route"
 import { GameIcon } from "@/components/common/GameIcon"
+
+/** The opponent's half of the field and their stockpile are display-only. */
+const READ_ONLY_FLOAT_ACTIONS: FloatSurfaceActions = {
+  onMoveCards: () => undefined,
+  onBringToFront: () => undefined,
+  onToggleExpended: () => undefined,
+}
 
 function clampStockpileHeight(height: number): number {
   return Math.min(
@@ -103,10 +122,48 @@ type DeckPeekState = {
 export function PlayTesterPage() {
   const navigate = useNavigate()
   const { token } = useAuth()
-  const { deckId: deckIdParam } = useParams()
+  const { deckId: deckIdParam, vsDeckId: vsDeckIdParam } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const deckId = Number(deckIdParam)
+  const vsDeckId = Number(vsDeckIdParam)
+  const [joinDraft, setJoinDraft] = useState(searchParams.get("room") ?? "")
 
-  const { deck, status, errorText } = useDeckDetail(deckId, token)
+  const playNet = usePlayNet({ token, localDeckId: deckId })
+  const netActive = playNet.status !== "idle"
+  const netRole =
+    netActive && playNet.isHost
+      ? "host"
+      : netActive
+        ? "guest"
+        : "local"
+
+  /** Hotseat view override — networked seats are fixed by the room. */
+  const [hotseatSeat, setHotseatSeat] = useState<PlayerSlot>(PLAYER_SLOT.p1)
+  /**
+   * Seat this client's deck is dealt to. Host/solo is always p1; guest is
+   * always p2. Do not trust playNet.seat here — a waiting host who briefly
+   * landed on p2 would render their own library in the opponent row.
+   */
+  const mySeat = netRole === "guest" ? PLAYER_SLOT.p2 : PLAYER_SLOT.p1
+  /** Seat drawn at the bottom of the table — always the one you control. */
+  const localSeat = netActive ? mySeat : hotseatSeat
+
+  // Room code unlocks preview / unpublished cards for both seats once the
+  // opponent sits down, and lets the host read a private seated deck.
+  const { deck, status, errorText } = useDeckDetail(
+    deckId,
+    token,
+    playNet.poolRoom
+  )
+  const oppFetchId =
+    playNet.isHost && playNet.peerDeckId
+      ? playNet.peerDeckId
+      : Number.isFinite(vsDeckId) && vsDeckId > 0
+        ? vsDeckId
+        : 0
+  const vsDetail = useDeckDetail(oppFetchId, token, playNet.poolRoom)
+  const opponentDeck =
+    oppFetchId > 0 && vsDetail.status === "ready" ? vsDetail.deck : null
   const [ctxMenu, setCtxMenu] = useState<CtxMenuState | null>(null)
   /** Sticky zoom from context menu (middle-mouse zoom stays local to each zone). */
   const [inspectCard, setInspectCard] = useState<PlayingCardInstance | null>(
@@ -124,10 +181,12 @@ export function PlayTesterPage() {
   const [deckSearchOpen, setDeckSearchOpen] = useState(false)
   const [resourceTokens, setResourceTokens] = useState<CardLibraryItem[]>([])
   const [resourcesReady, setResourcesReady] = useState(false)
+  const [vsDraft, setVsDraft] = useState("")
   const [playNotice, setPlayNotice] = useState<string | null>(null)
   const [stockpileHeightPx, setStockpileHeightPx] = useState<number>(
     STOCKPILE_HEIGHT.default
   )
+  const [battlefieldHeightPx, setBattlefieldHeightPx] = useState(320)
   const stockpileResizeRef = useRef<{
     pointerId: number
     startY: number
@@ -164,7 +223,7 @@ export function PlayTesterPage() {
     setTopRevealed,
     handCards,
     battlefieldCards,
-    stockpileCards,
+    localStockpileCards,
     pilotCards,
     libraryCount,
     topLibraryCard,
@@ -190,12 +249,37 @@ export function PlayTesterPage() {
     reorderTop,
     confirmMulligan,
     finishAccumulateSpawn,
+    dispatch,
+    applyFog,
+    snapshot,
+    twoSeat,
+    turnSeat,
+    oppHandCards,
+    oppLibraryCount,
+    oppTrashCards,
+    oppDismantledCards,
+    oppPilotCards,
+    oppStockpileCards,
+    oppLife,
   } = usePlaySession({
     status,
     deck,
+    opponentDeck,
     resourceByColor,
     resourcesReady,
     effectsRef,
+    localSeat,
+    mySeat,
+    netRole,
+    peerPresent: playNet.peerPresent,
+    sendIntent: (action: SessionAction) => {
+      playNet.send({ type: "intent", action })
+    },
+    onHostCommit: (action, state) => {
+      if (!playNet.isHost) return
+      playNet.send({ type: "fog", view: viewFor(otherSeat(mySeat), state) })
+      if (action) playNet.send({ type: "event", action })
+    },
   })
 
   function clientToLocalIn(
@@ -218,6 +302,56 @@ export function PlayTesterPage() {
   function clientToStockpileLocal(clientX: number, clientY: number) {
     return clientToLocalIn(stockpileRef.current, clientX, clientY)
   }
+
+  useEffect(() => {
+    const room = searchParams.get("room")
+    if (!room || !token || playNet.status !== "idle") return
+    if (playNet.isHost || playNet.code) return
+    playNet.joinRoom(room)
+  }, [searchParams, token, playNet.status, playNet.joinRoom])
+
+  useEffect(() => {
+    if (playNet.code && searchParams.get("room") !== playNet.code) {
+      setSearchParams({ room: playNet.code }, { replace: true })
+    }
+  }, [playNet.code, searchParams, setSearchParams])
+
+  useEffect(() => {
+    playNet.setHandlers({
+      onIntent: (msg) => {
+        if (!playNet.isHost) return
+        const actor = otherSeat(mySeat)
+        if (
+          !intentAllowed(msg.action, actor, (id) =>
+            sessionCardsRef.current.find((c) => c.instanceId === id)?.owner
+          )
+        ) {
+          return
+        }
+        dispatch(msg.action)
+      },
+      onFog: (view) => {
+        if (playNet.isHost) return
+        applyFog(view)
+      },
+      onSnapshot: () => {
+        if (!playNet.isHost) return
+        playNet.send({
+          type: "fog",
+          view: viewFor(otherSeat(mySeat), snapshot()),
+        })
+      },
+    })
+  }, [
+    playNet.setHandlers,
+    playNet.isHost,
+    playNet.send,
+    mySeat,
+    dispatch,
+    applyFog,
+    snapshot,
+    sessionCardsRef,
+  ])
 
   const zoneRefs = {
     deck: deckRef,
@@ -251,9 +385,12 @@ export function PlayTesterPage() {
     startBottomSlide,
     onBottomSlideComplete,
     clearDrawTimers,
+    flyingIds,
+    hideFlying,
   } = useDrawAnimations({
     sessionCardsRef,
-    setSessionCards,
+    dispatch,
+    localSeat,
     zoneRefs,
     clientToSurfaceLocal,
     clientToStockpileLocal,
@@ -275,6 +412,9 @@ export function PlayTesterPage() {
   } = useCardDragDrop({
     sessionCards,
     setSessionCards,
+    dispatch,
+    localSeat,
+    hideFlying,
     zoneRefs,
     clientToSurfaceLocal,
     clientToStockpileLocal,
@@ -282,9 +422,44 @@ export function PlayTesterPage() {
     pushFlipAnim,
   })
 
+  const flyingHide = useMemo(() => new Set(flyingIds), [flyingIds])
+  const visHand = handCards.filter((c) => !flyingHide.has(c.instanceId))
+  const visOppHand = oppHandCards.filter((c) => !flyingHide.has(c.instanceId))
+  const visBf = placeAugmentsForView(
+    battlefieldCards.filter((c) => !flyingHide.has(c.instanceId)),
+    localSeat,
+    battlefieldHeightPx
+  )
+  const visStock = localStockpileCards.filter(
+    (c) => !flyingHide.has(c.instanceId)
+  )
+  const visOppStock = oppStockpileCards.filter(
+    (c) => !flyingHide.has(c.instanceId)
+  )
+  const visTrash = trashCards.filter((c) => !flyingHide.has(c.instanceId))
+  const visOppTrash = oppTrashCards.filter((c) => !flyingHide.has(c.instanceId))
+  const visDismantled = dismantledCards.filter(
+    (c) => !flyingHide.has(c.instanceId)
+  )
+  const visOppDismantled = oppDismantledCards.filter(
+    (c) => !flyingHide.has(c.instanceId)
+  )
+  const visPilot = pilotCards.filter((c) => !flyingHide.has(c.instanceId))
+  const visOppPilot = oppPilotCards.filter((c) => !flyingHide.has(c.instanceId))
+
   useEffect(() => {
     setStockpileHeightPx(readStoredStockpileHeight())
   }, [])
+
+  useEffect(() => {
+    const el = surfaceRef.current
+    if (!el) return
+    const sync = () => setBattlefieldHeightPx(el.getBoundingClientRect().height)
+    sync()
+    const observer = new ResizeObserver(sync)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [status, twoSeat])
 
   useEffect(() => {
     try {
@@ -566,7 +741,7 @@ export function PlayTesterPage() {
   function lookAtDeckTop(count: number) {
     const n = clampDeckCount(count, libraryCount)
     if (n <= 0) return
-    const peeked = peekTopLibrary(sessionCardsRef.current, n)
+    const peeked = peekTopLibrary(sessionCardsRef.current, n, localSeat)
     setDeckPeek({
       title: `Look at top ${peeked.length}`,
       cards: peeked,
@@ -635,6 +810,119 @@ export function PlayTesterPage() {
     onCardCounterAdjust: onFloatCardCounterAdjust,
   }
 
+  function leavePlaytester() {
+    if (Number.isFinite(deckId) && deckId > 0) {
+      // Replace so browser Back from the deck does not reopen playtester.
+      navigate(ROUTES.deck(deckId), { replace: true })
+      return
+    }
+    navigate(ROUTES.MAIN)
+  }
+
+  function startHotseatVs() {
+    const id = Number(vsDraft)
+    if (!Number.isFinite(id) || id <= 0) {
+      setPlayNotice("Enter a numeric deck id to play hotseat.")
+      return
+    }
+    navigate(ROUTES.playTesterVs(deckId, id))
+  }
+
+  const playMenuItems: DropdownMenuItem[] = [
+    {
+      id: "playtester-back",
+      label: "← Back to deck",
+      onSelect: leavePlaytester,
+    },
+  ]
+
+  if (twoSeat && !netActive) {
+    playMenuItems.push({
+      id: "playtester-swap-seat",
+      label: `Swap seat · now ${localSeat}`,
+      onSelect: () => setHotseatSeat((s) => (s === "p1" ? "p2" : "p1")),
+    })
+  } else if (!twoSeat) {
+    playMenuItems.push({
+      id: "playtester-hotseat",
+      label: "Hotseat vs",
+      onSelect: startHotseatVs,
+      textInput: {
+        value: vsDraft,
+        onChange: setVsDraft,
+        placeholder: "deck id",
+        ariaLabel: "Opponent deck id",
+      },
+    })
+  }
+
+  if (netActive) {
+    playMenuItems.push({
+      id: "playtester-copy-code",
+      label: "Copy room code",
+      disabled: !playNet.code,
+      onSelect: () => {
+        void navigator.clipboard.writeText(playNet.code ?? "")
+        setPlayNotice(`Room ${playNet.code} copied.`)
+      },
+    })
+    if (playNet.status === "disconnected") {
+      playMenuItems.push({
+        id: "playtester-reconnect",
+        label: "Reconnect",
+        disabled: !playNet.code,
+        onSelect: () => playNet.joinRoom(playNet.code ?? ""),
+      })
+    }
+    playMenuItems.push({
+      id: "playtester-leave-room",
+      label: "Leave room",
+      tone: "danger",
+      onSelect: () => {
+        playNet.leaveRoom()
+        setSearchParams({}, { replace: true })
+      },
+    })
+  } else {
+    playMenuItems.push(
+      {
+        id: "playtester-create-room",
+        label: "Create room",
+        onSelect: () => {
+          void playNet.createRoom()
+        },
+      },
+      {
+        id: "playtester-join-room",
+        label: "Join room",
+        onSelect: () => playNet.joinRoom(joinDraft),
+        textInput: {
+          value: joinDraft,
+          onChange: setJoinDraft,
+          placeholder: "code",
+          ariaLabel: "Room code",
+          uppercase: true,
+        },
+      }
+    )
+  }
+
+  const roomStatusText = netActive
+    ? [
+        playNet.code ?? "ROOM",
+        playNet.status === "waiting"
+          ? "waiting"
+          : playNet.transport === "p2p"
+            ? "p2p"
+            : playNet.transport === "relay"
+              ? "relay"
+              : playNet.status,
+        playNet.seat,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : null
+
   const ctxMenuItems = usePlayContextMenu({
     ctxMenu,
     sessionCards,
@@ -645,6 +933,7 @@ export function PlayTesterPage() {
     deckActionCounts,
     setDeckActionCount,
     topRevealed,
+    owner: localSeat,
     actions: {
       spawnResourceColor,
       putOnLibraryBottom,
@@ -675,29 +964,27 @@ export function PlayTesterPage() {
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-50 flex items-start justify-between gap-2 p-2">
         <div className="pointer-events-auto">
-          <GlitchFx
-            type="button"
-            label="← BACK TO DECK"
-            className="font-buahs93 h-7 rounded-none bg-cyan-700 px-3 text-xs hover:bg-cyan-900"
-            onClick={() => {
-              if (Number.isFinite(deckId) && deckId > 0) {
-                // Replace so browser Back from the deck does not reopen playtester.
-                navigate(ROUTES.deck(deckId), { replace: true })
-                return
-              }
-              navigate(ROUTES.MAIN)
-            }}
+          <DropdownMenu
+            label="Playtester menu"
+            trigger="☰"
+            items={playMenuItems}
+            triggerClassName="h-7 w-9 border border-cyan-500/40 bg-cyan-700/80 text-sm text-cyan-50 hover:bg-cyan-900"
+            menuClassName="min-w-[13rem]"
           />
         </div>
 
-        {playNotice ? (
-          <p
-            className="max-w-[45%] text-right font-mono text-xs text-amber-200/90"
-            role="status"
-          >
-            {playNotice}
-          </p>
-        ) : null}
+        <div className="flex max-w-[55%] flex-col items-end gap-0.5 text-right">
+          {roomStatusText ? (
+            <span className="font-mono text-[10px] text-cyan-100/80">
+              {roomStatusText}
+            </span>
+          ) : null}
+          {playNotice ? (
+            <p className="font-mono text-xs text-amber-200/90" role="status">
+              {playNotice}
+            </p>
+          ) : null}
+        </div>
       </div>
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col p-2">
@@ -706,16 +993,111 @@ export function PlayTesterPage() {
             {errorText}
           </p>
         ) : null}
+        {playNet.errorText ? (
+          <p className="mt-7 font-mono text-sm text-amber-200" role="status">
+            {playNet.errorText}
+          </p>
+        ) : null}
+        {netActive && playNet.status === "waiting" ? (
+          <p className="font-mono text-xs text-cyan-100/80" role="status">
+            Waiting for opponent — share code {playNet.code}
+          </p>
+        ) : null}
+        {playNet.status === "disconnected" ? (
+          <p className="font-mono text-xs text-amber-200" role="status">
+            Connection lost. Reconnect to request a fog snapshot.
+          </p>
+        ) : null}
+        {playNet.isHost &&
+        oppFetchId > 0 &&
+        vsDetail.status === "error" ? (
+          <p className="font-mono text-xs text-amber-200" role="status">
+            Could not load opponent deck {oppFetchId}. Their table will stay
+            empty until that deck is public or shared.
+          </p>
+        ) : null}
+        {netActive && playNet.status === "connected" && !playNet.peerPresent ? (
+          <p className="font-mono text-xs text-amber-200" role="status">
+            Opponent disconnected.
+          </p>
+        ) : null}
 
         {status === "ready" ? (
           <div className="relative z-0 flex min-h-0 flex-1 flex-col gap-1">
+            {twoSeat ? (
+              <div className="relative z-40 flex shrink-0 rotate-180 items-stretch gap-2 overflow-visible opacity-90">
+                <div className="flex min-h-0 min-w-0 flex-1 rotate-180">
+                  <PlayerHand
+                    className="min-h-0 w-full flex-1"
+                    cards={visOppHand}
+                    hideFaces
+                    interactive={false}
+                    onReleaseCards={() => undefined}
+                  />
+                </div>
+                <div className="rotate-180">
+                  <DeckPile
+                    count={oppLibraryCount}
+                    label="Opp library"
+                    busy
+                  />
+                </div>
+                <div className="rotate-180">
+                  <TrashyardPile
+                    cards={visOppTrash}
+                    label="Opp trash"
+                    onReleaseCard={() => undefined}
+                  />
+                </div>
+                <div className="rotate-180">
+                  <TrashyardPile
+                    cards={visOppDismantled}
+                    label="Opp dismantled"
+                    onReleaseCard={() => undefined}
+                  />
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <div className="rotate-180">
+                    <LifeCounter life={oppLife} onAdjust={() => undefined} />
+                  </div>
+                  <div className="rotate-180">
+                    <TrashyardPile
+                      cards={visOppPilot}
+                      label="Opp pilot"
+                      size="lg"
+                      onReleaseCard={() => undefined}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {twoSeat ? (
+              <div
+                className="relative z-0 flex w-full shrink-0 items-stretch gap-1.5"
+                style={{ height: STOCKPILE_HEIGHT.opponent }}
+              >
+                <div className="relative z-0 min-h-0 min-w-0 flex-1 self-stretch">
+                  <p className="pointer-events-none absolute left-2 top-1 z-10 font-mono text-[10px] tracking-wide text-cyan-100/70">
+                    Opp stockpile · {visOppStock.length}
+                  </p>
+                  <FreeFloatSurface
+                    className="h-full min-h-0 w-full border-cyan-500/20 pt-3"
+                    cards={visOppStock}
+                    actions={READ_ONLY_FLOAT_ACTIONS}
+                    interactive={false}
+                  />
+                </div>
+              </div>
+            ) : null}
+
             <div ref={surfaceRef} className="relative z-0 min-h-0 min-w-0 flex-1">
               <p className="pointer-events-none absolute bottom-1 left-2 z-10 font-mono text-[10px] tracking-wide text-cyan-100/70">
                 Battlefield
               </p>
               <FreeFloatSurface
                 className="h-full min-h-0 w-full border-cyan-500/20"
-                cards={battlefieldCards}
+                cards={visBf}
                 actions={floatSurfaceActions}
                 onSelectionChange={(ids) =>
                   onFloatSelectionChange("battlefield", ids)
@@ -756,11 +1138,11 @@ export function PlayTesterPage() {
                 className="relative z-0 min-h-0 min-w-0 flex-1 self-stretch"
               >
                 <p className="pointer-events-none absolute left-2 top-1 z-10 font-mono text-[10px] tracking-wide text-cyan-100/70">
-                  Stockpile · {stockpileCards.length}
+                  Stockpile · {visStock.length}
                 </p>
                 <FreeFloatSurface
                   className="h-full min-h-0 w-full border-cyan-500/20 pt-3"
-                  cards={stockpileCards}
+                  cards={visStock}
                   actions={floatSurfaceActions}
                   onSelectionChange={(ids) =>
                     onFloatSelectionChange("stockpile", ids)
@@ -771,8 +1153,52 @@ export function PlayTesterPage() {
                   }
                 />
               </div>
+            </div>
 
-              <div className="flex w-[8.25rem] shrink-0 flex-col items-center gap-1 self-end">
+            <div className="relative z-40 flex shrink-0 items-stretch gap-2 overflow-visible">
+              <div ref={handRef} className="flex min-h-0 min-w-0 flex-1">
+                <PlayerHand
+                  className="min-h-0 w-full flex-1"
+                  cards={visHand}
+                  onReleaseCards={onHandRelease}
+                  onCardContextMenu={onHandContextMenu}
+                  onEmptyContextMenu={(x, y) =>
+                    onZoneEmptyContextMenu("hand", x, y)
+                  }
+                  onSelectionChange={onHandSelectionChange}
+                />
+              </div>
+              <DeckPile
+                ref={deckRef}
+                count={libraryCount}
+                onClickDraw={onDrawFromDeck}
+                onTopCardRelease={onDeckTopRelease}
+                onContextMenu={onDeckContextMenu}
+                topCard={topLibraryCard}
+                topRevealed={topRevealed}
+                busy={Boolean(bottomAnim) || mulliganOpen || deckSearchOpen}
+              />
+              <TrashyardPile
+                ref={trashRef}
+                cards={visTrash}
+                label="Trashyard"
+                onReleaseCard={onFaceUpPileRelease}
+                onCardContextMenu={onFloatCardContextMenu}
+                onPileContextMenu={(x, y) =>
+                  onFaceUpPileContextMenu(PLAY_ZONE.trashyard, x, y)
+                }
+              />
+              <TrashyardPile
+                ref={dismantledRef}
+                cards={visDismantled}
+                label="Dismantled"
+                onReleaseCard={onFaceUpPileRelease}
+                onCardContextMenu={onFloatCardContextMenu}
+                onPileContextMenu={(x, y) =>
+                  onFaceUpPileContextMenu(PLAY_ZONE.dismantled, x, y)
+                }
+              />
+              <div className="flex shrink-0 flex-col items-center gap-1">
                 <LifeCounter
                   life={life}
                   onAdjust={(delta) =>
@@ -781,7 +1207,7 @@ export function PlayTesterPage() {
                 />
                 <TrashyardPile
                   ref={pilotRef}
-                  cards={pilotCards}
+                  cards={visPilot}
                   label="Pilot"
                   size="lg"
                   onReleaseCard={onFaceUpPileRelease}
@@ -836,63 +1262,26 @@ export function PlayTesterPage() {
               </div>
             </div>
 
-            <div className="relative z-40 flex shrink-0 items-stretch gap-2 overflow-visible">
-              <div ref={handRef} className="flex min-h-0 min-w-0 flex-1">
-                <PlayerHand
-                  className="min-h-0 w-full flex-1"
-                  cards={handCards}
-                  onReleaseCards={onHandRelease}
-                  onCardContextMenu={onHandContextMenu}
-                  onEmptyContextMenu={(x, y) =>
-                    onZoneEmptyContextMenu("hand", x, y)
-                  }
-                  onSelectionChange={onHandSelectionChange}
-                />
-              </div>
-              <DeckPile
-                ref={deckRef}
-                count={libraryCount}
-                onClickDraw={onDrawFromDeck}
-                onTopCardRelease={onDeckTopRelease}
-                onContextMenu={onDeckContextMenu}
-                topCard={topLibraryCard}
-                topRevealed={topRevealed}
-                busy={Boolean(bottomAnim) || mulliganOpen || deckSearchOpen}
-              />
-              <TrashyardPile
-                ref={trashRef}
-                cards={trashCards}
-                label="Trashyard"
-                onReleaseCard={onFaceUpPileRelease}
-                onCardContextMenu={onFloatCardContextMenu}
-                onPileContextMenu={(x, y) =>
-                  onFaceUpPileContextMenu(PLAY_ZONE.trashyard, x, y)
-                }
-              />
-              <TrashyardPile
-                ref={dismantledRef}
-                cards={dismantledCards}
-                label="Dismantled"
-                onReleaseCard={onFaceUpPileRelease}
-                onCardContextMenu={onFloatCardContextMenu}
-                onPileContextMenu={(x, y) =>
-                  onFaceUpPileContextMenu(PLAY_ZONE.dismantled, x, y)
-                }
-              />
-            </div>
-
             <div className="relative z-40 flex shrink-0 items-center gap-2 border-t border-cyan-500/25 bg-black/55 px-2 py-1.5">
               <GlitchFx
                 type="button"
                 label="START TURN"
-                disabled={mulliganOpen || Boolean(bottomAnim)}
+                disabled={
+                  mulliganOpen ||
+                  Boolean(bottomAnim) ||
+                  (netActive && turnSeat !== localSeat)
+                }
                 className="font-buahs93 h-7 rounded-none bg-cyan-700 px-3 text-xs hover:bg-cyan-900 disabled:opacity-40"
                 onClick={onStartTurn}
               />
               <GlitchFx
                 type="button"
                 label="END TURN"
-                disabled={mulliganOpen || Boolean(bottomAnim)}
+                disabled={
+                  mulliganOpen ||
+                  Boolean(bottomAnim) ||
+                  (netActive && turnSeat !== localSeat)
+                }
                 className="font-buahs93 h-7 rounded-none bg-cyan-700 px-3 text-xs hover:bg-cyan-900 disabled:opacity-40"
                 onClick={onEndTurn}
               />
@@ -901,6 +1290,7 @@ export function PlayTesterPage() {
                 aria-live="polite"
               >
                 Turn {turn}
+                {twoSeat ? ` · ${turnSeat}` : ""}
               </span>
             </div>
           </div>
@@ -1002,6 +1392,7 @@ export function PlayTesterPage() {
       <DeckSearchModal
         open={deckSearchOpen}
         sessionCards={sessionCards}
+        owner={localSeat}
         onCancel={closeDeckSearch}
         onCardRelease={onLibraryCardRelease}
         onCardContextMenu={onFloatCardContextMenu}

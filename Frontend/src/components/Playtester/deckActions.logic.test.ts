@@ -27,6 +27,7 @@ function card(
     artVersion: null,
     cost: [],
     zone,
+    owner: "p1" as const,
     expended: false,
   }
 }
@@ -90,6 +91,25 @@ describe("deckActions.logic", () => {
     const idsOrig = libraryCardsInOrder(big).map((c) => c.instanceId).join()
     // Extremely unlikely both shuffles match original order for 12 cards.
     expect(idsOnce === idsOrig && idsTwice === idsOrig).toBe(false)
+  })
+
+  it("shuffleLibrary does not mix another seat's library", () => {
+    const mixed = [
+      card("p2-top", "library", "Opp", 2),
+      card("p1-a", "library", "Mine", 1),
+      card("p1-b", "library", "Mine", 1),
+    ]
+    mixed[0] = { ...mixed[0]!, owner: "p2" }
+    const next = shuffleLibrary(mixed)
+    expect(
+      next.filter((c) => c.owner === "p2").map((c) => c.instanceId)
+    ).toEqual(["p2-top"])
+    expect(libraryCardsInOrder(next, "p2").map((c) => c.instanceId)).toEqual([
+      "p2-top",
+    ])
+    expect(
+      libraryCardsInOrder(next).map((c) => c.instanceId).sort()
+    ).toEqual(["p1-a", "p1-b"])
   })
 
   it("filterLibraryByName matches substring case-insensitively", () => {

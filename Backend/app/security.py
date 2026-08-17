@@ -19,7 +19,8 @@ ACCESS_TOKEN_EXPIRE_HOURS = int(os.environ.get("JWT_EXPIRE_HOURS", "168"))  # 7 
 UNITY_TOKEN_EXPIRE_MINUTES = int(os.environ.get("JWT_UNITY_EXPIRE_MINUTES", "10"))
 
 
-def _jwt_secret() -> str:
+def signing_secret() -> str:
+    """Shared HMAC secret for tokens and signed media URLs."""
     secret = (os.environ.get("JWT_SECRET") or "").strip()
     if not secret:
         # Dev fallback — set JWT_SECRET in .env for real deployments.
@@ -60,12 +61,12 @@ def create_access_token(
         "exp": expire,
         "iat": datetime.now(UTC),
     }
-    return jwt.encode(payload, _jwt_secret(), algorithm=ALGORITHM)
+    return jwt.encode(payload, signing_secret(), algorithm=ALGORITHM)
 
 
 def decode_access_token(token: str) -> dict[str, Any]:
     try:
-        return jwt.decode(token, _jwt_secret(), algorithms=[ALGORITHM])
+        return jwt.decode(token, signing_secret(), algorithms=[ALGORITHM])
     except jwt.ExpiredSignatureError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
