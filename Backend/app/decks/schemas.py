@@ -92,6 +92,7 @@ class DeckCardEntry(BaseModel):
     invoke_cost: int = 0
     # Invoke-cost icon list (LIF, MET, GEN2, …) — used by playtester Accumulate.
     cost: list[Any] = Field(default_factory=list)
+    threat_level: str = "0"
     types_line: str = ""
     # Epoch seconds from cards.updated_at — used to bust browser image cache.
     card_art_version: int | None = None

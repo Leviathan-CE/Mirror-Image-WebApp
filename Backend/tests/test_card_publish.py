@@ -73,6 +73,7 @@ def test_classified_overrides_strip_art_and_stats():
     assert overrides["card_art_path"] is None
     assert overrides["card_art_version"] is None
     assert overrides["cost"] == []
+    assert overrides["threat_level"] == "0"
     assert overrides["types_line"] == "CLASSIFIED"
     assert overrides["time_capacity"] == 0
 
