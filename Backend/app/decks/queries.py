@@ -142,6 +142,7 @@ def fetch_deck_cards(
             c.steel_capacity,
             c.time_capacity,
             c.lif_capacity,
+            c.threat_level,
             pc.published
         FROM deck_has_cards dhc
         JOIN cards c ON c.id = dhc.card_id
@@ -178,11 +179,12 @@ def fetch_deck_cards(
             steel_capacity=int(row[16] or 0),
             time_capacity=int(row[17] or 0),
             lif_capacity=int(row[18] or 0),
+            threat_level=str(row[19] if row[19] is not None else "0"),
             is_classified=False,
             classification=None,
         )
         kind = deck_card_classification(
-            row[19],
+            row[20],
             bypass=bypass,
             include_preview=include_preview,
         )
