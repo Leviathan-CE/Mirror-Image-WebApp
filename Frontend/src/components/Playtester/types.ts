@@ -1,7 +1,13 @@
 /** Playtester session domain — barrel re-export (prefer direct module imports over time). */
 
-export type { PlayZone, SelectableActionZone } from "./playtesterConstants"
-export { PLAY_ZONE, SELECTABLE_ACTION_ZONES } from "./playtesterConstants"
+export type { PlayerSlot, PlayZone, SelectableActionZone } from "./playtesterConstants"
+export {
+  LOCAL_SEAT,
+  PLAYER_SLOT,
+  PLAY_ZONE,
+  SELECTABLE_ACTION_ZONES,
+  otherSeat,
+} from "./playtesterConstants"
 
 export type {
   PlayingCardInstance,
@@ -60,3 +66,25 @@ export {
   moveToPilot,
   putCardOnPilot,
 } from "./zoneMoves.logic"
+
+export {
+  mulberry32,
+  rngStep,
+  rngFromState,
+} from "./rng.logic"
+export type { RngState, RngNext } from "./rng.logic"
+
+export type {
+  PlaySessionState,
+  SessionAction,
+  SeatRecord,
+} from "./sessionActions.logic"
+export {
+  applyAction,
+  applyActions,
+  createPlaySessionState,
+  seatRecord,
+} from "./sessionActions.logic"
+
+export type { FogView, FogCard, FogStub } from "./fogView.logic"
+export { viewFor, isFogStub, materializeFog, stubToInstance } from "./fogView.logic"

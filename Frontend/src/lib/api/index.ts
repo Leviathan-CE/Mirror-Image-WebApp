@@ -66,3 +66,8 @@ export {
   type DeckUpdatePayload,
   type UpdateDeckCardPayload,
 } from "@/lib/api/decks"
+export {
+  createPlayRoom,
+  playWsUrl,
+  type PlayRoomCreated,
+} from "@/lib/api/playRooms"

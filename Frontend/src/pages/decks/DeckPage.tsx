@@ -18,6 +18,10 @@ import {
   type DeckCardSortMode,
 } from "@/components/decks/DeckCardSortControls"
 import {
+  DeckCardViewControls,
+  type DeckCardViewMode,
+} from "@/components/decks/DeckCardViewControls"
+import {
   cardsFromDragPayload,
   isLibraryDragPayload,
   type DeckCardDragPayload,
@@ -85,6 +89,11 @@ const BROWSE_WIDTH_MIN = 280
 const BROWSE_WIDTH_DECK_REMAIN_MIN = 280
 const BROWSE_WIDTH_DEFAULT = 352
 
+const CARD_SORT_STORAGE_KEY = "mi-deck-card-sort-mode"
+const CARD_VIEW_STORAGE_KEY = "mi-deck-card-view-mode"
+const CARD_SORT_DEFAULT: DeckCardSortMode = "type"
+const CARD_VIEW_DEFAULT: DeckCardViewMode = "cards"
+
 /** Widest the library panel may grow — viewport minus a thin deck strip. */
 function maxBrowseWidth(): number {
   if (typeof window === "undefined") return BROWSE_WIDTH_MIN
@@ -113,6 +122,32 @@ function readStoredBrowseWidth(): number {
   }
 }
 
+function isCardSortMode(value: string): value is DeckCardSortMode {
+  return value === "type" || value === "invoke" || value === "name"
+}
+
+function isCardViewMode(value: string): value is DeckCardViewMode {
+  return value === "cards" || value === "list"
+}
+
+function readStoredCardSortMode(): DeckCardSortMode {
+  try {
+    const raw = window.localStorage.getItem(CARD_SORT_STORAGE_KEY)
+    return raw != null && isCardSortMode(raw) ? raw : CARD_SORT_DEFAULT
+  } catch {
+    return CARD_SORT_DEFAULT
+  }
+}
+
+function readStoredCardViewMode(): DeckCardViewMode {
+  try {
+    const raw = window.localStorage.getItem(CARD_VIEW_STORAGE_KEY)
+    return raw != null && isCardViewMode(raw) ? raw : CARD_VIEW_DEFAULT
+  } catch {
+    return CARD_VIEW_DEFAULT
+  }
+}
+
 export function DeckPage() {
   const { deckId: deckIdParam } = useParams()
   const deckId = Number(deckIdParam)
@@ -137,7 +172,12 @@ export function DeckPage() {
   const [searchMenuOpen, setSearchMenuOpen] = useState(false)
   const [browseOpen, setBrowseOpen] = useState(true)
   const [browseWidth, setBrowseWidth] = useState(BROWSE_WIDTH_DEFAULT)
-  const [cardSortMode, setCardSortMode] = useState<DeckCardSortMode>("type")
+  const [cardSortMode, setCardSortMode] = useState<DeckCardSortMode>(() =>
+    typeof window === "undefined" ? CARD_SORT_DEFAULT : readStoredCardSortMode()
+  )
+  const [cardViewMode, setCardViewMode] = useState<DeckCardViewMode>(() =>
+    typeof window === "undefined" ? CARD_VIEW_DEFAULT : readStoredCardViewMode()
+  )
   const [tagDraft, setTagDraft] = useState("")
   const browseResizeRef = useRef<{
     pointerId: number
@@ -168,6 +208,22 @@ export function DeckPage() {
       /* private mode / quota */
     }
   }, [browseWidth])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CARD_SORT_STORAGE_KEY, cardSortMode)
+    } catch {
+      /* private mode / quota */
+    }
+  }, [cardSortMode])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CARD_VIEW_STORAGE_KEY, cardViewMode)
+    } catch {
+      /* private mode / quota */
+    }
+  }, [cardViewMode])
 
   function onBrowseResizePointerDown(
     event: ReactPointerEvent<HTMLDivElement>
@@ -449,13 +505,14 @@ export function DeckPage() {
 
       setDeck((prev) => {
         if (!prev) return prev
+        const categories = prev.categories.some((c) => c.id === created.id)
+          ? prev.categories
+          : [...prev.categories, created]
         return {
           ...prev,
-          categories: prev.categories.some((c) => c.id === created.id)
-            ? prev.categories
-            : [...prev.categories, created],
+          categories,
           cards: workingCards,
-          card_count: deckCardCount(workingCards),
+          card_count: deckCardCount(workingCards, categories),
         }
       })
       clearCardSelection()
@@ -503,6 +560,32 @@ export function DeckPage() {
           : "Could not rename category."
       )
       throw new Error("rename_failed")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function onSetCategoryInDeck(categoryId: number, inDeck: boolean) {
+    if (!token || !deck || !canEdit) return
+    setSaving(true)
+    setErrorText("")
+    try {
+      const updated = await updateDeckCategory(deck.id, categoryId, token, {
+        in_deck: inDeck,
+      })
+      setDeck((prev) => {
+        if (!prev) return prev
+        const categories = prev.categories.map((c) =>
+          c.id === categoryId ? updated : c
+        )
+        return {
+          ...prev,
+          categories,
+          card_count: deckCardCount(prev.cards, categories),
+        }
+      })
+    } catch {
+      setErrorText("Could not update section.")
     } finally {
       setSaving(false)
     }
@@ -660,7 +743,7 @@ export function DeckPage() {
         return {
           ...prev,
           cards: workingCards,
-          card_count: deckCardCount(workingCards),
+          card_count: deckCardCount(workingCards, prev.categories),
         }
       })
       clearCardSelection()
@@ -813,7 +896,7 @@ export function DeckPage() {
           return {
             ...prev,
             cards,
-            card_count: deckCardCount(cards),
+            card_count: deckCardCount(cards, prev.categories),
           }
         })
         return
@@ -837,7 +920,7 @@ export function DeckPage() {
         return {
           ...prev,
           cards,
-          card_count: deckCardCount(cards),
+          card_count: deckCardCount(cards, prev.categories),
         }
       })
     } catch {
@@ -864,7 +947,7 @@ export function DeckPage() {
 
       const categoryId = mainCategoryId(deck.categories)
       if (categoryId == null) {
-        setErrorText("No Main section found on this deck.")
+        setErrorText("No in-deck section found on this deck.")
         return
       }
 
@@ -905,7 +988,8 @@ export function DeckPage() {
     const created = await createDeckCategory(
       deck.id,
       token,
-      AUGMENT_SECTION_NAME
+      AUGMENT_SECTION_NAME,
+      { in_deck: false }
     )
     setDeck((prev) =>
       prev
@@ -995,7 +1079,8 @@ export function DeckPage() {
     const created = await createDeckCategory(
       deck.id,
       token,
-      PILOT_SECTION_NAME
+      PILOT_SECTION_NAME,
+      { in_deck: false }
     )
     setDeck((prev) =>
       prev
@@ -1112,7 +1197,7 @@ export function DeckPage() {
         return {
           ...prev,
           cards,
-          card_count: cards.reduce((sum, card) => sum + card.quantity, 0),
+          card_count: deckCardCount(cards, prev.categories),
         }
       })
     } catch {
@@ -1126,7 +1211,7 @@ export function DeckPage() {
 
   return (
     <section
-      className="relative min-h-screen bg-cover bg-center bg-no-repeat px-4 py-12 sm:px-6 lg:px-8 xl:px-10 2xl:px-12"
+      className="relative min-h-screen max-w-full overflow-x-clip bg-cover bg-center bg-no-repeat px-4 py-12 sm:px-6 lg:px-8 xl:px-10 2xl:px-12"
       style={{ backgroundImage: `url(${sharedImages.ZONE_BACKGROUND})` }}
     >
       <div className="absolute inset-0 bg-black/65" aria-hidden />
@@ -1316,7 +1401,7 @@ export function DeckPage() {
                       </div>
 
                       {canEdit ? (
-                        <div className="mt-3 flex max-w-lg items-center gap-2">
+                        <div className="mt-3 flex w-full min-w-0 max-w-lg items-center gap-2">
                           <DeckTagSuggestInput
                             value={tagDraft}
                             onChange={setTagDraft}
@@ -1324,17 +1409,19 @@ export function DeckPage() {
                             disabled={saving}
                             onPick={(tag) => void onAddTag(tag)}
                           />
-                          <GlitchFx
-                            type="button"
-                            label="ADD TAG"
-                            disabled={
-                              saving ||
-                              !tagDraft.trim() ||
-                              !isPublicTextClean(tagDraft)
-                            }
-                            className="font-buahs93 h-8 shrink-0 rounded-none border border-cyan-500/40 bg-black/70 px-4 text-xs text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 disabled:opacity-60"
-                            onClick={() => void onAddTag()}
-                          />
+                          <div className="shrink-0">
+                            <GlitchFx
+                              type="button"
+                              label="ADD TAG"
+                              disabled={
+                                saving ||
+                                !tagDraft.trim() ||
+                                !isPublicTextClean(tagDraft)
+                              }
+                              className="font-buahs93 h-8 rounded-none border border-cyan-500/40 bg-black/70 px-4 text-xs text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 disabled:opacity-60"
+                              onClick={() => void onAddTag()}
+                            />
+                          </div>
                         </div>
                       ) : null}
                     </>
@@ -1414,16 +1501,21 @@ export function DeckPage() {
                   </div>
                 ) : null}
 
-                <div className="mb-6">
+                <div className="mb-6 flex flex-wrap items-center gap-4">
                   <DeckCardSortControls
                     value={cardSortMode}
                     onChange={setCardSortMode}
+                  />
+                  <DeckCardViewControls
+                    value={cardViewMode}
+                    onChange={setCardViewMode}
                   />
                 </div>
 
                 <DeckBoard
                   deck={deck}
                   sortMode={cardSortMode}
+                  viewMode={cardViewMode}
                   canEdit={canEdit}
                   disabled={saving}
                   interactionLocked={searchMenuOpen}
@@ -1432,6 +1524,7 @@ export function DeckPage() {
                   onClearSelect={clearCardSelection}
                   onRenameCategory={onRenameCategory}
                   onDeleteCategory={onDeleteCategory}
+                  onSetCategoryInDeck={onSetCategoryInDeck}
                   onDropToCategory={onDropCardsToCategory}
                   onQuantityDelta={onQuantityDelta}
                   onAssignPilot={assignPilot}

@@ -69,16 +69,19 @@ class DeckCategoryOut(BaseModel):
     id: int
     name: str
     sort_order: int
+    in_deck: bool = True
 
 
 class DeckCategoryCreate(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     sort_order: int | None = Field(default=None, ge=0)
+    in_deck: bool | None = None
 
 
 class DeckCategoryUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=60)
     sort_order: int | None = Field(default=None, ge=0)
+    in_deck: bool | None = None
 
 
 class DeckCardEntry(BaseModel):

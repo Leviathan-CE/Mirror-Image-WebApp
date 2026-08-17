@@ -11,6 +11,8 @@ import {
   ClassifiedCardFace,
   cardClassification,
 } from "@/components/decks/ClassifiedCardFace"
+import { DeckCardListRow } from "@/components/decks/DeckCardListRow"
+import type { DeckCardViewMode } from "@/components/decks/DeckCardViewControls"
 import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import { cardArtUrl, type DeckCardEntry } from "@/lib/api/decks"
 
@@ -125,6 +127,8 @@ type DeckCardStackProps = {
   cards: DeckCardEntry[]
   draggable?: boolean
   disabled?: boolean
+  /** Art stacks vs condensed colour rows. */
+  viewMode?: DeckCardViewMode
   /** Keys from `deckCardSelectionKey`. */
   selectedKeys?: ReadonlySet<string>
   onSelectCard?: (
@@ -141,6 +145,7 @@ export function DeckCardStack({
   cards,
   draggable = false,
   disabled = false,
+  viewMode = "cards",
   selectedKeys,
   onSelectCard,
   onClearSelect,
@@ -183,15 +188,20 @@ export function DeckCardStack({
 
   const canAdjust = Boolean(onQuantityDelta) && !disabled
   const canSelect = Boolean(onSelectCard) && !disabled
+  const isList = viewMode === "list"
 
   return (
     <>
       <ul
-        className={`deck-card-stack${
-          hoveredIndex != null && hoveredIndex < cards.length - 1
-            ? " is-revealing"
-            : ""
-        }`}
+        className={
+          isList
+            ? "deck-card-list"
+            : `deck-card-stack${
+                hoveredIndex != null && hoveredIndex < cards.length - 1
+                  ? " is-revealing"
+                  : ""
+              }`
+        }
         onMouseLeave={() => setHoveredIndex(null)}
       >
         {cards.map((card, index) => {
@@ -200,29 +210,37 @@ export function DeckCardStack({
           const src = classified
             ? null
             : cardArtUrl(card.card_art_path, card.card_art_version)
-          const isHovered = hoveredIndex === index
+          const isHovered = !isList && hoveredIndex === index
           const isCovering =
-            hoveredIndex != null && index > hoveredIndex && !isHovered
+            !isList &&
+            hoveredIndex != null &&
+            index > hoveredIndex &&
+            !isHovered
           const cardKey = deckCardSelectionKey(card.category_id, card.card_id)
           const isSelected = selectedKeys?.has(cardKey) ?? false
           const isDragging = draggingKeys?.has(cardKey) ?? false
           const canDrag = draggable && !disabled
+          const itemClass = isList ? "deck-card-list__item" : "deck-card-stack__item"
 
           return (
             <li
               key={cardKey}
-              className={`deck-card-stack__item${isHovered ? " is-hovered" : ""}${
+              className={`${itemClass}${isHovered ? " is-hovered" : ""}${
                 isCovering ? " is-covering" : ""
               }${isDragging ? " is-dragging" : ""}${
                 isSelected ? " is-selected" : ""
               }${canDrag ? " is-draggable" : ""}${
                 classified ? " is-classified" : ""
               }`}
-              style={{
-                // Keep stack order — do not pull hovered cards above covers.
-                zIndex: index + 1,
-                ["--stack-index" as string]: index,
-              }}
+              style={
+                isList
+                  ? undefined
+                  : {
+                      // Keep stack order — do not pull hovered cards above covers.
+                      zIndex: index + 1,
+                      ["--stack-index" as string]: index,
+                    }
+              }
               // clip-path on the draggable node breaks HTML5 DnD in Chromium —
               // angled look lives on the art child instead.
               draggable={canDrag}
@@ -282,7 +300,7 @@ export function DeckCardStack({
                 }, 0)
               }}
               onMouseEnter={() => {
-                if (draggingKeys == null) setHoveredIndex(index)
+                if (!isList && draggingKeys == null) setHoveredIndex(index)
               }}
               onMouseDown={(event) => {
                 if (event.button === 1) {
@@ -354,27 +372,33 @@ export function DeckCardStack({
                     : `${card.card_name} ×${card.quantity} — middle-click hold to enlarge`
               }
             >
-              {classified && classification ? (
-                <ClassifiedCardFace
-                  name={card.card_name}
-                  classification={classification}
-                  size="stack"
-                />
-              ) : src ? (
-                <img
-                  src={src}
-                  alt={card.card_name}
-                  className="deck-card-stack__art clip-angled"
-                  draggable={false}
-                />
+              {isList ? (
+                <DeckCardListRow card={card} classified={classification} />
               ) : (
-                <div className="deck-card-stack__fallback clip-angled">
-                  <span>{card.card_name}</span>
-                </div>
+                <>
+                  {classified && classification ? (
+                    <ClassifiedCardFace
+                      name={card.card_name}
+                      classification={classification}
+                      size="stack"
+                    />
+                  ) : src ? (
+                    <img
+                      src={src}
+                      alt={card.card_name}
+                      className="deck-card-stack__art clip-angled"
+                      draggable={false}
+                    />
+                  ) : (
+                    <div className="deck-card-stack__fallback clip-angled">
+                      <span>{card.card_name}</span>
+                    </div>
+                  )}
+                  {card.quantity > 0 ? (
+                    <span className="deck-card-stack__qty">×{card.quantity}</span>
+                  ) : null}
+                </>
               )}
-              {card.quantity > 0 ? (
-                <span className="deck-card-stack__qty">×{card.quantity}</span>
-              ) : null}
             </li>
           )
         })}

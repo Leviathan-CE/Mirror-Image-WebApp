@@ -1,12 +1,13 @@
 /**
  * Opening playtester setup from a loaded deck:
- * pilot → pilot zone, augments → battlefield, main deck shuffle + draw,
- * starting resource tokens → stockpile.
+ * pilot → pilot zone, augments → battlefield (home edge is the owner's
+ * stockpile, applied per viewer), main deck shuffle + draw, starting
+ * resource tokens → stockpile.
  */
 
 import {
   augmentCards,
-  isReservedCategory,
+  categoryCountsInDeck,
   pilotCard,
 } from "@/components/decks/deck.logic"
 import {
@@ -16,8 +17,10 @@ import {
 } from "@/components/Playtester/accumulateResources.logic"
 import {
   expandDeckToPlayInstances,
+  LOCAL_SEAT,
   putCardOnLibraryBottom,
   shuffleInPlace,
+  type PlayerSlot,
   type PlayingCardInstance,
 } from "@/components/Playtester/types"
 import type { CardLibraryItem } from "@/lib/api/cards"
@@ -65,7 +68,8 @@ export function startingLifeFromPilot(
 export function spawnGroupedStockpileResources(
   colors: ResourceColor[],
   resourceByColor: Map<ResourceColor, CardLibraryItem>,
-  seqStart = 0
+  seqStart = 0,
+  owner: PlayerSlot = LOCAL_SEAT
 ): PlayingCardInstance[] {
   const counts = new Map<ResourceColor, number>()
   for (const color of colors) {
@@ -88,7 +92,8 @@ export function spawnGroupedStockpileResources(
           template,
           cursorX + i * STACK_STAGGER_X,
           STOCKPILE_ORIGIN_Y + i * STACK_STAGGER_Y,
-          seq
+          seq,
+          owner
         )
       )
       seq += 1
@@ -101,12 +106,12 @@ export function spawnGroupedStockpileResources(
   return out
 }
 
-/** Playable library rows = every non-Pilot / non-Augment section. */
+/** Playable library rows = in-deck sections (not Pilot / Augments / list-only). */
 export function libraryDeckEntries(deck: DeckDetail): DeckCardEntry[] {
-  const reservedIds = new Set(
-    deck.categories.filter(isReservedCategory).map((c) => c.id)
+  const inDeckIds = new Set(
+    deck.categories.filter(categoryCountsInDeck).map((c) => c.id)
   )
-  return deck.cards.filter((card) => !reservedIds.has(card.category_id))
+  return deck.cards.filter((card) => inDeckIds.has(card.category_id))
 }
 
 /**
@@ -115,7 +120,8 @@ export function libraryDeckEntries(deck: DeckDetail): DeckCardEntry[] {
  */
 export function setupOpeningSession(
   deck: DeckDetail,
-  resourceByColor: Map<ResourceColor, CardLibraryItem>
+  resourceByColor: Map<ResourceColor, CardLibraryItem>,
+  owner: PlayerSlot = LOCAL_SEAT
 ): PlayingCardInstance[] {
   const pilotEntry = pilotCard(deck.cards, deck.categories)
   const augmentEntries = augmentCards(deck.cards, deck.categories, "name")
@@ -126,13 +132,14 @@ export function setupOpeningSession(
   if (pilotEntry) {
     const [pilotInst] = expandDeckToPlayInstances(
       [{ ...pilotEntry, quantity: 1 }],
-      "pilot"
+      "pilot",
+      owner
     )
     if (pilotInst) {
       session.push({
         ...pilotInst,
         zone: "pilot",
-        instanceId: `pilot-${pilotInst.cardId}`,
+        instanceId: `${owner}-pilot-${pilotInst.cardId}`,
         expended: false,
         selected: false,
       })
@@ -143,27 +150,33 @@ export function setupOpeningSession(
     const entry = augmentEntries[i]!
     const [inst] = expandDeckToPlayInstances(
       [{ ...entry, quantity: 1 }],
-      "battlefield"
+      "battlefield",
+      owner
     )
     if (!inst) continue
+    // No x/y: each client pins unmoved augments to the battlefield edge
+    // beside that owner's stockpile, so they stay on the correct side of a
+    // single shared field even though both players sit at the bottom of
+    // their own screen.
     session.push({
       ...inst,
       zone: "battlefield",
-      instanceId: `augment-${inst.cardId}-${i}`,
-      x: 24 + i * 132,
-      y: 48,
+      isAugment: true,
+      instanceId: `${owner}-augment-${inst.cardId}-${i}`,
       expended: false,
       selected: false,
     })
   }
 
   const handSize = Math.max(0, Math.floor(pilotEntry?.hand_size ?? 0))
-  const pool = shuffleInPlace(expandDeckToPlayInstances(mainEntries, "library"))
+  const pool = shuffleInPlace(
+    expandDeckToPlayInstances(mainEntries, "library", owner)
+  )
 
   const hand = pool.slice(0, handSize).map((card, index) => ({
     ...card,
     zone: "hand" as const,
-    instanceId: `hand-${card.cardId}-${index}`,
+    instanceId: `${owner}-hand-${card.cardId}-${index}`,
     expended: false,
     selected: false,
     x: undefined,
@@ -173,7 +186,7 @@ export function setupOpeningSession(
   const library = pool.slice(handSize).map((card, index) => ({
     ...card,
     zone: "library" as const,
-    instanceId: `lib-${card.cardId}-${index}`,
+    instanceId: `${owner}-lib-${card.cardId}-${index}`,
     expended: false,
     selected: false,
     x: undefined,
@@ -185,7 +198,9 @@ export function setupOpeningSession(
   session.push(
     ...spawnGroupedStockpileResources(
       startingResourceColorsFromPilot(pilotEntry),
-      resourceByColor
+      resourceByColor,
+      0,
+      owner
     )
   )
 
@@ -198,14 +213,17 @@ export function setupOpeningSession(
  */
 export function applyMulliganToBottom(
   cards: PlayingCardInstance[],
-  selectedInstanceIds: string[]
+  selectedInstanceIds: string[],
+  owner: PlayerSlot = LOCAL_SEAT
 ): { cards: PlayingCardInstance[]; drawCount: number } {
   if (selectedInstanceIds.length === 0) {
     return { cards, drawCount: 0 }
   }
 
   const selected = new Set(selectedInstanceIds)
-  const handOrder = cards.filter((c) => c.zone === "hand")
+  const handOrder = cards.filter(
+    (c) => c.zone === "hand" && c.owner === owner
+  )
   const toBottom = handOrder.filter((c) => selected.has(c.instanceId))
   if (toBottom.length === 0) {
     return { cards, drawCount: 0 }

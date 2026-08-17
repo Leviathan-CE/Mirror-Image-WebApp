@@ -111,7 +111,7 @@ export function CardCostIcons({
   }
 
   return (
-    <span className={className ?? "inline-flex flex-wrap items-center gap-0.5"}>
+    <span className={className ?? "inline-flex flex-wrap items-center gap-0"}>
       {cost.map((token, index) => {
         const icon = costTokenToIcon(token)
         if (!icon) {
@@ -128,7 +128,7 @@ export function CardCostIcons({
           <GameIcon
             key={`${token}-${index}`}
             name={icon}
-            className={iconClassName ?? "h-4 w-auto lg:h-4 2xl:h-4"}
+            className={iconClassName ?? "h-6 w-auto"}
           />
         )
       })}

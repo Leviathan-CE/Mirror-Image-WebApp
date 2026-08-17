@@ -32,6 +32,9 @@ export const ROUTES = {
   //pick a deck and send it to play tester
   playTester: (deckId: string | number) => `/play_tester/${deckId}` as const,
   PLAY_TESTER_PATTERN: "/play_tester/:deckId",
+  playTesterVs: (deckId: string | number, vsDeckId: string | number) =>
+    `/play_tester/${deckId}/vs/${vsDeckId}` as const,
+  PLAY_TESTER_VS_PATTERN: "/play_tester/:deckId/vs/:vsDeckId",
 } as const
 
 export const ADMIN_ROLE = "admin" as const

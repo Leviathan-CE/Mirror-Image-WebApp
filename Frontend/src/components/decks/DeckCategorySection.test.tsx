@@ -50,6 +50,45 @@ describe("DeckCategorySection", () => {
     expect(onDelete).toHaveBeenCalledOnce()
   })
 
+  it("toggles list-only from the options menu", async () => {
+    const user = userEvent.setup()
+    const onSetInDeck = vi.fn().mockResolvedValue(undefined)
+
+    render(
+      <DeckCategorySection
+        category={{ id: 3, name: "Entity", sort_order: 0, in_deck: true }}
+        cards={[]}
+        canEdit
+        onRename={vi.fn()}
+        onDelete={vi.fn()}
+        onSetInDeck={onSetInDeck}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: "Entity options" }))
+    await user.click(screen.getByRole("menuitem", { name: /in deck/i }))
+    expect(onSetInDeck).toHaveBeenCalledWith(false)
+  })
+
+  it("toggles in-deck from the check mark", async () => {
+    const user = userEvent.setup()
+    const onSetInDeck = vi.fn().mockResolvedValue(undefined)
+
+    render(
+      <DeckCategorySection
+        category={{ id: 3, name: "Entity", sort_order: 0, in_deck: true }}
+        cards={[]}
+        canEdit
+        onRename={vi.fn()}
+        onDelete={vi.fn()}
+        onSetInDeck={onSetInDeck}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: "Listed in deck" }))
+    expect(onSetInDeck).toHaveBeenCalledWith(false)
+  })
+
   it("hides the menu when reserved", () => {
     render(
       <DeckCategorySection

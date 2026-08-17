@@ -12,9 +12,11 @@ import {
 } from "@/components/Playtester/accumulateResources.logic"
 import {
   CTX_MENU_ACTION,
+  LOCAL_SEAT,
   PILOT_GEN_MAX,
   PLAY_ZONE,
   SELECTABLE_ACTION_ZONES,
+  type PlayerSlot,
 } from "@/components/Playtester/playtesterConstants"
 import {
   selectableActionTargets,
@@ -81,9 +83,10 @@ function buildMoveAllMenuItem(
   from: MoveAllSourceZone,
   sessionCards: PlayingCardInstance[],
   animBusy: boolean,
-  onMoveAll: (from: MoveAllSourceZone, to: MoveAllDestinationZone) => void
+  onMoveAll: (from: MoveAllSourceZone, to: MoveAllDestinationZone) => void,
+  owner: PlayerSlot
 ): DropdownMenuItem {
-  const pileCount = cardsInZone(sessionCards, from).length
+  const pileCount = cardsInZone(sessionCards, from, owner).length
   const destinations: Array<{
     id: string
     label: string
@@ -166,6 +169,7 @@ export type UsePlayContextMenuArgs = {
   setDeckActionCount: (key: DeckCountKey, value: string) => void
   /** True while the deck's top card is shown face up. */
   topRevealed: boolean
+  owner?: PlayerSlot
   actions: PlayContextMenuActions
 }
 
@@ -179,6 +183,7 @@ export function usePlayContextMenu({
   deckActionCounts,
   setDeckActionCount,
   topRevealed,
+  owner = LOCAL_SEAT,
   actions,
 }: UsePlayContextMenuArgs): DropdownMenuItem[] {
   if (!ctxMenu) return []
@@ -208,10 +213,12 @@ export function usePlayContextMenu({
   }
 
   if (ctxMenu.kind === "deck") {
-    const librarySize = cardsInZone(sessionCards, PLAY_ZONE.library).length
+    const librarySize = cardsInZone(sessionCards, PLAY_ZONE.library, owner).length
     const empty = librarySize === 0
     const topCard =
-      sessionCards.find((c) => c.zone === PLAY_ZONE.library) ?? null
+      sessionCards.find(
+        (c) => c.zone === PLAY_ZONE.library && c.owner === owner
+      ) ?? null
 
     function countFor(key: DeckCountKey) {
       const parsed = Number.parseInt(deckActionCounts[key], 10)
@@ -288,7 +295,8 @@ export function usePlayContextMenu({
         PLAY_ZONE.library,
         sessionCards,
         animBusy,
-        actions.moveAllFromZone
+        actions.moveAllFromZone,
+        owner
       ),
     ]
   }
@@ -299,7 +307,8 @@ export function usePlayContextMenu({
         ctxMenu.zone,
         sessionCards,
         animBusy,
-        actions.moveAllFromZone
+        actions.moveAllFromZone,
+        owner
       ),
     ]
   }
@@ -489,7 +498,8 @@ export function usePlayContextMenu({
         card.zone,
         sessionCards,
         animBusy,
-        actions.moveAllFromZone
+        actions.moveAllFromZone,
+        owner
       ),
       viewCardDetails,
     ]

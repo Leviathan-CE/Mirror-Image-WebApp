@@ -119,7 +119,7 @@ export function DeckTagSuggestInput({
           onChange(titleCaseTagWords(e.target.value))
         }}
         className={cn(
-          "w-full",
+          "w-full min-w-0",
           containsProfanity(value) &&
             "border-red-400/80 focus-visible:border-red-300"
         )}

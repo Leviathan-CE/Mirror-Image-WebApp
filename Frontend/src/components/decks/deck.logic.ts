@@ -29,6 +29,12 @@ export function isReservedCategory(category: DeckCategoryOut): boolean {
   return isPilotCategory(category) || isAugmentCategory(category)
 }
 
+/** Playable RIG section — reserved slots and list-only piles are excluded. */
+export function categoryCountsInDeck(category: DeckCategoryOut): boolean {
+  if (isReservedCategory(category)) return false
+  return category.in_deck !== false
+}
+
 export function sortDeckCards(
   cards: DeckCardEntry[],
   mode: DeckCardSortMode
@@ -65,10 +71,15 @@ export function cardsByCategory(
 }
 
 export function mainCategoryId(categories: DeckCategoryOut[]): number | null {
-  const main = categories.find((c) => c.name.trim().toLowerCase() === "main")
-  if (main) return main.id
   const playable = categories.filter((c) => !isReservedCategory(c))
-  const first = [...playable].sort((a, b) => a.sort_order - b.sort_order)[0]
+  const inDeck = playable.filter(categoryCountsInDeck)
+  const pool = inDeck.length > 0 ? inDeck : playable
+  const preferred = pool.find((c) => {
+    const name = c.name.trim().toLowerCase()
+    return name === "entity" || name === "main"
+  })
+  if (preferred) return preferred.id
+  const first = [...pool].sort((a, b) => a.sort_order - b.sort_order)[0]
   return first?.id ?? null
 }
 
@@ -134,7 +145,7 @@ export function withCardEntry(
   return {
     ...prev,
     cards,
-    card_count: cards.reduce((sum, card) => sum + card.quantity, 0),
+    card_count: deckCardCount(cards, prev.categories),
   }
 }
 
@@ -165,8 +176,20 @@ export function applyCardMove(
   ]
 }
 
-export function deckCardCount(cards: DeckCardEntry[]): number {
-  return cards.reduce((sum, card) => sum + card.quantity, 0)
+export function deckCardCount(
+  cards: DeckCardEntry[],
+  categories?: DeckCategoryOut[]
+): number {
+  if (!categories) {
+    return cards.reduce((sum, card) => sum + card.quantity, 0)
+  }
+  const inDeckIds = new Set(
+    categories.filter(categoryCountsInDeck).map((category) => category.id)
+  )
+  return cards.reduce((sum, card) => {
+    if (!inDeckIds.has(card.category_id)) return sum
+    return sum + card.quantity
+  }, 0)
 }
 
 export function maxCopiesForCategory(category: DeckCategoryOut): number {

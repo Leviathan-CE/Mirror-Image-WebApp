@@ -7,7 +7,11 @@
  */
 
 import type { CardLibraryItem } from "@/lib/api/cards"
-import type { PlayingCardInstance } from "@/components/Playtester/types"
+import {
+  LOCAL_SEAT,
+  type PlayerSlot,
+  type PlayingCardInstance,
+} from "@/components/Playtester/types"
 
 export const RESOURCE_COLORS = [
   "LIF",
@@ -185,11 +189,13 @@ export function spawnResourceTokenInstance(
   template: CardLibraryItem,
   x: number,
   y: number,
-  seq: number
+  seq: number,
+  owner: PlayerSlot = LOCAL_SEAT
 ): PlayingCardInstance {
   return {
     instanceId: `resource-${template.id}-${seq}-${Date.now()}`,
     cardId: template.id,
+    owner,
     name: template.card_name,
     artPath: template.card_art_path,
     artVersion: template.card_art_version ?? null,

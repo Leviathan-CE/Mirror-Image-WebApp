@@ -7,29 +7,22 @@ import {
   useEffect,
   useRef,
   useState,
-  type Dispatch,
   type MutableRefObject,
   type RefObject,
-  type SetStateAction,
 } from "react"
 
 import {
   FLIP_FLY_MODE,
+  LOCAL_SEAT,
   PLAY_ZONE,
   type FlipFlyMode,
   type PlayZone,
+  type PlayerSlot,
 } from "@/components/Playtester/playtesterConstants"
+import { peekTopLibrary } from "@/components/Playtester/deckActions.logic"
 import {
-  putCardInDismantled,
-  putCardInHand,
-  putCardInTrashyard,
-  putCardOnBattlefield,
-  putCardOnLibraryBottom,
-  putCardOnLibraryTop,
-  putCardOnPilot,
-  putCardOnStockpile,
-  takeTopLibraryCard,
   type PlayingCardInstance,
+  type SessionAction,
 } from "@/components/Playtester/types"
 
 export type FlipFlyAnim = {
@@ -41,6 +34,8 @@ export type FlipFlyAnim = {
   landZone: PlayZone
   landX?: number
   landY?: number
+  /** Zone change already applied via dispatch — complete only unhides. */
+  alreadyCommitted?: boolean
 }
 
 export type BottomSlideAnim = {
@@ -87,7 +82,8 @@ function pointInRect(
 
 export type UseDrawAnimationsArgs = {
   sessionCardsRef: MutableRefObject<PlayingCardInstance[]>
-  setSessionCards: Dispatch<SetStateAction<PlayingCardInstance[]>>
+  dispatch: (action: SessionAction) => unknown
+  localSeat?: PlayerSlot
   zoneRefs: PlaytesterZoneRefs
   clientToSurfaceLocal: (clientX: number, clientY: number) => {
     x: number
@@ -102,7 +98,8 @@ export type UseDrawAnimationsArgs = {
 
 export function useDrawAnimations({
   sessionCardsRef,
-  setSessionCards,
+  dispatch,
+  localSeat = LOCAL_SEAT,
   zoneRefs,
   clientToSurfaceLocal,
   clientToStockpileLocal,
@@ -123,6 +120,9 @@ export function useDrawAnimations({
   const tuckAnimIdRef = useRef(0)
 
   const [shuffleAnim, setShuffleAnim] = useState<ShuffleAnim | null>(null)
+  const [flyingIds, setFlyingIds] = useState<string[]>([])
+  const flyingIdsRef = useRef<string[]>([])
+  flyingIdsRef.current = flyingIds
 
   const mulliganTimersRef = useRef<number[]>([])
   const drawBurstOffsetRef = useRef(0)
@@ -144,6 +144,21 @@ export function useDrawAnimations({
 
   function hasPendingDrawTimers(): boolean {
     return mulliganTimersRef.current.length > 0
+  }
+
+  function hideFlying(ids: string[]) {
+    if (ids.length === 0) return
+    const next = [...new Set([...flyingIdsRef.current, ...ids])]
+    flyingIdsRef.current = next
+    setFlyingIds(next)
+  }
+
+  function showFlying(ids: string[]) {
+    if (ids.length === 0) return
+    const drop = new Set(ids)
+    const next = flyingIdsRef.current.filter((id) => !drop.has(id))
+    flyingIdsRef.current = next
+    setFlyingIds(next)
   }
 
   function pushFlipAnim(anim: Omit<FlipFlyAnim, "id">): string {
@@ -170,8 +185,8 @@ export function useDrawAnimations({
     const handEl = zoneRefs.hand.current
     if (!deckEl || !handEl) return false
 
-    const taken = takeTopLibraryCard(sessionCardsRef.current)
-    if (!taken) return false
+    const drawn = peekTopLibrary(sessionCardsRef.current, 1, localSeat)[0]
+    if (!drawn) return false
 
     const offset = (options?.landOffsetIndex ?? 0) * 18
     let from: { x: number; y: number; w: number; h: number }
@@ -200,14 +215,15 @@ export function useDrawAnimations({
       }
     }
 
-    sessionCardsRef.current = taken.cards
-    setSessionCards(taken.cards)
+    hideFlying([drawn.instanceId])
+    dispatch({ t: "dr", seat: localSeat, n: 1 })
     pushFlipAnim({
-      card: taken.drawn,
+      card: { ...drawn, zone: PLAY_ZONE.hand },
       mode: FLIP_FLY_MODE.draw,
       from,
       to,
       landZone: PLAY_ZONE.hand,
+      alreadyCommitted: true,
     })
     return true
   }
@@ -304,8 +320,8 @@ export function useDrawAnimations({
     const trashEl = zoneRefs.trash.current
     if (!deckEl || !trashEl) return false
 
-    const taken = takeTopLibraryCard(sessionCardsRef.current)
-    if (!taken) return false
+    const drawn = peekTopLibrary(sessionCardsRef.current, 1, localSeat)[0]
+    if (!drawn) return false
 
     let from: { x: number; y: number; w: number; h: number }
     let to: { x: number; y: number }
@@ -325,14 +341,15 @@ export function useDrawAnimations({
       to = { x: trashRect.left, y: trashRect.top }
     }
 
-    sessionCardsRef.current = taken.cards
-    setSessionCards(taken.cards)
+    hideFlying([drawn.instanceId])
+    dispatch({ t: "dg", seat: localSeat, n: 1 })
     pushFlipAnim({
-      card: taken.drawn,
+      card: { ...drawn, zone: PLAY_ZONE.trashyard },
       mode: FLIP_FLY_MODE.draw,
       from,
       to,
       landZone: PLAY_ZONE.trashyard,
+      alreadyCommitted: true,
     })
     return true
   }
@@ -485,15 +502,28 @@ export function useDrawAnimations({
 
     if (!landZone) return
 
-    const taken = takeTopLibraryCard(sessionCardsRef.current)
-    if (!taken) return
+    const drawn = peekTopLibrary(sessionCardsRef.current, 1, localSeat)[0]
+    if (!drawn) return
 
     const stayFaceDown =
       landZone === PLAY_ZONE.battlefield || landZone === PLAY_ZONE.stockpile
-    const flyingCard = { ...taken.drawn, faceDown: stayFaceDown }
+    const flyingCard = {
+      ...drawn,
+      faceDown: stayFaceDown,
+      zone: landZone,
+      x: landX,
+      y: landY,
+    }
 
-    sessionCardsRef.current = taken.cards
-    setSessionCards(taken.cards)
+    hideFlying([drawn.instanceId])
+    dispatch({
+      t: "mv",
+      seat: localSeat,
+      i: [drawn.instanceId],
+      z: landZone,
+      x: landX,
+      y: landY,
+    })
     pushFlipAnim({
       card: flyingCard,
       mode: stayFaceDown ? FLIP_FLY_MODE.faceDown : FLIP_FLY_MODE.draw,
@@ -507,6 +537,7 @@ export function useDrawAnimations({
       landZone,
       landX,
       landY,
+      alreadyCommitted: true,
     })
   }
 
@@ -520,61 +551,17 @@ export function useDrawAnimations({
       clickDrawRouteRef.current = null
     }
     if (!current) return
+    showFlying([current.card.instanceId])
+    if (current.alreadyCommitted) return
 
-    if (
-      current.landZone === PLAY_ZONE.library ||
-      current.mode === FLIP_FLY_MODE.put
-    ) {
-      const next = putCardOnLibraryTop(sessionCardsRef.current, current.card)
-      sessionCardsRef.current = next
-      setSessionCards(next)
-      return
-    }
-    if (current.landZone === PLAY_ZONE.hand) {
-      const next = putCardInHand(sessionCardsRef.current, current.card)
-      sessionCardsRef.current = next
-      setSessionCards(next)
-      return
-    }
-    if (current.landZone === PLAY_ZONE.trashyard) {
-      const next = putCardInTrashyard(sessionCardsRef.current, current.card)
-      sessionCardsRef.current = next
-      setSessionCards(next)
-      return
-    }
-    if (current.landZone === PLAY_ZONE.dismantled) {
-      const next = putCardInDismantled(sessionCardsRef.current, current.card)
-      sessionCardsRef.current = next
-      setSessionCards(next)
-      return
-    }
-    if (current.landZone === PLAY_ZONE.stockpile) {
-      const next = putCardOnStockpile(
-        sessionCardsRef.current,
-        current.card,
-        current.landX ?? 24,
-        current.landY ?? 24
-      )
-      sessionCardsRef.current = next
-      setSessionCards(next)
-      return
-    }
-    if (current.landZone === PLAY_ZONE.pilot) {
-      const next = putCardOnPilot(sessionCardsRef.current, current.card)
-      sessionCardsRef.current = next
-      setSessionCards(next)
-      return
-    }
-    if (current.landZone === PLAY_ZONE.battlefield) {
-      const next = putCardOnBattlefield(
-        sessionCardsRef.current,
-        current.card,
-        current.landX ?? 24,
-        current.landY ?? 48
-      )
-      sessionCardsRef.current = next
-      setSessionCards(next)
-    }
+    dispatch({
+      t: "mv",
+      seat: current.card.owner ?? localSeat,
+      i: [current.card.instanceId],
+      z: current.landZone,
+      x: current.landX,
+      y: current.landY,
+    })
   }
 
   /**
@@ -591,24 +578,15 @@ export function useDrawAnimations({
     const cardW = deckRect?.width ?? 112
     const cardH = deckRect?.height ?? 144
 
-    if (!stockEl || !surfaceEl) {
-      setSessionCards((prev) => {
-        let next = prev
-        launching.forEach((card, index) => {
-          next = putCardOnBattlefield(next, card, 24 + index * 28, 48)
-        })
-        sessionCardsRef.current = next
-        return next
-      })
-      return
-    }
+    if (!stockEl || !surfaceEl) return
 
+    hideFlying(launching.map((c) => c.instanceId))
     const stockRect = stockEl.getBoundingClientRect()
     const surfaceRect = surfaceEl.getBoundingClientRect()
 
     launching.forEach((card, index) => {
-      const landX = 24 + index * 28
-      const landY = 48
+      const landX = card.x ?? 24 + index * 28
+      const landY = card.y ?? 48
       pushFlipAnim({
         card,
         mode: FLIP_FLY_MODE.faceDown,
@@ -625,6 +603,7 @@ export function useDrawAnimations({
         landZone: PLAY_ZONE.battlefield,
         landX,
         landY,
+        alreadyCommitted: true,
       })
     })
   }
@@ -638,14 +617,14 @@ export function useDrawAnimations({
     const to = deckRect
       ? { x: deckRect.left, y: deckRect.top }
       : { x: from.x, y: from.y - 80 }
+    hideFlying([card.instanceId])
     setBottomAnim({ card, from, to })
   }
 
   function onBottomSlideComplete() {
     const current = bottomAnimRef.current
     setBottomAnim(null)
-    if (!current) return
-    setSessionCards((prev) => putCardOnLibraryBottom(prev, current.card))
+    if (current) showFlying([current.card.instanceId])
   }
 
   const animBusy =
@@ -676,5 +655,7 @@ export function useDrawAnimations({
     startBottomSlide,
     onBottomSlideComplete,
     clearDrawTimers,
+    flyingIds,
+    hideFlying,
   }
 }

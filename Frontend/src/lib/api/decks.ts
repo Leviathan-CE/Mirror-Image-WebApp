@@ -45,10 +45,8 @@ export type PublicDeckQuery = {
 
 /** Names seeded on new decks — users can rename/add/remove per deck. */
 export const DEFAULT_DECK_CATEGORY_NAMES = [
-  "Main",
-  "Side",
-  "Maybe",
-  "Extra",
+  "Entity",
+  "Cyberspell",
 ] as const
 
 /** Visual reserved section names (created on the client when needed). */
@@ -59,6 +57,8 @@ export type DeckCategoryOut = {
   id: number
   name: string
   sort_order: number
+  /** False = list-only pile (not shuffled into the RIG). */
+  in_deck?: boolean
 }
 
 export type DeckCardEntry = {
@@ -72,6 +72,8 @@ export type DeckCardEntry = {
   invoke_cost?: number
   /** Invoke-cost icon tokens (LIF, MET, GEN2, …). */
   cost?: string[]
+  /** Printed threat level (TLV). */
+  threat_level?: string
   types_line?: string
   /** Epoch seconds — changes when card art is re-uploaded. */
   card_art_version?: number | null
@@ -248,14 +250,23 @@ export async function copyDeck(
   return readJsonOrThrow<DeckSummary>(response, "deck_copy_failed")
 }
 
-/** Public or owned deck detail (send token when logged in). */
+/**
+ * Public or owned deck detail (send token when logged in).
+ *
+ * `room` is a playtest room code: inside a live room the server pools the two
+ * seated players' entitlements, so preview / unpublished cards resolve for both
+ * sides and you can read the deck your opponent seated. Unknown codes are
+ * ignored server-side, never an error.
+ */
 export async function fetchDeckDetail(
   deckId: number,
-  token?: string | null
+  token?: string | null,
+  room?: string | null
 ): Promise<DeckDetail> {
-  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}`, {
-    headers: authHeaders(token),
-  })
+  const url = new URL(`${apiBaseUrl()}/decks/${deckId}`)
+  if (room) url.searchParams.set("room", room)
+
+  const response = await fetch(url, { headers: authHeaders(token) })
   return readJsonOrThrow<DeckDetail>(response, "deck_fetch_failed")
 }
 
@@ -317,7 +328,8 @@ export async function addDeckCard(
 export async function createDeckCategory(
   deckId: number,
   token: string,
-  name: string
+  name: string,
+  options?: { in_deck?: boolean }
 ): Promise<DeckCategoryOut> {
   const response = await fetch(`${apiBaseUrl()}/decks/${deckId}/categories`, {
     method: "POST",
@@ -325,7 +337,10 @@ export async function createDeckCategory(
       "Content-Type": "application/json",
       ...authHeaders(token),
     },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({
+      name,
+      ...(options?.in_deck != null ? { in_deck: options.in_deck } : {}),
+    }),
   })
   return readJsonOrThrow<DeckCategoryOut>(response, "category_create_failed")
 }
@@ -334,7 +349,7 @@ export async function updateDeckCategory(
   deckId: number,
   categoryId: number,
   token: string,
-  payload: { name?: string; sort_order?: number }
+  payload: { name?: string; sort_order?: number; in_deck?: boolean }
 ): Promise<DeckCategoryOut> {
   const response = await fetch(
     `${apiBaseUrl()}/decks/${deckId}/categories/${categoryId}`,
@@ -417,24 +432,30 @@ export async function removeDeckCard(
   }
 }
 
-export function deckCoverUrl(path: string | null | undefined): string | null {
-  if (!path) return null
+/**
+ * Images arrive as pre-signed relative URLs (`media/...?exp=..&sig=..`) minted
+ * by the API for a viewer it already decided may see them. Only the origin is
+ * added here: a missing path means the server withheld the image, and there is
+ * no path a client could construct on its own.
+ */
+function mediaUrl(path: string, version?: number | null): string {
   if (path.startsWith("http")) return path
-  return `${apiBaseUrl()}/thumbnails/${path.replace(/^\//, "")}`
+  const relative = path.replace(/^\//, "")
+  const base = `${apiBaseUrl()}/${relative}`
+  if (version == null) return base
+  return `${base}${relative.includes("?") ? "&" : "?"}v=${version}`
 }
 
-/**
- * Card art is stored as `thumbnails/...` while StaticFiles mounts that folder at `/thumbnails`.
- * Pass `version` (e.g. card_art_version) so re-uploads bust the browser cache.
- */
+export function deckCoverUrl(path: string | null | undefined): string | null {
+  if (!path) return null
+  return mediaUrl(path)
+}
+
+/** Pass `version` (card_art_version) so re-uploads bust the browser cache. */
 export function cardArtUrl(
   path: string | null | undefined,
   version?: number | null
 ): string | null {
   if (!path) return null
-  if (path.startsWith("http")) return path
-  const cleaned = path.replace(/^\/?thumbnails\//, "")
-  const base = `${apiBaseUrl()}/thumbnails/${cleaned}`
-  if (version == null) return base
-  return `${base}?v=${version}`
+  return mediaUrl(path, version)
 }

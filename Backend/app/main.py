@@ -1,10 +1,9 @@
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 #from app.schema import ensure_schema
+from app.media_urls import MEDIA_URL_PREFIX
 from app.routers import health
 from app.routers import card_manager
 from app.routers import admin_cards
@@ -13,13 +12,18 @@ from app.routers import auth
 from app.routers import email_auth
 from app.routers import billing
 from app.routers import decks
+from app.routers import media
+from app.routers import play_rooms
 from app.settings import frontend_origins, is_dev
 
 """
 Application entry point for the Mirror Image API.
 
-This module creates the FastAPI app, registers API routers, and exposes
-the local `thumbnails` directory as static files at `/thumbnails`.
+This module creates the FastAPI app and registers API routers.
+
+Images are NOT mounted as static files: card art and deck covers are served by
+`app.routers.media` behind a signature, because the old open `/thumbnails`
+mount exposed unreleased card art to anyone who could derive its path.
 """
 
 @asynccontextmanager
@@ -47,11 +51,14 @@ app.add_middleware(
 )
 
 
+_MEDIA_PATH_PREFIX = f"/{MEDIA_URL_PREFIX}/"
+
+
 @app.middleware("http")
-async def thumbnail_cache_headers(request, call_next):
-    """Force full thumbnail bodies — StaticFiles 304s if If-None-Match is present."""
-    if request.url.path.startswith("/thumbnails/"):
-        # Drop conditional headers before StaticFiles can answer 304.
+async def media_cache_headers(request, call_next):
+    """Force full image bodies — FileResponse 304s if If-None-Match is present."""
+    if request.url.path.startswith(_MEDIA_PATH_PREFIX):
+        # Drop conditional headers before FileResponse can answer 304.
         request.scope["headers"] = [
             (name, value)
             for name, value in request.scope["headers"]
@@ -60,7 +67,7 @@ async def thumbnail_cache_headers(request, call_next):
 
     response = await call_next(request)
 
-    if request.url.path.startswith("/thumbnails/"):
+    if request.url.path.startswith(_MEDIA_PATH_PREFIX):
         response.headers["Cache-Control"] = "no-store"
         if "etag" in response.headers:
             del response.headers["etag"]
@@ -74,10 +81,10 @@ app.include_router(auth.router)
 app.include_router(email_auth.router)
 app.include_router(billing.router)
 app.include_router(decks.router)
+app.include_router(play_rooms.router)
 app.include_router(admin_cards.router)
 app.include_router(admin_users.router)
 app.include_router(card_manager.router)
+app.include_router(media.router)
 
-thumbnails_dir = Path(__file__).resolve().parent / "thumbnails"
-thumbnails_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/thumbnails", StaticFiles(directory=thumbnails_dir), name="thumbnails")
+media.MEDIA_DIR.mkdir(parents=True, exist_ok=True)

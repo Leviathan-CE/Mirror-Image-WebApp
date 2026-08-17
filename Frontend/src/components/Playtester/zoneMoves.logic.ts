@@ -5,7 +5,7 @@ import {
   destroySessionTokenIfLeaving,
   isSessionTokenInstance,
 } from "./sessionResources.logic"
-import { PLAY_ZONE, type PlayZone } from "./playtesterConstants"
+import { LOCAL_SEAT, PLAY_ZONE, type PlayZone, type PlayerSlot } from "./playtesterConstants"
 import {
   CARD_COUNTER_FIELD,
   type CardCounterField,
@@ -155,6 +155,7 @@ function seatCard(
   const base: PlayingCardInstance = {
     instanceId: card.instanceId,
     cardId: card.cardId,
+    owner: card.owner,
     name: card.name,
     artPath: card.artPath,
     artVersion: card.artVersion,
@@ -174,7 +175,9 @@ function placeLibraryTop(
   without: PlayingCardInstance[],
   seated: PlayingCardInstance
 ): PlayingCardInstance[] {
-  const firstLib = without.findIndex((c) => c.zone === "library")
+  const firstLib = without.findIndex(
+    (c) => c.zone === "library" && c.owner === seated.owner
+  )
   if (firstLib < 0) return [...without, seated]
   return [
     ...without.slice(0, firstLib),
@@ -189,7 +192,7 @@ function placeLibraryBottom(
 ): PlayingCardInstance[] {
   let lastLib = -1
   without.forEach((c, i) => {
-    if (c.zone === "library") lastLib = i
+    if (c.zone === "library" && c.owner === seated.owner) lastLib = i
   })
   if (lastLib < 0) return [...without, seated]
   return [
@@ -284,9 +287,10 @@ export function moveToHand(
  * Caller holds `drawn` during the flip animation, then puts it in hand.
  */
 export function takeTopLibraryCard(
-  cards: PlayingCardInstance[]
+  cards: PlayingCardInstance[],
+  owner: PlayerSlot = LOCAL_SEAT
 ): { cards: PlayingCardInstance[]; drawn: PlayingCardInstance } | null {
-  const top = cards.find((c) => c.zone === "library")
+  const top = cards.find((c) => c.zone === "library" && c.owner === owner)
   if (!top) return null
   return {
     cards: cards.filter((c) => c.instanceId !== top.instanceId),
@@ -431,7 +435,8 @@ export function moveToPilot(
   instanceId: string
 ): PlayingCardInstance[] {
   const seated = cards.find((c) => c.instanceId === instanceId)
-  if (seated?.zone === PLAY_ZONE.pilot) return cards
+  if (!seated) return cards
+  if (seated.zone === PLAY_ZONE.pilot) return cards
 
   const destroyed = destroySessionTokenIfLeaving(cards, instanceId, "pilot")
   if (destroyed) return destroyed
@@ -450,7 +455,7 @@ export function moveToPilot(
       })
       continue
     }
-    if (c.zone === "pilot") {
+    if (c.zone === "pilot" && c.owner === seated.owner) {
       // Bump to hand — session tokens leave play instead.
       if (isSessionTokenInstance(c)) continue
       next.push({
@@ -481,7 +486,7 @@ export function putCardOnPilot(
   if (destroyed) return destroyed
   const without = cards.filter((c) => c.instanceId !== card.instanceId)
   const bumped = without.flatMap((c) => {
-    if (c.zone !== "pilot") return [c]
+    if (c.zone !== "pilot" || c.owner !== card.owner) return [c]
     if (isSessionTokenInstance(c)) return []
     return [
       {
@@ -528,10 +533,11 @@ export type MoveAllDestinationZone =
 export function moveAllFromZone(
   cards: PlayingCardInstance[],
   from: MoveAllSourceZone,
-  to: MoveAllDestinationZone
+  to: MoveAllDestinationZone,
+  owner: PlayerSlot = LOCAL_SEAT
 ): PlayingCardInstance[] {
   if (from === to) return cards
-  const moving = cards.filter((c) => c.zone === from)
+  const moving = cards.filter((c) => c.zone === from && c.owner === owner)
   if (moving.length === 0) return cards
 
   let next = cards

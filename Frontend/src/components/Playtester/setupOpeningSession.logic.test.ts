@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest"
 
 import type { CardLibraryItem } from "@/lib/api/cards"
-import type { DeckCardEntry } from "@/lib/api/decks"
+import type { DeckCardEntry, DeckDetail } from "@/lib/api/decks"
 import type { ResourceColor } from "@/components/Playtester/accumulateResources.logic"
 import {
+  libraryDeckEntries,
+  setupOpeningSession,
   spawnGroupedStockpileResources,
   startingLifeFromPilot,
   startingResourceColorsFromPilot,
@@ -54,6 +56,78 @@ function resource(
   }
 }
 
+function card(overrides: Partial<DeckCardEntry>): DeckCardEntry {
+  return { ...pilot(), quantity: 1, ...overrides }
+}
+
+/** Pilot in category 1, two augments in category 2, one main card in 3. */
+function deckWithAugments(): DeckDetail {
+  return {
+    id: 7,
+    name: "Starter",
+    description: null,
+    is_public: false,
+    author_name: "tester",
+    cover_image_path: null,
+    card_count: 4,
+    categories: [
+      { id: 1, name: "Pilot", sort_order: 0 },
+      { id: 2, name: "Augments", sort_order: 1 },
+      { id: 3, name: "Main", sort_order: 2 },
+    ],
+    cards: [
+      card({ card_id: 1, card_name: "Evran", category_id: 1, hand_size: 1 }),
+      card({ card_id: 2, card_name: "Ocular Rig", category_id: 2 }),
+      card({ card_id: 3, card_name: "Spinal Tap", category_id: 2 }),
+      card({ card_id: 4, card_name: "Street Runner", category_id: 3 }),
+    ],
+  }
+}
+
+describe("setupOpeningSession augments", () => {
+  const noResources = new Map<ResourceColor, CardLibraryItem>()
+
+  it("flags augments so the shared field can pin them to each owner's stockpile edge", () => {
+    const session = setupOpeningSession(deckWithAugments(), noResources)
+    const augments = session.filter((c) => c.isAugment)
+
+    expect(augments.map((c) => c.name)).toEqual(["Ocular Rig", "Spinal Tap"])
+    expect(augments.every((c) => c.zone === "battlefield")).toBe(true)
+    // Viewer-relative y is applied at render. Storing a y here would put both
+    // seats' augments on the same edge of the one shared field.
+    expect(augments.every((c) => c.x === undefined && c.y === undefined)).toBe(
+      true
+    )
+  })
+
+  it("gives both seats their own augment instances", () => {
+    const p1 = setupOpeningSession(deckWithAugments(), noResources, "p1")
+    const p2 = setupOpeningSession(deckWithAugments(), noResources, "p2")
+    const ids = new Set([
+      ...p1.filter((c) => c.isAugment).map((c) => c.instanceId),
+      ...p2.filter((c) => c.isAugment).map((c) => c.instanceId),
+    ])
+
+    expect(ids.size).toBe(4)
+    expect(p1.filter((c) => c.isAugment).every((c) => c.owner === "p1")).toBe(
+      true
+    )
+    expect(p2.filter((c) => c.isAugment).every((c) => c.owner === "p2")).toBe(
+      true
+    )
+  })
+
+  it("keeps augments and the pilot out of the shuffled library", () => {
+    const session = setupOpeningSession(deckWithAugments(), noResources)
+    const drawable = session.filter(
+      (c) => c.zone === "library" || c.zone === "hand"
+    )
+
+    expect(drawable.map((c) => c.name)).toEqual(["Street Runner"])
+    expect(session.filter((c) => c.isAugment)).toHaveLength(2)
+  })
+})
+
 describe("startingResourceColorsFromPilot", () => {
   it("emits TIM pips from time_capacity (and other colours)", () => {
     const colors = startingResourceColorsFromPilot(
@@ -92,6 +166,7 @@ describe("spawnGroupedStockpileResources", () => {
     expect(spawned.every((c) => c.isToken && c.zone === "stockpile")).toBe(
       true
     )
+    expect(spawned.every((c) => c.owner === "p1")).toBe(true)
   })
 
   it("skips colours missing from the catalogue map", () => {
@@ -101,5 +176,44 @@ describe("spawnGroupedStockpileResources", () => {
     const spawned = spawnGroupedStockpileResources(["TIM", "STL"], byColor)
     expect(spawned).toHaveLength(1)
     expect(spawned[0]?.name).toBe("Steel")
+  })
+})
+
+describe("libraryDeckEntries", () => {
+  it("omits reserved and list-only sections from the RIG", () => {
+    const deck: DeckDetail = {
+      id: 1,
+      name: "Test",
+      description: null,
+      is_public: true,
+      author_name: "a",
+      cover_image_path: null,
+      card_count: 3,
+      categories: [
+        { id: 1, name: "Pilot", sort_order: -1, in_deck: false },
+        { id: 2, name: "Entity", sort_order: 0, in_deck: true },
+        { id: 3, name: "Maybe", sort_order: 1, in_deck: false },
+      ],
+      cards: [
+        { ...pilot(), card_id: 1, category_id: 1, quantity: 1 },
+        {
+          ...pilot(),
+          card_id: 2,
+          card_name: "Drone",
+          category_id: 2,
+          category_name: "Entity",
+          quantity: 2,
+        },
+        {
+          ...pilot(),
+          card_id: 3,
+          card_name: "Spare",
+          category_id: 3,
+          category_name: "Maybe",
+          quantity: 1,
+        },
+      ],
+    }
+    expect(libraryDeckEntries(deck).map((card) => card.card_id)).toEqual([2])
   })
 })

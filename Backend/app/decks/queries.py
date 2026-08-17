@@ -17,8 +17,11 @@ from app.card_publish import (
     deck_card_classification,
 )
 from app.deck_community import community_fields
-from app.deck_defaults import DEFAULT_DECK_CATEGORY_NAMES
+from app.deck_defaults import (
+    DEFAULT_DECK_CATEGORIES,
+)
 from app.decks.schemas import DeckCardEntry, DeckCategoryOut, DeckSummary
+from app.media_urls import signed_media_path
 from app.profanity import reject_if_profane
 
 
@@ -38,41 +41,54 @@ def normalize_category_name(name: str) -> str:
 def card_count(cur, deck_id: int) -> int:
     cur.execute(
         """
-        SELECT COALESCE(SUM(quantity), 0)::int
-        FROM deck_has_cards
-        WHERE deck_id = %(deck_id)s
+        SELECT COALESCE(SUM(dhc.quantity), 0)::int
+        FROM deck_has_cards dhc
+        JOIN deck_categories dc ON dc.id = dhc.category_id
+        WHERE dhc.deck_id = %(deck_id)s
+          AND dc.in_deck = TRUE
         """,
         {"deck_id": deck_id},
     )
     return int(cur.fetchone()[0] or 0)
 
 
+def category_out(row) -> DeckCategoryOut:
+    return DeckCategoryOut(
+        id=row[0],
+        name=row[1],
+        sort_order=int(row[2]),
+        in_deck=bool(row[3]),
+    )
+
+
 def seed_default_categories(cur, deck_id: int) -> None:
-    for sort_order, name in enumerate(DEFAULT_DECK_CATEGORY_NAMES):
+    for sort_order, (name, in_deck) in enumerate(DEFAULT_DECK_CATEGORIES):
         cur.execute(
             """
-            INSERT INTO deck_categories (deck_id, name, sort_order)
-            VALUES (%(deck_id)s, %(name)s, %(sort_order)s)
+            INSERT INTO deck_categories (deck_id, name, sort_order, in_deck)
+            VALUES (%(deck_id)s, %(name)s, %(sort_order)s, %(in_deck)s)
             ON CONFLICT (deck_id, name) DO NOTHING
             """,
-            {"deck_id": deck_id, "name": name, "sort_order": sort_order},
+            {
+                "deck_id": deck_id,
+                "name": name,
+                "sort_order": sort_order,
+                "in_deck": in_deck,
+            },
         )
 
 
 def fetch_deck_categories(cur, deck_id: int) -> list[DeckCategoryOut]:
     cur.execute(
         """
-        SELECT id, name, sort_order
+        SELECT id, name, sort_order, in_deck
         FROM deck_categories
         WHERE deck_id = %(deck_id)s
         ORDER BY sort_order ASC, id ASC
         """,
         {"deck_id": deck_id},
     )
-    return [
-        DeckCategoryOut(id=row[0], name=row[1], sort_order=int(row[2]))
-        for row in cur.fetchall()
-    ]
+    return [category_out(row) for row in cur.fetchall()]
 
 
 def require_category_on_deck(
@@ -100,7 +116,8 @@ def default_category_id(cur, deck_id: int) -> int:
         FROM deck_categories
         WHERE deck_id = %(deck_id)s
         ORDER BY
-            CASE WHEN name = 'Main' THEN 0 ELSE 1 END,
+            CASE WHEN in_deck THEN 0 ELSE 1 END,
+            CASE WHEN lower(btrim(name)) IN ('entity', 'main') THEN 0 ELSE 1 END,
             sort_order ASC,
             id ASC
         LIMIT 1
@@ -166,7 +183,7 @@ def fetch_deck_cards(
             category_id=int(row[3]),
             category_name=row[4],
             sort_order=int(row[5]),
-            card_art_path=row[6],
+            card_art_path=signed_media_path(row[6]),
             invoke_cost=int(row[7] or 0),
             types_line=row[8] or "",
             card_art_version=int(row[9]) if row[9] is not None else None,
@@ -259,7 +276,7 @@ def summary_from_owner_row(
         id=row[0],
         name=row[1],
         description=row[2],
-        cover_image_path=row[3],
+        cover_image_path=signed_media_path(row[3]),
         is_public=bool(row[5]),
         author_name=row[6],
         card_count=card_count_value,

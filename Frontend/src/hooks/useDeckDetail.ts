@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react"
 
 import { ApiError } from "@/lib/api/client"
 import { fetchDeckDetail, type DeckDetail } from "@/lib/api/decks"
@@ -14,30 +21,41 @@ export type UseDeckDetailResult = {
   loadDeck: (opts?: { silent?: boolean }) => Promise<DeckDetail | null>
 }
 
+/**
+ * Deck detail loader. `room` is a playtest room code — passing it pools card
+ * visibility across the two seated players, so a refetch is triggered when the
+ * room changes.
+ */
 export function useDeckDetail(
   deckId: number,
-  token?: string | null
+  token?: string | null,
+  room?: string | null
 ): UseDeckDetailResult {
   const [deck, setDeck] = useState<DeckDetail | null>(null)
   const [status, setStatus] = useState<DeckLoadStatus>("loading")
   const [errorText, setErrorText] = useState("")
+  /** Deck id currently held in state — used to tell a reload from a new deck. */
+  const loadedIdRef = useRef<number | null>(null)
 
   const loadDeck = useCallback(
     async (opts?: { silent?: boolean }): Promise<DeckDetail | null> => {
       if (!Number.isFinite(deckId) || deckId <= 0) {
-        setStatus("error")
-        setErrorText("Invalid deck id.")
+        loadedIdRef.current = null
+        setStatus("loading")
+        setErrorText("")
         setDeck(null)
         return null
       }
 
       if (!opts?.silent) setStatus("loading")
       try {
-        const detail = await fetchDeckDetail(deckId, token)
+        const detail = await fetchDeckDetail(deckId, token, room)
+        loadedIdRef.current = deckId
         setDeck(detail)
         setStatus("ready")
         return detail
       } catch (error) {
+        loadedIdRef.current = null
         setDeck(null)
         setStatus("error")
         if (error instanceof ApiError) {
@@ -52,12 +70,15 @@ export function useDeckDetail(
         return null
       }
     },
-    [deckId, token]
+    [deckId, token, room]
   )
 
   useEffect(() => {
-    void loadDeck()
-  }, [loadDeck])
+    // Re-resolving the same deck (room pooling turning on, a new token) must
+    // not flash "loading": the playtester clears the table whenever its deck
+    // stops being ready, which would blank a dealt board mid-session.
+    void loadDeck({ silent: loadedIdRef.current === deckId })
+  }, [deckId, loadDeck])
 
   return { deck, setDeck, status, errorText, setErrorText, loadDeck }
 }

@@ -4,6 +4,21 @@
  * UI copy (button labels) stays inline at the call site.
  */
 
+/** Two seats at a shared table. Solo play is always p1. */
+export const PLAYER_SLOT = {
+  p1: "p1",
+  p2: "p2",
+} as const
+
+export type PlayerSlot = (typeof PLAYER_SLOT)[keyof typeof PLAYER_SLOT]
+
+/** Seat the local/solo client occupies until multiplayer assigns otherwise. */
+export const LOCAL_SEAT: PlayerSlot = PLAYER_SLOT.p1
+
+export function otherSeat(seat: PlayerSlot): PlayerSlot {
+  return seat === PLAYER_SLOT.p1 ? PLAYER_SLOT.p2 : PLAYER_SLOT.p1
+}
+
 /** All session zones a card can occupy. */
 export const PLAY_ZONE = {
   hand: "hand",
@@ -48,6 +63,8 @@ export const STOCKPILE_HEIGHT = {
   min: 120,
   max: 480,
   default: 240,
+  /** Opponent's stockpile: read-only, so it only needs to show the pile tops. */
+  opponent: 156,
 } as const
 
 /**

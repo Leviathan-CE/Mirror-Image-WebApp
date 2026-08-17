@@ -38,13 +38,18 @@ def require_owned_deck(cur, *, user_id: int, deck_id: int) -> tuple:
     return row
 
 
-def require_readable_deck(cur, *, deck_id: int, user_id: int | None) -> tuple:
+def require_readable_deck(
+    cur, *, deck_id: int, user_id: int | None, allow_private: bool = False
+) -> tuple:
     """
     Return a deck row if the viewer may read it.
 
     Readable when:
     - `is_public` is true (anyone, including anonymous), or
-    - `user_id` owns the deck (private decks).
+    - `user_id` owns the deck (private decks), or
+    - `allow_private` — the caller earned read another way. Only the playtest
+      room pool sets this, for the deck their opponent seated (see
+      `app.play_visibility`); the caller must never supply it.
 
     Row: id, name, description, cover_path, cover_mime, is_public, author, owner_id
     """
@@ -75,7 +80,7 @@ def require_readable_deck(cur, *, deck_id: int, user_id: int | None) -> tuple:
 
     is_public = bool(row[5])
     owner_id = int(row[7])
-    if is_public or (user_id is not None and user_id == owner_id):
+    if is_public or allow_private or (user_id is not None and user_id == owner_id):
         return row
 
     raise HTTPException(

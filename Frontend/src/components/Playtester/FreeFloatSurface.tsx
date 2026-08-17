@@ -67,6 +67,8 @@ export type FreeFloatSurfaceProps = {
   ) => void
   /** Right-click empty surface (not on a card). */
   onEmptyContextMenu?: (clientX: number, clientY: number) => void
+  /** False for the opponent's half of the field — look, don't touch. */
+  interactive?: boolean
 }
 
 type DragState = {
@@ -181,6 +183,7 @@ export function FreeFloatSurface({
   onSelectionChange,
   onCardsReleased,
   onEmptyContextMenu,
+  interactive = true,
 }: FreeFloatSurfaceProps) {
   const {
     onMoveCards,
@@ -265,6 +268,7 @@ export function FreeFloatSurface({
   }
 
   function onSurfacePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!interactive) return
     if (event.button !== 0) return
     if (dragRef.current || marqueeRef.current) return
     event.preventDefault()
@@ -322,6 +326,7 @@ export function FreeFloatSurface({
     event: ReactPointerEvent<HTMLDivElement>,
     card: PlayingCardInstance
   ) {
+    if (!interactive) return
     // Counter badges own their clicks — do not select / drag / expend.
     if (
       event.target instanceof Element &&

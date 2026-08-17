@@ -25,28 +25,25 @@ import {
 } from "@/components/Playtester/cardDragDrop.logic"
 import {
   FLIP_FLY_MODE,
+  LOCAL_SEAT,
   PLAY_ZONE,
+  type PlayerSlot,
 } from "@/components/Playtester/playtesterConstants"
 import type {
   FlipFlyAnim,
   PlaytesterZoneRefs,
 } from "@/components/Playtester/useDrawAnimations"
 import {
-  moveCardtoFront,
-  moveToBattlefield,
-  moveToDismantled,
-  moveToHand,
-  moveToPilot,
-  moveToStockpile,
-  moveToTrashyard,
-  putCardOnLibraryTop,
-  removeCard,
   type PlayingCardInstance,
+  type SessionAction,
 } from "@/components/Playtester/types"
 
 export type UseCardDragDropArgs = {
   sessionCards: PlayingCardInstance[]
   setSessionCards: Dispatch<SetStateAction<PlayingCardInstance[]>>
+  dispatch: (action: SessionAction) => unknown
+  localSeat?: PlayerSlot
+  hideFlying?: (ids: string[]) => void
   zoneRefs: PlaytesterZoneRefs
   clientToSurfaceLocal: (clientX: number, clientY: number) => {
     x: number
@@ -75,12 +72,27 @@ function readDropRects(zoneRefs: PlaytesterZoneRefs): DropZoneRects {
 export function useCardDragDrop({
   sessionCards,
   setSessionCards,
+  dispatch,
+  localSeat = LOCAL_SEAT,
+  hideFlying,
   zoneRefs,
   clientToSurfaceLocal,
   clientToStockpileLocal,
   isFlipFlying,
   pushFlipAnim,
 }: UseCardDragDropArgs) {
+  function ownIds(ids: string[]): string[] {
+    return ids.filter((id) =>
+      sessionCards.some((c) => c.instanceId === id && c.owner === localSeat)
+    )
+  }
+
+  function moveOwned(ids: string[], z: typeof PLAY_ZONE[keyof typeof PLAY_ZONE], x?: number, y?: number) {
+    const i = ownIds(ids)
+    if (i.length === 0) return
+    dispatch({ t: "mv", seat: localSeat, i, z, x, y })
+    setSessionCards((prev) => clearFloatSelection(prev))
+  }
   function applyLibraryDrop(
     instanceIds: string[],
     clientX: number,
@@ -90,33 +102,22 @@ export function useCardDragDrop({
     const plan = planLibraryDrop(movable, isFlipFlying())
     if (plan.kind === "blocked" || plan.kind === "none") return false
 
-    const destroy = (ids: string[]) => {
-      if (ids.length === 0) return
-      setSessionCards((prev) => {
-        let next = prev
-        for (const id of ids) next = removeCard(next, id)
-        return next
-      })
-    }
-
     if (plan.kind === "destroyOnly") {
-      setSessionCards((prev) => {
-        let next = prev
-        for (const id of plan.resourceIds) next = removeCard(next, id)
-        return clearFloatSelection(next)
-      })
+      dispatch({ t: "rm", i: ownIds(plan.resourceIds) })
+      setSessionCards((prev) => clearFloatSelection(prev))
       return true
     }
 
-    destroy(plan.destroyResourceIds)
+    if (plan.destroyResourceIds.length > 0) {
+      dispatch({ t: "rm", i: ownIds(plan.destroyResourceIds) })
+    }
 
     if (plan.kind === "animate") {
       const deckRect = zoneRefs.deck.current?.getBoundingClientRect()
       const w = deckRect?.width ?? 112
       const h = deckRect?.height ?? 144
-      setSessionCards((prev) =>
-        clearFloatSelection(removeCard(prev, plan.card.instanceId))
-      )
+      hideFlying?.([plan.card.instanceId])
+      moveOwned([plan.card.instanceId], PLAY_ZONE.library)
       pushFlipAnim({
         card: plan.card,
         mode: plan.mode,
@@ -131,18 +132,15 @@ export function useCardDragDrop({
           y: deckRect?.top ?? clientY,
         },
         landZone: PLAY_ZONE.library,
+        alreadyCommitted: true,
       })
       return true
     }
 
-    setSessionCards((prev) => {
-      let next = prev
-      for (const card of plan.cards) {
-        next = removeCard(next, card.instanceId)
-        next = putCardOnLibraryTop(next, card)
-      }
-      return clearFloatSelection(next)
-    })
+    moveOwned(
+      plan.cards.map((c) => c.instanceId),
+      PLAY_ZONE.library
+    )
     return true
   }
 
@@ -155,16 +153,10 @@ export function useCardDragDrop({
     const plan = planHandDrop(movable, isFlipFlying())
     if (plan.kind === "empty") return true
 
-    setSessionCards((prev) => {
-      let next = prev
-      for (const card of plan.instant) {
-        next = moveToHand(next, card.instanceId)
-      }
-      for (const card of plan.toFlip) {
-        next = removeCard(next, card.instanceId)
-      }
-      return clearFloatSelection(next)
-    })
+    moveOwned(
+      plan.instant.map((c) => c.instanceId),
+      PLAY_ZONE.hand
+    )
 
     if (plan.toFlip.length === 0) return true
 
@@ -172,6 +164,12 @@ export function useCardDragDrop({
     const deckRect = zoneRefs.deck.current?.getBoundingClientRect()
     const w = deckRect?.width ?? 112
     const h = deckRect?.height ?? 144
+
+    hideFlying?.(plan.toFlip.map((c) => c.instanceId))
+    moveOwned(
+      plan.toFlip.map((c) => c.instanceId),
+      PLAY_ZONE.hand
+    )
 
     plan.toFlip.forEach((card, index) => {
       const offset = index * GROUP_FLIP_STEP_X
@@ -191,39 +189,24 @@ export function useCardDragDrop({
             ((handRect?.height ?? h) - h) / 2,
         },
         landZone: PLAY_ZONE.hand,
+        alreadyCommitted: true,
       })
     })
     return true
   }
 
   function applyTrashDrop(instanceIds: string[]) {
-    setSessionCards((prev) => {
-      let next = prev
-      for (const id of instanceIds) {
-        const card = next.find((c) => c.instanceId === id)
-        if (!card || card.zone === PLAY_ZONE.trashyard) continue
-        next = moveToTrashyard(next, id)
-      }
-      return clearFloatSelection(next)
-    })
+    moveOwned(instanceIds, PLAY_ZONE.trashyard)
   }
 
   function applyDismantledDrop(instanceIds: string[]) {
-    setSessionCards((prev) => {
-      let next = prev
-      for (const id of instanceIds) {
-        const card = next.find((c) => c.instanceId === id)
-        if (!card || card.zone === PLAY_ZONE.dismantled) continue
-        next = moveToDismantled(next, id)
-      }
-      return clearFloatSelection(next)
-    })
+    moveOwned(instanceIds, PLAY_ZONE.dismantled)
   }
 
   function applyPilotDrop(instanceIds: string[]) {
     const id = instanceIds[0]
     if (!id) return
-    setSessionCards((prev) => clearFloatSelection(moveToPilot(prev, id)))
+    moveOwned([id], PLAY_ZONE.pilot)
   }
 
   function applyStockpileDrop(
@@ -232,13 +215,8 @@ export function useCardDragDrop({
     clientY: number
   ) {
     const { x, y } = clientToStockpileLocal(clientX, clientY)
-    setSessionCards((prev) => {
-      let next = prev
-      instanceIds.forEach((id, index) => {
-        if (!next.some((c) => c.instanceId === id)) return
-        next = moveToStockpile(next, id, x + landOffsetX(index), y)
-      })
-      return clearFloatSelection(next)
+    instanceIds.forEach((id, index) => {
+      moveOwned([id], PLAY_ZONE.stockpile, x + landOffsetX(index), y)
     })
   }
 
@@ -246,7 +224,6 @@ export function useCardDragDrop({
     instanceIds: string[],
     clientX: number,
     clientY: number,
-    /** When true, only seat cards that are still in hand. */
     fromHandOnly: boolean
   ) {
     const { x, y } = clientToSurfaceLocal(clientX, clientY)
@@ -254,28 +231,10 @@ export function useCardDragDrop({
       ? handCardsForBattlefield(sessionCards, instanceIds)
       : instanceIds
     if (ids.length === 0) return
-
-    setSessionCards((prev) => {
-      let next = prev
-      ids.forEach((id, index) => {
-        if (fromHandOnly) {
-          if (
-            !next.some(
-              (c) => c.instanceId === id && c.zone === PLAY_ZONE.hand
-            )
-          ) {
-            return
-          }
-        } else if (!next.some((c) => c.instanceId === id)) {
-          return
-        }
-        next = moveCardtoFront(
-          moveToBattlefield(next, id, x + landOffsetX(index), y),
-          id
-        )
-      })
-      return clearFloatSelection(next)
+    ids.forEach((id, index) => {
+      moveOwned([id], PLAY_ZONE.battlefield, x + landOffsetX(index), y)
     })
+    dispatch({ t: "fr", i: ids[ids.length - 1]! })
   }
 
   function applyDrop(

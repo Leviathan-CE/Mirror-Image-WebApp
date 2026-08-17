@@ -52,6 +52,9 @@ export type PlayerHandProps = {
    * Pass [] to clear. Parent owns `card.selected`.
    */
   onSelectionChange?: (instanceIds: string[]) => void
+  /** Opponent fog: render card backs and ignore pointer. */
+  hideFaces?: boolean
+  interactive?: boolean
 }
 
 type HandDrag = {
@@ -101,6 +104,8 @@ export function PlayerHand({
   onCardContextMenu,
   onEmptyContextMenu,
   onSelectionChange,
+  hideFaces = false,
+  interactive = true,
 }: PlayerHandProps) {
   const dragRef = useRef<HandDrag | null>(null)
   const marqueeRef = useRef<MarqueeState | null>(null)
@@ -442,7 +447,10 @@ export function PlayerHand({
                         !isDragging &&
                         "ring-2 ring-cyan-300 ring-offset-1 ring-offset-black/80"
                     )}
-                    onPointerDown={(event) => onCardPointerDown(event, card)}
+                    onPointerDown={(event) => {
+                      if (!interactive) return
+                      onCardPointerDown(event, card)
+                    }}
                     onContextMenu={(event) => {
                       event.preventDefault()
                       event.stopPropagation()
@@ -454,7 +462,12 @@ export function PlayerHand({
                     }}
                     data-playtester-instance={card.instanceId}
                   >
-                    <PlayingCard card={card} className="h-32 w-24" />
+                    <PlayingCard
+                      card={
+                        hideFaces ? { ...card, faceDown: true } : card
+                      }
+                      className="h-32 w-24"
+                    />
                   </div>
                 )
               })

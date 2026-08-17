@@ -34,6 +34,7 @@ function card(
     name: overrides.name ?? "Card",
     artPath: null,
     cost: overrides.cost ?? [],
+    owner: "p1" as const,
     expended: false,
     ...overrides,
   }
@@ -55,6 +56,21 @@ describe("takeTopLibraryCard", () => {
     expect(
       takeTopLibraryCard([card({ instanceId: "h", zone: PLAY_ZONE.hand })])
     ).toBeNull()
+  })
+
+  it("draws only the given seat's library top", () => {
+    const cards = [
+      card({ instanceId: "p2-top", zone: PLAY_ZONE.library, owner: "p2" }),
+      card({ instanceId: "p1-top", zone: PLAY_ZONE.library, owner: "p1" }),
+      card({ instanceId: "p1-bot", zone: PLAY_ZONE.library, owner: "p1" }),
+    ]
+    const taken = takeTopLibraryCard(cards)
+    expect(taken?.drawn.instanceId).toBe("p1-top")
+    expect(taken?.cards.map((c) => c.instanceId)).toEqual([
+      "p2-top",
+      "p1-bot",
+    ])
+    expect(takeTopLibraryCard(cards, "p2")?.drawn.instanceId).toBe("p2-top")
   })
 })
 
@@ -380,6 +396,16 @@ describe("moveToPilot", () => {
     ]
     expect(moveToPilot(cards, "tim")).toEqual([])
   })
+
+  it("does not bump another seat's pilot", () => {
+    const cards = [
+      card({ instanceId: "opp", zone: PLAY_ZONE.pilot, owner: "p2" }),
+      card({ instanceId: "mine", zone: PLAY_ZONE.hand, owner: "p1" }),
+    ]
+    const next = moveToPilot(cards, "mine")
+    expect(next.find((c) => c.instanceId === "mine")?.zone).toBe(PLAY_ZONE.pilot)
+    expect(next.find((c) => c.instanceId === "opp")?.zone).toBe(PLAY_ZONE.pilot)
+  })
 })
 
 describe("moveAllFromZone", () => {
@@ -452,5 +478,23 @@ describe("moveAllFromZone", () => {
     expect(
       next.filter((c) => c.zone === PLAY_ZONE.trashyard).map((c) => c.instanceId)
     ).toEqual(["top", "bottom"])
+  })
+
+  it("moves only the given seat's pile", () => {
+    const cards = [
+      card({ instanceId: "p1-t", zone: PLAY_ZONE.trashyard, owner: "p1" }),
+      card({ instanceId: "p2-t", zone: PLAY_ZONE.trashyard, owner: "p2" }),
+    ]
+    const next = moveAllFromZone(
+      cards,
+      PLAY_ZONE.trashyard,
+      PLAY_ZONE.library
+    )
+    expect(next.find((c) => c.instanceId === "p1-t")?.zone).toBe(
+      PLAY_ZONE.library
+    )
+    expect(next.find((c) => c.instanceId === "p2-t")?.zone).toBe(
+      PLAY_ZONE.trashyard
+    )
   })
 })
