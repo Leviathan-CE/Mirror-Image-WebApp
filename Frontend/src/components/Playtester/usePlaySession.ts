@@ -18,6 +18,7 @@ import type { ResourceColor } from "@/components/Playtester/accumulateResources.
 import { peekTopLibrary } from "@/components/Playtester/deckActions.logic"
 import {
   LOCAL_SEAT,
+  OPENING_MULLIGAN_ENABLED,
   PLAY_ZONE,
   otherSeat,
   type PlayerSlot,
@@ -202,8 +203,11 @@ export function usePlaySession({
     const counts = { hand: view.handCount, library: view.libraryCount }
     fogCountsRef.current = counts
     setFogCounts(counts)
-    if (view.seq === 0) guestMulliganArmed.current = false
+    if (OPENING_MULLIGAN_ENABLED && view.seq === 0) {
+      guestMulliganArmed.current = false
+    }
     if (
+      OPENING_MULLIGAN_ENABLED &&
       !guestMulliganArmed.current &&
       cardsInZone(nextCards, PLAY_ZONE.hand, view.viewer).length > 0
     ) {
@@ -248,7 +252,9 @@ export function usePlaySession({
           [mySeat]: Math.max(0, Math.floor(pilot?.hand_size ?? 0)),
         }))
         setTurnSeat(mySeat)
-        setMulliganOpen(cardsInZone(mine, "hand", mySeat).length > 0)
+        if (OPENING_MULLIGAN_ENABLED) {
+          setMulliganOpen(cardsInZone(mine, "hand", mySeat).length > 0)
+        }
       }
       return
     }
@@ -283,7 +289,9 @@ export function usePlaySession({
     setTurnSeat(mySeat)
     setPilotGenBySeat(seatRecord(0))
     setPilotHandBySeat(handSizes)
-    setMulliganOpen(cardsInZone(opening, "hand", mySeat).length > 0)
+    if (OPENING_MULLIGAN_ENABLED) {
+      setMulliganOpen(cardsInZone(opening, "hand", mySeat).length > 0)
+    }
     setTopRevealed(false)
     if (netRole === "host") {
       onHostCommitRef.current?.(

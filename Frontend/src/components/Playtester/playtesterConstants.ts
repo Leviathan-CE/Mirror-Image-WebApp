@@ -56,6 +56,8 @@ export type FlipFlyMode = (typeof FLIP_FLY_MODE)[keyof typeof FLIP_FLY_MODE]
 export const PLAYTESTER_STORAGE = {
   stockpileHeightPx: "mi-playtester-stockpile-height-px",
   deckSearchBoxPx: "mi-playtester-deck-search-box-px",
+  pilotSidebarOpen: "mi-playtester-pilot-sidebar-open",
+  oppPilotSidebarOpen: "mi-playtester-opp-pilot-sidebar-open",
 } as const
 
 /** Stockpile row height (px) — drag the seam under the battlefield to resize. */
@@ -81,6 +83,18 @@ export const DECK_SEARCH_SIZE = {
 } as const
 
 export const PILOT_GEN_MAX = 10
+
+/** Pilot / hero pile footprint (matches TrashyardPile `lg`). */
+export const PILOT_PILE = {
+  w: 132,
+  h: 176,
+  tabW: 24,
+} as const
+
+export type PilotSidebarSide = "left" | "right"
+
+/** Opening mulligan modal — off until exposed as a playtester setting. */
+export const OPENING_MULLIGAN_ENABLED = false
 
 /** Stable DropdownMenu / ContextMenu item ids (not user-facing labels). */
 export const CTX_MENU_ACTION = {

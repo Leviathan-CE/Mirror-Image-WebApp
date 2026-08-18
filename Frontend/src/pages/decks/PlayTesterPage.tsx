@@ -63,7 +63,7 @@ import {
   type FloatSurfaceActions,
 } from "@/components/Playtester/FreeFloatSurface"
 import { LifeCounter } from "@/components/Playtester/LifeCounter"
-import { MulliganModal } from "@/components/Playtester/MulliganModal"
+import { PilotSidebar } from "@/components/Playtester/PilotSidebar"
 import { PlayerHand } from "@/components/Playtester/PlayerHand"
 import { TrashyardPile } from "@/components/Playtester/TrashyardPile"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
@@ -105,6 +105,30 @@ function readStoredStockpileHeight(): number {
   } catch {
     return STOCKPILE_HEIGHT.default
   }
+}
+
+function readStoredPilotSidebarOpen(): boolean {
+  try {
+    const raw = window.localStorage.getItem(PLAYTESTER_STORAGE.pilotSidebarOpen)
+    if (raw === "1") return true
+    if (raw === "0") return false
+  } catch {
+    /* ignore */
+  }
+  return false
+}
+
+function readStoredOppPilotSidebarOpen(): boolean {
+  try {
+    const raw = window.localStorage.getItem(
+      PLAYTESTER_STORAGE.oppPilotSidebarOpen
+    )
+    if (raw === "1") return true
+    if (raw === "0") return false
+  } catch {
+    /* ignore */
+  }
+  return false
 }
 
 type AccumulateChooserState = {
@@ -187,6 +211,8 @@ export function PlayTesterPage() {
     STOCKPILE_HEIGHT.default
   )
   const [battlefieldHeightPx, setBattlefieldHeightPx] = useState(320)
+  const [pilotSidebarOpen, setPilotSidebarOpen] = useState(false)
+  const [oppPilotSidebarOpen, setOppPilotSidebarOpen] = useState(false)
   const stockpileResizeRef = useRef<{
     pointerId: number
     startY: number
@@ -247,7 +273,6 @@ export function PlayTesterPage() {
     putDeckTopOnBottom: putDeckTopOnBottomCards,
     shuffleLibraryCards,
     reorderTop,
-    confirmMulligan,
     finishAccumulateSpawn,
     dispatch,
     applyFog,
@@ -420,6 +445,9 @@ export function PlayTesterPage() {
     clientToStockpileLocal,
     isFlipFlying,
     pushFlipAnim,
+    onZoneDrop: (zone) => {
+      if (zone === PLAY_ZONE.pilot) setPilotSidebarOpen(true)
+    },
   })
 
   const flyingHide = useMemo(() => new Set(flyingIds), [flyingIds])
@@ -449,6 +477,8 @@ export function PlayTesterPage() {
 
   useEffect(() => {
     setStockpileHeightPx(readStoredStockpileHeight())
+    setPilotSidebarOpen(readStoredPilotSidebarOpen())
+    setOppPilotSidebarOpen(readStoredOppPilotSidebarOpen())
   }, [])
 
   useEffect(() => {
@@ -471,6 +501,28 @@ export function PlayTesterPage() {
       /* private mode / quota */
     }
   }, [stockpileHeightPx])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        PLAYTESTER_STORAGE.pilotSidebarOpen,
+        pilotSidebarOpen ? "1" : "0"
+      )
+    } catch {
+      /* private mode / quota */
+    }
+  }, [pilotSidebarOpen])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        PLAYTESTER_STORAGE.oppPilotSidebarOpen,
+        oppPilotSidebarOpen ? "1" : "0"
+      )
+    } catch {
+      /* private mode / quota */
+    }
+  }, [oppPilotSidebarOpen])
 
   function onStockpileResizePointerDown(
     event: ReactPointerEvent<HTMLDivElement>
@@ -810,6 +862,43 @@ export function PlayTesterPage() {
     onCardCounterAdjust: onFloatCardCounterAdjust,
   }
 
+  const pilotGenOverlay =
+    pilotGenBonus > 0 ? (
+      <span
+        data-pilot-gen-badge=""
+        role="button"
+        tabIndex={0}
+        title={`Pilot +GEN ${pilotGenBonus} · left-click +1 · right-click −1`}
+        className="inline-flex items-center gap-0.5 border border-cyan-400/60 bg-black/85 px-1.5 py-1 font-buahs93 text-base leading-none text-cyan-100"
+        onPointerDown={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+        }}
+        onClick={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          adjustPilotGenBonus(1)
+        }}
+        onContextMenu={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          adjustPilotGenBonus(-1)
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === "+") {
+            event.preventDefault()
+            adjustPilotGenBonus(1)
+          } else if (event.key === "-" || event.key === "Backspace") {
+            event.preventDefault()
+            adjustPilotGenBonus(-1)
+          }
+        }}
+      >
+        +
+        <GameIcon name={genIconForCount(pilotGenBonus)} className="h-5 w-auto" />
+      </span>
+    ) : null
+
   function leavePlaytester() {
     if (Number.isFinite(deckId) && deckId > 0) {
       // Replace so browser Back from the deck does not reopen playtester.
@@ -962,14 +1051,14 @@ export function PlayTesterPage() {
     >
       <div className="absolute inset-0 bg-black/65" aria-hidden />
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-50 flex items-start justify-between gap-2 p-2">
-        <div className="pointer-events-auto">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[60] flex items-start justify-between gap-2 p-2">
+        <div className="pointer-events-auto relative z-[70]">
           <DropdownMenu
             label="Playtester menu"
             trigger="☰"
             items={playMenuItems}
             triggerClassName="h-7 w-9 border border-cyan-500/40 bg-cyan-700/80 text-sm text-cyan-50 hover:bg-cyan-900"
-            menuClassName="min-w-[13rem]"
+            menuClassName="z-[70] min-w-[13rem]"
           />
         </div>
 
@@ -1025,7 +1114,15 @@ export function PlayTesterPage() {
         {status === "ready" ? (
           <div className="relative z-0 flex min-h-0 flex-1 flex-col gap-1">
             {twoSeat ? (
-              <div className="relative z-40 flex shrink-0 rotate-180 items-stretch gap-2 overflow-visible opacity-90">
+              <div className="relative z-40 shrink-0 rotate-180 overflow-visible">
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[60] flex translate-y-[calc(100%+0.5rem)] justify-end pr-2">
+                  <LifeCounter
+                    life={oppLife}
+                    onAdjust={() => undefined}
+                    className="pointer-events-auto w-auto min-h-14 min-w-[4.5rem] rotate-180 px-4 translate-y-[calc(100%-17.5rem)]  py-2 text-4xl shadow-lg shadow-black/40"
+                  />
+                </div>
+                <div className="flex items-stretch gap-2 overflow-visible opacity-90">
                 <div className="flex min-h-0 min-w-0 flex-1 rotate-180">
                   <PlayerHand
                     className="min-h-0 w-full flex-1"
@@ -1056,18 +1153,6 @@ export function PlayTesterPage() {
                     onReleaseCard={() => undefined}
                   />
                 </div>
-                <div className="flex flex-col items-center gap-1">
-                  <div className="rotate-180">
-                    <LifeCounter life={oppLife} onAdjust={() => undefined} />
-                  </div>
-                  <div className="rotate-180">
-                    <TrashyardPile
-                      cards={visOppPilot}
-                      label="Opp pilot"
-                      size="lg"
-                      onReleaseCard={() => undefined}
-                    />
-                  </div>
                 </div>
               </div>
             ) : null}
@@ -1155,7 +1240,17 @@ export function PlayTesterPage() {
               </div>
             </div>
 
-            <div className="relative z-40 flex shrink-0 items-stretch gap-2 overflow-visible">
+            <div className="relative z-40 shrink-0 overflow-visible">
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-[60] flex -translate-y-[calc(100%+0.5rem)] justify-end pr-2">
+                <LifeCounter
+                  life={life}
+                  onAdjust={(delta) =>
+                    setLife((prev) => Math.max(0, prev + delta))
+                  }
+                  className="pointer-events-auto w-auto min-h-14 min-w-[4.5rem] px-4 py-2 text-4xl shadow-lg shadow-black/40"
+                />
+              </div>
+              <div className="flex items-stretch gap-2 overflow-visible">
               <div ref={handRef} className="flex min-h-0 min-w-0 flex-1">
                 <PlayerHand
                   className="min-h-0 w-full flex-1"
@@ -1198,67 +1293,6 @@ export function PlayTesterPage() {
                   onFaceUpPileContextMenu(PLAY_ZONE.dismantled, x, y)
                 }
               />
-              <div className="flex shrink-0 flex-col items-center gap-1">
-                <LifeCounter
-                  life={life}
-                  onAdjust={(delta) =>
-                    setLife((prev) => Math.max(0, prev + delta))
-                  }
-                />
-                <TrashyardPile
-                  ref={pilotRef}
-                  cards={visPilot}
-                  label="Pilot"
-                  size="lg"
-                  onReleaseCard={onFaceUpPileRelease}
-                  onCardContextMenu={onFloatCardContextMenu}
-                  onToggleExpended={(instanceId) =>
-                    onToggleExpended([instanceId])
-                  }
-                  cardOverlay={
-                    pilotGenBonus > 0 ? (
-                      <span
-                        data-pilot-gen-badge=""
-                        role="button"
-                        tabIndex={0}
-                        title={`Pilot +GEN ${pilotGenBonus} · left-click +1 · right-click −1`}
-                        className="inline-flex items-center gap-0.5 border border-cyan-400/60 bg-black/85 px-1.5 py-1 font-buahs93 text-base leading-none text-cyan-100"
-                        onPointerDown={(event) => {
-                          event.preventDefault()
-                          event.stopPropagation()
-                        }}
-                        onClick={(event) => {
-                          event.preventDefault()
-                          event.stopPropagation()
-                          adjustPilotGenBonus(1)
-                        }}
-                        onContextMenu={(event) => {
-                          event.preventDefault()
-                          event.stopPropagation()
-                          adjustPilotGenBonus(-1)
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === "+") {
-                            event.preventDefault()
-                            adjustPilotGenBonus(1)
-                          } else if (
-                            event.key === "-" ||
-                            event.key === "Backspace"
-                          ) {
-                            event.preventDefault()
-                            adjustPilotGenBonus(-1)
-                          }
-                        }}
-                      >
-                        +
-                        <GameIcon
-                          name={genIconForCount(pilotGenBonus)}
-                          className="h-5 w-auto"
-                        />
-                      </span>
-                    ) : null
-                  }
-                />
               </div>
             </div>
 
@@ -1296,6 +1330,35 @@ export function PlayTesterPage() {
           </div>
         ) : null}
       </div>
+
+      {status === "ready" ? (
+        <>
+          <PilotSidebar
+            side="right"
+            open={pilotSidebarOpen}
+            onOpenChange={setPilotSidebarOpen}
+            pilotRef={pilotRef}
+            cards={visPilot}
+            className="bottom-10"
+            onReleaseCard={onFaceUpPileRelease}
+            onCardContextMenu={onFloatCardContextMenu}
+            onToggleExpended={(instanceId) => onToggleExpended([instanceId])}
+            cardOverlay={pilotGenOverlay}
+          />
+          {twoSeat ? (
+            <PilotSidebar
+              side="left"
+              open={oppPilotSidebarOpen}
+              onOpenChange={setOppPilotSidebarOpen}
+              cards={visOppPilot}
+              readOnly
+              pileLabel="Opp pilot"
+              className="top-20"
+              onReleaseCard={() => undefined}
+            />
+          ) : null}
+        </>
+      ) : null}
 
       {flipAnims.map((anim) => (
         <CardFlipFlyAnimation
@@ -1357,15 +1420,6 @@ export function PlayTesterPage() {
         }
         onDismiss={() => setInspectCard(null)}
       />
-
-      {mulliganOpen ? (
-        <MulliganModal
-          hand={handCards}
-          onConfirm={(selectedIds) => {
-            confirmMulligan(selectedIds)
-          }}
-        />
-      ) : null}
 
       {accumulateChooser ? (
         <AccumulatePipChooser
