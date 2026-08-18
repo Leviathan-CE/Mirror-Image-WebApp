@@ -1,8 +1,8 @@
 /**
  * Opening playtester setup from a loaded deck:
- * pilot → pilot zone, augments → battlefield (home edge is the owner's
- * stockpile, applied per viewer), main deck shuffle + draw, starting
- * resource tokens → stockpile.
+ * pilot → pilot zone, augments → battlefield (row above the default hand,
+ * applied per viewer), main deck shuffle + draw, starting resource tokens
+ * → stockpile (colour fans beside the hand, applied per viewer).
  */
 
 import {
@@ -25,15 +25,6 @@ import {
 } from "@/components/Playtester/types"
 import type { CardLibraryItem } from "@/lib/api/cards"
 import type { DeckCardEntry, DeckDetail } from "@/lib/api/decks"
-
-/** Diagonal stagger inside one colour stack (matches physical stockpile piles). */
-const STACK_STAGGER_X = 22
-const STACK_STAGGER_Y = 22
-/** Gap between the right edge of one colour stack and the next. */
-const STACK_GROUP_GAP = 36
-const RESOURCE_CARD_W = 112
-const STOCKPILE_ORIGIN_X = 16
-const STOCKPILE_ORIGIN_Y = 18
 
 /** Map pilot capacity columns → coloured resource pips (not life). */
 export function startingResourceColorsFromPilot(
@@ -62,8 +53,8 @@ export function startingLifeFromPilot(
 }
 
 /**
- * Lay out resource tokens in colour stacks: each colour is its own pile,
- * cards inside a pile stagger down-right; piles sit side-by-side.
+ * Spawn starting resource tokens. Positions are left unset so the shared
+ * field can fan them by colour on that owner's home-left.
  */
 export function spawnGroupedStockpileResources(
   colors: ResourceColor[],
@@ -77,7 +68,6 @@ export function spawnGroupedStockpileResources(
   }
 
   const out: PlayingCardInstance[] = []
-  let cursorX = STOCKPILE_ORIGIN_X
   let seq = seqStart
 
   for (const color of RESOURCE_COLORS) {
@@ -88,19 +78,10 @@ export function spawnGroupedStockpileResources(
 
     for (let i = 0; i < count; i++) {
       out.push(
-        spawnResourceTokenInstance(
-          template,
-          cursorX + i * STACK_STAGGER_X,
-          STOCKPILE_ORIGIN_Y + i * STACK_STAGGER_Y,
-          seq,
-          owner
-        )
+        spawnResourceTokenInstance(template, undefined, undefined, seq, owner)
       )
       seq += 1
     }
-
-    cursorX +=
-      RESOURCE_CARD_W + Math.max(0, count - 1) * STACK_STAGGER_X + STACK_GROUP_GAP
   }
 
   return out
@@ -154,10 +135,7 @@ export function setupOpeningSession(
       owner
     )
     if (!inst) continue
-    // No x/y: each client pins unmoved augments to the battlefield edge
-    // beside that owner's stockpile, so they stay on the correct side of a
-    // single shared field even though both players sit at the bottom of
-    // their own screen.
+    // No x/y: each client pins unmoved augments above the default hand.
     session.push({
       ...inst,
       zone: "battlefield",

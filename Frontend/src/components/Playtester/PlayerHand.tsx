@@ -1,5 +1,6 @@
 /**
- * Bottom hand strip — cards fan in a row; drag upward onto the battlefield.
+ * Hand window — cards fan in a row; drag onto the battlefield.
+ * Can sit in a floating panel (`embedded`) or as a standalone strip.
  * Empty-area drag draws a marquee to multi-select.
  * Ctrl/Cmd+click toggles a card in or out of the selection.
  * Dragging a selected card moves the whole hand selection as a group.
@@ -17,14 +18,16 @@ import {
 } from "react"
 
 import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
+import { handCardSizePx } from "@/components/Playtester/handCardSize.logic"
 import { PlayingCard } from "@/components/Playtester/PlayingCard"
+import { HAND_CARD_SIZE } from "@/components/Playtester/playtesterConstants"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { MiddleMouseScroll } from "@/components/ui/MiddleMouseScroll"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
 const DRAG_THRESHOLD_PX = 5
-const GROUP_GHOST_STEP_X = 18
+const GROUP_GHOST_STEP_RATIO = 18 / HAND_CARD_SIZE.defaultWidth
 
 export type PlayerHandProps = {
   cards: PlayingCardInstance[]
@@ -55,6 +58,8 @@ export type PlayerHandProps = {
   /** Opponent fog: render card backs and ignore pointer. */
   hideFaces?: boolean
   interactive?: boolean
+  /** Skip the built-in label + frame when the hand lives in a window. */
+  embedded?: boolean
 }
 
 type HandDrag = {
@@ -106,7 +111,12 @@ export function PlayerHand({
   onSelectionChange,
   hideFaces = false,
   interactive = true,
+  embedded = false,
 }: PlayerHandProps) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  const [cardPx, setCardPx] = useState(() =>
+    handCardSizePx(HAND_CARD_SIZE.defaultHeight + HAND_CARD_SIZE.chromeY)
+  )
   const dragRef = useRef<HandDrag | null>(null)
   const marqueeRef = useRef<MarqueeState | null>(null)
   const cardsRef = useRef(cards)
@@ -115,6 +125,16 @@ export function PlayerHand({
   onSelectionRef.current = onSelectionChange
   const onReleaseRef = useRef(onReleaseCards)
   onReleaseRef.current = onReleaseCards
+
+  useEffect(() => {
+    const el = rootRef.current
+    if (!el) return
+    const sync = () => setCardPx(handCardSizePx(el.clientHeight))
+    sync()
+    const observer = new ResizeObserver(sync)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
   /** Exact listener refs attached for this gesture (identity must match remove). */
   const cardDragListenersRef = useRef<{
     move: (event: PointerEvent) => void
@@ -369,7 +389,9 @@ export function PlayerHand({
             if (!card) return null
             return {
               card,
-              left: drag.ghostX + index * GROUP_GHOST_STEP_X,
+              left:
+                drag.ghostX +
+                index * Math.round(cardPx.width * GROUP_GHOST_STEP_RATIO),
               top: drag.ghostY,
             }
           })
@@ -387,25 +409,35 @@ export function PlayerHand({
   return (
     <>
       <div
+        ref={rootRef}
         className={cn(
           "relative flex h-full min-h-0 w-full min-w-0 flex-col",
           className
         )}
       >
-        <p className="pointer-events-none absolute top-1 left-2 z-10 font-mono text-[10px] tracking-wide text-cyan-100/70">
-          Hand · {cards.length}
-        </p>
+        {embedded ? null : (
+          <p className="pointer-events-none absolute top-1 left-2 z-10 font-mono text-[10px] tracking-wide text-cyan-100/70">
+            Hand · {cards.length}
+          </p>
+        )}
         <MiddleMouseScroll
           label="Player hand"
           horizontal
           vertical={false}
-          className="flex min-h-0 w-full flex-1 flex-col border border-cyan-500/25 bg-black/55"
+          className={cn(
+            "flex min-h-0 w-full flex-1 flex-col",
+            embedded ? "bg-transparent" : "border border-cyan-500/25 bg-black/55"
+          )}
           // Scrollport stays a plain overflow box (not a centering flex). Padding
           // on the row is part of scrollWidth so first/last cards can scroll fully
           // into view. before/after + m-auto centers when there is spare width and
           // collapses when the row overflows (unlike justify-center, which clips
           // the start and makes it unreachable).
-          viewportClassName="min-h-32 flex-1 overflow-x-auto pb-1 pt-2"
+          viewportClassName={
+            embedded
+              ? "min-h-0 flex-1 overflow-x-auto pb-1 pt-2"
+              : "min-h-32 flex-1 overflow-x-auto pb-1 pt-2"
+          }
         >
           <div
             className={cn(
@@ -427,7 +459,8 @@ export function PlayerHand({
           >
             {cards.length === 0 ? (
               <div
-                className="flex h-32 w-24 shrink-0 items-center justify-center"
+                className="flex shrink-0 items-center justify-center"
+                style={{ width: cardPx.width, height: cardPx.height }}
                 aria-hidden
               >
                 <p className="font-mono text-xs text-white/35">Hand is empty</p>
@@ -439,7 +472,7 @@ export function PlayerHand({
                   <div
                     key={card.instanceId}
                     className={cn(
-                      "touch-none transition-transform duration-150",
+                      "shrink-0 touch-none transition-transform duration-150",
                       isDragging
                         ? "cursor-grabbing opacity-30"
                         : "cursor-grab hover:-translate-y-2",
@@ -447,6 +480,7 @@ export function PlayerHand({
                         !isDragging &&
                         "ring-2 ring-cyan-300 ring-offset-1 ring-offset-black/80"
                     )}
+                    style={{ width: cardPx.width, height: cardPx.height }}
                     onPointerDown={(event) => {
                       if (!interactive) return
                       onCardPointerDown(event, card)
@@ -466,7 +500,7 @@ export function PlayerHand({
                       card={
                         hideFaces ? { ...card, faceDown: true } : card
                       }
-                      className="h-32 w-24"
+                      className="h-full w-full"
                     />
                   </div>
                 )
@@ -492,11 +526,16 @@ export function PlayerHand({
         <div
           key={`ghost-${card.instanceId}`}
           className="pointer-events-none fixed z-[80] -translate-x-1/2 -translate-y-1/2"
-          style={{ left, top }}
+          style={{
+            left,
+            top,
+            width: cardPx.width,
+            height: cardPx.height,
+          }}
         >
           <PlayingCard
             card={card}
-            className="h-32 w-24 shadow-lg shadow-cyan-500/20"
+            className="h-full w-full shadow-lg shadow-cyan-500/20"
           />
         </div>
       ))}

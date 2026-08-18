@@ -16,6 +16,10 @@ import {
 
 import { sharedImages } from "@/assets/shared"
 import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
+import {
+  PLAY_PILE_SIZE,
+  type PlayPileSize,
+} from "@/components/Playtester/playtesterConstants"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
@@ -25,9 +29,6 @@ const STACK_STEP_X = 3
 const STACK_STEP_Y = 3
 const TOP_LIFT_PX = 14
 const DRAG_THRESHOLD_PX = 5
-/** Card face size (matches hand / trash md). */
-const CARD_W = 96
-const CARD_H = 128
 /** Layout must reserve this — under-cards paint outside the face box. */
 const STACK_PAD_X = MAX_UNDER_LAYERS * STACK_STEP_X
 
@@ -50,6 +51,8 @@ export type DeckPileProps = {
   topCard?: PlayingCardInstance | null
   /** Play with the deck's top card face up on the pile. */
   topRevealed?: boolean
+  /** Card footprint. Use `lg` to match the pilot column. */
+  size?: PlayPileSize
 }
 
 const FLIP_MS = 450
@@ -163,9 +166,11 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
       onContextMenu,
       topCard = null,
       topRevealed = false,
+      size = "md",
     },
     ref
   ) {
+    const { w: CARD_W, h: CARD_H } = PLAY_PILE_SIZE[size]
     const [hovered, setHovered] = useState(false)
     const [drag, setDrag] = useState<TopDrag | null>(null)
     const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)

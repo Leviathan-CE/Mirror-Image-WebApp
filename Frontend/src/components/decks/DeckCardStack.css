@@ -805,7 +805,7 @@
   --angle: 10px;
   position: fixed;
   z-index: 10000;
-  width: min(20rem, 70vw);
+  width: min(26rem, 70vw);
   height: auto;
   aspect-ratio: 5 / 7;
   object-fit: cover;

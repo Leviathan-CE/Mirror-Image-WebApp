@@ -149,6 +149,10 @@ export type PlayContextMenuActions = {
     from: MoveAllSourceZone,
     to: MoveAllDestinationZone
   ) => void
+  moveInPlayToZone: (
+    instanceIds: string[],
+    zone: typeof PLAY_ZONE.battlefield | typeof PLAY_ZONE.stockpile
+  ) => void
 }
 
 /** Deck rows that carry their own count field. */
@@ -481,6 +485,20 @@ export function usePlayContextMenu({
         onSelect: () => actions.duplicateCard(counterTargets),
       },
       generateResourceItem,
+      {
+        id: CTX_MENU_ACTION.sendToStockpile,
+        label: "Send to stockpile",
+        disabled: card.zone === PLAY_ZONE.stockpile,
+        onSelect: () =>
+          actions.moveInPlayToZone(counterTargets, PLAY_ZONE.stockpile),
+      },
+      {
+        id: CTX_MENU_ACTION.sendToBattlefield,
+        label: "Send to battlefield",
+        disabled: card.zone === PLAY_ZONE.battlefield,
+        onSelect: () =>
+          actions.moveInPlayToZone(counterTargets, PLAY_ZONE.battlefield),
+      },
       putOnBottomItem,
       flipFaceItem,
       viewCardDetails,

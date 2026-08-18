@@ -89,10 +89,6 @@ export type UseDrawAnimationsArgs = {
     x: number
     y: number
   }
-  clientToStockpileLocal: (clientX: number, clientY: number) => {
-    x: number
-    y: number
-  }
   mulliganOpen: boolean
 }
 
@@ -102,7 +98,6 @@ export function useDrawAnimations({
   localSeat = LOCAL_SEAT,
   zoneRefs,
   clientToSurfaceLocal,
-  clientToStockpileLocal,
   mulliganOpen,
 }: UseDrawAnimationsArgs) {
   const [flipAnims, setFlipAnims] = useState<FlipFlyAnim[]>([])
@@ -482,12 +477,6 @@ export function useDrawAnimations({
       landZone = PLAY_ZONE.dismantled
       const dismantledRect = zoneRefs.dismantled.current!.getBoundingClientRect()
       to = { x: dismantledRect.left, y: dismantledRect.top }
-    } else if (pointInRect(clientX, clientY, zoneRefs.stockpile.current)) {
-      landZone = PLAY_ZONE.stockpile
-      const local = clientToStockpileLocal(clientX, clientY)
-      landX = local.x
-      landY = local.y
-      to = { x: clientX - w / 2, y: clientY - h / 2 }
     } else if (pointInRect(clientX, clientY, zoneRefs.pilot.current)) {
       landZone = PLAY_ZONE.pilot
       const pilotRect = zoneRefs.pilot.current!.getBoundingClientRect()
@@ -505,8 +494,7 @@ export function useDrawAnimations({
     const drawn = peekTopLibrary(sessionCardsRef.current, 1, localSeat)[0]
     if (!drawn) return
 
-    const stayFaceDown =
-      landZone === PLAY_ZONE.battlefield || landZone === PLAY_ZONE.stockpile
+    const stayFaceDown = landZone === PLAY_ZONE.battlefield
     const flyingCard = {
       ...drawn,
       faceDown: stayFaceDown,

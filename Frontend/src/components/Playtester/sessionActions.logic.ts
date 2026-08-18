@@ -128,8 +128,8 @@ export type SessionAction =
       artPath: string | null
       artVersion?: number | null
       cost: string[]
-      x: number
-      y: number
+      x?: number
+      y?: number
     }
 
 function bump(state: PlaySessionState, cards: PlayingCardInstance[]): PlaySessionState {

@@ -35,39 +35,33 @@ export type DropSource = "hand" | "battlefield" | "stockpile" | "faceUpPile"
 
 /**
  * First matching zone wins. Change landing priority only here.
- * `battlefield` is the free-float surface.
+ * `battlefield` is the one in-play table. Dragging a card already on the
+ * table does not rezone it (LEAVE_FIELD omits the table itself).
  */
+const LEAVE_FIELD: readonly DropZone[] = [
+  PLAY_ZONE.library,
+  PLAY_ZONE.trashyard,
+  PLAY_ZONE.dismantled,
+  PLAY_ZONE.pilot,
+  PLAY_ZONE.hand,
+]
+
 export const DROP_ZONE_PRIORITY: Record<DropSource, readonly DropZone[]> = {
   hand: [
     PLAY_ZONE.library,
     PLAY_ZONE.trashyard,
     PLAY_ZONE.dismantled,
     PLAY_ZONE.pilot,
-    PLAY_ZONE.stockpile,
-    PLAY_ZONE.battlefield,
-  ],
-  battlefield: [
-    PLAY_ZONE.library,
-    PLAY_ZONE.trashyard,
-    PLAY_ZONE.dismantled,
-    PLAY_ZONE.pilot,
-    PLAY_ZONE.stockpile,
-    PLAY_ZONE.hand,
-  ],
-  stockpile: [
-    PLAY_ZONE.library,
-    PLAY_ZONE.trashyard,
-    PLAY_ZONE.dismantled,
-    PLAY_ZONE.pilot,
     PLAY_ZONE.hand,
     PLAY_ZONE.battlefield,
   ],
+  battlefield: LEAVE_FIELD,
+  stockpile: LEAVE_FIELD,
   faceUpPile: [
     PLAY_ZONE.library,
     PLAY_ZONE.trashyard,
     PLAY_ZONE.dismantled,
     PLAY_ZONE.pilot,
-    PLAY_ZONE.stockpile,
     PLAY_ZONE.hand,
     PLAY_ZONE.battlefield,
   ],

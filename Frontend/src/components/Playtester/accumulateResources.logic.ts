@@ -187,8 +187,8 @@ export function buildResourceTokenMap(
 
 export function spawnResourceTokenInstance(
   template: CardLibraryItem,
-  x: number,
-  y: number,
+  x: number | undefined,
+  y: number | undefined,
   seq: number,
   owner: PlayerSlot = LOCAL_SEAT
 ): PlayingCardInstance {

@@ -405,14 +405,14 @@ export function usePlaySession({
     dispatch({ t: "xp", i: instanceIds })
   }
 
-  function changeFloatSelection(
-    zone: "battlefield" | "stockpile",
-    instanceIds: string[]
-  ) {
+  function changeFloatSelection(instanceIds: string[]) {
     const selected = new Set(instanceIds)
     setSessionCards((prev) =>
       prev.map((card) => {
-        if (card.zone !== zone) {
+        if (
+          card.zone !== PLAY_ZONE.battlefield &&
+          card.zone !== PLAY_ZONE.stockpile
+        ) {
           return card.selected ? { ...card, selected: false } : card
         }
         const nextSelected = selected.has(card.instanceId)
@@ -513,18 +513,14 @@ export function usePlaySession({
 
   function spawnResourceColor(
     color: ResourceColor,
-    onMissing?: () => void
+    onMissing?: () => void,
+    at?: { x: number; y: number }
   ): boolean {
     const template = resourceByColor.get(color)
     if (!template) {
       onMissing?.()
       return false
     }
-    const seq = cardsInZone(
-      sessionCardsRef.current,
-      PLAY_ZONE.stockpile,
-      localSeat
-    ).length
     dispatch({
       t: "tk",
       seat: localSeat,
@@ -533,8 +529,8 @@ export function usePlaySession({
       artPath: template.card_art_path,
       artVersion: template.card_art_version ?? null,
       cost: Array.isArray(template.cost) ? template.cost.map(String) : [],
-      x: 20 + (seq % 8) * 28,
-      y: 24 + Math.floor(seq / 8) * 16,
+      x: at?.x,
+      y: at?.y,
     })
     return true
   }
@@ -583,12 +579,14 @@ export function usePlaySession({
 
   function finishAccumulateSpawn(
     card: PlayingCardInstance,
-    colors: ResourceColor[]
+    colors: ResourceColor[],
+    homes: Array<{ x: number; y: number }> = []
   ) {
     dispatch({ t: "lb", i: [card.instanceId] })
     colors.forEach((color, index) => {
       const template = resourceByColor.get(color)
       if (!template) return
+      const at = homes[index]
       dispatch({
         t: "tk",
         seat: localSeat,
@@ -597,8 +595,8 @@ export function usePlaySession({
         artPath: template.card_art_path,
         artVersion: template.card_art_version ?? null,
         cost: Array.isArray(template.cost) ? template.cost.map(String) : [],
-        x: 20 + index * 28,
-        y: 24 + index * 12,
+        x: at?.x,
+        y: at?.y,
       })
     })
   }
