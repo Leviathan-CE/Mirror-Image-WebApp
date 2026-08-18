@@ -129,7 +129,7 @@ export function DropdownMenu({
           id={menuId}
           role="menu"
           className={cn(
-            "absolute top-full z-20 mt-1 min-w-[9rem] border border-cyan-500/30 bg-black/95 py-1 shadow-lg",
+            "absolute top-full z-[70] mt-1 min-w-[9rem] border border-cyan-500/30 bg-black/95 py-1 shadow-lg",
             align === "right" ? "right-0" : "left-0",
             menuClassName
           )}
