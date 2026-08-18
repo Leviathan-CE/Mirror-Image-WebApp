@@ -56,8 +56,8 @@ export type FlipFlyMode = (typeof FLIP_FLY_MODE)[keyof typeof FLIP_FLY_MODE]
 export const PLAYTESTER_STORAGE = {
   stockpileHeightPx: "mi-playtester-stockpile-height-px",
   deckSearchBoxPx: "mi-playtester-deck-search-box-px",
-  pilotSidebarOpen: "mi-playtester-pilot-sidebar-open",
-  oppPilotSidebarOpen: "mi-playtester-opp-pilot-sidebar-open",
+  handBoxPx: "mi-playtester-hand-box-px",
+  oppHandBoxPx: "mi-playtester-opp-hand-box-px",
 } as const
 
 /** Stockpile row height (px) — drag the seam under the battlefield to resize. */
@@ -82,16 +82,49 @@ export const DECK_SEARCH_SIZE = {
   defaultHeight: 448,
 } as const
 
+/**
+ * Floating hand window (px) — drag the header to move, the bottom-right
+ * grip to resize. Lives on the shared field.
+ */
+export const HAND_FLOAT_SIZE = {
+  minWidth: 280,
+  maxWidth: 1400,
+  defaultWidth: 640,
+  minHeight: 148,
+  maxHeight: 420,
+  defaultHeight: 176,
+} as const
+
+/**
+ * Hand card footprint (px). Height tracks the window; width follows 3:4.
+ * `chromeY` is PlayerHand padding (pt-2+pb-1) plus the horizontal scrollbar.
+ */
+export const HAND_CARD_SIZE = {
+  defaultWidth: 96,
+  defaultHeight: 128,
+  minHeight: 64,
+  maxHeight: 320,
+  chromeY: 24,
+} as const
+
 export const PILOT_GEN_MAX = 10
+
+/**
+ * Side-column pile footprints (3:4). `lg` is the playtester column
+ * (pilot, library, trashyard, dismantled).
+ */
+export const PLAY_PILE_SIZE = {
+  md: { w: 96, h: 128, peek: 34 },
+  lg: { w: 132, h: 176, peek: 46 },
+} as const
+
+export type PlayPileSize = keyof typeof PLAY_PILE_SIZE
 
 /** Pilot / hero pile footprint (matches TrashyardPile `lg`). */
 export const PILOT_PILE = {
-  w: 132,
-  h: 176,
-  tabW: 24,
+  w: PLAY_PILE_SIZE.lg.w,
+  h: PLAY_PILE_SIZE.lg.h,
 } as const
-
-export type PilotSidebarSide = "left" | "right"
 
 /** Opening mulligan modal — off until exposed as a playtester setting. */
 export const OPENING_MULLIGAN_ENABLED = false
@@ -125,6 +158,8 @@ export const CTX_MENU_ACTION = {
   moveAllToDeck: "move-all-to-deck",
   moveAllToDismantled: "move-all-to-dismantled",
   moveAllToTrashyard: "move-all-to-trashyard",
+  sendToStockpile: "send-to-stockpile",
+  sendToBattlefield: "send-to-battlefield",
 } as const
 
 export type CtxMenuActionId =

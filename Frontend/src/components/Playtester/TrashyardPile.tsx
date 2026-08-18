@@ -20,20 +20,15 @@ import {
 
 import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import { PlayingCard } from "@/components/Playtester/PlayingCard"
+import {
+  PLAY_PILE_SIZE,
+  type PlayPileSize,
+} from "@/components/Playtester/playtesterConstants"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
 const DRAG_THRESHOLD_PX = 5
-
-/** Preset card footprints — keep 3:4 so art crops match other zones. */
-const PILE_SIZES = {
-  md: { w: 96, h: 128, peek: 34 },
-  /** Pilot / hero slot — ~1.4× so it reads as the focal zone. */
-  lg: { w: 132, h: 176, peek: 46 },
-} as const
-
-export type TrashyardPileSize = keyof typeof PILE_SIZES
 
 type TrashGroup = {
   cardId: number
@@ -68,8 +63,8 @@ export type TrashyardPileProps = {
   className?: string
   /** Zone title under the pile. */
   label?: string
-  /** Card footprint. Default `md` (same as deck/hand). Use `lg` for pilot. */
-  size?: TrashyardPileSize
+  /** Card footprint. Default `md`. Use `lg` to match the pilot column. */
+  size?: PlayPileSize
   onReleaseCard: (
     instanceId: string,
     clientX: number,
@@ -120,7 +115,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
     },
     ref
   ) {
-    const { w: cardW, h: cardH, peek: fanPeek } = PILE_SIZES[size]
+    const { w: cardW, h: cardH, peek: fanPeek } = PLAY_PILE_SIZE[size]
     const revealShift = Math.round(cardH * 0.75)
     const cardBoxClass = "h-full w-full"
 

@@ -55,8 +55,6 @@ export type UseCardDragDropArgs = {
   }
   isFlipFlying: () => boolean
   pushFlipAnim: (anim: Omit<FlipFlyAnim, "id">) => string
-  /** Fired after a drop lands (e.g. open the pilot strip). */
-  onZoneDrop?: (zone: DropZone) => void
 }
 
 function readDropRects(zoneRefs: PlaytesterZoneRefs): DropZoneRects {
@@ -65,7 +63,6 @@ function readDropRects(zoneRefs: PlaytesterZoneRefs): DropZoneRects {
     [PLAY_ZONE.trashyard]: elementToZoneRect(zoneRefs.trash.current),
     [PLAY_ZONE.dismantled]: elementToZoneRect(zoneRefs.dismantled.current),
     [PLAY_ZONE.pilot]: elementToZoneRect(zoneRefs.pilot.current),
-    [PLAY_ZONE.stockpile]: elementToZoneRect(zoneRefs.stockpile.current),
     [PLAY_ZONE.hand]: elementToZoneRect(zoneRefs.hand.current),
     [PLAY_ZONE.battlefield]: elementToZoneRect(zoneRefs.surface.current),
   }
@@ -82,7 +79,6 @@ export function useCardDragDrop({
   clientToStockpileLocal,
   isFlipFlying,
   pushFlipAnim,
-  onZoneDrop,
 }: UseCardDragDropArgs) {
   function ownIds(ids: string[]): string[] {
     return ids.filter((id) =>
@@ -267,7 +263,6 @@ export function useCardDragDrop({
         return true
       case PLAY_ZONE.pilot:
         applyPilotDrop(instanceIds)
-        onZoneDrop?.(PLAY_ZONE.pilot)
         return true
       case PLAY_ZONE.stockpile:
         applyStockpileDrop(instanceIds, clientX, clientY)

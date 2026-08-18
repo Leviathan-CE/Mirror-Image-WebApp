@@ -2,14 +2,17 @@
  * Playtester — battlefield + hand + library; drag cards between zones.
  */
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
 import { sharedImages } from "@/assets/shared"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { AccumulatePipChooser } from "@/components/Playtester/AccumulatePipChooser"
-import { placeAugmentsForView } from "@/components/Playtester/augmentRow.logic"
+import {
+  generatedResourceHome,
+  placeInPlayForView,
+} from "@/components/Playtester/augmentRow.logic"
 import {
   autoResolveColors,
   buildResourceTokenMap,
@@ -26,9 +29,9 @@ import {
 } from "@/components/Playtester/CardFlipFlyAnimation"
 import {
   PLAY_ZONE,
-  PLAYTESTER_STORAGE,
+  PILOT_PILE,
+  HAND_CARD_SIZE,
   SELECTABLE_ACTION_ZONES,
-  STOCKPILE_HEIGHT,
   PLAYER_SLOT,
   otherSeat,
   type PlayerSlot,
@@ -63,7 +66,7 @@ import {
   type FloatSurfaceActions,
 } from "@/components/Playtester/FreeFloatSurface"
 import { LifeCounter } from "@/components/Playtester/LifeCounter"
-import { PilotSidebar } from "@/components/Playtester/PilotSidebar"
+import { FloatingHandPanel } from "@/components/Playtester/FloatingHandPanel"
 import { PlayerHand } from "@/components/Playtester/PlayerHand"
 import { TrashyardPile } from "@/components/Playtester/TrashyardPile"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
@@ -80,56 +83,6 @@ import { cardArtUrl } from "@/lib/api/decks"
 import { useDeckDetail } from "@/hooks/useDeckDetail"
 import { ROUTES } from "@/lib/route"
 import { GameIcon } from "@/components/common/GameIcon"
-
-/** The opponent's half of the field and their stockpile are display-only. */
-const READ_ONLY_FLOAT_ACTIONS: FloatSurfaceActions = {
-  onMoveCards: () => undefined,
-  onBringToFront: () => undefined,
-  onToggleExpended: () => undefined,
-}
-
-function clampStockpileHeight(height: number): number {
-  return Math.min(
-    STOCKPILE_HEIGHT.max,
-    Math.max(STOCKPILE_HEIGHT.min, Math.round(height))
-  )
-}
-
-function readStoredStockpileHeight(): number {
-  try {
-    const raw = window.localStorage.getItem(PLAYTESTER_STORAGE.stockpileHeightPx)
-    const parsed = raw == null ? NaN : Number(raw)
-    return Number.isFinite(parsed)
-      ? clampStockpileHeight(parsed)
-      : STOCKPILE_HEIGHT.default
-  } catch {
-    return STOCKPILE_HEIGHT.default
-  }
-}
-
-function readStoredPilotSidebarOpen(): boolean {
-  try {
-    const raw = window.localStorage.getItem(PLAYTESTER_STORAGE.pilotSidebarOpen)
-    if (raw === "1") return true
-    if (raw === "0") return false
-  } catch {
-    /* ignore */
-  }
-  return false
-}
-
-function readStoredOppPilotSidebarOpen(): boolean {
-  try {
-    const raw = window.localStorage.getItem(
-      PLAYTESTER_STORAGE.oppPilotSidebarOpen
-    )
-    if (raw === "1") return true
-    if (raw === "0") return false
-  } catch {
-    /* ignore */
-  }
-  return false
-}
 
 type AccumulateChooserState = {
   card: PlayingCardInstance
@@ -207,17 +160,7 @@ export function PlayTesterPage() {
   const [resourcesReady, setResourcesReady] = useState(false)
   const [vsDraft, setVsDraft] = useState("")
   const [playNotice, setPlayNotice] = useState<string | null>(null)
-  const [stockpileHeightPx, setStockpileHeightPx] = useState<number>(
-    STOCKPILE_HEIGHT.default
-  )
-  const [battlefieldHeightPx, setBattlefieldHeightPx] = useState(320)
-  const [pilotSidebarOpen, setPilotSidebarOpen] = useState(false)
-  const [oppPilotSidebarOpen, setOppPilotSidebarOpen] = useState(false)
-  const stockpileResizeRef = useRef<{
-    pointerId: number
-    startY: number
-    startHeight: number
-  } | null>(null)
+  const [fieldSizePx, setFieldSizePx] = useState({ width: 0, height: 0 })
   const surfaceRef = useRef<HTMLDivElement>(null)
   const stockpileRef = useRef<HTMLDivElement>(null)
   const pilotRef = useRef<HTMLDivElement>(null)
@@ -248,8 +191,6 @@ export function PlayTesterPage() {
     topRevealed,
     setTopRevealed,
     handCards,
-    battlefieldCards,
-    localStockpileCards,
     pilotCards,
     libraryCount,
     topLibraryCard,
@@ -284,7 +225,6 @@ export function PlayTesterPage() {
     oppTrashCards,
     oppDismantledCards,
     oppPilotCards,
-    oppStockpileCards,
     oppLife,
   } = usePlaySession({
     status,
@@ -418,7 +358,6 @@ export function PlayTesterPage() {
     localSeat,
     zoneRefs,
     clientToSurfaceLocal,
-    clientToStockpileLocal,
     mulliganOpen,
   })
 
@@ -431,7 +370,6 @@ export function PlayTesterPage() {
   const {
     onHandRelease,
     onBattlefieldRelease,
-    onStockpileRelease,
     onFaceUpPileRelease,
     onLibraryCardRelease,
   } = useCardDragDrop({
@@ -445,24 +383,19 @@ export function PlayTesterPage() {
     clientToStockpileLocal,
     isFlipFlying,
     pushFlipAnim,
-    onZoneDrop: (zone) => {
-      if (zone === PLAY_ZONE.pilot) setPilotSidebarOpen(true)
-    },
   })
 
   const flyingHide = useMemo(() => new Set(flyingIds), [flyingIds])
   const visHand = handCards.filter((c) => !flyingHide.has(c.instanceId))
   const visOppHand = oppHandCards.filter((c) => !flyingHide.has(c.instanceId))
-  const visBf = placeAugmentsForView(
-    battlefieldCards.filter((c) => !flyingHide.has(c.instanceId)),
+  const visInPlay = placeInPlayForView(
+    sessionCards.filter(
+      (c) =>
+        (c.zone === PLAY_ZONE.battlefield || c.zone === PLAY_ZONE.stockpile) &&
+        !flyingHide.has(c.instanceId)
+    ),
     localSeat,
-    battlefieldHeightPx
-  )
-  const visStock = localStockpileCards.filter(
-    (c) => !flyingHide.has(c.instanceId)
-  )
-  const visOppStock = oppStockpileCards.filter(
-    (c) => !flyingHide.has(c.instanceId)
+    fieldSizePx
   )
   const visTrash = trashCards.filter((c) => !flyingHide.has(c.instanceId))
   const visOppTrash = oppTrashCards.filter((c) => !flyingHide.has(c.instanceId))
@@ -476,91 +409,17 @@ export function PlayTesterPage() {
   const visOppPilot = oppPilotCards.filter((c) => !flyingHide.has(c.instanceId))
 
   useEffect(() => {
-    setStockpileHeightPx(readStoredStockpileHeight())
-    setPilotSidebarOpen(readStoredPilotSidebarOpen())
-    setOppPilotSidebarOpen(readStoredOppPilotSidebarOpen())
-  }, [])
-
-  useEffect(() => {
     const el = surfaceRef.current
     if (!el) return
-    const sync = () => setBattlefieldHeightPx(el.getBoundingClientRect().height)
+    const sync = () => {
+      const rect = el.getBoundingClientRect()
+      setFieldSizePx({ width: rect.width, height: rect.height })
+    }
     sync()
     const observer = new ResizeObserver(sync)
     observer.observe(el)
     return () => observer.disconnect()
   }, [status, twoSeat])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(
-        PLAYTESTER_STORAGE.stockpileHeightPx,
-        String(stockpileHeightPx)
-      )
-    } catch {
-      /* private mode / quota */
-    }
-  }, [stockpileHeightPx])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(
-        PLAYTESTER_STORAGE.pilotSidebarOpen,
-        pilotSidebarOpen ? "1" : "0"
-      )
-    } catch {
-      /* private mode / quota */
-    }
-  }, [pilotSidebarOpen])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(
-        PLAYTESTER_STORAGE.oppPilotSidebarOpen,
-        oppPilotSidebarOpen ? "1" : "0"
-      )
-    } catch {
-      /* private mode / quota */
-    }
-  }, [oppPilotSidebarOpen])
-
-  function onStockpileResizePointerDown(
-    event: ReactPointerEvent<HTMLDivElement>
-  ) {
-    if (event.button !== 0) return
-    event.preventDefault()
-    event.stopPropagation()
-    stockpileResizeRef.current = {
-      pointerId: event.pointerId,
-      startY: event.clientY,
-      startHeight: stockpileHeightPx,
-    }
-    event.currentTarget.setPointerCapture(event.pointerId)
-  }
-
-  function onStockpileResizePointerMove(
-    event: ReactPointerEvent<HTMLDivElement>
-  ) {
-    const drag = stockpileResizeRef.current
-    if (!drag || drag.pointerId !== event.pointerId) return
-    // Drag handle upward = taller stockpile; downward = more battlefield.
-    setStockpileHeightPx(
-      clampStockpileHeight(drag.startHeight - (event.clientY - drag.startY))
-    )
-  }
-
-  function onStockpileResizePointerUp(
-    event: ReactPointerEvent<HTMLDivElement>
-  ) {
-    const drag = stockpileResizeRef.current
-    if (!drag || drag.pointerId !== event.pointerId) return
-    stockpileResizeRef.current = null
-    try {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    } catch {
-      /* already released */
-    }
-  }
 
   useEffect(() => {
     if (status !== "ready") {
@@ -674,8 +533,8 @@ export function PlayTesterPage() {
     return {
       x: hand ? hand.left + 12 : 24,
       y: hand ? hand.top + 8 : 24,
-      w: 96,
-      h: 128,
+      w: HAND_CARD_SIZE.defaultWidth,
+      h: HAND_CARD_SIZE.defaultHeight,
     }
   }
 
@@ -684,7 +543,13 @@ export function PlayTesterPage() {
     colors: ResourceColor[],
     from: { x: number; y: number; w: number; h: number }
   ) {
-    finishAccumulateSpawn(card, colors)
+    finishAccumulateSpawn(
+      card,
+      colors,
+      colors.map((_, index) =>
+        generatedResourceHome(fieldSizePx, true, index)
+      )
+    )
     startBottomSlide(card, from)
   }
 
@@ -759,9 +624,13 @@ export function PlayTesterPage() {
   }
 
   function spawnResourceColor(color: ResourceColor) {
-    spawnResourceColorCore(color, () => {
-      setPlayNotice(`No catalog card loaded for ${color}.`)
-    })
+    spawnResourceColorCore(
+      color,
+      () => {
+        setPlayNotice(`No catalog card loaded for ${color}.`)
+      },
+      generatedResourceHome(fieldSizePx, true, 0)
+    )
   }
 
   function setDeckActionCount(key: DeckCountKey, value: string) {
@@ -1041,6 +910,21 @@ export function PlayTesterPage() {
       toggleDeckTopRevealed,
       openDeckSearch,
       moveAllFromZone: moveAll,
+      moveInPlayToZone: (instanceIds, zone) => {
+        instanceIds.forEach((id) => {
+          const card = sessionCards.find((c) => c.instanceId === id)
+          if (!card || card.owner !== localSeat) return
+          const shown = visInPlay.find((c) => c.instanceId === id)
+          dispatch({
+            t: "mv",
+            seat: localSeat,
+            i: [id],
+            z: zone,
+            x: card.x ?? shown?.x ?? 0,
+            y: card.y ?? shown?.y ?? 0,
+          })
+        })
+      },
     },
   })
   return (
@@ -1113,186 +997,168 @@ export function PlayTesterPage() {
 
         {status === "ready" ? (
           <div className="relative z-0 flex min-h-0 flex-1 flex-col gap-1">
-            {twoSeat ? (
-              <div className="relative z-40 shrink-0 rotate-180 overflow-visible">
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[60] flex translate-y-[calc(100%+0.5rem)] justify-end pr-2">
-                  <LifeCounter
-                    life={oppLife}
-                    onAdjust={() => undefined}
-                    className="pointer-events-auto w-auto min-h-14 min-w-[4.5rem] rotate-180 px-4 translate-y-[calc(100%-17.5rem)]  py-2 text-4xl shadow-lg shadow-black/40"
-                  />
+            <div className="flex min-h-0 min-w-0 flex-1">
+              {twoSeat ? (
+                <div
+                  className="z-40 flex shrink-0 flex-col items-center justify-start gap-1 py-1 opacity-90"
+                  style={{ width: PILOT_PILE.w }}
+                >
+                  <div className="rotate-180">
+                    <TrashyardPile
+                      cards={visOppPilot}
+                      label="Opp pilot"
+                      size="lg"
+                      onReleaseCard={() => undefined}
+                    />
+                  </div>
+                  <div className="rotate-180">
+                    <DeckPile
+                      count={oppLibraryCount}
+                      label="Opp library"
+                      busy
+                      size="lg"
+                    />
+                  </div>
+                  <div className="rotate-180">
+                    <TrashyardPile
+                      cards={visOppTrash}
+                      label="Opp trash"
+                      size="lg"
+                      onReleaseCard={() => undefined}
+                    />
+                  </div>
+                  <div className="rotate-180">
+                    <TrashyardPile
+                      cards={visOppDismantled}
+                      label="Opp dismantled"
+                      size="lg"
+                      onReleaseCard={() => undefined}
+                    />
+                  </div>
                 </div>
-                <div className="flex items-stretch gap-2 overflow-visible opacity-90">
-                <div className="flex min-h-0 min-w-0 flex-1 rotate-180">
-                  <PlayerHand
-                    className="min-h-0 w-full flex-1"
-                    cards={visOppHand}
-                    hideFaces
-                    interactive={false}
-                    onReleaseCards={() => undefined}
-                  />
-                </div>
-                <div className="rotate-180">
-                  <DeckPile
-                    count={oppLibraryCount}
-                    label="Opp library"
-                    busy
-                  />
-                </div>
-                <div className="rotate-180">
-                  <TrashyardPile
-                    cards={visOppTrash}
-                    label="Opp trash"
-                    onReleaseCard={() => undefined}
-                  />
-                </div>
-                <div className="rotate-180">
-                  <TrashyardPile
-                    cards={visOppDismantled}
-                    label="Opp dismantled"
-                    onReleaseCard={() => undefined}
-                  />
-                </div>
-                </div>
-              </div>
-            ) : null}
+              ) : null}
 
-            {twoSeat ? (
-              <div
-                className="relative z-0 flex w-full shrink-0 items-stretch gap-1.5"
-                style={{ height: STOCKPILE_HEIGHT.opponent }}
-              >
-                <div className="relative z-0 min-h-0 min-w-0 flex-1 self-stretch">
-                  <p className="pointer-events-none absolute left-2 top-1 z-10 font-mono text-[10px] tracking-wide text-cyan-100/70">
-                    Opp stockpile · {visOppStock.length}
-                  </p>
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
+                <div
+                  ref={surfaceRef}
+                  className="relative z-0 min-h-0 min-w-0 flex-1"
+                >
                   <FreeFloatSurface
-                    className="h-full min-h-0 w-full border-cyan-500/20 pt-3"
-                    cards={visOppStock}
-                    actions={READ_ONLY_FLOAT_ACTIONS}
-                    interactive={false}
+                    plain
+                    localSeat={localSeat}
+                    className="h-full min-h-0 w-full"
+                    cards={visInPlay}
+                    actions={floatSurfaceActions}
+                    onSelectionChange={onFloatSelectionChange}
+                    onCardsReleased={onBattlefieldRelease}
+                    onEmptyContextMenu={(x, y) =>
+                      onZoneEmptyContextMenu("battlefield", x, y)
+                    }
                   />
+                  {twoSeat ? (
+                    <FloatingHandPanel
+                      parentSize={fieldSizePx}
+                      anchor="top"
+                      label={`Opp hand · ${visOppHand.length}`}
+                      center={
+                        <LifeCounter
+                          life={oppLife}
+                          onAdjust={() => undefined}
+                          className="min-h-12 px-6 py-1 text3xl"
+                        />
+                      }
+                    >
+                      <div className="h-full min-h-0 rotate-180">
+                        <PlayerHand
+                          className="h-full min-h-0"
+                          cards={visOppHand}
+                          hideFaces
+                          interactive={false}
+                          embedded
+                          onReleaseCards={() => undefined}
+                        />
+                      </div>
+                    </FloatingHandPanel>
+                  ) : null}
+                  <FloatingHandPanel
+                    parentSize={fieldSizePx}
+                    anchor="bottom"
+                    panelRef={handRef}
+                    label={`Hand · ${visHand.length}`}
+                    center={
+                      <LifeCounter
+                        life={life}
+                        onAdjust={(delta) =>
+                          setLife((prev) => Math.max(0, prev + delta))
+                        }
+                        className="min-h-12 px-6 py-1 text-4xl"
+                      />
+                    }
+                  >
+                    <PlayerHand
+                      className="h-full min-h-0"
+                      cards={visHand}
+                      embedded
+                      onReleaseCards={onHandRelease}
+                      onCardContextMenu={onHandContextMenu}
+                      onEmptyContextMenu={(x, y) =>
+                        onZoneEmptyContextMenu("hand", x, y)
+                      }
+                      onSelectionChange={onHandSelectionChange}
+                    />
+                  </FloatingHandPanel>
                 </div>
               </div>
-            ) : null}
 
-            <div ref={surfaceRef} className="relative z-0 min-h-0 min-w-0 flex-1">
-              <p className="pointer-events-none absolute bottom-1 left-2 z-10 font-mono text-[10px] tracking-wide text-cyan-100/70">
-                Battlefield
-              </p>
-              <FreeFloatSurface
-                className="h-full min-h-0 w-full border-cyan-500/20"
-                cards={visBf}
-                actions={floatSurfaceActions}
-                onSelectionChange={(ids) =>
-                  onFloatSelectionChange("battlefield", ids)
-                }
-                onCardsReleased={onBattlefieldRelease}
-                onEmptyContextMenu={(x, y) =>
-                  onZoneEmptyContextMenu("battlefield", x, y)
-                }
-              />
-            </div>
-
-            <div
-              role="separator"
-              aria-orientation="horizontal"
-              aria-label="Resize stockpile"
-              title="Drag to resize battlefield / stockpile · double-click to reset"
-              className="relative z-20 h-2 w-full shrink-0 cursor-row-resize touch-none"
-              onPointerDown={onStockpileResizePointerDown}
-              onPointerMove={onStockpileResizePointerMove}
-              onPointerUp={onStockpileResizePointerUp}
-              onPointerCancel={onStockpileResizePointerUp}
-              onDoubleClick={() =>
-                setStockpileHeightPx(STOCKPILE_HEIGHT.default)
-              }
-            >
               <div
-                className="absolute inset-x-8 top-1/2 h-px -translate-y-1/2 bg-cyan-500/35"
-                aria-hidden
-              />
-            </div>
-
-            <div
-              className="relative z-0 flex w-full shrink-0 items-end gap-1.5"
-              style={{ height: stockpileHeightPx, minHeight: STOCKPILE_HEIGHT.min }}
-            >
-              <div
-                ref={stockpileRef}
-                className="relative z-0 min-h-0 min-w-0 flex-1 self-stretch"
+                className="z-40 flex shrink-0 flex-col items-center justify-end gap-1 py-1"
+                style={{ width: PILOT_PILE.w }}
               >
-                <p className="pointer-events-none absolute left-2 top-1 z-10 font-mono text-[10px] tracking-wide text-cyan-100/70">
-                  Stockpile · {visStock.length}
-                </p>
-                <FreeFloatSurface
-                  className="h-full min-h-0 w-full border-cyan-500/20 pt-3"
-                  cards={visStock}
-                  actions={floatSurfaceActions}
-                  onSelectionChange={(ids) =>
-                    onFloatSelectionChange("stockpile", ids)
+                <TrashyardPile
+                  ref={pilotRef}
+                  cards={visPilot}
+                  label="Pilot"
+                  size="lg"
+                  onReleaseCard={onFaceUpPileRelease}
+                  onCardContextMenu={onFloatCardContextMenu}
+                  onToggleExpended={(instanceId) =>
+                    onToggleExpended([instanceId])
                   }
-                  onCardsReleased={onStockpileRelease}
-                  onEmptyContextMenu={(x, y) =>
-                    onZoneEmptyContextMenu("stockpile", x, y)
+                  cardOverlay={pilotGenOverlay}
+                />
+                <DeckPile
+                  ref={deckRef}
+                  count={libraryCount}
+                  size="lg"
+                  onClickDraw={onDrawFromDeck}
+                  onTopCardRelease={onDeckTopRelease}
+                  onContextMenu={onDeckContextMenu}
+                  topCard={topLibraryCard}
+                  topRevealed={topRevealed}
+                  busy={Boolean(bottomAnim) || mulliganOpen || deckSearchOpen}
+                />
+                <TrashyardPile
+                  ref={trashRef}
+                  cards={visTrash}
+                  label="Trashyard"
+                  size="lg"
+                  onReleaseCard={onFaceUpPileRelease}
+                  onCardContextMenu={onFloatCardContextMenu}
+                  onPileContextMenu={(x, y) =>
+                    onFaceUpPileContextMenu(PLAY_ZONE.trashyard, x, y)
                   }
                 />
-              </div>
-            </div>
-
-            <div className="relative z-40 shrink-0 overflow-visible">
-              <div className="pointer-events-none absolute inset-x-0 top-0 z-[60] flex -translate-y-[calc(100%+0.5rem)] justify-end pr-2">
-                <LifeCounter
-                  life={life}
-                  onAdjust={(delta) =>
-                    setLife((prev) => Math.max(0, prev + delta))
+                <TrashyardPile
+                  ref={dismantledRef}
+                  cards={visDismantled}
+                  label="Dismantled"
+                  size="lg"
+                  onReleaseCard={onFaceUpPileRelease}
+                  onCardContextMenu={onFloatCardContextMenu}
+                  onPileContextMenu={(x, y) =>
+                    onFaceUpPileContextMenu(PLAY_ZONE.dismantled, x, y)
                   }
-                  className="pointer-events-auto w-auto min-h-14 min-w-[4.5rem] px-4 py-2 text-4xl shadow-lg shadow-black/40"
                 />
-              </div>
-              <div className="flex items-stretch gap-2 overflow-visible">
-              <div ref={handRef} className="flex min-h-0 min-w-0 flex-1">
-                <PlayerHand
-                  className="min-h-0 w-full flex-1"
-                  cards={visHand}
-                  onReleaseCards={onHandRelease}
-                  onCardContextMenu={onHandContextMenu}
-                  onEmptyContextMenu={(x, y) =>
-                    onZoneEmptyContextMenu("hand", x, y)
-                  }
-                  onSelectionChange={onHandSelectionChange}
-                />
-              </div>
-              <DeckPile
-                ref={deckRef}
-                count={libraryCount}
-                onClickDraw={onDrawFromDeck}
-                onTopCardRelease={onDeckTopRelease}
-                onContextMenu={onDeckContextMenu}
-                topCard={topLibraryCard}
-                topRevealed={topRevealed}
-                busy={Boolean(bottomAnim) || mulliganOpen || deckSearchOpen}
-              />
-              <TrashyardPile
-                ref={trashRef}
-                cards={visTrash}
-                label="Trashyard"
-                onReleaseCard={onFaceUpPileRelease}
-                onCardContextMenu={onFloatCardContextMenu}
-                onPileContextMenu={(x, y) =>
-                  onFaceUpPileContextMenu(PLAY_ZONE.trashyard, x, y)
-                }
-              />
-              <TrashyardPile
-                ref={dismantledRef}
-                cards={visDismantled}
-                label="Dismantled"
-                onReleaseCard={onFaceUpPileRelease}
-                onCardContextMenu={onFloatCardContextMenu}
-                onPileContextMenu={(x, y) =>
-                  onFaceUpPileContextMenu(PLAY_ZONE.dismantled, x, y)
-                }
-              />
               </div>
             </div>
 
@@ -1330,35 +1196,6 @@ export function PlayTesterPage() {
           </div>
         ) : null}
       </div>
-
-      {status === "ready" ? (
-        <>
-          <PilotSidebar
-            side="right"
-            open={pilotSidebarOpen}
-            onOpenChange={setPilotSidebarOpen}
-            pilotRef={pilotRef}
-            cards={visPilot}
-            className="bottom-10"
-            onReleaseCard={onFaceUpPileRelease}
-            onCardContextMenu={onFloatCardContextMenu}
-            onToggleExpended={(instanceId) => onToggleExpended([instanceId])}
-            cardOverlay={pilotGenOverlay}
-          />
-          {twoSeat ? (
-            <PilotSidebar
-              side="left"
-              open={oppPilotSidebarOpen}
-              onOpenChange={setOppPilotSidebarOpen}
-              cards={visOppPilot}
-              readOnly
-              pileLabel="Opp pilot"
-              className="top-20"
-              onReleaseCard={() => undefined}
-            />
-          ) : null}
-        </>
-      ) : null}
 
       {flipAnims.map((anim) => (
         <CardFlipFlyAnimation

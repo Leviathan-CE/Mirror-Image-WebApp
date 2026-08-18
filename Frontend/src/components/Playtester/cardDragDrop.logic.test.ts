@@ -83,9 +83,27 @@ describe("resolveDropZone", () => {
     expect(resolveDropZone(20, 120, rects, "battlefield")).toBe(PLAY_ZONE.hand)
   })
 
-  it("does not offer hand as a target when dragging from hand", () => {
-    expect(DROP_ZONE_PRIORITY.hand.includes(PLAY_ZONE.hand)).toBe(false)
-    expect(resolveDropZone(20, 120, rects, "hand")).toBeNull()
+  it("keeps a drop on the floating hand window in hand, not the field under it", () => {
+    expect(DROP_ZONE_PRIORITY.hand.includes(PLAY_ZONE.hand)).toBe(true)
+    const overlap: DropZoneRects = {
+      [PLAY_ZONE.hand]: rect(0, 0, 200, 200),
+      [PLAY_ZONE.battlefield]: rect(0, 0, 200, 200),
+    }
+    expect(resolveDropZone(50, 50, overlap, "hand")).toBe(PLAY_ZONE.hand)
+  })
+
+  it("lands a hand drop on the shared field, not a second band", () => {
+    expect(resolveDropZone(100, 70, rects, "hand")).toBe(PLAY_ZONE.battlefield)
+  })
+
+  it("does not offer stockpile as a separate drop target", () => {
+    expect(DROP_ZONE_PRIORITY.hand.includes(PLAY_ZONE.stockpile)).toBe(false)
+    expect(DROP_ZONE_PRIORITY.battlefield.includes(PLAY_ZONE.stockpile)).toBe(
+      false
+    )
+    expect(DROP_ZONE_PRIORITY.faceUpPile.includes(PLAY_ZONE.stockpile)).toBe(
+      false
+    )
   })
 
   it("returns null when nothing is hit", () => {

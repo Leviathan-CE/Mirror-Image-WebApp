@@ -17,6 +17,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react"
 
+import { LOCAL_SEAT, PLAY_PILE_SIZE, type PlayerSlot } from "@/components/Playtester/playtesterConstants"
 import { PlayingCard } from "@/components/Playtester/PlayingCard"
 import {
   type CardCounterKind,
@@ -28,9 +29,9 @@ import { cn } from "@/lib/utils"
 import { CardEnlargeOverlay } from "./CardLargeOverlay"
 
 const DRAG_THRESHOLD_PX = 5
-/** Matches PlayingCard default footprint (w-28 h-36). */
-const CARD_W = 112
-const CARD_H = 144
+/** Same face as the side-column piles (`lg`). */
+const CARD_W = PLAY_PILE_SIZE.lg.w
+const CARD_H = PLAY_PILE_SIZE.lg.h
 
 export type CardMove = {
   instanceId: string
@@ -38,7 +39,7 @@ export type CardMove = {
   y: number
 }
 
-/** Shared callbacks for battlefield + stockpile FreeFloat mounts. */
+/** Shared callbacks for the in-play FreeFloat mount. */
 export type FloatSurfaceActions = {
   onMoveCards: (moves: CardMove[]) => void
   onBringToFront: (instanceId: string) => void
@@ -67,8 +68,13 @@ export type FreeFloatSurfaceProps = {
   ) => void
   /** Right-click empty surface (not on a card). */
   onEmptyContextMenu?: (clientX: number, clientY: number) => void
-  /** False for the opponent's half of the field — look, don't touch. */
+  /** False for a fully read-only mount. Opponent cards on a shared field
+   *  still skip drag via `localSeat`. */
   interactive?: boolean
+  /** Drop the cyan frame so this surface can sit inside a shared playmat. */
+  plain?: boolean
+  /** Only this seat's cards can be dragged / selected. */
+  localSeat?: PlayerSlot
 }
 
 type DragState = {
@@ -184,6 +190,8 @@ export function FreeFloatSurface({
   onCardsReleased,
   onEmptyContextMenu,
   interactive = true,
+  plain = false,
+  localSeat = LOCAL_SEAT,
 }: FreeFloatSurfaceProps) {
   const {
     onMoveCards,
@@ -207,6 +215,8 @@ export function FreeFloatSurface({
   onMoveCardsRef.current = onMoveCards
   const onCardsReleasedRef = useRef(onCardsReleased)
   onCardsReleasedRef.current = onCardsReleased
+  const localSeatRef = useRef(localSeat)
+  localSeatRef.current = localSeat
   const cardDragListenersRef = useRef<{
     move: (event: PointerEvent) => void
     up: (event: PointerEvent) => void
@@ -311,7 +321,11 @@ export function FreeFloatSurface({
 
       const box = normalizeRect(current.x0, current.y0, current.x1, current.y1)
       const hit = cardsRef.current
-        .filter((card) => rectsIntersect(box, cardHitBox(card)))
+        .filter(
+          (card) =>
+            card.owner === localSeatRef.current &&
+            rectsIntersect(box, cardHitBox(card))
+        )
         .map((card) => card.instanceId)
       onSelectionRef.current?.(hit)
     }
@@ -327,6 +341,7 @@ export function FreeFloatSurface({
     card: PlayingCardInstance
   ) {
     if (!interactive) return
+    if (card.owner !== localSeat) return
     // Counter badges own their clicks — do not select / drag / expend.
     if (
       event.target instanceof Element &&
@@ -514,7 +529,10 @@ export function FreeFloatSurface({
       <div
         ref={surfaceRef}
         className={cn(
-          "relative h-full min-h-0 w-full overflow-hidden border border-cyan-500/25 bg-black/40",
+          "relative h-full min-h-0 w-full overflow-hidden",
+          plain
+            ? "border-0 bg-transparent"
+            : "border border-cyan-500/25 bg-black/40",
           className
         )}
         onPointerDown={onSurfacePointerDown}
@@ -535,7 +553,9 @@ export function FreeFloatSurface({
                 "absolute touch-none transition-transform duration-250 ease-out",
                 isDragging
                   ? "z-20 cursor-grabbing opacity-0"
-                  : "z-10 cursor-grab",
+                  : card.owner === localSeat
+                    ? "z-10 cursor-grab"
+                    : "z-10 cursor-default",
                 // Keep rotate while dragging (source is opacity-0). Dropping
                 // rotate-90 during drag made it re-apply on release and replay
                 // the expend spin via transition-transform.
@@ -547,6 +567,8 @@ export function FreeFloatSurface({
               style={{
                 left: card.x ?? 0,
                 top: card.y ?? 0,
+                width: CARD_W,
+                height: CARD_H,
               }}
               onPointerDown={(event) => onCardPointerDown(event, card)}
               onContextMenu={(event) => {
@@ -559,6 +581,7 @@ export function FreeFloatSurface({
                 )
               }}
               onDoubleClick={(event) => {
+                if (card.owner !== localSeat) return
                 if (
                   event.target instanceof Element &&
                   event.target.closest("[data-counter-badge]")
@@ -577,6 +600,7 @@ export function FreeFloatSurface({
             >
               <PlayingCard
                 card={card}
+                className="h-full w-full"
                 isSelected={card.selected}
                 onCounterAdjust={
                   onCardCounterAdjust
@@ -618,9 +642,18 @@ export function FreeFloatSurface({
             card.expended && "rotate-90",
             card.selected && "ring-2 ring-cyan-300"
           )}
-          style={{ left, top }}
+          style={{
+            left,
+            top,
+            width: CARD_W,
+            height: CARD_H,
+          }}
         >
-          <PlayingCard card={card} isSelected={card.selected} />
+          <PlayingCard
+            card={card}
+            className="h-full w-full"
+            isSelected={card.selected}
+          />
         </div>
       ))}
     </>
