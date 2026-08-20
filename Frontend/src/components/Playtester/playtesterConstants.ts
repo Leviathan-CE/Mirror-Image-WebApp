@@ -83,8 +83,8 @@ export const DECK_SEARCH_SIZE = {
 } as const
 
 /**
- * Floating hand window (px) — drag the header to move, the bottom-right
- * grip to resize. Lives on the shared field.
+ * Hand window sizing (px). Used as the default footprint for opening homes
+ * on the field, and `defaultHeight` is the docked hand strip height.
  */
 export const HAND_FLOAT_SIZE = {
   minWidth: 280,
@@ -94,6 +94,9 @@ export const HAND_FLOAT_SIZE = {
   maxHeight: 420,
   defaultHeight: 176,
 } as const
+
+/** Layout height of the docked hand strip (title bar + card row). */
+export const HAND_DOCK_HEIGHT_PX = HAND_FLOAT_SIZE.defaultHeight
 
 /**
  * Hand card footprint (px). Height tracks the window; width follows 3:4.

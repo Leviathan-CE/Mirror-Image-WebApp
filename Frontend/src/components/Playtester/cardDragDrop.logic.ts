@@ -81,12 +81,25 @@ export function pointInZoneRect(
   )
 }
 
+export type ZoneRectPad = {
+  padLeft?: number
+  padRight?: number
+  padTop?: number
+  padBottom?: number
+}
+
 export function elementToZoneRect(
-  el: HTMLElement | null | undefined
+  el: HTMLElement | null | undefined,
+  pad?: ZoneRectPad
 ): ZoneRect | null {
   if (!el) return null
   const r = el.getBoundingClientRect()
-  return { left: r.left, top: r.top, right: r.right, bottom: r.bottom }
+  return {
+    left: r.left - (pad?.padLeft ?? 0),
+    top: r.top - (pad?.padTop ?? 0),
+    right: r.right + (pad?.padRight ?? 0),
+    bottom: r.bottom + (pad?.padBottom ?? 0),
+  }
 }
 
 export type DropZoneRects = Partial<Record<DropZone, ZoneRect | null>>

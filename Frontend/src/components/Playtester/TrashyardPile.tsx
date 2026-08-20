@@ -20,10 +20,8 @@ import {
 
 import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import { PlayingCard } from "@/components/Playtester/PlayingCard"
-import {
-  PLAY_PILE_SIZE,
-  type PlayPileSize,
-} from "@/components/Playtester/playtesterConstants"
+import { scalePlayPile } from "@/components/Playtester/playPileScale.logic"
+import type { PlayPileSize } from "@/components/Playtester/playtesterConstants"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
@@ -88,6 +86,11 @@ export type TrashyardPileProps = {
    * Omit on trashyard / dismantled — those cards are not in-play.
    */
   onToggleExpended?: (instanceId: string) => void
+  /**
+   * Uniform shrink for short viewports (1 = full size). Applied to the face
+   * and fan peek so layout + drag rects stay aligned.
+   */
+  scale?: number
 }
 
 type TrashDrag = {
@@ -112,10 +115,11 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       onPileContextMenu,
       cardOverlay,
       onToggleExpended,
+      scale = 1,
     },
     ref
   ) {
-    const { w: cardW, h: cardH, peek: fanPeek } = PLAY_PILE_SIZE[size]
+    const { w: cardW, h: cardH, peek: fanPeek } = scalePlayPile(size, scale)
     const revealShift = Math.round(cardH * 0.75)
     const cardBoxClass = "h-full w-full"
 
@@ -246,6 +250,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
     return (
       <>
         <div
+          ref={ref}
           className={cn(
             "relative z-40 flex shrink-0 flex-col items-center self-stretch",
             className
@@ -253,7 +258,6 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
           style={{ width: cardW }}
         >
           <div
-            ref={ref}
             className="relative shrink-0 overflow-visible"
             style={{ width: cardW, height: cardH }}
             onMouseEnter={() => {

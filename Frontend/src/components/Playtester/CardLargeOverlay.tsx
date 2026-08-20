@@ -1,7 +1,7 @@
 /**
- * Full-viewport card art preview.
- * - Middle-mouse hold: parent sets open while held (no onDismiss).
- * - Context-menu Zoom: pass onDismiss — click backdrop / Escape closes.
+ * Centered card-art peek (middle-mouse hold or sticky Zoom).
+ * Sized to read clearly without filling the viewport — see `--enlarge-w`
+ * in DeckCardStack.css.
  * Portaled to document.body so zone stacking cannot cover it.
  */
 
