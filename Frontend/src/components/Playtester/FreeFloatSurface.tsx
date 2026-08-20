@@ -17,7 +17,8 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react"
 
-import { LOCAL_SEAT, PLAY_PILE_SIZE, type PlayerSlot } from "@/components/Playtester/playtesterConstants"
+import { LOCAL_SEAT, type PlayerSlot } from "@/components/Playtester/playtesterConstants"
+import { scalePlayPile } from "@/components/Playtester/playPileScale.logic"
 import { PlayingCard } from "@/components/Playtester/PlayingCard"
 import {
   type CardCounterKind,
@@ -29,9 +30,6 @@ import { cn } from "@/lib/utils"
 import { CardEnlargeOverlay } from "./CardLargeOverlay"
 
 const DRAG_THRESHOLD_PX = 5
-/** Same face as the side-column piles (`lg`). */
-const CARD_W = PLAY_PILE_SIZE.lg.w
-const CARD_H = PLAY_PILE_SIZE.lg.h
 
 export type CardMove = {
   instanceId: string
@@ -61,11 +59,15 @@ export type FreeFloatSurfaceProps = {
   className?: string
   actions: FloatSurfaceActions
   onSelectionChange?: (instanceIds: string[]) => void
+  /**
+   * Pointer-up after a drag. Return `true` if the cards left this surface
+   * (hand / pilot / trash / …) so we skip committing an on-field position.
+   */
   onCardsReleased?: (
     instanceIds: string[],
     clientX: number,
     clientY: number
-  ) => void
+  ) => boolean | void
   /** Right-click empty surface (not on a card). */
   onEmptyContextMenu?: (clientX: number, clientY: number) => void
   /** False for a fully read-only mount. Opponent cards on a shared field
@@ -75,6 +77,11 @@ export type FreeFloatSurfaceProps = {
   plain?: boolean
   /** Only this seat's cards can be dragged / selected. */
   localSeat?: PlayerSlot
+  /**
+   * Same shrink factor as the side-column piles (1 = full `lg`). Keeps
+   * battlefield faces proportional to Pilot / Deck on short viewports.
+   */
+  cardScale?: number
 }
 
 type DragState = {
@@ -120,22 +127,30 @@ function rectsIntersect(
   )
 }
 
-function cardHitBox(card: PlayingCardInstance) {
+function cardHitBox(
+  card: PlayingCardInstance,
+  cardW: number,
+  cardH: number
+) {
   const x = card.x ?? 0
   const y = card.y ?? 0
   if (card.expended) {
-    const size = Math.max(CARD_W, CARD_H)
+    const size = Math.max(cardW, cardH)
     return { left: x, top: y, right: x + size, bottom: y + size }
   }
-  return { left: x, top: y, right: x + CARD_W, bottom: y + CARD_H }
+  return { left: x, top: y, right: x + cardW, bottom: y + cardH }
 }
 
-function cardFootprint(card: PlayingCardInstance | undefined) {
+function cardFootprint(
+  card: PlayingCardInstance | undefined,
+  cardW: number,
+  cardH: number
+) {
   if (card?.expended) {
-    const size = Math.max(CARD_W, CARD_H)
+    const size = Math.max(cardW, cardH)
     return { w: size, h: size }
   }
-  return { w: CARD_W, h: CARD_H }
+  return { w: cardW, h: cardH }
 }
 
 /**
@@ -146,7 +161,9 @@ function clampMovesToSurface(
   moves: CardMove[],
   cards: PlayingCardInstance[],
   surfaceW: number,
-  surfaceH: number
+  surfaceH: number,
+  cardW: number,
+  cardH: number
 ): CardMove[] {
   if (moves.length === 0 || surfaceW <= 0 || surfaceH <= 0) return moves
 
@@ -157,7 +174,7 @@ function clampMovesToSurface(
   let maxY = -Infinity
 
   for (const move of moves) {
-    const { w, h } = cardFootprint(byId.get(move.instanceId))
+    const { w, h } = cardFootprint(byId.get(move.instanceId), cardW, cardH)
     minX = Math.min(minX, move.x)
     minY = Math.min(minY, move.y)
     maxX = Math.max(maxX, move.x + w)
@@ -192,6 +209,7 @@ export function FreeFloatSurface({
   interactive = true,
   plain = false,
   localSeat = LOCAL_SEAT,
+  cardScale = 1,
 }: FreeFloatSurfaceProps) {
   const {
     onMoveCards,
@@ -200,6 +218,9 @@ export function FreeFloatSurface({
     onCardContextMenu,
     onCardCounterAdjust,
   } = actions
+  const { w: cardW, h: cardH } = scalePlayPile("lg", cardScale)
+  const cardSizeRef = useRef({ w: cardW, h: cardH })
+  cardSizeRef.current = { w: cardW, h: cardH }
   const surfaceRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragState | null>(null)
   const marqueeRef = useRef<MarqueeState | null>(null)
@@ -320,11 +341,12 @@ export function FreeFloatSurface({
       }
 
       const box = normalizeRect(current.x0, current.y0, current.x1, current.y1)
+      const { w, h } = cardSizeRef.current
       const hit = cardsRef.current
         .filter(
           (card) =>
             card.owner === localSeatRef.current &&
-            rectsIntersect(box, cardHitBox(card))
+            rectsIntersect(box, cardHitBox(card, w, h))
         )
         .map((card) => card.instanceId)
       onSelectionRef.current?.(hit)
@@ -444,37 +466,48 @@ export function FreeFloatSurface({
       const moved = current.moved
       const groupIdsAtRelease = current.groupIds
 
-      // Commit positions while ghosts still match the cursor, then clear drag.
+      // Prefer a zone drop (pilot / hand / trash / …) over parking on the
+      // field edge — otherwise a near-miss on the side piles leaves the card
+      // stuck on the playmat and feels like the slot rejected the drop.
       if (moved) {
-        const point = clientToLocal(clientX, clientY)
-        const primaryX = point.x - current.offsetX
-        const primaryY = point.y - current.offsetY
-        const originPrimary = current.origins[current.instanceId] ?? {
-          x: 0,
-          y: 0,
-        }
-        const dx = primaryX - originPrimary.x
-        const dy = primaryY - originPrimary.y
-
-        const proposed: CardMove[] = groupIdsAtRelease.map((id) => {
-          const origin = current.origins[id] ?? { x: 0, y: 0 }
-          return {
-            instanceId: id,
-            x: origin.x + dx,
-            y: origin.y + dy,
-          }
-        })
-
-        const surface = surfaceRef.current
-        const bounds = surface?.getBoundingClientRect()
-        const moves = clampMovesToSurface(
-          proposed,
-          cardsRef.current,
-          bounds?.width ?? 0,
-          bounds?.height ?? 0
+        const rezoned = onCardsReleasedRef.current?.(
+          groupIdsAtRelease,
+          clientX,
+          clientY
         )
-        onMoveCardsRef.current(moves)
-        onCardsReleasedRef.current?.(groupIdsAtRelease, clientX, clientY)
+        if (!rezoned) {
+          const point = clientToLocal(clientX, clientY)
+          const primaryX = point.x - current.offsetX
+          const primaryY = point.y - current.offsetY
+          const originPrimary = current.origins[current.instanceId] ?? {
+            x: 0,
+            y: 0,
+          }
+          const dx = primaryX - originPrimary.x
+          const dy = primaryY - originPrimary.y
+
+          const proposed: CardMove[] = groupIdsAtRelease.map((id) => {
+            const origin = current.origins[id] ?? { x: 0, y: 0 }
+            return {
+              instanceId: id,
+              x: origin.x + dx,
+              y: origin.y + dy,
+            }
+          })
+
+          const surface = surfaceRef.current
+          const bounds = surface?.getBoundingClientRect()
+          const { w, h } = cardSizeRef.current
+          const moves = clampMovesToSurface(
+            proposed,
+            cardsRef.current,
+            bounds?.width ?? 0,
+            bounds?.height ?? 0,
+            w,
+            h
+          )
+          onMoveCardsRef.current(moves)
+        }
       }
 
       dragRef.current = null
@@ -567,8 +600,8 @@ export function FreeFloatSurface({
               style={{
                 left: card.x ?? 0,
                 top: card.y ?? 0,
-                width: CARD_W,
-                height: CARD_H,
+                width: cardW,
+                height: cardH,
               }}
               onPointerDown={(event) => onCardPointerDown(event, card)}
               onContextMenu={(event) => {
@@ -645,8 +678,8 @@ export function FreeFloatSurface({
           style={{
             left,
             top,
-            width: CARD_W,
-            height: CARD_H,
+            width: cardW,
+            height: cardH,
           }}
         >
           <PlayingCard

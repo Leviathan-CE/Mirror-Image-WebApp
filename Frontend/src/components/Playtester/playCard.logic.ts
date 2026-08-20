@@ -27,6 +27,7 @@ export type PlayingCardInstance = {
   zone: PlayZone
   x?: number
   y?: number
+
   /** Mirror Image “tapped” / used this turn. */
   expended: boolean
   selected?: boolean

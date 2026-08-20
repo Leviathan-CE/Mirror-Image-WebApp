@@ -96,6 +96,18 @@ describe("resolveDropZone", () => {
     expect(resolveDropZone(100, 70, rects, "hand")).toBe(PLAY_ZONE.battlefield)
   })
 
+  it("can target the pilot slot when dragging from the field", () => {
+    const rects: DropZoneRects = {
+      [PLAY_ZONE.pilot]: rect(900, 40, 1032, 216),
+      [PLAY_ZONE.hand]: rect(200, 400, 800, 560),
+    }
+    // Just left of the pilot face — inside the padded drop reach.
+    expect(resolveDropZone(880, 100, {
+      ...rects,
+      [PLAY_ZONE.pilot]: rect(900 - 48, 40, 1032, 216),
+    }, "battlefield")).toBe(PLAY_ZONE.pilot)
+  })
+
   it("does not offer stockpile as a separate drop target", () => {
     expect(DROP_ZONE_PRIORITY.hand.includes(PLAY_ZONE.stockpile)).toBe(false)
     expect(DROP_ZONE_PRIORITY.battlefield.includes(PLAY_ZONE.stockpile)).toBe(

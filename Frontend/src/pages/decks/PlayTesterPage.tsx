@@ -29,13 +29,17 @@ import {
 } from "@/components/Playtester/CardFlipFlyAnimation"
 import {
   PLAY_ZONE,
-  PILOT_PILE,
   HAND_CARD_SIZE,
+  HAND_DOCK_HEIGHT_PX,
   SELECTABLE_ACTION_ZONES,
   PLAYER_SLOT,
   otherSeat,
   type PlayerSlot,
 } from "@/components/Playtester/playtesterConstants"
+import {
+  pileColumnScale,
+  scalePlayPile,
+} from "@/components/Playtester/playPileScale.logic"
 import { viewFor } from "@/components/Playtester/fogView.logic"
 import { intentAllowed } from "@/components/Playtester/playNet.logic"
 import { usePlayNet } from "@/components/Playtester/usePlayNet"
@@ -66,7 +70,7 @@ import {
   type FloatSurfaceActions,
 } from "@/components/Playtester/FreeFloatSurface"
 import { LifeCounter } from "@/components/Playtester/LifeCounter"
-import { FloatingHandPanel } from "@/components/Playtester/FloatingHandPanel"
+import { DockedHandStrip } from "@/components/Playtester/DockedHandStrip"
 import { PlayerHand } from "@/components/Playtester/PlayerHand"
 import { TrashyardPile } from "@/components/Playtester/TrashyardPile"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
@@ -161,7 +165,10 @@ export function PlayTesterPage() {
   const [vsDraft, setVsDraft] = useState("")
   const [playNotice, setPlayNotice] = useState<string | null>(null)
   const [fieldSizePx, setFieldSizePx] = useState({ width: 0, height: 0 })
+  /** Side-column piles shrink when the play row is shorter than 4× lg faces. */
+  const [pileScale, setPileScale] = useState(1)
   const surfaceRef = useRef<HTMLDivElement>(null)
+  const playRowRef = useRef<HTMLDivElement>(null)
   const stockpileRef = useRef<HTMLDivElement>(null)
   const pilotRef = useRef<HTMLDivElement>(null)
   const handRef = useRef<HTMLDivElement>(null)
@@ -414,6 +421,18 @@ export function PlayTesterPage() {
     const sync = () => {
       const rect = el.getBoundingClientRect()
       setFieldSizePx({ width: rect.width, height: rect.height })
+    }
+    sync()
+    const observer = new ResizeObserver(sync)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [status, twoSeat])
+
+  useEffect(() => {
+    const el = playRowRef.current
+    if (!el) return
+    const sync = () => {
+      setPileScale(pileColumnScale(el.getBoundingClientRect().height))
     }
     sync()
     const observer = new ResizeObserver(sync)
@@ -997,17 +1016,21 @@ export function PlayTesterPage() {
 
         {status === "ready" ? (
           <div className="relative z-0 flex min-h-0 flex-1 flex-col gap-1">
-            <div className="flex min-h-0 min-w-0 flex-1">
+            <div
+              ref={playRowRef}
+              className="flex min-h-0 min-w-0 flex-1 gap-2 overflow-hidden"
+            >
               {twoSeat ? (
                 <div
-                  className="z-40 flex shrink-0 flex-col items-center justify-start gap-1 py-1 opacity-90"
-                  style={{ width: PILOT_PILE.w }}
+                  className="z-40 flex shrink-0 flex-col items-center justify-start gap-1 overflow-hidden py-1 opacity-90"
+                  style={{ width: scalePlayPile("lg", pileScale).w }}
                 >
                   <div className="rotate-180">
                     <TrashyardPile
                       cards={visOppPilot}
                       label="Opp pilot"
                       size="lg"
+                      scale={pileScale}
                       onReleaseCard={() => undefined}
                     />
                   </div>
@@ -1017,6 +1040,7 @@ export function PlayTesterPage() {
                       label="Opp library"
                       busy
                       size="lg"
+                      scale={pileScale}
                     />
                   </div>
                   <div className="rotate-180">
@@ -1024,6 +1048,7 @@ export function PlayTesterPage() {
                       cards={visOppTrash}
                       label="Opp trash"
                       size="lg"
+                      scale={pileScale}
                       onReleaseCard={() => undefined}
                     />
                   </div>
@@ -1032,6 +1057,7 @@ export function PlayTesterPage() {
                       cards={visOppDismantled}
                       label="Opp dismantled"
                       size="lg"
+                      scale={pileScale}
                       onReleaseCard={() => undefined}
                     />
                   </div>
@@ -1039,6 +1065,23 @@ export function PlayTesterPage() {
               ) : null}
 
               <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
+                {twoSeat ? (
+                  <DockedHandStrip
+                    heightPx={HAND_DOCK_HEIGHT_PX}
+                    label={`Opp hand · ${visOppHand.length}`}
+                  >
+                    <div className="h-full min-h-0 rotate-180">
+                      <PlayerHand
+                        className="h-full min-h-0"
+                        cards={visOppHand}
+                        hideFaces
+                        interactive={false}
+                        embedded
+                        onReleaseCards={() => undefined}
+                      />
+                    </div>
+                  </DockedHandStrip>
+                ) : null}
                 <div
                   ref={surfaceRef}
                   className="relative z-0 min-h-0 min-w-0 flex-1"
@@ -1046,6 +1089,7 @@ export function PlayTesterPage() {
                   <FreeFloatSurface
                     plain
                     localSeat={localSeat}
+                    cardScale={pileScale}
                     className="h-full min-h-0 w-full"
                     cards={visInPlay}
                     actions={floatSurfaceActions}
@@ -1055,70 +1099,55 @@ export function PlayTesterPage() {
                       onZoneEmptyContextMenu("battlefield", x, y)
                     }
                   />
-                  {twoSeat ? (
-                    <FloatingHandPanel
-                      parentSize={fieldSizePx}
-                      anchor="top"
-                      label={`Opp hand · ${visOppHand.length}`}
-                      center={
-                        <LifeCounter
-                          life={oppLife}
-                          onAdjust={() => undefined}
-                          className="min-h-12 px-6 py-1 text3xl"
-                        />
+                  {/* Life overlays the field — no layout row. Bottom-right ≈ above hand / by trash. */}
+                  <div className="pointer-events-auto absolute right-1 bottom-1 z-50">
+                    <LifeCounter
+                      life={life}
+                      onAdjust={(delta) =>
+                        setLife((prev) => Math.max(0, prev + delta))
                       }
-                    >
-                      <div className="h-full min-h-0 rotate-180">
-                        <PlayerHand
-                          className="h-full min-h-0"
-                          cards={visOppHand}
-                          hideFaces
-                          interactive={false}
-                          embedded
-                          onReleaseCards={() => undefined}
-                        />
-                      </div>
-                    </FloatingHandPanel>
-                  ) : null}
-                  <FloatingHandPanel
-                    parentSize={fieldSizePx}
-                    anchor="bottom"
-                    panelRef={handRef}
-                    label={`Hand · ${visHand.length}`}
-                    center={
-                      <LifeCounter
-                        life={life}
-                        onAdjust={(delta) =>
-                          setLife((prev) => Math.max(0, prev + delta))
-                        }
-                        className="min-h-12 px-6 py-1 text-4xl"
-                      />
-                    }
-                  >
-                    <PlayerHand
-                      className="h-full min-h-0"
-                      cards={visHand}
-                      embedded
-                      onReleaseCards={onHandRelease}
-                      onCardContextMenu={onHandContextMenu}
-                      onEmptyContextMenu={(x, y) =>
-                        onZoneEmptyContextMenu("hand", x, y)
-                      }
-                      onSelectionChange={onHandSelectionChange}
+                      className="min-h-10 min-w-16 px-3 py-1 text-2xl"
                     />
-                  </FloatingHandPanel>
+                  </div>
+                  {twoSeat ? (
+                    <div className="pointer-events-auto absolute top-1 left-1 z-50">
+                      <LifeCounter
+                        life={oppLife}
+                        onAdjust={() => undefined}
+                        className="min-h-10 min-w-16 px-3 py-1 text-2xl"
+                      />
+                    </div>
+                  ) : null}
                 </div>
+                <DockedHandStrip
+                  panelRef={handRef}
+                  heightPx={HAND_DOCK_HEIGHT_PX}
+                  label={`Hand · ${visHand.length}`}
+                >
+                  <PlayerHand
+                    className="h-full min-h-0"
+                    cards={visHand}
+                    embedded
+                    onReleaseCards={onHandRelease}
+                    onCardContextMenu={onHandContextMenu}
+                    onEmptyContextMenu={(x, y) =>
+                      onZoneEmptyContextMenu("hand", x, y)
+                    }
+                    onSelectionChange={onHandSelectionChange}
+                  />
+                </DockedHandStrip>
               </div>
 
               <div
-                className="z-40 flex shrink-0 flex-col items-center justify-end gap-1 py-1"
-                style={{ width: PILOT_PILE.w }}
+                className="z-40 flex shrink-0 flex-col items-center justify-end gap-1 overflow-hidden py-1"
+                style={{ width: scalePlayPile("lg", pileScale).w }}
               >
                 <TrashyardPile
                   ref={pilotRef}
                   cards={visPilot}
                   label="Pilot"
                   size="lg"
+                  scale={pileScale}
                   onReleaseCard={onFaceUpPileRelease}
                   onCardContextMenu={onFloatCardContextMenu}
                   onToggleExpended={(instanceId) =>
@@ -1130,6 +1159,7 @@ export function PlayTesterPage() {
                   ref={deckRef}
                   count={libraryCount}
                   size="lg"
+                  scale={pileScale}
                   onClickDraw={onDrawFromDeck}
                   onTopCardRelease={onDeckTopRelease}
                   onContextMenu={onDeckContextMenu}
@@ -1142,6 +1172,7 @@ export function PlayTesterPage() {
                   cards={visTrash}
                   label="Trashyard"
                   size="lg"
+                  scale={pileScale}
                   onReleaseCard={onFaceUpPileRelease}
                   onCardContextMenu={onFloatCardContextMenu}
                   onPileContextMenu={(x, y) =>
@@ -1153,6 +1184,7 @@ export function PlayTesterPage() {
                   cards={visDismantled}
                   label="Dismantled"
                   size="lg"
+                  scale={pileScale}
                   onReleaseCard={onFaceUpPileRelease}
                   onCardContextMenu={onFloatCardContextMenu}
                   onPileContextMenu={(x, y) =>

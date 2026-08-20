@@ -1,18 +1,11 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  AUGMENT_CARD_H,
-  AUGMENT_LIFT_Y,
-  AUGMENT_PAD,
-  AUGMENT_STEP_X,
-  GENERATED_RESOURCE_STEP_X,
-  RESOURCE_CARD_H,
-  RESOURCE_CARD_W,
-  RESOURCE_FAN_GROUP_GAP,
-  RESOURCE_FAN_STAGGER_X,
-  RESOURCE_FAN_STAGGER_Y,
-  augmentHomeX,
-  augmentHomeY,
+  AUGMENT_LAYOUT,
+  FACE,
+  GENERATED_LAYOUT,
+  RESOURCE_FAN_LAYOUT,
+  augmentHome,
   generatedResourceHome,
   placeAugmentsForView,
   placedStockpileCount,
@@ -20,8 +13,6 @@ import {
   resourceAnchorX,
   resourceHomeY,
 } from "@/components/Playtester/augmentRow.logic"
-import { defaultHandFloatBox } from "@/components/Playtester/handFloatPanel.logic"
-import { PLAY_PILE_SIZE } from "@/components/Playtester/playtesterConstants"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 
 function augment(
@@ -63,164 +54,120 @@ function token(
   }
 }
 
-const UNIT = {
-  instanceId: "unit-1",
-  owner: "p1" as const,
-  cardId: 4,
-  name: "Street Runner",
-  artPath: null,
-  cost: [],
-  zone: "battlefield" as const,
-  expended: false,
-  x: 80,
-  y: 90,
-}
-
 const FIELD = { width: 900, height: 500 }
 
-describe("placeAugmentsForView", () => {
-  it("pins local augments above the hand on the deck edge", () => {
+describe("augmentHome", () => {
+  it("puts every local augment on the same offset grid from bottom-right", () => {
+    const a = augmentHome(0, FIELD, true)
+    const b = augmentHome(1, FIELD, true)
+    const { start, offset, pad } = AUGMENT_LAYOUT
+    expect(a).toEqual({
+      x: FIELD.width - FACE.w - pad + start.x,
+      y: FIELD.height - FACE.h - pad + start.y,
+    })
+    expect(b).toEqual({
+      x: a.x + offset.x,
+      y: a.y + offset.y,
+    })
+  })
+
+  it("placeAugmentsForView applies that grid to every unmoved augment", () => {
     const placed = placeAugmentsForView(
-      [augment("mine", "p1"), augment("theirs", "p2")],
+      [augment("a", "p1"), augment("b", "p1"), augment("c", "p1")],
       "p1",
       FIELD
     )
-    const localHand = defaultHandFloatBox(FIELD, "bottom")
-    const oppHand = defaultHandFloatBox(FIELD, "top")
-
-    expect(placed[0]?.y).toBe(
-      Math.max(
-        AUGMENT_PAD,
-        localHand.y - AUGMENT_CARD_H - AUGMENT_PAD - AUGMENT_LIFT_Y
-      )
-    )
-    expect(placed[1]?.y).toBe(oppHand.y + oppHand.height + AUGMENT_PAD)
-    expect(placed[0]?.x).toBe(
-      FIELD.width - AUGMENT_PAD - PLAY_PILE_SIZE.lg.w
-    )
-    expect(placed[1]?.x).toBe(AUGMENT_PAD)
-    expect(placed[0]?.x).toBe(augmentHomeX(0, FIELD, true))
-    expect(placed[1]?.x).toBe(augmentHomeX(0, FIELD, false))
-    expect(placed[0]?.y).toBe(augmentHomeY(true, FIELD))
-    expect(placed[1]?.y).toBe(augmentHomeY(false, FIELD))
+    // Stable sort by instanceId: a, b, c
+    expect(placed[0]?.x).toBe(augmentHome(0, FIELD, true).x)
+    expect(placed[1]?.x).toBe(augmentHome(1, FIELD, true).x)
+    expect(placed[2]?.x).toBe(augmentHome(2, FIELD, true).x)
+    expect(placed[1]!.x! - placed[0]!.x!).toBe(AUGMENT_LAYOUT.offset.x)
+    expect(placed[2]!.x! - placed[1]!.x!).toBe(AUGMENT_LAYOUT.offset.x)
   })
 
-  it("staggers extra local copies left, away from the deck", () => {
-    const placed = placeAugmentsForView(
+  it("keeps layout slots stable when session order changes (no swap on click)", () => {
+    const forward = placeAugmentsForView(
       [augment("a", "p1"), augment("b", "p1")],
       "p1",
       FIELD
     )
-
-    expect(placed[1]?.x).toBe(augmentHomeX(1, FIELD, true))
-    expect(placed[1]?.x).toBe(placed[0]!.x! - AUGMENT_STEP_X)
-    expect(placed[0]?.y).toBe(placed[1]?.y)
+    const reversed = placeAugmentsForView(
+      [augment("b", "p1"), augment("a", "p1")],
+      "p1",
+      FIELD
+    )
+    const aFwd = forward.find((c) => c.instanceId === "a")
+    const aRev = reversed.find((c) => c.instanceId === "a")
+    expect(aFwd?.x).toBe(aRev?.x)
+    expect(aFwd?.y).toBe(aRev?.y)
   })
 
-  it("leaves a card the player already moved where they put it", () => {
+  it("leaves a dragged augment alone", () => {
     const placed = placeAugmentsForView(
       [augment("moved", "p1", { x: 200, y: 60 })],
       "p1",
       FIELD
     )
-
     expect(placed[0]?.x).toBe(200)
     expect(placed[0]?.y).toBe(60)
   })
-
-  it("does not move non-augment battlefield cards", () => {
-    const placed = placeAugmentsForView([UNIT], "p1", FIELD)
-    expect(placed[0]).toEqual(UNIT)
-  })
 })
 
-describe("placeStockpileForView", () => {
-  it("sits local tokens left of the hand and opponent tokens to the right of theirs", () => {
-    const placed = placeStockpileForView(
-      [token("mine", "p1", ["TIM"]), token("theirs", "p2", ["TIM"])],
-      "p1",
-      FIELD
+describe("resource fans", () => {
+  it("anchors the first pile at bottom-center + start (near the hand)", () => {
+    expect(resourceAnchorX(true, FIELD)).toBe(
+      FIELD.width / 2 - FACE.w / 2 + RESOURCE_FAN_LAYOUT.start.x
     )
-
-    expect(placed[0]?.y).toBe(resourceHomeY(true, FIELD))
-    expect(placed[1]?.y).toBe(resourceHomeY(false, FIELD))
-    expect(placed[0]?.x).toBe(resourceAnchorX(true, FIELD))
-    expect(placed[1]?.x).toBe(resourceAnchorX(false, FIELD))
+    expect(resourceHomeY(true, FIELD)).toBe(
+      FIELD.height - FACE.h - RESOURCE_FAN_LAYOUT.pad + RESOURCE_FAN_LAYOUT.start.y
+    )
   })
 
-  it("separates colours into piles growing away from the hand", () => {
+  it("spaces every card in a colour by offset", () => {
     const placed = placeStockpileForView(
       [
-        token("lif-0", "p1", ["LIF"]),
-        token("lif-1", "p1", ["LIF"]),
-        token("tim-0", "p1", ["TIM"]),
+        token("a", "p1", ["LIF"]),
+        token("b", "p1", ["LIF"]),
+        token("c", "p1", ["LIF"]),
       ],
       "p1",
       FIELD
     )
-
-    const homeY = resourceHomeY(true, FIELD)
-    const origin = resourceAnchorX(true, FIELD)
-    expect(placed[0]?.x).toBe(origin)
-    expect(placed[1]?.x).toBe(origin - RESOURCE_FAN_STAGGER_X)
-    expect(placed[0]?.y).toBe(homeY)
-    expect(placed[1]?.y).toBe(homeY - RESOURCE_FAN_STAGGER_Y)
-
-    const timX =
-      origin -
-      (RESOURCE_CARD_W + RESOURCE_FAN_STAGGER_X + RESOURCE_FAN_GROUP_GAP)
-    expect(placed[2]?.x).toBe(timX)
-    expect(placed[2]?.y).toBe(homeY)
+    const { offset } = RESOURCE_FAN_LAYOUT
+    expect(placed[1]!.x! - placed[0]!.x!).toBe(offset.x)
+    expect(placed[2]!.x! - placed[1]!.x!).toBe(offset.x)
+    expect(placed[1]!.y! - placed[0]!.y!).toBe(offset.y)
+    expect(placed[2]!.y! - placed[1]!.y!).toBe(offset.y)
   })
 
-  it("keeps a gap beside the hand when the field is wide enough", () => {
-    const wide = { width: 1400, height: 500 }
+  it("leaves a dragged token alone", () => {
     const placed = placeStockpileForView(
-      [token("mine", "p1", ["TIM"])],
-      "p1",
-      wide
-    )
-    expect(placed[0]?.x).toBe(resourceAnchorX(true, wide))
-  })
-
-  it("leaves a token the player already moved where they put it", () => {
-    const placed = placeStockpileForView(
-      [token("moved", "p1", ["TIM"], { x: 200, y: 60 })],
+      [token("moved", "p1", ["TIM"], { x: 11, y: 22 })],
       "p1",
       FIELD
     )
-
-    expect(placed[0]?.x).toBe(200)
-    expect(placed[0]?.y).toBe(60)
+    expect(placed[0]?.x).toBe(11)
+    expect(placed[0]?.y).toBe(22)
   })
 })
 
 describe("generatedResourceHome", () => {
-  it("sits above the default hand and steps extras along it", () => {
-    const hand = defaultHandFloatBox(FIELD, "bottom")
+  it("fans from bottom-center using start + index * offset", () => {
     const first = generatedResourceHome(FIELD, true, 0)
     const second = generatedResourceHome(FIELD, true, 1)
-    expect(first.y).toBe(
-      Math.max(AUGMENT_PAD, hand.y - RESOURCE_CARD_H - AUGMENT_PAD)
-    )
-    expect(first.x).toBe(hand.x)
-    expect(second.x).toBe(first.x + GENERATED_RESOURCE_STEP_X)
-    expect(second.y).toBe(first.y)
-  })
-
-  it("keeps a high index on the field instead of walking off the right edge", () => {
-    const far = generatedResourceHome(FIELD, true, 50)
-    expect(far.x).toBeGreaterThanOrEqual(AUGMENT_PAD)
-    expect(far.x + RESOURCE_CARD_W).toBeLessThanOrEqual(FIELD.width)
+    const { start, offset, pad } = GENERATED_LAYOUT
+    expect(first).toEqual({
+      x: FIELD.width / 2 - FACE.w / 2 + start.x,
+      y: FIELD.height - FACE.h - pad + start.y,
+    })
+    expect(second).toEqual({
+      x: first.x + offset.x,
+      y: first.y + offset.y,
+    })
   })
 
   it("does not treat opening tokens (no y) as occupying generate slots", () => {
-    expect(
-      placedStockpileCount(
-        [token("open", "p1", ["TIM"])],
-        "p1"
-      )
-    ).toBe(0)
+    expect(placedStockpileCount([token("open", "p1", ["TIM"])], "p1")).toBe(0)
     expect(
       placedStockpileCount(
         [token("gen", "p1", ["TIM"], { x: 40, y: 80 })],

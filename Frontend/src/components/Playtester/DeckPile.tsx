@@ -16,10 +16,8 @@ import {
 
 import { sharedImages } from "@/assets/shared"
 import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
-import {
-  PLAY_PILE_SIZE,
-  type PlayPileSize,
-} from "@/components/Playtester/playtesterConstants"
+import { scalePlayPile } from "@/components/Playtester/playPileScale.logic"
+import type { PlayPileSize } from "@/components/Playtester/playtesterConstants"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
@@ -29,8 +27,6 @@ const STACK_STEP_X = 3
 const STACK_STEP_Y = 3
 const TOP_LIFT_PX = 14
 const DRAG_THRESHOLD_PX = 5
-/** Layout must reserve this — under-cards paint outside the face box. */
-const STACK_PAD_X = MAX_UNDER_LAYERS * STACK_STEP_X
 
 export type DeckPileProps = {
   count: number
@@ -53,6 +49,11 @@ export type DeckPileProps = {
   topRevealed?: boolean
   /** Card footprint. Use `lg` to match the pilot column. */
   size?: PlayPileSize
+  /**
+   * Uniform shrink for short viewports (1 = full size). Applied to the face,
+   * stack pad, and lift so layout + drag rects stay aligned.
+   */
+  scale?: number
 }
 
 const FLIP_MS = 450
@@ -167,10 +168,15 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
       topCard = null,
       topRevealed = false,
       size = "md",
+      scale = 1,
     },
     ref
   ) {
-    const { w: CARD_W, h: CARD_H } = PLAY_PILE_SIZE[size]
+    const { w: CARD_W, h: CARD_H } = scalePlayPile(size, scale)
+    const stackStepX = Math.max(1, Math.round(STACK_STEP_X * scale))
+    const stackStepY = Math.max(1, Math.round(STACK_STEP_Y * scale))
+    const stackPadX = MAX_UNDER_LAYERS * stackStepX
+    const topLiftPx = Math.max(1, Math.round(TOP_LIFT_PX * scale))
     const [hovered, setHovered] = useState(false)
     const [drag, setDrag] = useState<TopDrag | null>(null)
     const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
@@ -279,7 +285,7 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
             "relative flex shrink-0 flex-col items-center self-stretch",
             className
           )}
-          style={{ width: CARD_W + STACK_PAD_X }}
+          style={{ width: CARD_W + stackPadX }}
           onContextMenu={(event) => {
             event.preventDefault()
             event.stopPropagation()
@@ -293,7 +299,7 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
           <div
             className="relative shrink-0 overflow-visible"
             style={{
-              width: CARD_W + STACK_PAD_X,
+              width: CARD_W + stackPadX,
               height: CARD_H,
             }}
           >
@@ -310,7 +316,7 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
                       key={`under-${i}`}
                       className="absolute inset-0"
                       style={{
-                        transform: `translate(${depth * STACK_STEP_X}px, ${-depth * STACK_STEP_Y}px)`,
+                        transform: `translate(${depth * stackStepX}px, ${-depth * stackStepY}px)`,
                         zIndex: i + 1,
                       }}
                     >
@@ -345,7 +351,7 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
                   style={{
                     transform:
                       interactive && hovered && !drag?.moved
-                        ? `translateY(-${TOP_LIFT_PX}px)`
+                        ? `translateY(-${topLiftPx}px)`
                         : "translateY(0px)",
                     transition: drag?.moved
                       ? undefined

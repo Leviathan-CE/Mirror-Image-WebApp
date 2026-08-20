@@ -57,12 +57,17 @@ export type UseCardDragDropArgs = {
   pushFlipAnim: (anim: Omit<FlipFlyAnim, "id">) => string
 }
 
+/** Reach a few px into the field so side-column piles are easier to hit. */
+const SIDE_PILE_HIT_PAD_X = 48
+
 function readDropRects(zoneRefs: PlaytesterZoneRefs): DropZoneRects {
   return {
     [PLAY_ZONE.library]: elementToZoneRect(zoneRefs.deck.current),
     [PLAY_ZONE.trashyard]: elementToZoneRect(zoneRefs.trash.current),
     [PLAY_ZONE.dismantled]: elementToZoneRect(zoneRefs.dismantled.current),
-    [PLAY_ZONE.pilot]: elementToZoneRect(zoneRefs.pilot.current),
+    [PLAY_ZONE.pilot]: elementToZoneRect(zoneRefs.pilot.current, {
+      padLeft: SIDE_PILE_HIT_PAD_X,
+    }),
     [PLAY_ZONE.hand]: elementToZoneRect(zoneRefs.hand.current),
     [PLAY_ZONE.battlefield]: elementToZoneRect(zoneRefs.surface.current),
   }
@@ -288,32 +293,32 @@ export function useCardDragDrop({
     instanceIds: string[],
     clientX: number,
     clientY: number
-  ) {
-    applyDrop("hand", instanceIds, clientX, clientY)
+  ): boolean {
+    return applyDrop("hand", instanceIds, clientX, clientY)
   }
 
   function onBattlefieldRelease(
     instanceIds: string[],
     clientX: number,
     clientY: number
-  ) {
-    applyDrop("battlefield", instanceIds, clientX, clientY)
+  ): boolean {
+    return applyDrop("battlefield", instanceIds, clientX, clientY)
   }
 
   function onStockpileRelease(
     instanceIds: string[],
     clientX: number,
     clientY: number
-  ) {
-    applyDrop("stockpile", instanceIds, clientX, clientY)
+  ): boolean {
+    return applyDrop("stockpile", instanceIds, clientX, clientY)
   }
 
   function onFaceUpPileRelease(
     instanceId: string,
     clientX: number,
     clientY: number
-  ) {
-    applyDrop("faceUpPile", [instanceId], clientX, clientY)
+  ): boolean {
+    return applyDrop("faceUpPile", [instanceId], clientX, clientY)
   }
 
   function onLibraryCardRelease(
