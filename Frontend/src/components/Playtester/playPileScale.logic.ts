@@ -1,12 +1,12 @@
 /**
- * Side-column piles (pilot / deck / trash / dismantled) are a fixed stack of
- * `lg` faces. On a short viewport that stack is taller than the play row and
- * the top (pilot) clips. One scale factor shrinks every face so the column
- * fits the measured row height.
+ * Side-column piles (deck / trash / dismantled) are a fixed stack of `lg`
+ * faces. On a short viewport that stack is taller than the play row and the
+ * top clips. One scale factor shrinks every face so the column fits the
+ * measured row height.
  *
  * Important: labels / gaps / padding do **not** shrink with the face. Scale
  * only the face stack, or the column stays taller than `available` and still
- * clips (classic "scale looks right on paper, pilot still cut off" bug).
+ * clips (classic "scale looks right on paper, top pile still cut off" bug).
  */
 
 import {
@@ -14,8 +14,8 @@ import {
   type PlayPileSize,
 } from "@/components/Playtester/playtesterConstants"
 
-/** How many piles sit in one side column. */
-export const SIDE_COLUMN_PILE_COUNT = 4
+/** How many piles sit in one side column (deck / trash / dismantled). */
+export const SIDE_COLUMN_PILE_COUNT = 3
 
 /** Label under each pile (text-[10px] + mt-1). Does not scale with the face. */
 export const LABEL_H_PX = 20
@@ -28,7 +28,7 @@ export const COLUMN_FIT_SLACK_PX = 8
 
 /**
  * Floor so faces stay tappable. Low enough that a ~500px-tall play row can
- * still fit four piles once labels/gaps are reserved.
+ * still fit three piles once labels/gaps are reserved.
  */
 export const PILE_COLUMN_SCALE_MIN = 0.38
 

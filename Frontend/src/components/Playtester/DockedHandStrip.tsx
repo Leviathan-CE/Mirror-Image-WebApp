@@ -2,6 +2,9 @@
  * Docked hand strip — sits in the layout under (or above) the field.
  * Not a floating window: no drag-to-move / corner resize; height is fixed
  * by the parent so PlayerHand can size cards from `clientHeight`.
+ *
+ * Label floats over the card row (no dedicated header chrome) so more of
+ * the strip height goes to faces.
  */
 
 import { type ReactNode, type Ref } from "react"
@@ -28,16 +31,18 @@ export function DockedHandStrip({
     <div
       ref={panelRef}
       className={cn(
-        "z-40 flex shrink-0 flex-col overflow-hidden border border-cyan-500/40 bg-black/80",
+        "relative z-40 flex shrink-0 flex-col overflow-hidden border border-cyan-500/40 bg-black/80",
         className
       )}
       style={{ height: heightPx }}
     >
-      <div className="flex shrink-0 items-center border-b border-cyan-500/25 px-2 py-1">
-        <p className="min-w-0 truncate font-mono text-[10px] tracking-wide text-cyan-100/80">
-          {label}
-        </p>
-      </div>
+      <p
+        className="pointer-events-none absolute top-1 left-2 z-20 max-w-[calc(100%-1rem)] truncate font-mono text-[10px] tracking-wide text-cyan-100/80 drop-shadow-[0_1px_1px_rgba(0,0,0,0.85)]"
+        aria-hidden
+      >
+        {label}
+      </p>
+      <span className="sr-only">{label}</span>
       <div className="relative min-h-0 flex-1">{children}</div>
     </div>
   )

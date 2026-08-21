@@ -45,6 +45,11 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
   const [errorText, setErrorText] = useState<string | null>(null)
 
   const wsRef = useRef<WebSocket | null>(null)
+  /** Bumped on every connect attempt so a superseded socket's onclose is ignored. */
+  const connectGenRef = useRef(0)
+  const joiningRef = useRef(false)
+  /** After Leave room — block URL auto-join until the user creates/joins again. */
+  const blockAutoJoinRef = useRef(false)
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const dcRef = useRef<RTCDataChannel | null>(null)
   const iceQueueRef = useRef<RTCIceCandidateInit[]>([])
@@ -226,9 +231,13 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
       const auth = tokenRef.current
       if (!auth) {
         setErrorText("Sign in to join a room.")
+        joiningRef.current = false
         return
       }
-      wsRef.current?.close()
+      const gen = ++connectGenRef.current
+      const prev = wsRef.current
+      wsRef.current = null
+      prev?.close()
       closePeer()
       setCode(roomCode)
       setStatus("connecting")
@@ -242,18 +251,26 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
       wsRef.current = ws
 
       ws.onopen = () => {
+        if (gen !== connectGenRef.current) return
+        joiningRef.current = false
         setStatus("waiting")
       }
       ws.onclose = () => {
+        if (gen !== connectGenRef.current) return
         if (wsRef.current === ws) {
           wsRef.current = null
-          setStatus((prev) => (prev === "idle" ? prev : "disconnected"))
+          joiningRef.current = false
+          setStatus((prevStatus) =>
+            prevStatus === "idle" ? prevStatus : "disconnected"
+          )
         }
       }
       ws.onerror = () => {
+        if (gen !== connectGenRef.current) return
         setErrorText("Room socket failed.")
       }
       ws.onmessage = (event) => {
+        if (gen !== connectGenRef.current) return
         let raw: unknown
         try {
           raw = JSON.parse(String(event.data))
@@ -333,6 +350,7 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
       setErrorText("Load a deck first.")
       return
     }
+    blockAutoJoinRef.current = false
     isHostRef.current = true
     setIsHost(true)
     setSeat("p1")
@@ -360,27 +378,40 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
         setErrorText("Sign in to join a room.")
         return
       }
-      isHostRef.current = false
-      setIsHost(false)
-      setSeat("p2")
+      if (joiningRef.current && codeRef.current === trimmed) return
+      blockAutoJoinRef.current = false
+      joiningRef.current = true
+      // Reconnect keeps host flag if this client created the room.
+      if (!isHostRef.current) {
+        setIsHost(false)
+        setSeat("p2")
+      }
       connectSocket(trimmed)
     },
     [connectSocket]
   )
 
   const leaveRoom = useCallback(() => {
+    blockAutoJoinRef.current = true
+    connectGenRef.current += 1
+    joiningRef.current = false
     wsRef.current?.close()
     wsRef.current = null
     closePeer()
     setCode(null)
     setSeat(null)
     setIsHost(false)
+    isHostRef.current = false
     setPeerDeckId(null)
     setPeerPresent(false)
     setPeerSeated(false)
     setStatus("idle")
     setTransport("connecting")
+    setErrorText(null)
   }, [closePeer])
+
+  /** URL `?room=` auto-join — false after an intentional Leave until create/join. */
+  const allowAutoJoin = useCallback(() => !blockAutoJoinRef.current, [])
 
   useEffect(() => {
     return () => {
@@ -410,6 +441,7 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
     createRoom,
     joinRoom,
     leaveRoom,
+    allowAutoJoin,
     send,
     setHandlers,
   }

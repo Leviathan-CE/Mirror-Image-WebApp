@@ -217,8 +217,14 @@ async def room_socket(ws: WebSocket, code: str, token: str | None = None) -> Non
     except WebSocketDisconnect:
         pass
     finally:
+        left = False
         async with lock:
             holder = room.seats.get(seat) if seat else None  # type: ignore[arg-type]
+            # Only announce leave if this socket is still the seat's live link.
+            # A reconnect replaces `holder.ws`; the old socket must not broadcast
+            # peer-left or the other seat thinks you disconnected.
             if holder and holder.ws is ws:
                 holder.ws = None
-        await _broadcast(room, {"type": "peer-left", "seat": seat})
+                left = True
+        if left:
+            await _broadcast(room, {"type": "peer-left", "seat": seat})

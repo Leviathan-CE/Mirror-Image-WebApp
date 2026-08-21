@@ -23,6 +23,8 @@ import {
   type DropZone,
   type DropZoneRects,
 } from "@/components/Playtester/cardDragDrop.logic"
+import { viewToWorld } from "@/components/Playtester/augmentRow.logic"
+import { PLAY_FLOAT_LOGICAL } from "@/components/Playtester/playFieldScale.logic"
 import {
   FLIP_FLY_MODE,
   LOCAL_SEAT,
@@ -57,16 +59,17 @@ export type UseCardDragDropArgs = {
   pushFlipAnim: (anim: Omit<FlipFlyAnim, "id">) => string
 }
 
-/** Reach a few px into the field so side-column piles are easier to hit. */
-const SIDE_PILE_HIT_PAD_X = 48
+/** Reach a few px into the field so side / dock piles are easier to hit. */
+const SIDE_PILE_HIT_PAD_PX = 48
 
 function readDropRects(zoneRefs: PlaytesterZoneRefs): DropZoneRects {
   return {
     [PLAY_ZONE.library]: elementToZoneRect(zoneRefs.deck.current),
     [PLAY_ZONE.trashyard]: elementToZoneRect(zoneRefs.trash.current),
     [PLAY_ZONE.dismantled]: elementToZoneRect(zoneRefs.dismantled.current),
+    // Pilot sits beside the hand — pad upward into the field, not into the hand.
     [PLAY_ZONE.pilot]: elementToZoneRect(zoneRefs.pilot.current, {
-      padLeft: SIDE_PILE_HIT_PAD_X,
+      padTop: SIDE_PILE_HIT_PAD_PX,
     }),
     [PLAY_ZONE.hand]: elementToZoneRect(zoneRefs.hand.current),
     [PLAY_ZONE.battlefield]: elementToZoneRect(zoneRefs.surface.current),
@@ -94,7 +97,14 @@ export function useCardDragDrop({
   function moveOwned(ids: string[], z: typeof PLAY_ZONE[keyof typeof PLAY_ZONE], x?: number, y?: number) {
     const i = ownIds(ids)
     if (i.length === 0) return
-    dispatch({ t: "mv", seat: localSeat, i, z, x, y })
+    let worldX = x
+    let worldY = y
+    if (x != null && y != null) {
+      const world = viewToWorld(x, y, localSeat, PLAY_FLOAT_LOGICAL)
+      worldX = world.x
+      worldY = world.y
+    }
+    dispatch({ t: "mv", seat: localSeat, i, z, x: worldX, y: worldY })
     setSessionCards((prev) => clearFloatSelection(prev))
   }
   function applyLibraryDrop(
