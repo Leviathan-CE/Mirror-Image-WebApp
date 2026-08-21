@@ -15,6 +15,7 @@
  */
 
 import {
+  useLayoutEffect,
   useEffect,
   useRef,
   useState,
@@ -244,6 +245,12 @@ export function FreeFloatSurface({
   onSelectionRef.current = onSelectionChange
   const onMoveCardsRef = useRef(onMoveCards)
   onMoveCardsRef.current = onMoveCards
+  /**
+   * Position tween must already be ON when left/top change (CSS can't
+   * animate a past paint). Keep left/top transition armed; suppress only
+   * for the paint that applies a local drop so the source doesn't "follow".
+   */
+  const suppressPosTweenRef = useRef(new Set<string>())
   const onCardsReleasedRef = useRef(onCardsReleased)
   onCardsReleasedRef.current = onCardsReleased
   const localSeatRef = useRef(localSeat)
@@ -256,6 +263,12 @@ export function FreeFloatSurface({
     move: (event: PointerEvent) => void
     up: (event: PointerEvent) => void
   } | null>(null)
+
+  // After the no-tween drop paint, clear suppress so the next remote move tweens.
+  useLayoutEffect(() => {
+    if (suppressPosTweenRef.current.size === 0) return
+    suppressPosTweenRef.current = new Set()
+  }, [cards])
 
   function detachWindowDrag() {
     const listeners = cardDragListenersRef.current
@@ -524,6 +537,9 @@ export function FreeFloatSurface({
             w,
             h
           )
+          suppressPosTweenRef.current = new Set(
+            moves.map((move) => move.instanceId)
+          )
           onMoveCardsRef.current(moves)
         }
       }
@@ -596,22 +612,22 @@ export function FreeFloatSurface({
       >
         {cards.map((card) => {
           const isDragging = Boolean(draggingIds?.has(card.instanceId))
+          const suppressPosTween = suppressPosTweenRef.current.has(
+            card.instanceId
+          )
 
           return (
             <div
               key={card.instanceId}
               className={cn(
-                // Transform only — never transition left/top (that caused post-drop "follow").
-                "absolute touch-none transition-transform duration-250 ease-out",
+                // left/top tween stays armed for remote moves; local drops
+                // suppress only position (transform still spins expend/ready).
+                "absolute touch-none ease-out",
                 isDragging
                   ? "z-20 cursor-grabbing opacity-0"
                   : card.owner === localSeat
                     ? "z-10 cursor-grab"
                     : "z-10 cursor-default",
-                // Keep rotate while dragging (source is opacity-0). Dropping
-                // rotate-90 during drag made it re-apply on release and replay
-                // the expend spin via transition-transform.
-                card.expended && "rotate-90",
                 card.selected &&
                   !isDragging &&
                   "ring-2 ring-cyan-300 ring-offset-1 ring-offset-black/80"
@@ -621,6 +637,10 @@ export function FreeFloatSurface({
                 top: card.y ?? 0,
                 width: cardW,
                 height: cardH,
+                transform: card.expended ? "rotate(90deg)" : "rotate(0deg)",
+                transition: suppressPosTween
+                  ? "transform 300ms ease-out"
+                  : "left 300ms ease-out, top 300ms ease-out, transform 300ms ease-out",
               }}
               onPointerDown={(event) => onCardPointerDown(event, card)}
               onContextMenu={(event) => {

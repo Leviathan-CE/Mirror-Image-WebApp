@@ -139,3 +139,21 @@ export function logicalFieldPaintScale(
         : 1,
   }
 }
+
+/**
+ * CSS transform scale on an ancestor (board fit-scale) makes layout px and
+ * painted px diverge. `offset*` is pre-transform; `getBoundingClientRect` is
+ * post-transform — their ratio is the paint scale for portaled ghosts.
+ */
+export function elementCssPaintScale(
+  el: Element | null
+): { sx: number; sy: number } {
+  if (!(el instanceof HTMLElement)) return { sx: 1, sy: 1 }
+  const rect = el.getBoundingClientRect()
+  const w = el.offsetWidth
+  const h = el.offsetHeight
+  return {
+    sx: finitePositive(w) ? rect.width / w : 1,
+    sy: finitePositive(h) ? rect.height / h : 1,
+  }
+}

@@ -23,6 +23,9 @@ export type PlayNetMessage =
   | { type: "fog"; view: FogView }
   | { type: "snapshot" }
   | { type: "signal"; payload: SignalPayload }
+  /** UI-only peer chrome (fog hands have no shared ids; library is a boolean lift). */
+  | { type: "hover"; zone: "hand"; index: number | null }
+  | { type: "hover"; zone: "library"; active: boolean }
   | {
       type: "welcome"
       code: string

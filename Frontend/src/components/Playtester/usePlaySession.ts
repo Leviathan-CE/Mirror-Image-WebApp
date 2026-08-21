@@ -173,6 +173,12 @@ export function usePlaySession({
     (action: SessionAction) => {
       if (netRoleRef.current === "guest") {
         sendIntentRef.current?.(action)
+        // Keep local seq behind host — fog will set seq. Optimistic so
+        // release / expend don't wait on RTT (snap-back / missed spin).
+        if (action.t === "ps" || action.t === "xp" || action.t === "rdy") {
+          const next = applyAction(snapshot(), action)
+          commitCards(next.cards)
+        }
         return snapshot()
       }
       const next = applyAction(snapshot(), action)

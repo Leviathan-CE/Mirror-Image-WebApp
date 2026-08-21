@@ -59,6 +59,7 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
     onIntent?: (action: PlayNetMessage & { type: "intent" }) => void
     onFog?: (view: Extract<PlayNetMessage, { type: "fog" }>["view"]) => void
     onSnapshot?: () => void
+    onHover?: (msg: Extract<PlayNetMessage, { type: "hover" }>) => void
   }>({})
 
   const tokenRef = useRef(token)
@@ -100,6 +101,10 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
     }
     if (raw.type === "snapshot") {
       handlersRef.current.onSnapshot?.()
+      return
+    }
+    if (raw.type === "hover") {
+      handlersRef.current.onHover?.(raw)
     }
   }, [])
 

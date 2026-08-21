@@ -13,9 +13,11 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react"
+import { createPortal } from "react-dom"
 
 import { sharedImages } from "@/assets/shared"
 import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
+import { elementCssPaintScale } from "@/components/Playtester/playFieldScale.logic"
 import { scalePlayPile } from "@/components/Playtester/playPileScale.logic"
 import type { PlayPileSize } from "@/components/Playtester/playtesterConstants"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
@@ -54,6 +56,13 @@ export type DeckPileProps = {
    * stack pad, and lift so layout + drag rects stay aligned.
    */
   scale?: number
+  /**
+   * Forced lift (peer sync). Combined with local hover so opp can see your
+   * library peek without the pile being interactive on their client.
+   */
+  lift?: boolean
+  /** Local hover changed — parent may relay over the net. */
+  onHoverChange?: (hovered: boolean) => void
 }
 
 const FLIP_MS = 450
@@ -169,6 +178,8 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
       topRevealed = false,
       size = "md",
       scale = 1,
+      lift = false,
+      onHoverChange,
     },
     ref
   ) {
@@ -181,14 +192,19 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
     const [drag, setDrag] = useState<TopDrag | null>(null)
     const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
     const dragRef = useRef<TopDrag | null>(null)
+    const measureRef = useRef<HTMLDivElement | null>(null)
     const onReleaseRef = useRef(onTopCardRelease)
     const onClickRef = useRef(onClickDraw)
+    const onHoverChangeRef = useRef(onHoverChange)
     onReleaseRef.current = onTopCardRelease
     onClickRef.current = onClickDraw
+    onHoverChangeRef.current = onHoverChange
 
     const interactive = !busy && count > 0
+    const showLift = (lift || hovered) && !drag?.moved && count > 0
     const underCount =
       count <= 1 ? 0 : Math.min(MAX_UNDER_LAYERS, count - 1)
+    const { sx: paintSx, sy: paintSy } = elementCssPaintScale(measureRef.current)
 
     useEffect(() => {
       if (!drag) return
@@ -210,6 +226,7 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
         dragRef.current = next
         setDrag(next)
         setHovered(false)
+        onHoverChangeRef.current?.(false)
       }
 
       function onUp(event: PointerEvent) {
@@ -218,6 +235,7 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
         dragRef.current = null
         setDrag(null)
         setHovered(false)
+        onHoverChangeRef.current?.(false)
 
         const moved = current.moved
         if (!moved) {
@@ -281,6 +299,7 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
     return (
       <>
         <div
+          ref={measureRef}
           className={cn(
             "relative flex shrink-0 flex-col items-center self-stretch",
             className
@@ -338,10 +357,16 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
                   aria-disabled={!interactive}
                   onPointerDown={onTopPointerDown}
                   onMouseEnter={() => {
-                    if (!dragRef.current && interactive) setHovered(true)
+                    if (!dragRef.current && interactive) {
+                      setHovered(true)
+                      onHoverChangeRef.current?.(true)
+                    }
                   }}
                   onMouseLeave={() => {
-                    if (!dragRef.current) setHovered(false)
+                    if (!dragRef.current) {
+                      setHovered(false)
+                      onHoverChangeRef.current?.(false)
+                    }
                   }}
                   className={cn(
                     "absolute inset-0 z-20 touch-none select-none p-0",
@@ -349,10 +374,9 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
                     drag?.moved && "cursor-grabbing opacity-30"
                   )}
                   style={{
-                    transform:
-                      interactive && hovered && !drag?.moved
-                        ? `translateY(-${topLiftPx}px)`
-                        : "translateY(0px)",
+                    transform: showLift
+                      ? `translateY(-${topLiftPx}px)`
+                      : "translateY(0px)",
                     transition: drag?.moved
                       ? undefined
                       : "transform 150ms ease-out",
@@ -379,19 +403,22 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
           </p>
         </div>
 
-        {drag?.moved ? (
-          <div
-            className="pointer-events-none fixed z-[80] -translate-x-1/2 -translate-y-1/2"
-            style={{
-              left: drag.ghostX,
-              top: drag.ghostY,
-              width: CARD_W,
-              height: CARD_H,
-            }}
-          >
-            <CardBackFace className="border-cyan-400/60 shadow-lg shadow-cyan-500/20" />
-          </div>
-        ) : null}
+        {drag?.moved
+          ? createPortal(
+              <div
+                className="pointer-events-none fixed z-[80] -translate-x-1/2 -translate-y-1/2"
+                style={{
+                  left: drag.ghostX,
+                  top: drag.ghostY,
+                  width: CARD_W * paintSx,
+                  height: CARD_H * paintSy,
+                }}
+              >
+                <CardBackFace className="border-cyan-400/60 shadow-lg shadow-cyan-500/20" />
+              </div>,
+              document.body
+            )
+          : null}
 
         <CardEnlargeOverlay
           open={enlarged != null}
