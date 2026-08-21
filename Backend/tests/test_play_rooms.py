@@ -48,12 +48,25 @@ def test_create_and_get_room(client: TestClient) -> None:
     assert listed.json()["seats"]["p2"] is None
 
 
-def test_second_create_returns_same_room(client: TestClient) -> None:
+def test_second_create_while_connected_returns_same_room(client: TestClient) -> None:
     first = client.post("/play/rooms", json={"deck_id": 1}, headers=_auth(3)).json()
-    second = client.post("/play/rooms", json={"deck_id": 9}, headers=_auth(3)).json()
-    assert first["code"] == second["code"]
-    listed = client.get(f"/play/rooms/{first['code']}", headers=_auth(3))
-    assert listed.json()["seats"]["p1"]["deck_id"] == 9
+    code = first["code"]
+    with client.websocket_connect(f"/play/ws/rooms/{code}?token={_token(3)}"):
+        second = client.post("/play/rooms", json={"deck_id": 9}, headers=_auth(3)).json()
+        assert second["code"] == code
+        listed = client.get(f"/play/rooms/{code}", headers=_auth(3))
+        assert listed.json()["seats"]["p1"]["deck_id"] == 9
+
+
+def test_create_after_leave_mints_new_room(client: TestClient) -> None:
+    """Leave closes the socket; Create must not hand back the dead room code."""
+    first = client.post("/play/rooms", json={"deck_id": 1}, headers=_auth(4)).json()
+    code = first["code"]
+    with client.websocket_connect(f"/play/ws/rooms/{code}?token={_token(4)}"):
+        pass  # disconnect = leave
+    second = client.post("/play/rooms", json={"deck_id": 2}, headers=_auth(4)).json()
+    assert second["code"] != code
+    assert second["seat"] == "p1"
 
 
 def test_create_after_guesting_seats_you_as_host(client: TestClient) -> None:

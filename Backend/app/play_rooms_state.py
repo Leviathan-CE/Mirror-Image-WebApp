@@ -119,3 +119,19 @@ def remember_user(user_id: int, code: str) -> None:
 
 def forget_user(user_id: int) -> None:
     _user_room.pop(user_id, None)
+
+
+def drop_room_if_empty(room: PlayRoom) -> None:
+    """Remove a room nobody is seated in anymore."""
+    if room.occupied_seats():
+        return
+    _rooms.pop(room.code, None)
+
+
+def vacate_seat(room: PlayRoom, seat: Seat, user_id: int) -> None:
+    """Clear a seat and user→room map after disconnect / leave."""
+    holder = room.seats.get(seat)
+    if holder is not None and holder.user_id == user_id:
+        room.seats[seat] = None
+    forget_user(user_id)
+    drop_room_if_empty(room)

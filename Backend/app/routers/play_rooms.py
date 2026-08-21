@@ -17,6 +17,7 @@ from app.play_rooms_state import (
     RoomSeat,
     Seat,
     code_for_user,
+    drop_room_if_empty,
     forget_user,
     live_room,
     lock,
@@ -54,20 +55,26 @@ async def create_room(
         room = room_for_user(user_id)
         if room is not None:
             host_seat = room.seats["p1"]
-            if host_seat and host_seat.user_id == user_id:
+            # Only reuse the room if you are still the live host socket.
+            # After Leave, ws is None but the seat used to linger — that made
+            # "Create room" return the dead code and the next WS look lost.
+            if (
+                host_seat
+                and host_seat.user_id == user_id
+                and host_seat.ws is not None
+            ):
                 host_seat.deck_id = body.deck_id
                 return {
                     "code": room.code,
                     "seat": "p1",
                     "deck_id": body.deck_id,
                 }
-            # Creating must always seat you as host. A stale guest seat in
-            # someone else's room would otherwise hand you p2 and mirror your
-            # own table to the opponent row.
-            guest_seat = room.seats["p2"]
-            if guest_seat and guest_seat.user_id == user_id:
-                room.seats["p2"] = None
+            # Stale host / guest seat after disconnect — free it and mint new.
+            for seat_name, holder in list(room.seats.items()):
+                if holder is not None and holder.user_id == user_id:
+                    room.seats[seat_name] = None
             forget_user(user_id)
+            drop_room_if_empty(room)
         code = new_code()
         room = PlayRoom(code=code, host_user_id=user_id, created_at=time.time())
         room.seats["p1"] = RoomSeat(user_id=user_id, deck_id=body.deck_id)
@@ -152,8 +159,23 @@ async def room_socket(ws: WebSocket, code: str, token: str | None = None) -> Non
             elif holder is None:
                 old = code_for_user(user_id)
                 if old and old != code:
-                    await ws.close(code=4409)
-                    return
+                    stale = live_room(old)
+                    # Block only if still live-connected elsewhere. A Leave
+                    # that only cleared ws used to leave the map pointing at
+                    # the old code and 4409'd every new join/create socket.
+                    still_live = False
+                    if stale is not None:
+                        for other_holder in stale.occupied_seats():
+                            if (
+                                other_holder.user_id == user_id
+                                and other_holder.ws is not None
+                            ):
+                                still_live = True
+                                break
+                    if still_live:
+                        await ws.close(code=4409)
+                        return
+                    forget_user(user_id)
                 room.seats["p2"] = RoomSeat(user_id=user_id)
                 room.seats["p2"].ws = ws
                 seat = "p2"
@@ -210,7 +232,7 @@ async def room_socket(ws: WebSocket, code: str, token: str | None = None) -> Non
                     skip=ws,
                 )
                 continue
-            if kind in ("signal", "action", "intent", "event", "fog", "snapshot", "hover"):
+            if kind in ("signal", "action", "intent", "event", "fog", "snapshot", "hover", "fx"):
                 payload = {**raw, "fromSeat": seat}
                 await _broadcast(room, payload, skip=ws)
                 continue
@@ -223,6 +245,8 @@ async def room_socket(ws: WebSocket, code: str, token: str | None = None) -> Non
             # Only announce leave if this socket is still the seat's live link.
             # A reconnect replaces `holder.ws`; the old socket must not broadcast
             # peer-left or the other seat thinks you disconnected.
+            # Keep the seat + user→room map so Reconnect can reclaim; Create
+            # room only reuses when `ws is not None` (see create_room).
             if holder and holder.ws is ws:
                 holder.ws = None
                 left = True
