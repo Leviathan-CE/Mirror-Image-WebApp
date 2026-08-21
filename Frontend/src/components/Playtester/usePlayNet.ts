@@ -60,6 +60,7 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
     onFog?: (view: Extract<PlayNetMessage, { type: "fog" }>["view"]) => void
     onSnapshot?: () => void
     onHover?: (msg: Extract<PlayNetMessage, { type: "hover" }>) => void
+    onFx?: (fx: Extract<PlayNetMessage, { type: "fx" }>["fx"]) => void
   }>({})
 
   const tokenRef = useRef(token)
@@ -105,6 +106,10 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
     }
     if (raw.type === "hover") {
       handlersRef.current.onHover?.(raw)
+      return
+    }
+    if (raw.type === "fx") {
+      handlersRef.current.onFx?.(raw.fx)
     }
   }, [])
 
@@ -265,9 +270,14 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
         if (wsRef.current === ws) {
           wsRef.current = null
           joiningRef.current = false
-          setStatus((prevStatus) =>
-            prevStatus === "idle" ? prevStatus : "disconnected"
-          )
+          setStatus((prevStatus) => {
+            if (prevStatus === "idle") return prevStatus
+            // Closed before welcome — usually stale seat map / 4409, not mid-game drop.
+            if (prevStatus === "connecting") {
+              setErrorText("Could not enter room. Leave and create/join again.")
+            }
+            return "disconnected"
+          })
         }
       }
       ws.onerror = () => {

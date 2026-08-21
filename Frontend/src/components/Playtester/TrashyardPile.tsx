@@ -93,6 +93,11 @@ export type TrashyardPileProps = {
    * and fan peek so layout + drag rects stay aligned.
    */
   scale?: number
+  /**
+   * Which way the hover fan grows from the resting face.
+   * Opp piles at the top of the board use `"down"` so cards stay on-screen.
+   */
+  fanDirection?: "up" | "down"
 }
 
 type TrashDrag = {
@@ -118,11 +123,13 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       cardOverlay,
       onToggleExpended,
       scale = 1,
+      fanDirection = "up",
     },
     ref
   ) {
     const { w: cardW, h: cardH, peek: fanPeek } = scalePlayPile(size, scale)
     const revealShift = Math.round(cardH * 0.75)
+    const fanDown = fanDirection === "down"
     const cardBoxClass = "h-full w-full"
     const measureRef = useRef<HTMLDivElement | null>(null)
 
@@ -261,7 +268,8 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
             else if (ref) ref.current = node
           }}
           className={cn(
-            "relative z-40 flex shrink-0 flex-col items-center self-stretch",
+            "relative flex shrink-0 flex-col items-center self-stretch",
+            expanded ? "z-50" : "z-40",
             className
           )}
           style={{ width: cardW }}
@@ -282,7 +290,8 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
             {cards.length === 0 ? (
               <div
                 className={cn(
-                  "absolute inset-x-0 bottom-0 flex items-center justify-center",
+                  "absolute inset-x-0 flex items-center justify-center",
+                  fanDown ? "top-0" : "bottom-0",
                   "border border-dashed border-cyan-500/25 bg-black/40 clip-angled"
                 )}
                 style={{ height: cardH }}
@@ -302,7 +311,8 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
                   dragging?.instanceId === instanceId && dragging.moved
                 const isHovered =
                   hoveredIndex === index && !dragging?.moved
-                // Higher index = on top of the hovered card → slide up to reveal.
+                // Higher index sits further along the fan; covering cards slide
+                // away from the resting edge to uncover the hovered face.
                 const isCovering =
                   hoveredIndex != null &&
                   index > hoveredIndex &&
@@ -320,7 +330,9 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
                         : "cursor-grab"
                     )}
                     style={{
-                      bottom: index * fanPeek,
+                      ...(fanDown
+                        ? { top: index * fanPeek }
+                        : { bottom: index * fanPeek }),
                       width: cardW,
                       height: cardH,
                       zIndex: index + 1,
@@ -328,7 +340,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
                         isHovered
                           ? "scale(1.06)"
                           : isCovering
-                            ? `translateY(-${revealShift}px)`
+                            ? `translateY(${fanDown ? revealShift : -revealShift}px)`
                             : "translateY(0) scale(1)",
                         group.display.expended ? "rotate(90deg)" : "",
                       ]
@@ -380,7 +392,8 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
             ) : (
               <div
                 className={cn(
-                  "absolute inset-x-0 bottom-0 touch-none select-none origin-center transition-transform duration-250 ease-out",
+                  "absolute inset-x-0 touch-none select-none origin-center transition-transform duration-250 ease-out",
+                  fanDown ? "top-0" : "bottom-0",
                   dragging?.moved ? "cursor-grabbing opacity-30" : "cursor-grab",
                   topCard?.expended && "rotate-90"
                 )}

@@ -25,6 +25,7 @@ import {
 } from "@/components/Playtester/cardDragDrop.logic"
 import { viewToWorld } from "@/components/Playtester/augmentRow.logic"
 import { PLAY_FLOAT_LOGICAL } from "@/components/Playtester/playFieldScale.logic"
+import type { PlayFx } from "@/components/Playtester/playNet.logic"
 import {
   FLIP_FLY_MODE,
   LOCAL_SEAT,
@@ -57,6 +58,7 @@ export type UseCardDragDropArgs = {
   }
   isFlipFlying: () => boolean
   pushFlipAnim: (anim: Omit<FlipFlyAnim, "id">) => string
+  emitFx?: (fx: PlayFx) => void
 }
 
 /** Reach a few px into the field so side / dock piles are easier to hit. */
@@ -87,6 +89,7 @@ export function useCardDragDrop({
   clientToStockpileLocal,
   isFlipFlying,
   pushFlipAnim,
+  emitFx,
 }: UseCardDragDropArgs) {
   function ownIds(ids: string[]): string[] {
     return ids.filter((id) =>
@@ -130,6 +133,7 @@ export function useCardDragDrop({
       const deckRect = zoneRefs.deck.current?.getBoundingClientRect()
       const w = deckRect?.width ?? 112
       const h = deckRect?.height ?? 144
+      const sourceZone = plan.card.zone
       hideFlying?.([plan.card.instanceId])
       moveOwned([plan.card.instanceId], PLAY_ZONE.library)
       pushFlipAnim({
@@ -147,6 +151,25 @@ export function useCardDragDrop({
         },
         landZone: PLAY_ZONE.library,
         alreadyCommitted: true,
+      })
+      const fxFrom =
+        sourceZone === PLAY_ZONE.hand
+          ? "hand"
+          : sourceZone === PLAY_ZONE.stockpile
+            ? "stockpile"
+            : sourceZone === PLAY_ZONE.trashyard
+              ? "trashyard"
+              : sourceZone === PLAY_ZONE.dismantled
+                ? "dismantled"
+                : sourceZone === PLAY_ZONE.pilot
+                  ? "pilot"
+                  : "battlefield"
+      emitFx?.({
+        kind: "fly",
+        mode: FLIP_FLY_MODE.faceDown,
+        from: fxFrom,
+        to: "library",
+        faceDown: true,
       })
       return true
     }
@@ -205,6 +228,14 @@ export function useCardDragDrop({
         landZone: PLAY_ZONE.hand,
         alreadyCommitted: true,
       })
+    })
+    emitFx?.({
+      kind: "fly",
+      mode: FLIP_FLY_MODE.draw,
+      from: "battlefield",
+      to: "hand",
+      n: plan.toFlip.length,
+      faceDown: true,
     })
     return true
   }

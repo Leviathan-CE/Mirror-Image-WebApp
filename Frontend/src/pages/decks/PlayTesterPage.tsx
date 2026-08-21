@@ -23,6 +23,7 @@ import {
   type ResourceColor,
 } from "@/components/Playtester/accumulateResources.logic"
 import { CardBottomSlideAnimation } from "@/components/Playtester/CardBottomSlideAnimation"
+import { CardAccumulatePeerAnimation } from "@/components/Playtester/CardAccumulatePeerAnimation"
 import { CardTuckUnderAnimation } from "@/components/Playtester/CardTuckUnderAnimation"
 import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import {
@@ -45,7 +46,7 @@ import {
   clientToLogicalField,
 } from "@/components/Playtester/playFieldScale.logic"
 import { viewFor } from "@/components/Playtester/fogView.logic"
-import { intentAllowed } from "@/components/Playtester/playNet.logic"
+import { intentAllowed, type PlayFx } from "@/components/Playtester/playNet.logic"
 import { usePlayNet } from "@/components/Playtester/usePlayNet"
 import type { SessionAction } from "@/components/Playtester/sessionActions.logic"
 import { useCardDragDrop } from "@/components/Playtester/useCardDragDrop"
@@ -188,6 +189,14 @@ export function PlayTesterPage() {
   const deckRef = useRef<HTMLDivElement>(null)
   const trashRef = useRef<HTMLDivElement>(null)
   const dismantledRef = useRef<HTMLDivElement>(null)
+  const oppHandRef = useRef<HTMLDivElement>(null)
+  const oppDeckRef = useRef<HTMLDivElement>(null)
+  const oppTrashRef = useRef<HTMLDivElement>(null)
+  const oppDismantledRef = useRef<HTMLDivElement>(null)
+  const prevOppDrawRef = useRef<{
+    handIds: Set<string>
+    libCount: number
+  } | null>(null)
 
   const resourceByColor = useMemo(
     () => buildResourceTokenMap(resourceTokens),
@@ -322,6 +331,70 @@ export function PlayTesterPage() {
   }, [playNet.code, playNet.status, searchParams, setSearchParams])
 
   useEffect(() => {
+    if (!playNet.peerPresent) {
+      setPeerHandHoverIndex(null)
+      setPeerLibraryHover(false)
+    }
+  }, [playNet.peerPresent])
+
+  const zoneRefs = {
+    deck: deckRef,
+    hand: handRef,
+    surface: surfaceRef,
+    stockpile: stockpileRef,
+    pilot: pilotRef,
+    trash: trashRef,
+    dismantled: dismantledRef,
+    oppDeck: oppDeckRef,
+    oppHand: oppHandRef,
+    oppTrash: oppTrashRef,
+    oppDismantled: oppDismantledRef,
+  }
+
+  function emitPlayFx(fx: PlayFx) {
+    if (!netActive || !playNet.peerPresent) return
+    playNet.send({ type: "fx", fx })
+  }
+
+  const {
+    flipAnims,
+    bottomAnim,
+    accumulatePeerAnim,
+    onAccumulatePeerComplete,
+    animBusy,
+    isFlipFlying,
+    hasPendingDrawTimers,
+    pushFlipAnim,
+    tuckAnims,
+    onTuckAnimComplete,
+    queueTuckUnderDeck,
+    shuffleAnim,
+    startDeckShuffle,
+    onShuffleAnimComplete,
+    onDrawFromDeck,
+    queueDrawsToHand,
+    queueOppDrawsToHand,
+    queueDegradeToTrashyard,
+    queueStockpileTimeCompletions,
+    onDeckTopRelease,
+    onFlipAnimComplete,
+    startBottomSlide,
+    onBottomSlideComplete,
+    clearDrawTimers,
+    flyingIds,
+    hideFlying,
+    playPeerFx,
+  } = useDrawAnimations({
+    sessionCardsRef,
+    dispatch,
+    localSeat,
+    zoneRefs,
+    clientToSurfaceLocal,
+    mulliganOpen,
+    emitFx: emitPlayFx,
+  })
+
+  useEffect(() => {
     playNet.setHandlers({
       onIntent: (msg) => {
         if (!playNet.isHost) return
@@ -355,6 +428,9 @@ export function PlayTesterPage() {
           setPeerLibraryHover(msg.active)
         }
       },
+      onFx: (fx) => {
+        playPeerFx(fx)
+      },
     })
   }, [
     playNet.setHandlers,
@@ -365,57 +441,8 @@ export function PlayTesterPage() {
     applyFog,
     snapshot,
     sessionCardsRef,
+    playPeerFx,
   ])
-
-  useEffect(() => {
-    if (!playNet.peerPresent) {
-      setPeerHandHoverIndex(null)
-      setPeerLibraryHover(false)
-    }
-  }, [playNet.peerPresent])
-
-  const zoneRefs = {
-    deck: deckRef,
-    hand: handRef,
-    surface: surfaceRef,
-    stockpile: stockpileRef,
-    pilot: pilotRef,
-    trash: trashRef,
-    dismantled: dismantledRef,
-  }
-
-  const {
-    flipAnims,
-    bottomAnim,
-    animBusy,
-    isFlipFlying,
-    hasPendingDrawTimers,
-    pushFlipAnim,
-    tuckAnims,
-    onTuckAnimComplete,
-    queueTuckUnderDeck,
-    shuffleAnim,
-    startDeckShuffle,
-    onShuffleAnimComplete,
-    onDrawFromDeck,
-    queueDrawsToHand,
-    queueDegradeToTrashyard,
-    queueStockpileTimeCompletions,
-    onDeckTopRelease,
-    onFlipAnimComplete,
-    startBottomSlide,
-    onBottomSlideComplete,
-    clearDrawTimers,
-    flyingIds,
-    hideFlying,
-  } = useDrawAnimations({
-    sessionCardsRef,
-    dispatch,
-    localSeat,
-    zoneRefs,
-    clientToSurfaceLocal,
-    mulliganOpen,
-  })
 
   effectsRef.current = {
     clearDrawTimers,
@@ -439,6 +466,7 @@ export function PlayTesterPage() {
     clientToStockpileLocal,
     isFlipFlying,
     pushFlipAnim,
+    emitFx: emitPlayFx,
   })
 
   const flyingHide = useMemo(() => new Set(flyingIds), [flyingIds])
@@ -453,6 +481,30 @@ export function PlayTesterPage() {
     localSeat,
     PLAY_FLOAT_LOGICAL
   )
+
+  // Peer library → hand: slide backs when hand grows and library shrinks.
+  useEffect(() => {
+    const handIds = new Set(oppHandCards.map((c) => c.instanceId))
+    const prev = prevOppDrawRef.current
+    prevOppDrawRef.current = { handIds, libCount: oppLibraryCount }
+
+    if (!twoSeat || !prev) return
+
+    const added = oppHandCards
+      .map((c) => c.instanceId)
+      .filter((id) => !prev.handIds.has(id))
+    const libDropped = prev.libCount - oppLibraryCount
+    if (added.length === 0 || libDropped <= 0) return
+    // Opening deal / full sync into an empty hand — skip the cascade.
+    if (prev.handIds.size === 0 && added.length >= 4) return
+
+    const n = Math.min(added.length, libDropped)
+    queueOppDrawsToHand(added.slice(0, n))
+  }, [oppHandCards, oppLibraryCount, twoSeat, queueOppDrawsToHand])
+
+  useEffect(() => {
+    prevOppDrawRef.current = null
+  }, [localSeat])
   const visTrash = trashCards.filter((c) => !flyingHide.has(c.instanceId))
   const visOppTrash = oppTrashCards.filter((c) => !flyingHide.has(c.instanceId))
   const visDismantled = dismantledCards.filter(
@@ -605,6 +657,12 @@ export function PlayTesterPage() {
     colors: ResourceColor[],
     from: { x: number; y: number; w: number; h: number }
   ) {
+    // Reveal package must leave BEFORE lb — peer never sees private hand art.
+    emitPlayFx({
+      kind: "accumulate",
+      name: card.name,
+      artUrl: cardArtUrl(card.artPath, card.artVersion),
+    })
     finishAccumulateSpawn(
       card,
       colors,
@@ -612,7 +670,7 @@ export function PlayTesterPage() {
         generatedResourceHome(PLAY_FLOAT_LOGICAL, true, index)
       )
     )
-    startBottomSlide(card, from)
+    startBottomSlide(card, from, { skipEmit: true })
   }
 
   function startAccumulate(instanceId: string) {
@@ -1090,18 +1148,21 @@ export function PlayTesterPage() {
                 >
                   {/* Side column always reserved so float size stays stable. */}
                   <div
-                    className="z-40 flex shrink-0 flex-col items-center justify-start gap-1 overflow-hidden py-1 opacity-90"
+                    className="z-40 flex shrink-0 flex-col items-center justify-start gap-1 overflow-visible py-1 opacity-90"
                     style={{ width: pileW }}
                   >
                     {twoSeat ? (
                       <>
                         <TrashyardPile
+                          ref={oppTrashRef}
                           cards={visOppTrash}
                           label="Opp trash"
                           size="lg"
+                          fanDirection="down"
                           onReleaseCard={() => undefined}
                         />
                         <DeckPile
+                          ref={oppDeckRef}
                           count={oppLibraryCount}
                           label="Opp library"
                           busy
@@ -1109,9 +1170,11 @@ export function PlayTesterPage() {
                           lift={peerLibraryHover}
                         />
                         <TrashyardPile
+                          ref={oppDismantledRef}
                           cards={visOppDismantled}
                           label="Opp dismantled"
                           size="lg"
+                          fanDirection="down"
                           onReleaseCard={() => undefined}
                         />
                       </>
@@ -1148,6 +1211,7 @@ export function PlayTesterPage() {
                           </div>
                           <DockedHandStrip
                             className="min-w-0 flex-1"
+                            panelRef={oppHandRef}
                             heightPx={handDockPx}
                             label={`Opp hand · ${visOppHand.length}`}
                           >
@@ -1365,6 +1429,16 @@ export function PlayTesterPage() {
           from={bottomAnim.from}
           to={bottomAnim.to}
           onComplete={onBottomSlideComplete}
+        />
+      ) : null}
+
+      {accumulatePeerAnim ? (
+        <CardAccumulatePeerAnimation
+          key={accumulatePeerAnim.card.instanceId}
+          card={accumulatePeerAnim.card}
+          from={accumulatePeerAnim.from}
+          to={accumulatePeerAnim.to}
+          onComplete={onAccumulatePeerComplete}
         />
       ) : null}
 
