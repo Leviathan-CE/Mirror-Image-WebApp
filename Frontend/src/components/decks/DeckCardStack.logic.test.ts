@@ -6,6 +6,8 @@ import {
   DECK_CARD_MAX_COPIES,
   deckCardSelectionKey,
   isDeckCardDrag,
+  isLibraryDragPayload,
+  LIBRARY_DRAG_CATEGORY_ID,
   parseDeckCardDrag,
   type DeckCardDragPayload,
 } from "./DeckCardStack"
@@ -129,6 +131,41 @@ describe("isDeckCardDrag", () => {
       dataTransfer: fakeDataTransfer({}, ["text/plain"]),
     }
     expect(isDeckCardDrag(event)).toBe(false)
+  })
+})
+
+describe("isLibraryDragPayload", () => {
+  it("is true for the library sentinel category id", () => {
+    expect(
+      isLibraryDragPayload({
+        cardId: 42,
+        fromCategoryId: LIBRARY_DRAG_CATEGORY_ID,
+      })
+    ).toBe(true)
+  })
+
+  it("is false for real deck category ids", () => {
+    expect(
+      isLibraryDragPayload({
+        cardId: 42,
+        fromCategoryId: 3,
+      })
+    ).toBe(false)
+  })
+
+  it("parses a library payload from MIME data", () => {
+    const payload = {
+      cardId: 11,
+      fromCategoryId: LIBRARY_DRAG_CATEGORY_ID,
+    }
+    const event = {
+      dataTransfer: fakeDataTransfer({
+        [DECK_CARD_DRAG_MIME]: JSON.stringify(payload),
+      }),
+    }
+    const parsed = parseDeckCardDrag(event)
+    expect(parsed).toEqual(payload)
+    expect(parsed && isLibraryDragPayload(parsed)).toBe(true)
   })
 })
 

@@ -119,7 +119,7 @@ Activated abilities are formatted (ignoring the brackets) as `[cost 1, cost 2, e
 
 **Example:** The activated ability `[EXPEND], [COST]: Draw a card.` means to expend the card the ability is printed on, then pay 1 yellow unit of power and 1 of any color of your choice, to add the "draw a card" effect to the lock — after which it resolves.
 
-**`[EXPEND]` — Expend:** Turn a card in play 90 degrees from vertical to horizontal. If this is printed on a unit, it cannot be used the turn the unit enters play, unless the unit has Blitz. (Note: to *ready* an entity is the opposite of expending; a readied entity is vertical.)
+**`[EXPEND]` — Expend:** Turn a card in play 90 degrees from vertical to horizontal. (Note: to *ready* an entity is the opposite of expending; a readied entity is vertical.)
 
 **`[RECYCLE]` — Recycle:** Discard this card from hand to gain an effect, at any time you can play a Quick Hack, except when the lock is full.
 
@@ -134,8 +134,7 @@ Keyword abilities are STATIC abilities found on many cards. Almost always the ab
 > **! Important !** Multiple instances of the same keyword on one entity do not stack, unless the keyword has a numerical value — in that case, they add together. Any keyword with X has a numerical value.
 
 - **AIRBORNE** — Only assets with Airborne or Long Range can attack this entity.
-- **BLITZ** — This entity can attack the turn it enters the battlefield.
-- **BLOCK X** — When you block with a unit, augment, or cyberspell to reduce the damage an asset would deal, reduce it by an additional X.
+- **BLOCK X** — When you block with a unit, augment, program, technology, process, or quick hack to reduce the damage an asset would deal, reduce it by an additional X.
 - **CORROSIVE BILE** — Whenever this entity deals damage to a unit, destroy that unit.
 - **DEGRADE X** — The affected player puts the top X cards of their RIG into their trashyard. When you are the affected player, put the top X cards of your RIG into your trashyard. When card text says a player degrades X, that player is the affected player; if no player is stated, that player is you.
 - **DURABLE X** — This entity can take X damage more than its `[POWER]` rating before being defeated.
@@ -156,8 +155,7 @@ Keyword abilities are STATIC abilities found on many cards. Almost always the ab
 - **STATIONARY** — This entity cannot attack.
 - **STEALTH X** — As an additional cost to target or attack this entity with cyberspells or abilities, the acting player must pay X for each cyberspell, ability, or attack, where X is the printed cost shown on the card. If they do not pay the additional cost for targeting this entity, the attack, ability, or cyberspell does nothing.
 - **STURDY** — This entity cannot be destroyed by effects that say "destroy."
-- **SURGE** — This card can be invoked any time a Quick Hack can be invoked.
-- **TAUNT** — When an opponent makes an attack, triggers, or activates an ability, it must target this entity if able. If there are multiple units with Taunt, the attacker chooses which one to target.
+- **SURGE** — This card can be invoked any time a Quick Hack can be played.
 - **WEAKENED X** — Whenever this asset deals damage, it deals X less damage.
 
 ---
@@ -250,17 +248,22 @@ You may play (invoke) cards, activate abilities, make attacks, allocate a resour
 
 To make an attack:
 
-1. Choose unit(s) that did not enter play this turn (units with Blitz qualify), play a cyberspell strike card, or activate an augment that says it makes an attack. When attacking with multiple units, the group is considered a single attack and must share the same attack target, but each attacker is treated separately for blocking purposes.
-2. Expend the chosen unit(s), declare an attack target (another unit or an opponent), and trigger the on-attack abilities of the attacking units.
+1. Choose unit(s), play a cyberspell strike card, or activate an augment that says it makes an attack. When attacking with multiple units, the group is considered a single attack and must share the same attack target, but each attacker is treated separately for blocking purposes. Programs, technologies, processes, and quick hacks cannot attack, even if they have a threat level rating.
+2. Expend the chosen unit(s), declare an attack target (another unit or an opponent), and trigger the on-attack abilities of the attacking units. You must target a readied unit the defending player controls if able; if they control more than one, you choose which. If you cannot target a readied unit they control, you cannot make the attack.
 3. The defender may block incoming damage, in any order:
    - Expend unit(s) and redirect an attacker to the expended unit instead. You can do this even if the unit entered play this turn. When multiple units are part of a single attack, you may only redirect one of them. (Attacks redirected this way do not trigger effects like Stealth.)
    - Discard any number of cards in hand that have a `[DAMAGE]` rating; add them together and reduce the damage from an attacker of your choice by that total.
    - Expend any number of augments you control, choose an attacker for each, reduce the incoming damage by that augment's `[POWER]` rating, and add a depletion counter to that augment.
 4. Before damage is dealt, players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.
 5. Deal Preemptive Strike damage equal to your `[POWER]` + modifiers.
-6. If you did not already deal Preemptive Strike damage, deal damage equal to your `[POWER]` + modifiers to the target of your attack. If the target is readied, it deals damage back to the attacker equal to its `[POWER]` + modifiers. Damage dealt this way is simultaneous.
+6. If you did not already deal Preemptive Strike damage, deal damage equal to your `[POWER]` + modifiers to the target of your attack. Then the defending unit deals damage back:
+   - If it is **readied**, it deals damage equal to its `[POWER]` including all modifiers (such as Lethal).
+   - If it is **expended**, it deals damage equal to half its `[POWER]`, rounded down. For this damage, ignore modifiers that add damage when the unit deals damage (such as Lethal), but still apply modifiers that change its `[POWER]` directly. If there are multiple attackers, the defending player divides this damage among them as they choose.
+   Damage dealt this way is simultaneous.
 
-   If a unit's `[POWER]` is 0 or less, or if the damage dealt is greater than or equal to its `[POWER]` rating, it is defeated (the only exception being the Durable keyword). This triggers its on-defeat tag, if it has one, along with any other triggered abilities that care about being defeated. A defeated unit goes to the trashyard (discard pile).
+   After damage is dealt, check each unit that took damage. A unit is defeated if its marked damage is at least its `[POWER]` — unless it has Durable X, in which case it survives until marked damage is at least its `[POWER]` + X. When a unit is defeated this way, trigger its on-defeat tag (if any) and any other on-defeat abilities, then put it into the trashyard (discard pile).
+
+   Example: `[POWER]` 3 with Durable 2 is defeated at 5 damage, not 3.
 
 7. Any damage directed at a player that was not blocked or redirected is dealt as loss of life to that player. Then the attack ends.
 

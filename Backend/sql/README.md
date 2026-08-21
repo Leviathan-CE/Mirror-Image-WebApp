@@ -22,5 +22,10 @@ the API when a deck is created (`app/deck_defaults.py`), not by SQL.
 
 ### Existing volumes
 
-Use `migrations/` to upgrade older DBs without wiping data. See
-`migrations/README.md`.
+Use `migrations/` to upgrade older DBs without wiping data:
+
+```bash
+npm run migrate
+```
+
+See `migrations/README.md`.

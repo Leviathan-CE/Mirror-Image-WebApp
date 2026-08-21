@@ -45,9 +45,10 @@ const GENERIC_ICONS: Record<string, GameIconName> = {
   GEN6: "gen6",
   GEN7: "gen7",
   GEN8: "gen8",
+  GEN9: "gen9",
   GEN10: "gen10",
   GENX: "genX",
-  GEN: "genX",
+  GEN: "steel",
 }
 
 /** Normalize hybrid token order so POW-MET and MET-POW both resolve. */
@@ -85,7 +86,7 @@ export function costTokenToIcon(token: string): GameIconName | null {
   if (HYBRID_ALIASES[key]) return HYBRID_ALIASES[key]
   const hybrid = normalizeHybridKey(key)
   if (HYBRID_ALIASES[hybrid]) return HYBRID_ALIASES[hybrid]
-  // Unknown GEN9 etc. — closest available glyph.
+  // Unknown high GENN etc. — closest available glyph.
   if (/^GEN\d+$/.test(key)) return "genX"
   return null
 }
@@ -110,7 +111,7 @@ export function CardCostIcons({
   }
 
   return (
-    <span className={className ?? "inline-flex flex-wrap items-center gap-0.5"}>
+    <span className={className ?? "inline-flex flex-wrap items-center gap-0"}>
       {cost.map((token, index) => {
         const icon = costTokenToIcon(token)
         if (!icon) {
@@ -127,7 +128,7 @@ export function CardCostIcons({
           <GameIcon
             key={`${token}-${index}`}
             name={icon}
-            className={iconClassName ?? "h-4 w-auto lg:h-4 2xl:h-4"}
+            className={iconClassName ?? "h-6 w-auto"}
           />
         )
       })}

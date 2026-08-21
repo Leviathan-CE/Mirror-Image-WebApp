@@ -18,14 +18,35 @@ export type DeckSummary = {
   author_name: string
   cover_image_path: string | null
   card_count: number
+  like_count?: number
+  view_count?: number
+  tags?: string[]
+  liked_by_me?: boolean
+}
+
+export type DeckListPage = {
+  items: DeckSummary[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export type PublicDeckQuery = {
+  q?: string
+  author?: string
+  tag?: string
+  card?: string
+  cardId?: number
+  sort?: "newest" | "likes" | "views" | "name"
+  limit?: number
+  offset?: number
+  token?: string | null
 }
 
 /** Names seeded on new decks — users can rename/add/remove per deck. */
 export const DEFAULT_DECK_CATEGORY_NAMES = [
-  "Main",
-  "Side",
-  "Maybe",
-  "Extra",
+  "Entity",
+  "Cyberspell",
 ] as const
 
 /** Visual reserved section names (created on the client when needed). */
@@ -36,6 +57,8 @@ export type DeckCategoryOut = {
   id: number
   name: string
   sort_order: number
+  /** False = list-only pile (not shuffled into the RIG). */
+  in_deck?: boolean
 }
 
 export type DeckCardEntry = {
@@ -47,9 +70,35 @@ export type DeckCardEntry = {
   sort_order: number
   card_art_path: string | null
   invoke_cost?: number
+  /** Invoke-cost icon tokens (LIF, MET, GEN2, …). */
+  cost?: string[]
+  /** Printed threat level (TLV). */
+  threat_level?: string
   types_line?: string
   /** Epoch seconds — changes when card art is re-uploaded. */
   card_art_version?: number | null
+  /** Pilot opening hand size (0 on non-pilots). */
+  hand_size?: number
+  /** Starting stockpile resource counts printed on the pilot. */
+  ram_capacity?: number
+  power_capacity?: number
+  metal_capacity?: number
+  spirit_capacity?: number
+  steel_capacity?: number
+  time_capacity?: number
+  /** Starting life total on pilots (not a resource token). */
+  lif_capacity?: number
+  /**
+   * Server stripped preview / unpublished art for this viewer.
+   * Trust this flag — do not re-derive from subscription client-side alone.
+   */
+  is_classified?: boolean
+  /**
+   * Why the card is redacted:
+   * - classified — preview card (subscribe CTA)
+   * - top_secret — not published (coming soon)
+   */
+  classification?: "classified" | "top_secret" | null
 }
 
 export type DeckDetail = DeckSummary & {
@@ -76,10 +125,102 @@ export async function fetchMyDecks(token: string): Promise<DeckSummary[]> {
   return readJsonOrThrow<DeckSummary[]>(response, "decks_fetch_failed")
 }
 
-/** Public deck catalogue — no auth required. */
-export async function fetchPublicDecks(): Promise<DeckSummary[]> {
-  const response = await fetch(`${apiBaseUrl()}/decks/public`)
-  return readJsonOrThrow<DeckSummary[]>(response, "public_decks_fetch_failed")
+/** Public deck catalogue — no auth required (send token for liked_by_me). */
+export async function fetchPublicDecks(
+  query: PublicDeckQuery = {}
+): Promise<DeckListPage> {
+  const url = new URL(`${apiBaseUrl()}/decks/public`)
+  if (query.q?.trim()) url.searchParams.set("q", query.q.trim())
+  if (query.author?.trim()) url.searchParams.set("author", query.author.trim())
+  if (query.tag?.trim()) url.searchParams.set("tag", query.tag.trim())
+  if (query.card?.trim()) url.searchParams.set("card", query.card.trim())
+  if (query.cardId != null) url.searchParams.set("card_id", String(query.cardId))
+  if (query.sort) url.searchParams.set("sort", query.sort)
+  url.searchParams.set("limit", String(query.limit ?? 24))
+  url.searchParams.set("offset", String(query.offset ?? 0))
+
+  const response = await fetch(url.toString(), {
+    headers: authHeaders(query.token),
+  })
+  return readJsonOrThrow<DeckListPage>(response, "public_decks_fetch_failed")
+}
+
+export async function likeDeck(
+  deckId: number,
+  token: string
+): Promise<DeckSummary> {
+  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}/like`, {
+    method: "POST",
+    headers: authHeaders(token),
+  })
+  return readJsonOrThrow<DeckSummary>(response, "deck_like_failed")
+}
+
+export async function unlikeDeck(
+  deckId: number,
+  token: string
+): Promise<DeckSummary> {
+  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}/like`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  })
+  return readJsonOrThrow<DeckSummary>(response, "deck_unlike_failed")
+}
+
+export async function addDeckTag(
+  deckId: number,
+  token: string,
+  tag: string
+): Promise<DeckSummary> {
+  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}/tags`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(token),
+    },
+    body: JSON.stringify({ tag }),
+  })
+  return readJsonOrThrow<DeckSummary>(response, "deck_tag_add_failed")
+}
+
+export async function removeDeckTag(
+  deckId: number,
+  token: string,
+  tag: string
+): Promise<DeckSummary> {
+  const response = await fetch(
+    `${apiBaseUrl()}/decks/${deckId}/tags/${encodeURIComponent(tag)}`,
+    {
+      method: "DELETE",
+      headers: authHeaders(token),
+    }
+  )
+  return readJsonOrThrow<DeckSummary>(response, "deck_tag_remove_failed")
+}
+
+export type DeckTagSuggestion = {
+  tag: string
+  uses: number
+}
+
+/** Typeahead existing tags across all decks. */
+export async function fetchDeckTagSuggestions(opts: {
+  q?: string
+  limit?: number
+  exclude?: string[]
+}): Promise<DeckTagSuggestion[]> {
+  const url = new URL(`${apiBaseUrl()}/decks/tags`)
+  if (opts.q?.trim()) url.searchParams.set("q", opts.q.trim())
+  url.searchParams.set("limit", String(opts.limit ?? 12))
+  if (opts.exclude?.length) {
+    url.searchParams.set("exclude", opts.exclude.join(","))
+  }
+  const response = await fetch(url.toString())
+  const body = await readJsonOrThrow<{ tags: DeckTagSuggestion[] }>(
+    response,
+    "deck_tag_suggest_failed"
+  )
+  return body.tags
 }
 
 export async function createDeck(
@@ -97,14 +238,35 @@ export async function createDeck(
   return readJsonOrThrow<DeckSummary>(response, "deck_create_failed")
 }
 
-/** Public or owned deck detail (send token when logged in). */
-export async function fetchDeckDetail(
+/** Clone a readable deck into your collection (private copy you can edit). */
+export async function copyDeck(
   deckId: number,
-  token?: string | null
-): Promise<DeckDetail> {
-  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}`, {
+  token: string
+): Promise<DeckSummary> {
+  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}/copy`, {
+    method: "POST",
     headers: authHeaders(token),
   })
+  return readJsonOrThrow<DeckSummary>(response, "deck_copy_failed")
+}
+
+/**
+ * Public or owned deck detail (send token when logged in).
+ *
+ * `room` is a playtest room code: inside a live room the server pools the two
+ * seated players' entitlements, so preview / unpublished cards resolve for both
+ * sides and you can read the deck your opponent seated. Unknown codes are
+ * ignored server-side, never an error.
+ */
+export async function fetchDeckDetail(
+  deckId: number,
+  token?: string | null,
+  room?: string | null
+): Promise<DeckDetail> {
+  const url = new URL(`${apiBaseUrl()}/decks/${deckId}`)
+  if (room) url.searchParams.set("room", room)
+
+  const response = await fetch(url, { headers: authHeaders(token) })
   return readJsonOrThrow<DeckDetail>(response, "deck_fetch_failed")
 }
 
@@ -166,7 +328,8 @@ export async function addDeckCard(
 export async function createDeckCategory(
   deckId: number,
   token: string,
-  name: string
+  name: string,
+  options?: { in_deck?: boolean }
 ): Promise<DeckCategoryOut> {
   const response = await fetch(`${apiBaseUrl()}/decks/${deckId}/categories`, {
     method: "POST",
@@ -174,7 +337,10 @@ export async function createDeckCategory(
       "Content-Type": "application/json",
       ...authHeaders(token),
     },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({
+      name,
+      ...(options?.in_deck != null ? { in_deck: options.in_deck } : {}),
+    }),
   })
   return readJsonOrThrow<DeckCategoryOut>(response, "category_create_failed")
 }
@@ -183,7 +349,7 @@ export async function updateDeckCategory(
   deckId: number,
   categoryId: number,
   token: string,
-  payload: { name?: string; sort_order?: number }
+  payload: { name?: string; sort_order?: number; in_deck?: boolean }
 ): Promise<DeckCategoryOut> {
   const response = await fetch(
     `${apiBaseUrl()}/decks/${deckId}/categories/${categoryId}`,
@@ -266,24 +432,30 @@ export async function removeDeckCard(
   }
 }
 
-export function deckCoverUrl(path: string | null | undefined): string | null {
-  if (!path) return null
+/**
+ * Images arrive as pre-signed relative URLs (`media/...?exp=..&sig=..`) minted
+ * by the API for a viewer it already decided may see them. Only the origin is
+ * added here: a missing path means the server withheld the image, and there is
+ * no path a client could construct on its own.
+ */
+function mediaUrl(path: string, version?: number | null): string {
   if (path.startsWith("http")) return path
-  return `${apiBaseUrl()}/thumbnails/${path.replace(/^\//, "")}`
+  const relative = path.replace(/^\//, "")
+  const base = `${apiBaseUrl()}/${relative}`
+  if (version == null) return base
+  return `${base}${relative.includes("?") ? "&" : "?"}v=${version}`
 }
 
-/**
- * Card art is stored as `thumbnails/...` while StaticFiles mounts that folder at `/thumbnails`.
- * Pass `version` (e.g. card_art_version) so re-uploads bust the browser cache.
- */
+export function deckCoverUrl(path: string | null | undefined): string | null {
+  if (!path) return null
+  return mediaUrl(path)
+}
+
+/** Pass `version` (card_art_version) so re-uploads bust the browser cache. */
 export function cardArtUrl(
   path: string | null | undefined,
   version?: number | null
 ): string | null {
   if (!path) return null
-  if (path.startsWith("http")) return path
-  const cleaned = path.replace(/^\/?thumbnails\//, "")
-  const base = `${apiBaseUrl()}/thumbnails/${cleaned}`
-  if (version == null) return base
-  return `${base}?v=${version}`
+  return mediaUrl(path, version)
 }

@@ -12,8 +12,10 @@ from psycopg2.errors import CheckViolation, DataError, NotNullViolation, UniqueV
 from psycopg2.extras import Json
 
 from app.db import get_connection
-from app.card_publish import catalogue_visibility_sql
-from app.security import get_optional_is_admin
+from app.card_library_query import apply_catalogue_filters, catalogue_order_sql
+from app.card_publish import catalogue_visibility_sql, get_optional_include_preview
+from app.media_urls import signed_media_path
+from app.security import get_current_admin_user_id, get_optional_is_admin
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +84,11 @@ class CardCreate(BaseModel):
     )
     spirit_capacity: int = Field(default=0, ge=0)
     steel_capacity: int = Field(default=0, ge=0)
-    
+    time_capacity: int = Field(
+        default=0,
+        ge=0,
+        validation_alias=AliasChoices("time_capacity", "tim_capacity"),
+    )
     lif_capacity: int = Field(default=0, ge=0)
     hand_size: int = Field(default=0, ge=0)
 
@@ -139,6 +145,7 @@ class CardByNameResponse(BaseModel):
     metal_capacity: int
     spirit_capacity: int
     steel_capacity: int
+    time_capacity: int
     lif_capacity: int
     hand_size: int
     lagality: str
@@ -152,8 +159,8 @@ _CARD_SELECT_SQL = """
            description, rarity, artist_name, card_number, card_count,
            legal_info, card_printing, is_summon, is_pilot, is_augment,
            threat_level, ram_capacity, power_capacity, metal_capacity,
-           spirit_capacity, steel_capacity, lif_capacity, hand_size, lagality,
-           card_art_path, card_art_mime_type
+           spirit_capacity, steel_capacity, time_capacity, lif_capacity,
+           hand_size, lagality, card_art_path, card_art_mime_type
       FROM cards
 """
 
@@ -187,11 +194,12 @@ def _card_row_to_response(row) -> CardByNameResponse:
         metal_capacity=row[24],
         spirit_capacity=row[25],
         steel_capacity=row[26],
-        lif_capacity=row[27],
-        hand_size=row[28],
-        lagality=row[29],
-        card_art_path=row[30],
-        card_art_mime_type=row[31],
+        time_capacity=row[27],
+        lif_capacity=row[28],
+        hand_size=row[29],
+        lagality=row[30],
+        card_art_path=signed_media_path(row[31]),
+        card_art_mime_type=row[32],
     )
 
 
@@ -208,8 +216,11 @@ def _slugify(value: str) -> str:
 
 
 @router.post("/", response_model=CardCreated, status_code=201)
-def create_card(body: CardCreate):
-    """Create a card row in Postgres and return its id and name."""
+def create_card(
+    body: CardCreate,
+    _admin_id: int = Depends(get_current_admin_user_id),
+):
+    """Create a card row in Postgres and return its id and name. Admin only."""
 
     insert_cols = {
         "id": body.id,
@@ -239,6 +250,7 @@ def create_card(body: CardCreate):
         "metal_capacity": body.metal_capacity,
         "spirit_capacity": body.spirit_capacity,
         "steel_capacity": body.steel_capacity,
+        "time_capacity": body.time_capacity,
         "lif_capacity": body.lif_capacity,
         "hand_size": body.hand_size,
         "lagality": body.lagality,
@@ -302,19 +314,22 @@ def search_cards(
     q: str = Query(min_length=1, max_length=80),
     limit: int = Query(default=12, ge=1, le=40),
     is_admin: bool = Depends(get_optional_is_admin),
+    include_preview: bool = Depends(get_optional_include_preview),
 ):
     """
     Typeahead search by card name.
 
     Prefers prefix matches, then substring matches.
-    Skips deprecated cards. Non-admins only see published cards;
-    admins see the full catalogue (including preview / not published).
+    Skips deprecated cards. Non-subscribers only see published cards;
+    subscribers also see preview; admins see the full catalogue.
     """
     needle = q.strip()
     if not needle:
         return []
 
-    visibility = catalogue_visibility_sql("c", bypass=is_admin)
+    visibility = catalogue_visibility_sql(
+        "c", bypass=is_admin, include_preview=include_preview
+    )
 
     try:
         with get_connection() as conn:
@@ -361,7 +376,7 @@ def search_cards(
             card_name=row[1],
             card_set_name=row[2],
             rarity=row[3],
-            card_art_path=row[4],
+            card_art_path=signed_media_path(row[4]),
             card_art_version=int(row[5]) if row[5] is not None else None,
         )
         for row in rows
@@ -405,53 +420,20 @@ class CardLibraryFacets(BaseModel):
 
 
 _COLOR_COST_TOKENS = ("LIF", "MET", "POW", "RAM", "TIM", "STL")
-# Chromatic colours — cards with none of these (only GEN / empty / STL) count as STL.
-_CHROMATIC_COST_TOKENS = ("LIF", "MET", "POW", "RAM", "TIM")
-
-
-def _escape_like(value: str) -> str:
-    """Escape %, _, and \\ for ILIKE patterns."""
-    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-
-
-def _sql_card_matches_stl() -> str:
-    """
-    STL identity for library colour filters (resources/tokens excluded):
-    - cost includes an STL symbol (including hybrids like LIF-STL), or
-    - cost has no chromatic colours (empty, GEN-only, and/or STL-only).
-    Resource token cards are a separate catalogue and never match STL here.
-    """
-    chromatic = "|".join(_CHROMATIC_COST_TOKENS)
-    return f"""
-    (
-      NOT (
-        super_types @> '["Resource"]'::jsonb
-        OR super_types @> '["Token"]'::jsonb
-      )
-      AND (
-        EXISTS (
-          SELECT 1
-            FROM jsonb_array_elements_text(cost) AS token(value)
-           WHERE UPPER(BTRIM(token.value)) ~ '(^|[-])STL([-]|$)'
-        )
-        OR NOT EXISTS (
-          SELECT 1
-            FROM jsonb_array_elements_text(cost) AS token(value)
-           WHERE UPPER(BTRIM(token.value)) = 'MULTI'
-              OR UPPER(BTRIM(token.value)) ~ '(^|[-])({chromatic})([-]|$)'
-        )
-      )
-    )
-    """
 
 
 @router.get("/facets", response_model=CardLibraryFacets)
 def card_library_facets(
     is_admin: bool = Depends(get_optional_is_admin),
+    include_preview: bool = Depends(get_optional_include_preview),
 ):
     """Distinct filter values for the card library UI."""
-    visibility = catalogue_visibility_sql("cards", bypass=is_admin)
-    visibility_c = catalogue_visibility_sql("c", bypass=is_admin)
+    visibility = catalogue_visibility_sql(
+        "cards", bypass=is_admin, include_preview=include_preview
+    )
+    visibility_c = catalogue_visibility_sql(
+        "c", bypass=is_admin, include_preview=include_preview
+    )
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
@@ -534,93 +516,42 @@ def browse_card_library(
     types_line: str | None = Query(default=None, max_length=80),
     super_type: str | None = Query(default=None, max_length=60),
     sub_type: str | None = Query(default=None, max_length=60),
-    limit: int = Query(default=48, ge=1, le=100),
+    limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     is_admin: bool = Depends(get_optional_is_admin),
+    include_preview: bool = Depends(get_optional_include_preview),
 ):
     """
     Browse / filter the card catalogue.
 
     Name search (`q`) uses the same closest-match ranking as `/cards/search`
     (prefix first, then substring, shorter names preferred).
-    Non-admins only see published cards; admins see the full catalogue.
+    Non-subscribers only see published cards; subscribers also see preview;
+    admins see the full catalogue.
     """
     where = [
         "is_deprecated = false",
-        catalogue_visibility_sql("cards", bypass=is_admin),
+        catalogue_visibility_sql(
+            "cards", bypass=is_admin, include_preview=include_preview
+        ),
     ]
     params: dict[str, Any] = {"limit": limit, "offset": offset}
 
-    needle = (q or "").strip()
-    if needle:
-        escaped = _escape_like(needle)
-        where.append("card_name ILIKE %(name_pattern)s ESCAPE '\\'")
-        params["name_pattern"] = f"%{escaped}%"
-        params["name_prefix"] = f"{escaped}%"
-
-    desc = (description or "").strip()
-    if desc:
-        escaped_desc = _escape_like(desc)
-        where.append("description ILIKE %(desc_pattern)s ESCAPE '\\'")
-        params["desc_pattern"] = f"%{escaped_desc}%"
-
-    if invoke_cost_min is not None:
-        where.append("invoke_cost >= %(invoke_cost_min)s")
-        params["invoke_cost_min"] = invoke_cost_min
-    if invoke_cost_max is not None:
-        where.append("invoke_cost <= %(invoke_cost_max)s")
-        params["invoke_cost_max"] = invoke_cost_max
-
-    colors: list[str] = []
-    for raw in color or []:
-        token = raw.strip().upper()
-        if token and token not in colors:
-            colors.append(token)
-    for index, token in enumerate(colors):
-        if token == "STL":
-            where.append(_sql_card_matches_stl())
-            continue
-        key = f"color_{index}"
-        # Exact token or hybrid that includes this colour (e.g. LIF-STL).
-        where.append(
-            f"""EXISTS (
-              SELECT 1
-                FROM jsonb_array_elements_text(cost) AS token(value)
-               WHERE UPPER(BTRIM(token.value)) = %({key})s
-                  OR UPPER(BTRIM(token.value))
-                     ~ ('(^|[-])' || %({key})s || '([-]|$)')
-            )"""
-        )
-        params[key] = token
-
-    type_line = (types_line or "").strip()
-    if type_line:
-        escaped_type = _escape_like(type_line)
-        where.append("types_line ILIKE %(types_line_pattern)s ESCAPE '\\'")
-        params["types_line_pattern"] = f"%{escaped_type}%"
-
-    super_val = (super_type or "").strip()
-    if super_val:
-        where.append("super_types @> %(super_type_json)s::jsonb")
-        params["super_type_json"] = Json([super_val])
-
-    sub_val = (sub_type or "").strip()
-    if sub_val:
-        where.append("sub_types @> %(sub_type_json)s::jsonb")
-        params["sub_type_json"] = Json([sub_val])
+    has_name_query = apply_catalogue_filters(
+        where,
+        params,
+        q=q,
+        description=description,
+        invoke_cost_min=invoke_cost_min,
+        invoke_cost_max=invoke_cost_max,
+        color=color,
+        types_line=types_line,
+        super_type=super_type,
+        sub_type=sub_type,
+    )
 
     where_sql = " AND ".join(where)
-    if needle:
-        order_sql = """
-            CASE
-              WHEN card_name ILIKE %(name_prefix)s ESCAPE '\\' THEN 0
-              ELSE 1
-            END,
-            LENGTH(card_name) ASC,
-            card_name ASC
-        """
-    else:
-        order_sql = "card_name ASC"
+    order_sql = catalogue_order_sql(has_name_query)
 
     try:
         with get_connection() as conn:
@@ -679,7 +610,7 @@ def browse_card_library(
             keywords=row[10] or [],
             show_help_text=bool(row[11]),
             threat_level=str(row[12] if row[12] is not None else "0"),
-            card_art_path=row[13],
+            card_art_path=signed_media_path(row[13]),
             card_art_version=int(row[14]) if row[14] is not None else None,
         )
         for row in rows
@@ -691,6 +622,7 @@ def browse_card_library(
 def get_card_by_id(
     card_id: int,
     is_admin: bool = Depends(get_optional_is_admin),
+    include_preview: bool = Depends(get_optional_include_preview),
 ):
     """Fetch a card by primary key (Unity barcode id)."""
     if card_id <= 0:
@@ -699,7 +631,7 @@ def get_card_by_id(
     sql = (
         _CARD_SELECT_SQL
         + " WHERE id = %(card_id)s"
-        + f" AND {catalogue_visibility_sql('cards', bypass=is_admin)}"
+        + f" AND {catalogue_visibility_sql('cards', bypass=is_admin, include_preview=include_preview)}"
     )
     try:
         with get_connection() as conn:
@@ -722,6 +654,7 @@ def get_card_by_id(
 def get_card_by_name(
     card_name: str,
     is_admin: bool = Depends(get_optional_is_admin),
+    include_preview: bool = Depends(get_optional_include_preview),
 ):
     """Fetch a card by exact card name (case-insensitive)."""
     normalized_name = card_name.replace("+", " ").strip()
@@ -729,7 +662,7 @@ def get_card_by_name(
     sql = (
         _CARD_SELECT_SQL
         + " WHERE LOWER(card_name) = LOWER(%(card_name)s)"
-        + f" AND {catalogue_visibility_sql('cards', bypass=is_admin)}"
+        + f" AND {catalogue_visibility_sql('cards', bypass=is_admin, include_preview=include_preview)}"
         + " ORDER BY id DESC LIMIT 1"
     )
     try:
@@ -753,8 +686,12 @@ def get_card_by_name(
 
 
 @router.post("/{card_id}/thumbnail", response_model=CardThumbnailUploaded)
-async def upload_card_thumbnail(card_id: int, file: UploadFile = File(...)):
-    """Upload a card thumbnail, persist it on disk, and store its path."""
+async def upload_card_thumbnail(
+    card_id: int,
+    file: UploadFile = File(...),
+    _admin_id: int = Depends(get_current_admin_user_id),
+):
+    """Upload a card thumbnail, persist it on disk, and store its path. Admin only."""
 
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="thumbnail_must_be_image")
@@ -846,7 +783,7 @@ async def upload_card_thumbnail(card_id: int, file: UploadFile = File(...)):
 
     return CardThumbnailUploaded(
         id=card_id,
-        thumbnail_path=relative_path,
+        thumbnail_path=signed_media_path(relative_path) or relative_path,
         thumbnail_size_bytes=len(data),
         card_art_version=int(version_row[0]) if version_row and version_row[0] is not None else None,
     )

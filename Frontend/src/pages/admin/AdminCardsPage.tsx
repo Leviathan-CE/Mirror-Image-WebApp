@@ -5,14 +5,25 @@
 import { useEffect, useMemo, useState } from "react"
 
 import { useAuth } from "@/app/providers/AuthProvider"
+import { CardDetailOverlay } from "@/components/cards/CardDetailOverlay"
+import { costTokenToIcon } from "@/components/cards/CardCostIcons"
 import { CardSearchBar } from "@/components/cards/CardSearchBar"
+import { SearchPaginationBar } from "@/components/cards/SearchPaginationBar"
+import { GameIcon } from "@/components/common/GameIcon"
 import { Button } from "@/components/ui/button"
+import { EditBox } from "@/components/ui/EditBox"
 import { ApiError } from "@/lib/api/client"
+import {
+  fetchCardFacets,
+  type CardLibraryFacets,
+} from "@/lib/api/cards"
 import {
   LAGALITY_OPTIONS,
   PUBLISH_STATUSES,
   bulkUpdateAdminCards,
+  fetchAdminCardDetail,
   fetchAdminCardLibrary,
+  type AdminCardDetail,
   type AdminCardItem,
   type PublishStatus,
 } from "@/lib/api/cards_admin"
@@ -21,6 +32,15 @@ import { cn } from "@/lib/utils"
 import { AdminPageShell } from "@/pages/admin/AdminPageShell"
 
 const PAGE_SIZE = 48
+
+const EMPTY_FACETS: CardLibraryFacets = {
+  colors: ["LIF", "MET", "POW", "RAM", "TIM", "STL"],
+  super_types: [],
+  sub_types: [],
+  types_lines: [],
+  invoke_cost_min: 0,
+  invoke_cost_max: 15,
+}
 
 const primaryActionClassName =
   "font-buahs93 h-9 rounded-none bg-cyan-700 px-4 text-sm text-white hover:bg-cyan-900 disabled:opacity-60"
@@ -31,56 +51,31 @@ const secondaryActionClassName =
 const selectClassName =
   "h-9 rounded-none border border-cyan-500/35 bg-black/80 px-2.5 font-mono text-xs text-cyan-50 outline-none focus-visible:border-cyan-300"
 
+const filterSelectClassName = selectClassName
+
 function publishTone(status: string): string {
   if (status === "published") return "text-emerald-300/90"
   if (status === "preview") return "text-amber-300/90"
   return "text-white/45"
 }
 
-type PaginationBarProps = {
-  canPrev: boolean
-  canNext: boolean
-  disabled: boolean
-  onPrev: () => void
-  onNext: () => void
-  className?: string
-}
-
-function PaginationBar({
-  canPrev,
-  canNext,
-  disabled,
-  onPrev,
-  onNext,
-  className,
-}: PaginationBarProps) {
-  return (
-    <div className={cn("flex items-center justify-between gap-3", className)}>
-      <Button
-        type="button"
-        className={secondaryActionClassName}
-        disabled={!canPrev || disabled}
-        onClick={onPrev}
-      >
-        PREV
-      </Button>
-      <Button
-        type="button"
-        className={secondaryActionClassName}
-        disabled={!canNext || disabled}
-        onClick={onNext}
-      >
-        NEXT
-      </Button>
-    </div>
-  )
-}
-
 export function AdminCardsPage() {
   const { token } = useAuth()
 
+  const [facets, setFacets] = useState<CardLibraryFacets>(EMPTY_FACETS)
   const [nameQuery, setNameQuery] = useState("")
   const [debouncedName, setDebouncedName] = useState("")
+  const [descriptionQuery, setDescriptionQuery] = useState("")
+  const [debouncedDescription, setDebouncedDescription] = useState("")
+  const [colors, setColors] = useState<string[]>([])
+  const [invokeMin, setInvokeMin] = useState("")
+  const [invokeMax, setInvokeMax] = useState("")
+  const [typesLine, setTypesLine] = useState("")
+  const [superType, setSuperType] = useState("")
+  const [subType, setSubType] = useState("")
+  const [publishedFilter, setPublishedFilter] = useState<PublishStatus | "">(
+    ""
+  )
   const [items, setItems] = useState<AdminCardItem[]>([])
   const [total, setTotal] = useState(0)
   const [offset, setOffset] = useState(0)
@@ -91,6 +86,8 @@ export function AdminCardsPage() {
   const [bulkLagality, setBulkLagality] = useState<string>("")
   const [busy, setBusy] = useState(false)
   const [actionMessage, setActionMessage] = useState("")
+  const [detail, setDetail] = useState<AdminCardDetail | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedName(nameQuery.trim()), 200)
@@ -98,9 +95,42 @@ export function AdminCardsPage() {
   }, [nameQuery])
 
   useEffect(() => {
+    const timer = window.setTimeout(
+      () => setDebouncedDescription(descriptionQuery.trim()),
+      200
+    )
+    return () => window.clearTimeout(timer)
+  }, [descriptionQuery])
+
+  useEffect(() => {
+    if (!token) return
+    let cancelled = false
+    fetchCardFacets(token)
+      .then((data) => {
+        if (!cancelled) setFacets(data)
+      })
+      .catch(() => {
+        /* keep EMPTY_FACETS fallback */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [token])
+
+  useEffect(() => {
     setOffset(0)
     setSelectedIds(new Set())
-  }, [debouncedName])
+  }, [
+    debouncedName,
+    debouncedDescription,
+    colors,
+    invokeMin,
+    invokeMax,
+    typesLine,
+    superType,
+    subType,
+    publishedFilter,
+  ])
 
   useEffect(() => {
     if (!token) return
@@ -109,8 +139,21 @@ export function AdminCardsPage() {
     setStatus("loading")
     setErrorText("")
 
+    const min =
+      invokeMin.trim() === "" ? null : Number.parseInt(invokeMin, 10)
+    const max =
+      invokeMax.trim() === "" ? null : Number.parseInt(invokeMax, 10)
+
     void fetchAdminCardLibrary(token, {
       q: debouncedName || undefined,
+      description: debouncedDescription || undefined,
+      colors,
+      invokeCostMin: Number.isFinite(min) ? min : null,
+      invokeCostMax: Number.isFinite(max) ? max : null,
+      typesLine: typesLine || undefined,
+      superType: superType || undefined,
+      subType: subType || undefined,
+      published: publishedFilter || undefined,
       limit: PAGE_SIZE,
       offset,
     })
@@ -137,7 +180,38 @@ export function AdminCardsPage() {
     return () => {
       cancelled = true
     }
-  }, [token, debouncedName, offset])
+  }, [
+    token,
+    debouncedName,
+    debouncedDescription,
+    colors,
+    invokeMin,
+    invokeMax,
+    typesLine,
+    superType,
+    subType,
+    publishedFilter,
+    offset,
+  ])
+
+  function toggleColor(color: string) {
+    setColors((prev) =>
+      prev.includes(color) ? prev.filter((c) => c !== color) : [...prev, color]
+    )
+  }
+
+  function clearFilters() {
+    setNameQuery("")
+    setDescriptionQuery("")
+    setColors([])
+    setInvokeMin("")
+    setInvokeMax("")
+    setTypesLine("")
+    setSuperType("")
+    setSubType("")
+    setPublishedFilter("")
+    setOffset(0)
+  }
 
   const pageIds = useMemo(() => items.map((item) => item.id), [items])
   const allPageSelected =
@@ -169,6 +243,24 @@ export function AdminCardsPage() {
     setSelectedIds(new Set())
   }
 
+  async function openDetail(cardId: number) {
+    if (!token || detailLoading) return
+    setDetailLoading(true)
+    setActionMessage("")
+    try {
+      const data = await fetchAdminCardDetail(token, cardId)
+      setDetail(data)
+    } catch (error) {
+      setActionMessage(
+        error instanceof ApiError
+          ? "Could not load card details."
+          : "Could not reach the server."
+      )
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
   async function applyBulk() {
     if (!token || selectedCount === 0) return
     if (!bulkPublish && !bulkLagality) {
@@ -198,6 +290,7 @@ export function AdminCardsPage() {
       setActionMessage(`Updated ${result.updated} row(s).`)
       setBulkPublish("")
       setBulkLagality("")
+      clearSelection()
     } catch (error: unknown) {
       setActionMessage(
         error instanceof ApiError
@@ -218,16 +311,183 @@ export function AdminCardsPage() {
     <AdminPageShell
       wide
       title="CARDS DB"
-      description="Search the catalogue, multi-select cards, then set publish status or lagality in bulk."
+      description="Search and filter the catalogue like the public library, multi-select cards, then set publish status or lagality in bulk."
     >
-      <div className="mb-4 flex flex-col gap-3 border border-cyan-500/25 bg-black/55 p-4 sm:flex-row sm:items-end">
-        <CardSearchBar
-          className="max-w-xl flex-1"
-          label="NAME"
-          value={nameQuery}
-          onChange={setNameQuery}
-          placeholder="Closest name match…"
-        />
+      <div className="mb-4 grid gap-4 border border-cyan-500/25 bg-black/55 p-4 lg:grid-cols-[minmax(0,1fr)_14rem]">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <CardSearchBar
+              label="NAME"
+              value={nameQuery}
+              onChange={setNameQuery}
+              placeholder="Closest name match…"
+            />
+          </div>
+
+          <label className="block sm:col-span-2">
+            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+              DESCRIPTION
+            </span>
+            <EditBox
+              value={descriptionQuery}
+              onChange={(e) => setDescriptionQuery(e.target.value)}
+              placeholder="Rules text contains…"
+              size="sm"
+              autoComplete="off"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+              INVOKE MIN
+            </span>
+            <EditBox
+              value={invokeMin}
+              onChange={(e) => setInvokeMin(e.target.value.replace(/\D/g, ""))}
+              placeholder={`${facets.invoke_cost_min}`}
+              size="sm"
+              inputMode="numeric"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+              INVOKE MAX
+            </span>
+            <EditBox
+              value={invokeMax}
+              onChange={(e) => setInvokeMax(e.target.value.replace(/\D/g, ""))}
+              placeholder={`${facets.invoke_cost_max}`}
+              size="sm"
+              inputMode="numeric"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+              TYPE LINE
+            </span>
+            <select
+              value={typesLine}
+              onChange={(e) => setTypesLine(e.target.value)}
+              className={filterSelectClassName}
+            >
+              <option value="">Any</option>
+              {facets.types_lines.map((line) => (
+                <option key={line} value={line}>
+                  {line}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+              SUPER TYPE
+            </span>
+            <select
+              value={superType}
+              onChange={(e) => setSuperType(e.target.value)}
+              className={filterSelectClassName}
+            >
+              <option value="">Any</option>
+              {facets.super_types.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block sm:col-span-2">
+            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+              SUB TYPE
+            </span>
+            <select
+              value={subType}
+              onChange={(e) => setSubType(e.target.value)}
+              className={filterSelectClassName}
+            >
+              <option value="">Any</option>
+              {facets.sub_types.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block sm:col-span-2">
+            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+              PUBLISH STATUS
+            </span>
+            <select
+              value={publishedFilter}
+              onChange={(e) =>
+                setPublishedFilter(e.target.value as PublishStatus | "")
+              }
+              className={filterSelectClassName}
+            >
+              <option value="">Any</option>
+              {PUBLISH_STATUSES.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div>
+          <p className="mb-2 font-buahs93 text-xs text-cyan-200/70">
+            COLOR COST
+          </p>
+          <div className="grid w-fit grid-cols-3 gap-2">
+            {facets.colors.map((color) => {
+              const on = colors.includes(color)
+              const icon = costTokenToIcon(color)
+              return (
+                <Button
+                  key={color}
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  aria-pressed={on}
+                  aria-label={`Filter ${color}`}
+                  title={color}
+                  className={cn(
+                    "size-9 rounded-none border",
+                    on
+                      ? "border-cyan-400 bg-cyan-700 hover:bg-cyan-800"
+                      : "border-cyan-500/40 bg-black/70 hover:border-cyan-400/70 hover:bg-cyan-500/10"
+                  )}
+                  onClick={() => toggleColor(color)}
+                >
+                  {icon ? (
+                    <GameIcon
+                      name={icon}
+                      className="h-5 w-auto lg:h-5 2xl:h-5"
+                    />
+                  ) : (
+                    <span className="font-buahs93 text-[10px] text-cyan-100">
+                      {color}
+                    </span>
+                  )}
+                </Button>
+              )
+            })}
+          </div>
+          <Button
+            type="button"
+            className={cn(secondaryActionClassName, "mt-4")}
+            onClick={clearFilters}
+          >
+            CLEAR FILTERS
+          </Button>
+        </div>
+      </div>
+
+      <div className="mb-4 flex flex-col gap-3 border border-cyan-500/25 bg-black/55 p-4 sm:flex-row sm:items-end sm:justify-between">
         <p className="font-mono text-xs text-cyan-300/60 sm:pb-2">
           {status === "loading"
             ? "Loading…"
@@ -317,7 +577,8 @@ export function AdminCardsPage() {
         </p>
       ) : null}
 
-      <PaginationBar
+      <SearchPaginationBar
+        variant="plain"
         className="mb-3"
         canPrev={canPrev}
         canNext={canNext}
@@ -387,7 +648,13 @@ export function AdminCardsPage() {
                     />
                   </td>
                   <td className="px-2 py-2">
-                    <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-3 text-left"
+                      disabled={busy || detailLoading}
+                      title={`View details for ${item.card_name}`}
+                      onClick={() => void openDetail(item.id)}
+                    >
                       {art ? (
                         <img
                           src={art}
@@ -400,7 +667,7 @@ export function AdminCardsPage() {
                         </span>
                       )}
                       <div className="min-w-0">
-                        <p className="truncate font-buahs93 text-sm text-white">
+                        <p className="truncate font-buahs93 text-sm text-white underline-offset-2 hover:underline">
                           {item.card_name}
                         </p>
                         <p className="truncate font-mono text-[10px] text-cyan-400/55">
@@ -410,7 +677,7 @@ export function AdminCardsPage() {
                           {item.rarity}
                         </p>
                       </div>
-                    </div>
+                    </button>
                   </td>
                   <td className="px-2 py-2 font-mono text-xs text-white/60">
                     {item.card_set_name}
@@ -433,13 +700,32 @@ export function AdminCardsPage() {
         </table>
       </div>
 
-      <PaginationBar
+      <SearchPaginationBar
+        variant="plain"
         className="mt-4"
         canPrev={canPrev}
         canNext={canNext}
         disabled={busy || status === "loading"}
         onPrev={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))}
         onNext={() => setOffset((o) => o + PAGE_SIZE)}
+      />
+
+      <CardDetailOverlay
+        card={
+          detail
+            ? {
+                ...detail,
+                cost: detail.cost.map(String),
+                keywords: detail.keywords.map(String),
+                super_types: detail.super_types.map(String),
+                sub_types: detail.sub_types.map(String),
+                metaLine: `#${detail.id} · ${detail.published} · ${detail.lagality}${
+                  detail.is_deprecated ? " · deprecated" : ""
+                }`,
+              }
+            : null
+        }
+        onClose={() => setDetail(null)}
       />
     </AdminPageShell>
   )

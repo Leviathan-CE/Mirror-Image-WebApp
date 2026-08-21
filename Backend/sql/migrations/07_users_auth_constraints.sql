@@ -1,16 +1,14 @@
 -- Auth constraints for an already-created users table (idempotent).
+-- Safe to re-run after Google OAuth (nullable passwords).
 
 ALTER TABLE users
     ALTER COLUMN user_name SET NOT NULL,
     ALTER COLUMN password DROP DEFAULT,
     ALTER COLUMN email DROP DEFAULT;
 
--- Allow existing empty rows to be cleaned before NOT NULL if needed.
--- New installs use 01_users.sql; this tightens live DBs safely when possible.
-
+-- Drop placeholder unknown accounts with no credentials before uniqueness.
 DO $$
 BEGIN
-    -- Drop placeholder unknown accounts with no credentials before enforcing uniqueness.
     DELETE FROM users
     WHERE (password IS NULL OR password = '')
       AND (email IS NULL OR email = '' OR email = 'unknown')
@@ -18,8 +16,17 @@ BEGIN
 END $$;
 
 ALTER TABLE users
-    ALTER COLUMN password SET NOT NULL,
     ALTER COLUMN email SET NOT NULL;
+
+-- Password may be NULL for OAuth-only accounts (Google / Apple).
+-- Never SET NOT NULL here — that breaks re-running migrate after 23_users_oauth_google.
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_password_not_blank;
+ALTER TABLE users
+    ALTER COLUMN password DROP NOT NULL;
+ALTER TABLE users
+    ADD CONSTRAINT users_password_not_blank CHECK (
+        password IS NULL OR length(trim(password)) > 0
+    );
 
 ALTER TABLE users
     ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
