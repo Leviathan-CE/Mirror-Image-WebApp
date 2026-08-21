@@ -1,0 +1,571 @@
+/**
+ * Builds playtester context-menu items from the open menu target.
+ * Mutations stay in the page via `actions` — this hook only assembles the menu.
+ */
+
+import { GameIcon } from "@/components/common/GameIcon"
+import type { GameIconName } from "@/components/common/GameIcon"
+import {
+  extractGainablePips,
+  RESOURCE_COLORS,
+  type ResourceColor,
+} from "@/components/Playtester/accumulateResources.logic"
+import {
+  CTX_MENU_ACTION,
+  LOCAL_SEAT,
+  PILOT_GEN_MAX,
+  PLAY_ZONE,
+  SELECTABLE_ACTION_ZONES,
+  type PlayerSlot,
+} from "@/components/Playtester/playtesterConstants"
+import {
+  selectableActionTargets,
+  cardsInZone,
+  type CardCounterKind,
+  type MoveAllDestinationZone,
+  type MoveAllSourceZone,
+  type PlayingCardInstance,
+} from "@/components/Playtester/types"
+import type { DropdownMenuItem } from "@/components/ui/DropdownMenu"
+import type { CardLibraryItem } from "@/lib/api/cards"
+import { cn } from "@/lib/utils"
+
+/** Cost colour → GameIcon asset name. */
+export const RESOURCE_COLOR_ICON: Record<ResourceColor, GameIconName> = {
+  LIF: "life",
+  MET: "metal",
+  POW: "power",
+  RAM: "ram",
+  TIM: "time",
+  STL: "steel",
+}
+
+/** Map a pilot +GEN bonus (1–10) to a cost icon. */
+export function genIconForCount(n: number): GameIconName {
+  if (n <= 0) return "gen0"
+  if (n >= 10) return "gen10"
+  return `gen${n}` as GameIconName
+}
+
+/** Miniature of the counter badge it adds, so the row reads like the card. */
+function CounterSwatch({ className }: { className: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "clip-angled inline-flex min-h-6 min-w-6 items-center justify-center border px-1 font-glitch text-sm leading-none",
+        className
+      )}
+    >
+      1
+    </span>
+  )
+}
+
+export type CtxMenuState =
+  | { kind: "card"; instanceId: string; x: number; y: number }
+  | {
+      kind: "zone"
+      zone: (typeof SELECTABLE_ACTION_ZONES)[number]
+      x: number
+      y: number
+    }
+  | { kind: "deck"; x: number; y: number }
+  | {
+      kind: "faceUpPile"
+      zone: typeof PLAY_ZONE.trashyard | typeof PLAY_ZONE.dismantled
+      x: number
+      y: number
+    }
+
+/** Shared "Move all" submenu — omits the pile you are already on. */
+function buildMoveAllMenuItem(
+  from: MoveAllSourceZone,
+  sessionCards: PlayingCardInstance[],
+  animBusy: boolean,
+  onMoveAll: (from: MoveAllSourceZone, to: MoveAllDestinationZone) => void,
+  owner: PlayerSlot
+): DropdownMenuItem {
+  const pileCount = cardsInZone(sessionCards, from, owner).length
+  const destinations: Array<{
+    id: string
+    label: string
+    to: MoveAllDestinationZone
+  }> = [
+    {
+      id: CTX_MENU_ACTION.moveAllToDeck,
+      label: "Deck",
+      to: PLAY_ZONE.library,
+    },
+    {
+      id: CTX_MENU_ACTION.moveAllToDismantled,
+      label: "Dismantled",
+      to: PLAY_ZONE.dismantled,
+    },
+    {
+      id: CTX_MENU_ACTION.moveAllToTrashyard,
+      label: "Trashyard",
+      to: PLAY_ZONE.trashyard,
+    },
+  ].filter((dest) => dest.to !== from)
+
+  return {
+    id: CTX_MENU_ACTION.moveAll,
+    label: "Move all",
+    disabled: pileCount === 0 || animBusy,
+    submenu: destinations.map((dest) => ({
+      id: dest.id,
+      label: dest.label,
+      disabled: pileCount === 0 || animBusy,
+      onSelect: () => onMoveAll(from, dest.to),
+    })),
+  }
+}
+
+export type PlayContextMenuActions = {
+  spawnResourceColor: (color: ResourceColor) => void
+  putOnLibraryBottom: (instanceIds: string[]) => void
+  setFaceDown: (instanceIds: string[], faceDown: boolean) => void
+  deleteSessionCards: (instanceIds: string[]) => void
+  startAccumulate: (instanceId: string) => void
+  adjustCounter: (
+    instanceIds: string[],
+    kind: CardCounterKind,
+    delta: number
+  ) => void
+  duplicateCard: (instanceIds: string[]) => void
+  inspectCard: (card: PlayingCardInstance) => void
+  adjustPilotGenBonus: (delta: number) => void
+  toggleExpended: (instanceIds: string[]) => void
+  /** Deck pile actions */
+  degradeDeck: (count: number) => void
+  lookAtDeckTop: (count: number) => void
+  putDeckTopOnBottom: (count: number) => void
+  shuffleDeck: () => void
+  /** Play with the deck's top card face up on the pile (flip in place). */
+  toggleDeckTopRevealed: () => void
+  openDeckSearch: () => void
+  moveAllFromZone: (
+    from: MoveAllSourceZone,
+    to: MoveAllDestinationZone
+  ) => void
+  moveInPlayToZone: (
+    instanceIds: string[],
+    zone: typeof PLAY_ZONE.battlefield | typeof PLAY_ZONE.stockpile
+  ) => void
+}
+
+/** Deck rows that carry their own count field. */
+export type DeckCountKey = "degrade" | "lookTop" | "putBottom"
+
+export type DeckActionCounts = Record<DeckCountKey, string>
+
+export type UsePlayContextMenuArgs = {
+  ctxMenu: CtxMenuState | null
+  sessionCards: PlayingCardInstance[]
+  resourceByColor: Map<ResourceColor, CardLibraryItem>
+  availableResourceColors: ReadonlySet<ResourceColor>
+  /** True while flip-fly or bottom-slide animations block zone moves. */
+  animBusy: boolean
+  pilotGenBonus: number
+  /** One count per deck row, so each field edits independently. */
+  deckActionCounts: DeckActionCounts
+  setDeckActionCount: (key: DeckCountKey, value: string) => void
+  /** True while the deck's top card is shown face up. */
+  topRevealed: boolean
+  owner?: PlayerSlot
+  actions: PlayContextMenuActions
+}
+
+export function usePlayContextMenu({
+  ctxMenu,
+  sessionCards,
+  resourceByColor,
+  availableResourceColors,
+  animBusy,
+  pilotGenBonus,
+  deckActionCounts,
+  setDeckActionCount,
+  topRevealed,
+  owner = LOCAL_SEAT,
+  actions,
+}: UsePlayContextMenuArgs): DropdownMenuItem[] {
+  if (!ctxMenu) return []
+
+  const generateResourceItem: DropdownMenuItem = {
+    id: CTX_MENU_ACTION.generateResource,
+    label: "Generate resource",
+    disabled: availableResourceColors.size === 0,
+    submenu: RESOURCE_COLORS.map((color) => ({
+      id: `gen-resource-${color}`,
+      label: (
+        <>
+          <GameIcon
+            name={RESOURCE_COLOR_ICON[color]}
+            className="h-4 w-auto"
+          />
+          {color}
+        </>
+      ),
+      disabled: !resourceByColor.has(color),
+      onSelect: () => actions.spawnResourceColor(color),
+    })),
+  }
+
+  if (ctxMenu.kind === "zone") {
+    return [generateResourceItem]
+  }
+
+  if (ctxMenu.kind === "deck") {
+    const librarySize = cardsInZone(sessionCards, PLAY_ZONE.library, owner).length
+    const empty = librarySize === 0
+    const topCard =
+      sessionCards.find(
+        (c) => c.zone === PLAY_ZONE.library && c.owner === owner
+      ) ?? null
+
+    function countFor(key: DeckCountKey) {
+      const parsed = Number.parseInt(deckActionCounts[key], 10)
+      return {
+        parsed,
+        ok: Number.isFinite(parsed) && parsed > 0 && parsed <= librarySize,
+        field: {
+          value: deckActionCounts[key],
+          onChange: (value: string) => setDeckActionCount(key, value),
+          min: 1,
+          max: Math.max(1, librarySize),
+          // Deliberately not the row's disabled: the row also turns off for an
+          // empty or out-of-range count, and locking the field then would leave
+          // no way to type a valid one.
+          disabled: empty || animBusy,
+        },
+      }
+    }
+
+    const degrade = countFor("degrade")
+    const lookTop = countFor("lookTop")
+    const putBottom = countFor("putBottom")
+
+    return [
+      {
+        id: CTX_MENU_ACTION.deckDegrade,
+        label: "Degrade",
+        disabled: empty || animBusy || !degrade.ok,
+        countInput: { ...degrade.field, ariaLabel: "Degrade count" },
+        onSelect: () => actions.degradeDeck(degrade.parsed),
+      },
+      {
+        id: CTX_MENU_ACTION.deckLookTop,
+        label: "Look at top",
+        disabled: empty || animBusy || !lookTop.ok,
+        countInput: { ...lookTop.field, ariaLabel: "Look at top count" },
+        onSelect: () => actions.lookAtDeckTop(lookTop.parsed),
+      },
+      {
+        id: CTX_MENU_ACTION.deckPutTopBottom,
+        label: "Put top on bottom",
+        disabled: empty || animBusy || !putBottom.ok,
+        countInput: { ...putBottom.field, ariaLabel: "Put on bottom count" },
+        onSelect: () => actions.putDeckTopOnBottom(putBottom.parsed),
+      },
+      {
+        id: CTX_MENU_ACTION.deckShuffle,
+        label: "Shuffle",
+        disabled: empty || animBusy,
+        onSelect: () => actions.shuffleDeck(),
+      },
+      {
+        id: CTX_MENU_ACTION.deckRevealTop,
+        label: topRevealed ? "Hide top card" : "Reveal top card",
+        disabled: empty || animBusy,
+        onSelect: () => actions.toggleDeckTopRevealed(),
+      },
+      ...(topRevealed && topCard
+        ? [
+            {
+              id: CTX_MENU_ACTION.cardDetails,
+              label: "View details",
+              onSelect: () => actions.inspectCard(topCard),
+            } satisfies DropdownMenuItem,
+          ]
+        : []),
+      {
+        id: CTX_MENU_ACTION.deckSearch,
+        label: "Search deck…",
+        disabled: empty || animBusy,
+        onSelect: () => actions.openDeckSearch(),
+      },
+      buildMoveAllMenuItem(
+        PLAY_ZONE.library,
+        sessionCards,
+        animBusy,
+        actions.moveAllFromZone,
+        owner
+      ),
+    ]
+  }
+
+  if (ctxMenu.kind === "faceUpPile") {
+    return [
+      buildMoveAllMenuItem(
+        ctxMenu.zone,
+        sessionCards,
+        animBusy,
+        actions.moveAllFromZone,
+        owner
+      ),
+    ]
+  }
+
+  const card = sessionCards.find((c) => c.instanceId === ctxMenu.instanceId)
+  if (!card) return []
+
+  const viewCardDetails: DropdownMenuItem = {
+    id: CTX_MENU_ACTION.cardDetails,
+    label: "View details",
+    onSelect: () => actions.inspectCard(card),
+  }
+
+  // Cards still in the deck are only reachable from deck search / peek, where
+  // zone actions do not apply — inspecting them is all that makes sense.
+  if (card.zone === PLAY_ZONE.library) return [viewCardDetails]
+
+  const putBottomTargets = selectableActionTargets(sessionCards, card)
+  const putOnBottomItem: DropdownMenuItem = {
+    id: CTX_MENU_ACTION.putBottom,
+    label: "Put on bottom",
+    disabled: animBusy,
+    onSelect: () => actions.putOnLibraryBottom(putBottomTargets),
+  }
+
+  const flipTargets = selectableActionTargets(sessionCards, card)
+  const nextFaceDown = !card.faceDown
+  const flipFaceItem: DropdownMenuItem = {
+    id: CTX_MENU_ACTION.flipFace,
+    label: nextFaceDown ? "Flip face down" : "Flip face up",
+    onSelect: () => actions.setFaceDown(flipTargets, nextFaceDown),
+  }
+
+  const deleteTargets = selectableActionTargets(sessionCards, card)
+  const deleteItem: DropdownMenuItem = {
+    id: CTX_MENU_ACTION.deleteCard,
+    label:
+      deleteTargets.length > 1
+        ? `Delete [${deleteTargets.length}]`
+        : "Delete",
+    tone: "danger",
+    onSelect: () => actions.deleteSessionCards(deleteTargets),
+  }
+
+  if (card.zone === PLAY_ZONE.hand) {
+    const pips = extractGainablePips(card.cost)
+    const hasCatalog = pips.some((pip) => {
+      if (pip.kind === "solid") return resourceByColor.has(pip.color)
+      if (pip.kind === "hybrid") {
+        return pip.colors.some((c) => resourceByColor.has(c))
+      }
+      return availableResourceColors.size > 0
+    })
+    let label = "Accumulate Resources"
+    if (animBusy) label = "Accumulate Resources (busy)"
+    else if (pips.length === 0) label = "Accumulate Resources (no colour pips)"
+    else if (!hasCatalog) {
+      label = "Accumulate Resources (no token cards loaded)"
+    }
+    return [
+      {
+        id: CTX_MENU_ACTION.accumulate,
+        label,
+        disabled: animBusy || pips.length === 0 || !hasCatalog,
+        onSelect: () => actions.startAccumulate(card.instanceId),
+      },
+      generateResourceItem,
+      putOnBottomItem,
+      flipFaceItem,
+      viewCardDetails,
+      deleteItem,
+    ]
+  }
+
+  if (
+    card.zone === PLAY_ZONE.battlefield ||
+    card.zone === PLAY_ZONE.stockpile
+  ) {
+    const counterTargets = selectableActionTargets(sessionCards, card)
+    return [
+      {
+        id: CTX_MENU_ACTION.addTime,
+        label: (
+          <>
+            Add{" "}
+            <span
+              aria-hidden
+              className="inline-flex min-h-6 min-w-6 items-center justify-center border border-emerald-400/70 bg-emerald-950/90 px-1 font-glitch text-sm leading-none text-emerald-200"
+            >
+              1
+            </span>{" "}
+            time counter
+          </>
+        ),
+        onSelect: () => actions.adjustCounter(counterTargets, "time", 1),
+      },
+      {
+        id: CTX_MENU_ACTION.addDamage,
+        label: (
+          <>
+            Add{" "}
+            <span
+              aria-hidden
+              className="inline-flex min-h-6 min-w-6 items-center justify-center border border-red-400/70 bg-red-950/90 px-1 font-glitch text-sm leading-none text-red-200"
+            >
+              1
+            </span>{" "}
+            damage counter
+          </>
+        ),
+        onSelect: () => actions.adjustCounter(counterTargets, "damage", 1),
+      },
+      
+     
+      {
+        id: CTX_MENU_ACTION.addOtherCounter,
+        label: "Add other counter",
+        submenu: [
+          {
+            id: CTX_MENU_ACTION.addGeneric,
+            label: (
+              <>
+                Add <CounterSwatch className="border-zinc-300/70 bg-zinc-800/90 text-zinc-100" />{" "}
+                generic counter
+              </>
+            ),
+            onSelect: () =>
+              actions.adjustCounter(counterTargets, "generic", 1),
+          },
+          {
+            id: CTX_MENU_ACTION.addDepletion,
+            label: (
+              <>
+                Add{" "}
+                <CounterSwatch className="border-orange-400/80 bg-orange-950/90 text-orange-200" />{" "}
+                depletion counter
+              </>
+            ),
+            onSelect: () =>
+              actions.adjustCounter(counterTargets, "depletion", 1),
+          },
+          {
+            id: CTX_MENU_ACTION.addTlv,
+            label: (
+              <>
+                Add +1 <GameIcon name="threat_lvl" className="h-4 w-auto" />{" "}
+                counter
+              </>
+            ),
+            onSelect: () => actions.adjustCounter(counterTargets, "tlv", 1),
+          },
+          {
+            id: CTX_MENU_ACTION.addTlvMinus,
+            label: (
+              <>
+                Add −1 <GameIcon name="threat_lvl" className="h-4 w-auto" />{" "}
+                counter
+              </>
+            ),
+            onSelect: () => actions.adjustCounter(counterTargets, "tlvMinus", 1),
+          },
+        ],
+      },
+      {
+        id: CTX_MENU_ACTION.createCopy,
+        label:
+          counterTargets.length > 1
+            ? `Create copies [${counterTargets.length}]`
+            : "Create copy",
+        onSelect: () => actions.duplicateCard(counterTargets),
+      },
+      generateResourceItem,
+      {
+        id: CTX_MENU_ACTION.sendToStockpile,
+        label: "Send to stockpile",
+        disabled: card.zone === PLAY_ZONE.stockpile,
+        onSelect: () =>
+          actions.moveInPlayToZone(counterTargets, PLAY_ZONE.stockpile),
+      },
+      {
+        id: CTX_MENU_ACTION.sendToBattlefield,
+        label: "Send to battlefield",
+        disabled: card.zone === PLAY_ZONE.battlefield,
+        onSelect: () =>
+          actions.moveInPlayToZone(counterTargets, PLAY_ZONE.battlefield),
+      },
+      putOnBottomItem,
+      flipFaceItem,
+      viewCardDetails,
+      deleteItem,
+    ]
+  }
+
+  if (
+    card.zone === PLAY_ZONE.trashyard ||
+    card.zone === PLAY_ZONE.dismantled
+  ) {
+    return [
+      putOnBottomItem,
+      buildMoveAllMenuItem(
+        card.zone,
+        sessionCards,
+        animBusy,
+        actions.moveAllFromZone,
+        owner
+      ),
+      viewCardDetails,
+    ]
+  }
+
+  if (card.zone === PLAY_ZONE.pilot) {
+    return [
+      {
+        id: CTX_MENU_ACTION.toggleExpended,
+        label: card.expended ? "Ready" : "Expend",
+        onSelect: () => actions.toggleExpended([card.instanceId]),
+      },
+      {
+        id: CTX_MENU_ACTION.addPilotGen,
+        label: (
+          <span className="inline-flex items-center gap-1.5">
+            Add +
+            <GameIcon
+              name={genIconForCount(
+                Math.min(PILOT_GEN_MAX, pilotGenBonus + 1)
+              )}
+              className="h-4 w-auto lg:h-4 2xl:h-4"
+            />
+            {pilotGenBonus > 0 ? ` (${pilotGenBonus}/${PILOT_GEN_MAX})` : ""}
+          </span>
+        ),
+        disabled: pilotGenBonus >= PILOT_GEN_MAX,
+        onSelect: () => actions.adjustPilotGenBonus(1),
+      },
+      {
+        id: CTX_MENU_ACTION.removePilotGen,
+        label: (
+          <span className="inline-flex items-center gap-1.5">
+            Remove +
+            <GameIcon
+              name={genIconForCount(Math.max(1, pilotGenBonus))}
+              className="h-4 w-auto lg:h-4 2xl:h-4"
+            />
+          </span>
+        ),
+        disabled: pilotGenBonus <= 0,
+        onSelect: () => actions.adjustPilotGenBonus(-1),
+      },
+      putOnBottomItem,
+      flipFaceItem,
+      viewCardDetails,
+    ]
+  }
+
+  return [putOnBottomItem, flipFaceItem, viewCardDetails]
+}

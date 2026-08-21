@@ -4,8 +4,10 @@ import { DECK_CARD_MAX_COPIES } from "./DeckCardStack"
 import {
   applyCardMove,
   augmentCards,
+  canAddCopyToDeck,
   canAddCopyToMain,
   cardsByCategory,
+  categoryCountsInDeck,
   clampQuantityToMax,
   deckCardCount,
   isAugmentCategory,
@@ -13,6 +15,7 @@ import {
   isReservedCategory,
   mainCategoryId,
   maxCopiesForCategory,
+  maxQuantityForStackEntry,
   nextCardQuantity,
   nextNewSectionName,
   orderedSelectionKeys,
@@ -21,16 +24,18 @@ import {
   selectionRangeKeys,
   sortDeckCards,
   toggleSelectionKey,
+  totalCopiesOfCard,
   withCardEntry,
-} from "./deckLogic"
+} from "./deck.logic"
 import type { DeckCardEntry, DeckCategoryOut, DeckDetail } from "@/lib/api/decks"
 
 function cat(
   id: number,
   name: string,
-  sort_order = id
+  sort_order = id,
+  in_deck = true
 ): DeckCategoryOut {
-  return { id, name, sort_order }
+  return { id, name, sort_order, in_deck }
 }
 
 function card(
@@ -127,8 +132,22 @@ describe("cardsByCategory", () => {
 })
 
 describe("mainCategoryId", () => {
-  it("prefers Main when present", () => {
-    expect(mainCategoryId([cat(9, "Side", 0), cat(3, "Main", 1)])).toBe(3)
+  it("prefers Entity when present", () => {
+    expect(
+      mainCategoryId([
+        cat(9, "Cyberspell", 0),
+        cat(3, "Entity", 1),
+      ])
+    ).toBe(3)
+  })
+
+  it("prefers an in-deck pile over a list-only pile", () => {
+    expect(
+      mainCategoryId([
+        cat(9, "Maybe", 0, false),
+        cat(3, "Entity", 1, true),
+      ])
+    ).toBe(3)
   })
 
   it("falls back to first playable by sort_order", () => {
@@ -192,6 +211,28 @@ describe("withCardEntry / applyCardMove", () => {
     expect(next.card_count).toBe(3)
   })
 
+  it("does not count list-only section cards in card_count", () => {
+    const prev: DeckDetail = {
+      id: 2,
+      name: "Test",
+      description: null,
+      is_public: false,
+      author_name: "user",
+      cover_image_path: null,
+      card_count: 2,
+      categories: [cat(1, "Entity", 0, true), cat(2, "Maybe", 1, false)],
+      cards: [
+        card({ card_id: 1, category_id: 1, quantity: 2 }),
+        card({ card_id: 2, category_id: 2, quantity: 4 }),
+      ],
+    }
+    const next = withCardEntry(
+      prev,
+      card({ card_id: 2, category_id: 2, quantity: 5 })
+    )
+    expect(next.card_count).toBe(2)
+  })
+
   it("moves a card between categories in a working list", () => {
     const working = [
       card({ card_id: 1, category_id: 10, quantity: 2 }),
@@ -217,6 +258,27 @@ describe("withCardEntry / applyCardMove", () => {
   })
 })
 
+describe("categoryCountsInDeck", () => {
+  it("excludes reserved and list-only piles", () => {
+    expect(categoryCountsInDeck(cat(1, "Entity"))).toBe(true)
+    expect(categoryCountsInDeck(cat(2, "Maybe", 2, false))).toBe(false)
+    expect(categoryCountsInDeck(cat(3, "Pilot", -1, true))).toBe(false)
+  })
+
+  it("counts only in-deck sections when categories are given", () => {
+    const categories = [
+      cat(1, "Entity", 0, true),
+      cat(2, "Maybe", 1, false),
+    ]
+    const cards = [
+      card({ card_id: 1, category_id: 1, quantity: 2 }),
+      card({ card_id: 2, category_id: 2, quantity: 3 }),
+    ]
+    expect(deckCardCount(cards)).toBe(5)
+    expect(deckCardCount(cards, categories)).toBe(2)
+  })
+})
+
 describe("quantity rules", () => {
   it("allows up to 3 copies in normal sections", () => {
     expect(maxCopiesForCategory(cat(1, "Main"))).toBe(DECK_CARD_MAX_COPIES)
@@ -233,7 +295,41 @@ describe("quantity rules", () => {
     expect(nextCardQuantity(1, -1, DECK_CARD_MAX_COPIES)).toBe(0)
   })
 
-  it("canAddCopyToMain blocks at max", () => {
+  it("sums copies of a card across all sections", () => {
+    const cards = [
+      card({ card_id: 7, category_id: 1, quantity: 2 }),
+      card({ card_id: 7, category_id: 2, quantity: 1 }),
+      card({ card_id: 8, category_id: 1, quantity: 3 }),
+    ]
+    expect(totalCopiesOfCard(cards, 7)).toBe(3)
+    expect(totalCopiesOfCard(cards, 8)).toBe(3)
+    expect(totalCopiesOfCard(cards, 9)).toBe(0)
+  })
+
+  it("caps a stack entry by copies already held elsewhere", () => {
+    const cards = [
+      card({ card_id: 7, category_id: 1, quantity: 2 }),
+      card({ card_id: 7, category_id: 2, quantity: 1 }),
+    ]
+    // Side already has 1 elsewhere → this Main stack may stay at 2, not grow.
+    expect(
+      maxQuantityForStackEntry(cards, 7, 2, DECK_CARD_MAX_COPIES)
+    ).toBe(2)
+    expect(nextCardQuantity(2, 1, 2)).toBeNull()
+    // With only 1 elsewhere, Side stack of 1 may grow to 2.
+    expect(
+      maxQuantityForStackEntry(
+        [card({ card_id: 7, category_id: 1, quantity: 1 }), cards[1]],
+        7,
+        1,
+        DECK_CARD_MAX_COPIES
+      )
+    ).toBe(2)
+  })
+
+  it("canAddCopyToDeck blocks at deck-wide max", () => {
+    expect(canAddCopyToDeck(3).ok).toBe(false)
+    expect(canAddCopyToDeck(2).ok).toBe(true)
     expect(canAddCopyToMain(3).ok).toBe(false)
     expect(canAddCopyToMain(2).ok).toBe(true)
   })

@@ -8,22 +8,40 @@ A short map of how this project names and organizes code. Follow these so new fi
 
 Ask: **is this file a React component?**
 
-| Kind of file | Case | Examples |
+| Kind of file | Case / pattern | Examples |
 | --- | --- | --- |
-| React component (renders JSX) | **PascalCase** | `DeckPage.tsx`, `DeckPilotSlot.tsx`, `DropdownMenu.tsx` |
-| Logic / helpers / API / utils | **camelCase** | `deckLogic.ts`, `utils.ts`, `cards.ts`, `decks.ts` |
-| Hooks | **camelCase** + `use` prefix | `useBootSequence.ts`, `useActiveSection.ts` |
-| Tests | Match the source file + `.test` | `deckLogic.test.ts`, `DeckPilotSlot.test.tsx` |
-| Types-only modules (when used) | **camelCase** or domain name | often live next to the API module |
+| React component (renders JSX) | **PascalCase** `.tsx` | `DeckPage.tsx`, `PlayingCard.tsx`, `DropdownMenu.tsx` |
+| Feature **domain rules** (pure, no JSX) | **camelCase** + **`.logic.ts`** | `deck.logic.ts`, `playCard.logic.ts`, `accumulateResources.logic.ts` |
+| API clients / HTTP | **camelCase** `.ts` under `lib/api/` | `cards.ts`, `decks.ts`, `auth.ts` |
+| Shared utils | **camelCase** `.ts` | `utils.ts`, `route.ts` |
+| Constants catalogs | **camelCase** + `Constants` / `.constants` | `playtesterConstants.ts`, `loginBoot.constants.ts` |
+| Style tokens (non-CSS) | **camelCase** + `Styles` | `headerStyles.ts`, `authFormStyles.ts` |
+| Hooks | **camelCase** + `use` prefix | `useBootSequence.ts`, `useDeckDetail.ts` |
+| Compatibility barrels | short name | `types.ts`, `index.ts` |
+| Tests | Match the source file + `.test` | `deck.logic.test.ts`, `DeckPilotSlot.test.tsx` |
 
-### Why `deckLogic.ts` not `DeckLogic.ts`?
+### Why `.logic.ts`?
 
-`deckLogic` exports **functions and constants**, not a component. The filename mirrors that:
+Pure **behavior** (move cards, parse costs, subscription checks) is easy to confuse with UI when everything is just `.ts`. The `.logic` suffix means:
+
+- no React components in this file
+- safe to unit-test without mounting UI
+- sits next to the feature’s `.tsx` files
+
+```
+PlayingCard.tsx           → UI
+playCard.logic.ts         → session card rules
+zoneMoves.logic.ts        → zone transfers
+usePlayContextMenu.tsx    → hook (React)
+playtesterConstants.ts    → identity constants (not rules)
+```
+
+**Do not** put `.logic` on API clients, hooks, utils, or style/constant catalogs — those already have a clear home/name.
+
+### Why camelCase for logic, PascalCase for components?
 
 - `DeckPilotSlot.tsx` → you import `<DeckPilotSlot />`
-- `deckLogic.ts` → you import `applyCardMove`, `deckCardCount`, etc.
-
-Same idea as `utils.ts` and `lib/api/decks.ts`.
+- `deck.logic.ts` → you import `applyCardMove`, `pilotCard`, etc.
 
 ### Exception: shadcn UI primitives
 
@@ -35,7 +53,7 @@ Some files under `components/ui/` follow the shadcn generator (`button.tsx`). Pr
 
 ```
 src/
-  components/     Reusable UI pieces (by domain: decks/, ui/, …)
+  components/     Reusable UI + colocated *.logic.ts (by domain: decks/, Playtester/, …)
   pages/          Route-level screens (DeckPage, LoginPage, …)
   lib/            Shared helpers + API clients (lib/api/)
   hooks/          Shared React hooks
@@ -46,8 +64,8 @@ src/
 **Rule of thumb**
 
 - Page owns routing and orchestration.
-- Heavy **pure rules** (no React) → extract next to the feature (`components/decks/deckLogic.ts`).
-- HTTP calls → `lib/api/*.ts`.
+- Heavy **pure rules** (no React) → `feature.logic.ts` next to the feature.
+- HTTP calls → `lib/api/*.ts` (no `.logic` suffix).
 - Generic UI → `components/ui/`.
 
 ---
@@ -57,7 +75,7 @@ src/
 - Prefer **named exports** for logic modules:
 
   ```ts
-  // deckLogic.ts
+  // deck.logic.ts
   export function applyCardMove(...) { ... }
   ```
 
@@ -66,8 +84,16 @@ src/
 - Use the `@/` alias for app imports:
 
   ```ts
-  import { applyCardMove } from "@/components/decks/deckLogic"
+  import { applyCardMove } from "@/components/decks/deck.logic"
   import { cn } from "@/lib/utils"
+  ```
+
+- Import paths omit the `.ts` extension; keep the `.logic` segment:
+
+  ```ts
+  import { cardsInZone } from "@/components/Playtester/playCard.logic"
+  // or via barrel while migrating:
+  import { cardsInZone } from "@/components/Playtester/types"
   ```
 
 ---
@@ -76,11 +102,11 @@ src/
 
 | Source | Test file |
 | --- | --- |
-| `deckLogic.ts` | `deckLogic.test.ts` |
+| `deck.logic.ts` | `deck.logic.test.ts` |
 | `DeckCardSearch.tsx` | `DeckCardSearch.test.tsx` |
-| Logic colocated with a component | e.g. `DeckCardStack.logic.test.ts` |
+| Logic still inside a component (temporary) | e.g. `DeckCardStack.logic.test.ts` — prefer extracting to `DeckCardStack.logic.ts` when it grows |
 
-- **Unit-test** pure logic heavily (`deckLogic`).
+- **Unit-test** pure logic heavily (`*.logic.ts`).
 - **Component-test** interactive pieces with Testing Library; mock `@/lib/api/*`.
 - Prefer **not** mounting huge pages (like full `DeckPage`) for most cases; reserve E2E for smoke later.
 
@@ -108,23 +134,29 @@ npm run test:run -- src/components/decks
 ## Quick checklist for a new file
 
 1. Component that returns JSX? → `SomethingName.tsx`
-2. Pure functions / constants? → `somethingName.ts`
+2. Feature domain rules (pure)? → `somethingName.logic.ts`
 3. Hook? → `useSomething.ts`
-4. Put it under the matching folder (`components/…`, `lib/…`, `pages/…`).
-5. Add `*.test.ts(x)` next to it when it has non-trivial behavior.
+4. HTTP? → `lib/api/something.ts`
+5. Constants only? → `somethingConstants.ts` / `something.constants.ts`
+6. Put it under the matching folder (`components/…`, `lib/…`, `pages/…`).
+7. Add `*.test.ts(x)` next to it when it has non-trivial behavior.
 
 ---
 
 ## Examples from this project
 
 ```
-DeckPage.tsx              → page component
-DeckCategorySection.tsx   → feature component
-deckLogic.ts              → deck business rules (no JSX)
-DeckCardSearch.test.tsx   → component test
-deckLogic.test.ts         → unit test for rules
-lib/api/decks.ts          → API client module
-lib/utils.ts              → shared util (cn, etc.)
+DeckPage.tsx                    → page component
+DeckCategorySection.tsx         → feature component
+deck.logic.ts                   → deck builder rules (no JSX)
+playCard.logic.ts               → playtester card session rules
+accumulateResources.logic.ts    → resource pip / token matching
+DeckCardSearch.test.tsx         → component test
+deck.logic.test.ts              → unit test for rules
+lib/api/decks.ts                → API client module
+lib/utils.ts                    → shared util (cn, etc.)
+lib/subscription.logic.ts       → entitlement helpers
+playtesterConstants.ts          → zone / menu identity constants
 ```
 
 When unsure, open a neighbor file in the same folder and copy its naming pattern.

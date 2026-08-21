@@ -38,6 +38,7 @@ const ICON_SOURCES = {
   gen6: { src: "/images/icons/Costs/GEN6.png", label: "Generic 6", shape: "token" },
   gen7: { src: "/images/icons/Costs/GEN7.png", label: "Generic 7", shape: "token" },
   gen8: { src: "/images/icons/Costs/GEN8.png", label: "Generic 8", shape: "token" },
+  gen9: { src: "/images/icons/Costs/GEN9.png", label: "Generic 9", shape: "token" },
   gen10: { src: "/images/icons/Costs/GEN-10.png", label: "Generic 10", shape: "token" },
   genX: { src: "/images/icons/Costs/GEN-X.png", label: "Generic X", shape: "token" },
 
@@ -157,7 +158,10 @@ export function GameIcon({ name, className }: GameIconProps) {
       src={icon.src}
       alt={icon.label}
       title={icon.label}
-      className={cn("inline-block h-5 w-auto align-text-bottom lg:h-6 2xl:h-7", className)}
+      className={cn(
+        "inline-block h-5 w-auto shrink-0 object-contain align-text-bottom lg:h-6 2xl:h-7",
+        className
+      )}
     />
   )
 }

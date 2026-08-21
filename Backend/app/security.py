@@ -15,9 +15,12 @@ _bearer = HTTPBearer(auto_error=False)
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = int(os.environ.get("JWT_EXPIRE_HOURS", "168"))  # 7 days
+# Short-lived tokens for Unity / tooling clients (login body client="unity").
+UNITY_TOKEN_EXPIRE_MINUTES = int(os.environ.get("JWT_UNITY_EXPIRE_MINUTES", "10"))
 
 
-def _jwt_secret() -> str:
+def signing_secret() -> str:
+    """Shared HMAC secret for tokens and signed media URLs."""
     secret = (os.environ.get("JWT_SECRET") or "").strip()
     if not secret:
         # Dev fallback — set JWT_SECRET in .env for real deployments.
@@ -36,8 +39,20 @@ def verify_password(plain: str, hashed: str) -> bool:
         return False
 
 
-def create_access_token(*, user_id: int, user_name: str, email: str, role: str) -> str:
-    expire = datetime.now(UTC) + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+def create_access_token(
+    *,
+    user_id: int,
+    user_name: str,
+    email: str,
+    role: str,
+    expires_delta: timedelta | None = None,
+) -> str:
+    """Create a JWT. Default lifetime is JWT_EXPIRE_HOURS; pass expires_delta to override."""
+    expire = datetime.now(UTC) + (
+        expires_delta
+        if expires_delta is not None
+        else timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+    )
     payload: dict[str, Any] = {
         "sub": str(user_id),
         "user_name": user_name,
@@ -46,12 +61,12 @@ def create_access_token(*, user_id: int, user_name: str, email: str, role: str) 
         "exp": expire,
         "iat": datetime.now(UTC),
     }
-    return jwt.encode(payload, _jwt_secret(), algorithm=ALGORITHM)
+    return jwt.encode(payload, signing_secret(), algorithm=ALGORITHM)
 
 
 def decode_access_token(token: str) -> dict[str, Any]:
     try:
-        return jwt.decode(token, _jwt_secret(), algorithms=[ALGORITHM])
+        return jwt.decode(token, signing_secret(), algorithms=[ALGORITHM])
     except jwt.ExpiredSignatureError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

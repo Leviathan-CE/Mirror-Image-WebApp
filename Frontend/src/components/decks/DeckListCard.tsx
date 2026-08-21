@@ -7,15 +7,23 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { GlitchFx } from "@/components/effects/GlitchFx"
-import { Button } from "@/components/ui/button"
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import { DropdownMenu } from "@/components/ui/DropdownMenu"
-import { EditBox } from "@/components/ui/EditBox"
+import {
+  PublicTextArea,
+  PublicTextField,
+} from "@/components/ui/PublicTextField"
 import { ApiError } from "@/lib/api/client"
 import {
   deleteDeck,
   updateDeck,
   type DeckSummary,
 } from "@/lib/api/decks"
+import {
+  isPublicTextClean,
+  PROFANITY_REJECTED,
+  PUBLIC_TEXT_BLOCKED_MESSAGE,
+} from "@/lib/profanity"
 import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
 
@@ -47,9 +55,11 @@ export function DeckListCard({
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [name, setName] = useState(deck.name ?? "")
   const [description, setDescription] = useState(deck.description ?? "")
   const [isPublic, setIsPublic] = useState(deck.is_public)
+  const label = deck.name ?? `Deck #${deck.id}`
 
   function beginEdit() {
     setName(deck.name ?? "")
@@ -67,6 +77,10 @@ export function DeckListCard({
 
   async function saveEdit() {
     if (!token || !onUpdated) return
+    if (!isPublicTextClean(name, description)) {
+      onError?.(PUBLIC_TEXT_BLOCKED_MESSAGE)
+      return
+    }
     setSaving(true)
     onBusyChange?.(true)
     onError?.("")
@@ -80,9 +94,11 @@ export function DeckListCard({
       setEditing(false)
     } catch (error) {
       onError?.(
-        error instanceof ApiError
-          ? "Could not save deck details."
-          : "Save failed."
+        error instanceof ApiError && error.detail === PROFANITY_REJECTED
+          ? PUBLIC_TEXT_BLOCKED_MESSAGE
+          : error instanceof ApiError
+            ? "Could not save deck details."
+            : "Save failed."
       )
     } finally {
       setSaving(false)
@@ -90,22 +106,14 @@ export function DeckListCard({
     }
   }
 
-  async function confirmDelete() {
+  async function performDelete() {
     if (!token || !onDeleted) return
-    const label = deck.name ?? `Deck #${deck.id}`
-    if (
-      !window.confirm(
-        `Delete “${label}”? This cannot be undone.`
-      )
-    ) {
-      return
-    }
-
     setSaving(true)
     onBusyChange?.(true)
     onError?.("")
     try {
       await deleteDeck(deck.id, token)
+      setDeleteOpen(false)
       onDeleted(deck.id)
     } catch (error) {
       onError?.(
@@ -123,20 +131,19 @@ export function DeckListCard({
     return (
       <div className="border border-cyan-500/40 bg-black/60 p-5">
         <div className="flex flex-col gap-3">
-          <EditBox
+          <PublicTextField
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={setName}
             placeholder="deck name"
             disabled={saving || locked}
             autoFocus
           />
-          <textarea
+          <PublicTextArea
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={setDescription}
             placeholder="description"
             disabled={saving || locked}
             rows={3}
-            className="w-full border border-white/40 bg-black/80 px-3 py-2 font-mono text-sm text-white outline-none placeholder:text-white/40 focus-visible:border-white"
           />
           <label className="flex items-center gap-2 font-buahs93 text-sm text-cyan-200/80">
             <input
@@ -152,17 +159,22 @@ export function DeckListCard({
             <GlitchFx
               type="button"
               label={saving ? "SAVING…" : "SAVE"}
-              disabled={saving || locked || !name.trim()}
+              disabled={
+                saving ||
+                locked ||
+                !name.trim() ||
+                !isPublicTextClean(name, description)
+              }
               className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900 disabled:opacity-60"
               onClick={() => void saveEdit()}
             />
-            <Button
-              className="font-buahs93 h-9 rounded-none bg-card px-4 text-sm text-white"
+            <GlitchFx
+              type="button"
+              label="CANCEL"
               disabled={saving || locked}
+              className="font-buahs93 h-9 rounded-none border border-cyan-500/40 bg-black/70 px-5 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 disabled:opacity-60"
               onClick={cancelEdit}
-            >
-              CANCEL
-            </Button>
+            />
           </div>
         </div>
       </div>
@@ -203,8 +215,22 @@ export function DeckListCard({
             {deck.description}
           </p>
         ) : null}
+        {(deck.tags?.length ?? 0) > 0 ? (
+          <p className="mt-2 flex flex-wrap gap-1">
+            {deck.tags!.slice(0, 6).map((tag) => (
+              <span
+                key={tag}
+                className="border border-cyan-500/25 bg-cyan-500/10 px-1.5 py-0.5 font-mono text-[10px] text-cyan-100/80"
+              >
+                {tag}
+              </span>
+            ))}
+          </p>
+        ) : null}
         <p className="mt-4 font-mono text-xs text-cyan-300/60">
           {deck.card_count} cards
+          {typeof deck.like_count === "number" ? ` · ${deck.like_count} likes` : ""}
+          {typeof deck.view_count === "number" ? ` · ${deck.view_count} views` : ""}
         </p>
       </button>
 
@@ -225,13 +251,29 @@ export function DeckListCard({
                 label: "Delete",
                 tone: "danger",
                 onSelect: () => {
-                  void confirmDelete()
+                  setDeleteOpen(true)
                 },
               },
             ]}
           />
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Delete deck?"
+        description={`Delete “${label}”? This cannot be undone.`}
+        confirmLabel="Delete deck"
+        cancelLabel="Keep deck"
+        tone="danger"
+        busy={saving}
+        onCancel={() => {
+          if (!saving) setDeleteOpen(false)
+        }}
+        onConfirm={() => {
+          void performDelete()
+        }}
+      />
     </div>
   )
 }

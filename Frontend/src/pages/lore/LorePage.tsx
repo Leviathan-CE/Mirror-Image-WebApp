@@ -171,7 +171,8 @@ export function LorePage() {
                                     corruption left by Dragor&apos;drune the Corruptor and the legacy of
                                     Anorath, seeking peace and balance for Aerathea. No one knows how long he
                                     will live, or where he has gone. Some whisper of a masked elven warrior
-                                    who cuts down Hunter Killers in seconds and tears open wormholes to watch
+                                    who cut through anything, regenerate his entire body after being cut in half,
+                                    and tears open wormholes to watch
                                     comets burn through PyAi&apos;s armies from the void.
                                 </p>
                             </Subsection>
@@ -306,7 +307,7 @@ export function LorePage() {
 
                                             Humanity answered the only way it could: the Pilot Program. Living
 
-                                            metal as a material source. A HAI to invoke scripts at inhuman speed.
+                                            metal as a material source. A Human Augmented Intellegence (HAI), a artificail intellegent companion trained live to a pilots data, to invoke scripts at inhuman speed.
 
                                             Technology to hack mainframes and turn enemy systems against
 

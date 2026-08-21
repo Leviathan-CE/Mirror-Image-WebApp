@@ -1,0 +1,163 @@
+import { describe, expect, it } from "vitest"
+
+import {
+  formatSubscriptionDate,
+  isUserSubscribed,
+  subscriptionPeriodLabel,
+  userHasFeature,
+} from "./subscription.logic"
+
+describe("userHasFeature", () => {
+  it("uses features[] from /auth/me", () => {
+    expect(
+      userHasFeature(
+        {
+          id: 1,
+          user_name: "a",
+          email: "a@x",
+          role: "user",
+          features: ["preview_cards"],
+        },
+        "preview_cards"
+      )
+    ).toBe(true)
+  })
+
+  it("treats playtester as always public (even logged out)", () => {
+    expect(userHasFeature(null, "playtester")).toBe(true)
+    expect(
+      userHasFeature(
+        {
+          id: 1,
+          user_name: "a",
+          email: "a@x",
+          role: "user",
+          features: [],
+          subscription_status: "none",
+          is_subscribed: false,
+        },
+        "playtester"
+      )
+    ).toBe(true)
+  })
+
+  it("admins always pass gated features", () => {
+    expect(
+      userHasFeature(
+        {
+          id: 1,
+          user_name: "a",
+          email: "a@x",
+          role: "admin",
+          features: [],
+        },
+        "preview_cards"
+      )
+    ).toBe(true)
+  })
+})
+
+describe("isUserSubscribed", () => {
+  it("uses is_subscribed when present", () => {
+    expect(
+      isUserSubscribed({
+        id: 1,
+        user_name: "a",
+        email: "a@x",
+        role: "user",
+        is_subscribed: true,
+        subscription_status: "none",
+      })
+    ).toBe(true)
+  })
+
+  it("treats admins as entitled", () => {
+    expect(
+      isUserSubscribed({
+        id: 1,
+        user_name: "a",
+        email: "a@x",
+        role: "admin",
+        subscription_status: "none",
+      })
+    ).toBe(true)
+  })
+
+  it("entitles active and trialing users", () => {
+    expect(
+      isUserSubscribed({
+        id: 1,
+        user_name: "a",
+        email: "a@x",
+        role: "user",
+        subscription_status: "active",
+      })
+    ).toBe(true)
+    expect(
+      isUserSubscribed({
+        id: 1,
+        user_name: "a",
+        email: "a@x",
+        role: "user",
+        subscription_status: "trialing",
+      })
+    ).toBe(true)
+  })
+
+  it("rejects canceled / none", () => {
+    expect(
+      isUserSubscribed({
+        id: 1,
+        user_name: "a",
+        email: "a@x",
+        role: "user",
+        subscription_status: "canceled",
+      })
+    ).toBe(false)
+    expect(isUserSubscribed(null)).toBe(false)
+  })
+})
+
+describe("subscriptionPeriodLabel", () => {
+  it("shows next billing period while renewing", () => {
+    expect(
+      subscriptionPeriodLabel({
+        subscription_status: "active",
+        cancel_at_period_end: false,
+      })
+    ).toBe("Next billing period")
+    expect(
+      subscriptionPeriodLabel({
+        subscription_status: "trialing",
+        cancel_at_period_end: false,
+      })
+    ).toBe("Next billing period")
+  })
+
+  it("shows period end when cancel is scheduled (status still active)", () => {
+    expect(
+      subscriptionPeriodLabel({
+        subscription_status: "active",
+        cancel_at_period_end: true,
+      })
+    ).toBe("Period end")
+  })
+
+  it("shows period end when canceled", () => {
+    expect(
+      subscriptionPeriodLabel({
+        subscription_status: "canceled",
+        cancel_at_period_end: false,
+      })
+    ).toBe("Period end")
+  })
+})
+
+describe("formatSubscriptionDate", () => {
+  it("formats without a clock time", () => {
+    const text = formatSubscriptionDate("2026-08-23T22:04:43+00:00")
+    expect(text).not.toMatch(/\d{1,2}:\d{2}/)
+    expect(text).toMatch(/2026/)
+    expect(text).toMatch(/23|Aug/i)
+  })
+})

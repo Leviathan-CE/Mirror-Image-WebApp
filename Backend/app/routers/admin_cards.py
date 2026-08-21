@@ -9,7 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 from psycopg2 import OperationalError
 
+from app.card_library_query import apply_catalogue_filters, catalogue_order_sql
 from app.db import get_connection
+from app.media_urls import signed_media_path
 from app.security import get_current_admin_user_id
 
 logger = logging.getLogger(__name__)
@@ -17,11 +19,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/cards/admin", tags=["admin-cards"])
 
 PUBLISH_STATUSES = ("published", "preview", "not published")
-
-
-def _escape_like(value: str) -> str:
-    """Escape %, _, and \\ for ILIKE patterns."""
-    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 class AdminCardItem(BaseModel):
@@ -92,43 +89,68 @@ class AdminCardBulkResult(BaseModel):
 @router.get("/library", response_model=AdminCardLibraryResponse)
 def admin_browse_cards(
     q: str | None = Query(default=None, max_length=80),
-    limit: int = Query(default=48, ge=1, le=100),
+    description: str | None = Query(default=None, max_length=200),
+    invoke_cost_min: int | None = Query(default=None, ge=0, le=99),
+    invoke_cost_max: int | None = Query(default=None, ge=0, le=99),
+    color: list[str] | None = Query(default=None),
+    types_line: str | None = Query(default=None, max_length=80),
+    super_type: str | None = Query(default=None, max_length=60),
+    sub_type: str | None = Query(default=None, max_length=60),
+    published: str | None = Query(
+        default=None,
+        description="Filter by publish status: published | preview | not published",
+    ),
+    limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     _admin_id: int = Depends(get_current_admin_user_id),
 ):
     """
     Admin catalogue browse.
 
-    Name search (`q`) uses the same closest-match ranking as `/cards/search`
-    and `/cards/library`. Includes deprecated cards and publish/lagality fields.
+    Same filter surface as `/cards/library` (name, description, colours,
+    invoke cost, type line, super/sub types), plus optional publish status.
+    Includes deprecated cards and publish/lagality fields; no publish gate.
     """
+    if published is not None and published not in PUBLISH_STATUSES:
+        raise HTTPException(status_code=400, detail="invalid_published_status")
+
     where = ["TRUE"]
     params: dict[str, Any] = {"limit": limit, "offset": offset}
 
-    needle = (q or "").strip()
-    if needle:
-        escaped = _escape_like(needle)
-        where.append("c.card_name ILIKE %(name_pattern)s ESCAPE '\\'")
-        params["name_pattern"] = f"%{escaped}%"
-        params["name_prefix"] = f"{escaped}%"
-        order_sql = """
-            CASE
-              WHEN c.card_name ILIKE %(name_prefix)s ESCAPE '\\' THEN 0
-              ELSE 1
-            END,
-            LENGTH(c.card_name) ASC,
-            c.card_name ASC
-        """
-    else:
-        order_sql = "c.card_name ASC"
+    has_name_query = apply_catalogue_filters(
+        where,
+        params,
+        alias="c",
+        q=q,
+        description=description,
+        invoke_cost_min=invoke_cost_min,
+        invoke_cost_max=invoke_cost_max,
+        color=color,
+        types_line=types_line,
+        super_type=super_type,
+        sub_type=sub_type,
+    )
+
+    if published is not None:
+        # Missing publish_cards row counts as "not published".
+        where.append(
+            "COALESCE(p.published, 'not published') = %(published)s"
+        )
+        params["published"] = published
 
     where_sql = " AND ".join(where)
+    order_sql = catalogue_order_sql(has_name_query, alias="c")
 
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    f"SELECT COUNT(*)::int FROM cards c WHERE {where_sql}",
+                    f"""
+                    SELECT COUNT(*)::int
+                      FROM cards c
+                      LEFT JOIN publish_cards p ON p.card_id = c.id
+                     WHERE {where_sql}
+                    """,
                     params,
                 )
                 total = int(cur.fetchone()[0])
@@ -170,13 +192,108 @@ def admin_browse_cards(
             lagality=row[4] or "Legal",
             published=row[5] or "not published",
             is_deprecated=bool(row[6]),
-            card_art_path=row[7],
+            card_art_path=signed_media_path(row[7]),
             card_art_version=int(row[8]) if row[8] is not None else None,
         )
         for row in rows
     ]
     return AdminCardLibraryResponse(
         items=items, total=total, limit=limit, offset=offset
+    )
+
+
+class AdminCardDetail(BaseModel):
+    """Full catalogue fields for the admin detail overlay."""
+
+    id: int
+    card_name: str
+    card_set_name: str
+    rarity: str
+    invoke_cost: int = 0
+    cost: list[Any] = Field(default_factory=list)
+    super_types: list[Any] = Field(default_factory=list)
+    sub_types: list[Any] = Field(default_factory=list)
+    types_line: str = ""
+    description: str = ""
+    keywords: list[Any] = Field(default_factory=list)
+    show_help_text: bool = True
+    threat_level: str = "0"
+    card_art_path: str | None = None
+    card_art_version: int | None = None
+    lagality: str = "Legal"
+    published: str = "not published"
+    is_deprecated: bool = False
+
+
+@router.get("/library/{card_id}", response_model=AdminCardDetail)
+def admin_get_card(
+    card_id: int,
+    _admin_id: int = Depends(get_current_admin_user_id),
+):
+    """Full card detail for the admin DB overlay (no publish gate)."""
+    if card_id <= 0:
+        raise HTTPException(status_code=400, detail="invalid_card_id")
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        c.id,
+                        c.card_name,
+                        c.card_set_name,
+                        c.rarity,
+                        c.invoke_cost,
+                        c.cost,
+                        c.super_types,
+                        c.sub_types,
+                        c.types_line,
+                        c.description,
+                        c.keywords,
+                        c.show_help_text,
+                        c.threat_level,
+                        c.card_art_path,
+                        EXTRACT(EPOCH FROM c.updated_at)::bigint,
+                        c.lagality,
+                        COALESCE(p.published, 'not published'),
+                        c.is_deprecated
+                      FROM cards c
+                      LEFT JOIN publish_cards p ON p.card_id = c.id
+                     WHERE c.id = %(card_id)s
+                    """,
+                    {"card_id": card_id},
+                )
+                row = cur.fetchone()
+    except OperationalError as e:
+        logger.warning("db error on admin card detail: %s", e)
+        raise HTTPException(status_code=503, detail="database_unavailable") from e
+    except Exception as e:
+        logger.exception("unexpected error on admin card detail: %s", e)
+        raise HTTPException(status_code=500, detail="admin_card_detail_failed") from e
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="card_not_found")
+
+    return AdminCardDetail(
+        id=int(row[0]),
+        card_name=row[1],
+        card_set_name=row[2],
+        rarity=row[3],
+        invoke_cost=int(row[4] or 0),
+        cost=list(row[5] or []),
+        super_types=list(row[6] or []),
+        sub_types=list(row[7] or []),
+        types_line=row[8] or "",
+        description=row[9] or "",
+        keywords=list(row[10] or []),
+        show_help_text=bool(row[11]),
+        threat_level=str(row[12] if row[12] is not None else "0"),
+        card_art_path=signed_media_path(row[13]),
+        card_art_version=int(row[14]) if row[14] is not None else None,
+        lagality=row[15] or "Legal",
+        published=row[16] or "not published",
+        is_deprecated=bool(row[17]),
     )
 
 

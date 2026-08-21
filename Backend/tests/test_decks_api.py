@@ -12,6 +12,8 @@ import io
 import pytest
 from fastapi.testclient import TestClient
 
+from app.play_rooms_state import reset_play_rooms
+
 
 @pytest.fixture
 def created_deck(client: TestClient, auth_headers: dict[str, str]) -> dict:
@@ -35,7 +37,7 @@ def test_list_default_categories_no_auth(client: TestClient):
     response = client.get("/decks/default-categories")
     assert response.status_code == 200
     body = response.json()
-    assert body["categories"] == ["Main", "Side", "Maybe", "Extra"]
+    assert body["categories"] == ["Entity", "Cyberspell"]
 
 
 def test_new_deck_seeds_default_categories(
@@ -47,7 +49,8 @@ def test_new_deck_seeds_default_categories(
     )
     assert response.status_code == 200
     names = [c["name"] for c in response.json()]
-    assert names == ["Main", "Side", "Maybe", "Extra"]
+    assert names == ["Entity", "Cyberspell"]
+    assert all(c["in_deck"] is True for c in response.json())
 
 
 def test_create_deck_requires_auth(client: TestClient, require_db: None):
@@ -92,6 +95,53 @@ def test_private_deck_not_visible_to_other_user(
     assert response.status_code == 404
 
 
+def test_room_opponent_reads_the_seated_private_deck(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    other_auth_headers: dict[str, str],
+    created_deck: dict,
+):
+    """Sitting across from a deck in a live room is read access — for that deck."""
+    reset_play_rooms()
+    deck_id = created_deck["id"]
+    guest_token = other_auth_headers["Authorization"].split(" ", 1)[1]
+
+    room = client.post(
+        "/play/rooms", json={"deck_id": deck_id}, headers=auth_headers
+    )
+    assert room.status_code == 200, room.text
+    code = room.json()["code"]
+
+    # Outside the room the private deck stays hidden, room code or not.
+    assert client.get(f"/decks/{deck_id}", headers=other_auth_headers).status_code == 404
+    assert (
+        client.get(
+            f"/decks/{deck_id}?room={code}", headers=other_auth_headers
+        ).status_code
+        == 404
+    )
+
+    try:
+        with client.websocket_connect(
+            f"/play/ws/rooms/{code}?token={guest_token}"
+        ) as guest:
+            assert guest.receive_json()["seat"] == "p2"
+
+            pooled = client.get(
+                f"/decks/{deck_id}?room={code}", headers=other_auth_headers
+            )
+            assert pooled.status_code == 200, pooled.text
+            assert pooled.json()["id"] == deck_id
+
+            # An unknown code must fail soft, not open the deck.
+            stale = client.get(
+                f"/decks/{deck_id}?room=NOPE12", headers=other_auth_headers
+            )
+            assert stale.status_code == 404
+    finally:
+        reset_play_rooms()
+
+
 def test_owner_can_read_private_deck(
     client: TestClient, auth_headers: dict[str, str], created_deck: dict
 ):
@@ -121,7 +171,10 @@ def test_public_deck_readable_without_auth(
 
         catalogue = client.get("/decks/public")
         assert catalogue.status_code == 200
-        assert any(d["id"] == deck_id for d in catalogue.json())
+        page = catalogue.json()
+        assert "items" in page
+        assert any(d["id"] == deck_id for d in page["items"])
+        assert isinstance(page["total"], int)
 
         cards = client.get(f"/decks/{deck_id}/cards")
         assert cards.status_code == 200
@@ -220,8 +273,8 @@ def test_add_reorder_update_remove_cards(
     deck_id = created_deck["id"]
     cats = client.get(f"/decks/{deck_id}/categories", headers=auth_headers).json()
     by_name = {c["name"]: c["id"] for c in cats}
-    main_id = by_name["Main"]
-    side_id = by_name["Side"]
+    entity_id = by_name["Entity"]
+    cyberspell_id = by_name["Cyberspell"]
 
     added = client.post(
         f"/decks/{deck_id}/cards",
@@ -229,20 +282,20 @@ def test_add_reorder_update_remove_cards(
         json={
             "card_id": sample_card_id,
             "quantity": 2,
-            "category_id": main_id,
+            "category_id": entity_id,
         },
     )
     assert added.status_code == 201, added.text
     entry = added.json()
     assert entry["card_id"] == sample_card_id
     assert entry["quantity"] == 2
-    assert entry["category_id"] == main_id
-    assert entry["category_name"] == "Main"
+    assert entry["category_id"] == entity_id
+    assert entry["category_name"] == "Entity"
 
     again = client.post(
         f"/decks/{deck_id}/cards",
         headers=auth_headers,
-        json={"card_id": sample_card_id, "quantity": 1, "category_id": main_id},
+        json={"card_id": sample_card_id, "quantity": 1, "category_id": entity_id},
     )
     assert again.status_code == 201
     assert again.json()["quantity"] == 3
@@ -254,7 +307,7 @@ def test_add_reorder_update_remove_cards(
             "items": [
                 {
                     "card_id": sample_card_id,
-                    "category_id": main_id,
+                    "category_id": entity_id,
                     "sort_order": 5,
                 }
             ]
@@ -266,18 +319,18 @@ def test_add_reorder_update_remove_cards(
     moved = client.patch(
         f"/decks/{deck_id}/cards/{sample_card_id}",
         headers=auth_headers,
-        params={"category_id": main_id},
-        json={"category_id": side_id, "quantity": 1},
+        params={"category_id": entity_id},
+        json={"category_id": cyberspell_id, "quantity": 1},
     )
     assert moved.status_code == 200, moved.text
-    assert moved.json()["category_id"] == side_id
-    assert moved.json()["category_name"] == "Side"
+    assert moved.json()["category_id"] == cyberspell_id
+    assert moved.json()["category_name"] == "Cyberspell"
     assert moved.json()["quantity"] == 1
 
     listed = client.get(
         f"/decks/{deck_id}/cards",
         headers=auth_headers,
-        params={"category_id": side_id},
+        params={"category_id": cyberspell_id},
     )
     assert listed.status_code == 200
     assert len(listed.json()) == 1
@@ -285,7 +338,7 @@ def test_add_reorder_update_remove_cards(
     removed = client.delete(
         f"/decks/{deck_id}/cards/{sample_card_id}",
         headers=auth_headers,
-        params={"category_id": side_id},
+        params={"category_id": cyberspell_id},
     )
     assert removed.status_code == 204
 
@@ -310,6 +363,16 @@ def test_user_defined_category_crud(
     assert created.status_code == 201, created.text
     tech = created.json()
     assert tech["name"] == "Tech"
+    assert tech["in_deck"] is True
+
+    listed = client.patch(
+        f"/decks/{deck_id}/categories/{tech['id']}",
+        headers=auth_headers,
+        json={"in_deck": False},
+    )
+    assert listed.status_code == 200
+    assert listed.json()["in_deck"] is False
+    assert listed.json()["name"] == "Tech"
 
     renamed = client.patch(
         f"/decks/{deck_id}/categories/{tech['id']}",
@@ -366,11 +429,17 @@ def test_upload_cover_image(
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["deck_id"] == deck_id
-    assert body["cover_image_path"].startswith(f"decks/{deck_id}/")
+    # Covers come back as signed media URLs, never a fetchable storage path.
+    assert body["cover_image_path"].startswith(f"media/decks/{deck_id}/")
+    assert "sig=" in body["cover_image_path"]
     assert body["cover_size_bytes"] == len(png)
 
     detail = client.get(f"/decks/{deck_id}", headers=auth_headers)
     assert detail.json()["cover_image_path"] == body["cover_image_path"]
+
+    served = client.get(f"/{body['cover_image_path']}")
+    assert served.status_code == 200
+    assert served.content == png
 
 
 def test_delete_deck(

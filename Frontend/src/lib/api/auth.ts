@@ -9,6 +9,11 @@ export type AuthUser = {
   user_name: string
   email: string
   role: string
+  subscription_status?: string
+  subscription_type?: string
+  is_subscribed?: boolean
+  email_verified?: boolean
+  features?: string[]
 }
 
 export type LoginResponse = {
@@ -22,8 +27,7 @@ export type RegisterResponse = {
   user_name: string
   email: string
   role: string
-  access_token: string
-  token_type: string
+  message?: string
 }
 
 export async function loginRequest(
@@ -36,6 +40,45 @@ export async function loginRequest(
     body: JSON.stringify({ identifier, password }),
   })
   return readJsonOrThrow<LoginResponse>(response, "login_failed")
+}
+
+/** Public Google Sign-In config (client id from API env). */
+export type GoogleAuthConfig = {
+  google_client_id: string | null
+  enabled: boolean
+}
+
+export async function fetchGoogleAuthConfig(): Promise<GoogleAuthConfig> {
+  const response = await fetch(`${apiBaseUrl()}/auth/google/config`)
+  return readJsonOrThrow<GoogleAuthConfig>(response, "google_config_failed")
+}
+
+/** Exchange a Google Identity Services ID token for an app JWT. */
+export async function googleLoginRequest(
+  idToken: string
+): Promise<LoginResponse> {
+  const response = await fetch(`${apiBaseUrl()}/auth/google`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id_token: idToken }),
+  })
+  return readJsonOrThrow<LoginResponse>(response, "google_login_failed")
+}
+
+/**
+ * Verified password account already owns this Google email:
+ * prove password, then attach Google and sign in.
+ */
+export async function googleLinkWithPasswordRequest(
+  idToken: string,
+  password: string
+): Promise<LoginResponse> {
+  const response = await fetch(`${apiBaseUrl()}/auth/google/link-with-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id_token: idToken, password }),
+  })
+  return readJsonOrThrow<LoginResponse>(response, "google_link_failed")
 }
 
 export async function createAccount(

@@ -48,6 +48,12 @@ export function Userheader() {
           >
             LORE
           </Button>
+          <Button
+            className={navButtonClassName}
+            onClick={() => navigate(ROUTES.SUBSCRIBE)}
+          >
+            SUBSCRIBE
+          </Button>
           {isAdmin ? (
             <Button
               className={navButtonClassName}

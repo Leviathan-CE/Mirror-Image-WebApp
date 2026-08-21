@@ -29,6 +29,12 @@ export function isReservedCategory(category: DeckCategoryOut): boolean {
   return isPilotCategory(category) || isAugmentCategory(category)
 }
 
+/** Playable RIG section — reserved slots and list-only piles are excluded. */
+export function categoryCountsInDeck(category: DeckCategoryOut): boolean {
+  if (isReservedCategory(category)) return false
+  return category.in_deck !== false
+}
+
 export function sortDeckCards(
   cards: DeckCardEntry[],
   mode: DeckCardSortMode
@@ -65,10 +71,15 @@ export function cardsByCategory(
 }
 
 export function mainCategoryId(categories: DeckCategoryOut[]): number | null {
-  const main = categories.find((c) => c.name.trim().toLowerCase() === "main")
-  if (main) return main.id
   const playable = categories.filter((c) => !isReservedCategory(c))
-  const first = [...playable].sort((a, b) => a.sort_order - b.sort_order)[0]
+  const inDeck = playable.filter(categoryCountsInDeck)
+  const pool = inDeck.length > 0 ? inDeck : playable
+  const preferred = pool.find((c) => {
+    const name = c.name.trim().toLowerCase()
+    return name === "entity" || name === "main"
+  })
+  if (preferred) return preferred.id
+  const first = [...pool].sort((a, b) => a.sort_order - b.sort_order)[0]
   return first?.id ?? null
 }
 
@@ -134,7 +145,7 @@ export function withCardEntry(
   return {
     ...prev,
     cards,
-    card_count: cards.reduce((sum, card) => sum + card.quantity, 0),
+    card_count: deckCardCount(cards, prev.categories),
   }
 }
 
@@ -165,12 +176,51 @@ export function applyCardMove(
   ]
 }
 
-export function deckCardCount(cards: DeckCardEntry[]): number {
-  return cards.reduce((sum, card) => sum + card.quantity, 0)
+export function deckCardCount(
+  cards: DeckCardEntry[],
+  categories?: DeckCategoryOut[]
+): number {
+  if (!categories) {
+    return cards.reduce((sum, card) => sum + card.quantity, 0)
+  }
+  const inDeckIds = new Set(
+    categories.filter(categoryCountsInDeck).map((category) => category.id)
+  )
+  return cards.reduce((sum, card) => {
+    if (!inDeckIds.has(card.category_id)) return sum
+    return sum + card.quantity
+  }, 0)
 }
 
 export function maxCopiesForCategory(category: DeckCategoryOut): number {
   return isAugmentCategory(category) ? 1 : DECK_CARD_MAX_COPIES
+}
+
+/** Sum of quantity for one `card_id` across every section in the deck. */
+export function totalCopiesOfCard(
+  cards: readonly Pick<DeckCardEntry, "card_id" | "quantity">[],
+  cardId: number
+): number {
+  let total = 0
+  for (const card of cards) {
+    if (card.card_id === cardId) total += card.quantity
+  }
+  return total
+}
+
+/**
+ * Highest quantity one stack entry may hold without exceeding the
+ * deck-wide (or category) copy cap. Copies in other sections count
+ * against the same budget.
+ */
+export function maxQuantityForStackEntry(
+  cards: readonly Pick<DeckCardEntry, "card_id" | "quantity">[],
+  cardId: number,
+  stackQuantity: number,
+  maxCopies: number
+): number {
+  const elsewhere = totalCopiesOfCard(cards, cardId) - stackQuantity
+  return Math.max(0, maxCopies - Math.max(0, elsewhere))
 }
 
 /**
@@ -200,16 +250,25 @@ export function nextNewSectionName(existingNames: Iterable<string>): string {
   return name
 }
 
-export function canAddCopyToMain(
-  existingQuantity: number | undefined
+/** Whether another copy may be added given the deck-wide total already held. */
+export function canAddCopyToDeck(
+  deckTotalQuantity: number,
+  maxCopies: number = DECK_CARD_MAX_COPIES
 ): { ok: true } | { ok: false; message: string } {
-  if ((existingQuantity ?? 0) >= DECK_CARD_MAX_COPIES) {
+  if (deckTotalQuantity >= maxCopies) {
     return {
       ok: false,
-      message: `Main already has ${DECK_CARD_MAX_COPIES} copies of that card.`,
+      message: `Deck already has ${maxCopies} copies of that card across all sections.`,
     }
   }
   return { ok: true }
+}
+
+/** @deprecated Prefer `canAddCopyToDeck` + `totalCopiesOfCard`. */
+export function canAddCopyToMain(
+  existingQuantity: number | undefined
+): { ok: true } | { ok: false; message: string } {
+  return canAddCopyToDeck(existingQuantity ?? 0)
 }
 
 export function clampQuantityToMax(

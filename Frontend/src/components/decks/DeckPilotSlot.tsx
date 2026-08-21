@@ -5,10 +5,16 @@
 import { useEffect, useState, type DragEvent } from "react"
 
 import {
+  ClassifiedCardFace,
+  cardClassification,
+} from "@/components/decks/ClassifiedCardFace"
+import {
+  deckCardDropEffect,
   isDeckCardDrag,
   parseDeckCardDrag,
   type DeckCardDragPayload,
 } from "@/components/decks/DeckCardStack"
+import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import "@/components/decks/DeckCardStack.css"
 import { cardArtUrl, type DeckCardEntry } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
@@ -31,10 +37,14 @@ export function DeckPilotSlot({
   const [dropActive, setDropActive] = useState(false)
   const [hovered, setHovered] = useState(false)
   const [enlarged, setEnlarged] = useState(false)
+  const [inspectOpen, setInspectOpen] = useState(false)
   const acceptsDrops = canEdit && !disabled
-  const art = pilot
-    ? cardArtUrl(pilot.card_art_path, pilot.card_art_version)
-    : null
+  const classification = pilot ? cardClassification(pilot) : null
+  const classified = classification != null
+  const art =
+    pilot && !classified
+      ? cardArtUrl(pilot.card_art_path, pilot.card_art_version)
+      : null
 
   useEffect(() => {
     if (!enlarged) return
@@ -78,7 +88,7 @@ export function DeckPilotSlot({
         onDragOver={(event) => {
           if (!acceptsDrops || !isCardDrag(event)) return
           event.preventDefault()
-          event.dataTransfer.dropEffect = "move"
+          event.dataTransfer.dropEffect = deckCardDropEffect()
           setDropActive(true)
         }}
         onDragLeave={(event) => {
@@ -103,6 +113,11 @@ export function DeckPilotSlot({
           event.preventDefault()
           setEnlarged(true)
         }}
+        onClick={(event) => {
+          if (!pilot || !classified || event.button !== 0) return
+          event.preventDefault()
+          setInspectOpen(true)
+        }}
         onAuxClick={(event) => {
           if (event.button === 1) event.preventDefault()
         }}
@@ -113,16 +128,26 @@ export function DeckPilotSlot({
         }}
         title={
           pilot
-            ? canEdit
-              ? `${pilot.card_name} — right-click to clear · middle-hold enlarge`
-              : `${pilot.card_name} — middle-click hold to enlarge`
+            ? classification === "top_secret"
+              ? `${pilot.card_name} — TOP SECRET · click to inspect`
+              : classification === "classified"
+                ? `${pilot.card_name} — CLASSIFIED · click for details / become a member`
+              : canEdit
+                ? `${pilot.card_name} — right-click to clear · middle-hold enlarge`
+                : `${pilot.card_name} — middle-click hold to enlarge`
             : canEdit
               ? "Drop a pilot card here"
               : "No pilot selected"
         }
       >
         {pilot ? (
-          art ? (
+          classified ? (
+            <ClassifiedCardFace
+              name={pilot.card_name}
+              classification={classification!}
+              size="pilot"
+            />
+          ) : art ? (
             <img
               src={art}
               alt={pilot.card_name}
@@ -147,7 +172,13 @@ export function DeckPilotSlot({
           role="dialog"
           aria-label={pilot.card_name}
         >
-          {art ? (
+          {classified ? (
+            <ClassifiedCardFace
+              name={pilot.card_name}
+              classification={classification!}
+              size="enlarge"
+            />
+          ) : art ? (
             <img
               src={art}
               alt={pilot.card_name}
@@ -159,9 +190,20 @@ export function DeckPilotSlot({
               {pilot.card_name}
             </div>
           )}
-          <p className="deck-card-enlarge__caption">{pilot.card_name}</p>
+          <p className="deck-card-enlarge__caption">
+            {pilot.card_name}
+            {classification === "top_secret" ? " — TOP SECRET" : classification === "classified" ? " — CLASSIFIED" : ""}
+          </p>
         </div>
       ) : null}
+
+      <CardEnlargeOverlay
+        open={inspectOpen && pilot != null && classified}
+        name={pilot?.card_name ?? ""}
+        artSrc={null}
+        classification={classification}
+        onDismiss={() => setInspectOpen(false)}
+      />
     </div>
   )
 }

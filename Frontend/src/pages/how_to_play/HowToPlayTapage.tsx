@@ -3,6 +3,7 @@ import { useState, type CSSProperties, type ReactNode } from "react"
 import { Link } from "react-router-dom"
 import {
     BackToTocButton,
+    Important,
     Note,
     Section,
     SectionLink,
@@ -307,7 +308,7 @@ export function HowToPlayPage() {
 
                         <Section id="playmat" title="Playmat Area">
                             <p>
-                               <Note>Hover over each zone of the playmat to see what it does.</Note>
+                                <Note>Hover over each zone of the playmat to see what it does.</Note>
                             </p>
                             <InteractivePlaymat />
                             <p>
@@ -381,7 +382,7 @@ export function HowToPlayPage() {
                             <p>
                                 There are three phases: the maintenance phase (start of turn), the
                                 main phase, and the end-of-turn phase. Take them in order on your
-                                turn. 
+                                turn.
                             </p>
                             <div className="space-y-1">
                                 <p className="flex items-center gap-2 font-semibold text-cyan-200">
@@ -405,7 +406,7 @@ export function HowToPlayPage() {
                                     </p>
                                     <p>To make an attack, in brief:</p>
                                     <ol className="list-decimal space-y-1 pl-6">
-                                        <li>Choose and expend your attacker(s), then declare a target. Then trigger any units attacking with a <GameIcon name="attack"/> tag.</li>
+                                        <li>Choose and expend your attacker(s), then declare a target. Then trigger any units attacking with a <GameIcon name="attack" /> tag.</li>
                                         <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
                                         <li>The defender may block to reduce the incoming damage.</li>
                                         <li>Deal damage (Preemptive Strike first, then simultaneous). Defeated units go to the discard pile; unblocked damage to a player becomes loss of life.</li>
@@ -425,7 +426,7 @@ export function HowToPlayPage() {
                                         <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
                                         <li>Trigger any ability with the <GameIcon name="endTurn" /> tag.</li>
                                         <li>Players Lose any unspent resources in your resource pool (not your stockpile).</li>
-                                        <li>You draw cards until you have cards in hand equal to your pilots <GameIcon name="hand_size"/>. if you have no cards left in deck instead loose 1 life for each card you would have drawn to get to your pilots <GameIcon name="hand_size"/></li>
+                                        <li>You draw cards until you have cards in hand equal to your pilots <GameIcon name="hand_size" />-2. if you have no cards left in deck instead loose 1 life for each card you would have drawn to get to your pilots <GameIcon name="hand_size" />-2</li>
                                     </ol>
                                 </div>
                             </div>
@@ -433,12 +434,12 @@ export function HowToPlayPage() {
 
                         <Section id="reading-cards" title="Reading Your Cards">
 
-                            <p className="rounded border-l-2 border-red-400 bg-red-900/40 px-3 py-6 text-base lg:text-lg 2xl:text-xl">
+                            <Important>
                                 <Term>! Important !</Term> If there is a conflict between a card's
                                 text and this rulebook, follow the text on the card. Cards often
                                 have abilities that get around the rules to make things exciting,
                                 weird, or interesting.
-                            </p>
+                            </Important>
 
                             <div className="mx-auto flex w-full max-w justify-center">
                                 <img
@@ -471,11 +472,11 @@ export function HowToPlayPage() {
                                 corresponding base type shown in [ ]. Many cards also have subtypes,
                                 which can affect what the card does as well.
                             </p>
-                            <p className="rounded border-l-2 border-red-400 bg-red-900/40 px-3 py-6 text-base lg:text-lg 2xl:text-xl">
+                            <Important>
                                 <Term>! Important !</Term> Whenever an ability, effect, or text uses
                                 the word "this," it always refers to the card it is printed on,
                                 regardless of context.
-                            </p>
+                            </Important>
 
 
                             <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Base Types</h3>
@@ -512,17 +513,21 @@ export function HowToPlayPage() {
                                 to see whether your opponent overwrites it with a Quick Hack. If they
                                 don't, it goes directly to the battlefield&mdash;provided you chose
                                 not to use time as part of its cost (see Time Counters for how the
-                                time resource works). Units cannot attack the turn they enter the battlefield.
+                                time resource works). Units can attack the turn they enter the battlefield.
                             </p>
                             <p>
                                 <Term>PROGRAM [ Entity ]:</Term> A type of card that tends to be
                                 synergistic, stays in play once played, and has a variety of effects
-                                and abilities.
+                                and abilities. Programs have a <GameIcon name="threat_lvl" /> rating.
+                                They cannot attack. You may use that rating only to block (see How to
+                                Attack).
                             </p>
                             <p>
                                 <Term>TECHNOLOGY [ Entity ]:</Term> A type of card that tends to be a
                                 counter-play or support piece, stays in play once played, and has a
-                                variety of effects and abilities.
+                                variety of effects and abilities. Technologies have a{" "}
+                                <GameIcon name="threat_lvl" /> rating. They cannot attack. You may
+                                use that rating only to block (see How to Attack).
                             </p>
                             <p>
                                 <Term>AUGMENT [ Entity ]:</Term> Pieces of equipment or cybernetic
@@ -557,7 +562,9 @@ export function HowToPlayPage() {
                                 <Term>PROCESS [ Cyberspell ]:</Term> This cyberspell can be played
                                 any time during your main phase. Processes represent a combination of
                                 magic and technology&mdash;complex programs or scripts that take
-                                significant time to play in battle.
+                                significant time to play in battle. Processes have a{" "}
+                                <GameIcon name="threat_lvl" /> rating. They cannot attack. You may
+                                use that rating only to block (see How to Attack).
                             </p>
                             <p>
                                 <Term>STRIKE [ Cyberspell ]:</Term> This cyberspell can be played any
@@ -574,7 +581,9 @@ export function HowToPlayPage() {
                                 when an effect not controlled by you resolves and the lock becomes
                                 empty. (See Using the Lock for details.) Quick Hacks represent the
                                 fastest scripts you can play, letting you disrupt your opponent or
-                                protect yourself.
+                                protect yourself. Quick Hacks have a <GameIcon name="threat_lvl" />{" "}
+                                rating. They cannot attack. You may use that rating only to block
+                                (see How to Attack).
                             </p>
                         </Section>
 
@@ -635,10 +644,8 @@ export function HowToPlayPage() {
                                 How to Allocate a Resource to a Unit
                             </h3>
                             <p>
-                                This ability can be used any time a Quick Hack can, including {" "}
-                                while the lock is full&mdash;but only if
-                                you control no units that already have an expended resource allocated
-                                to them. Each resource allocated to a unit gives it a +1<GameIcon name="threat_lvl" /> rating for
+                                This ability can be used any time you can play a cyberspell process, and only once per turn, on your turn.
+                                Each resource allocated to a unit gives it a +1<GameIcon name="threat_lvl" /> rating for
                                 each resource allocated. To allocate a resource, expend it "<GameIcon name="expend" />" and choose
                                 a target. This ability does not use the lock and thus happens immediately. An
                                 Example of what a unit looks like with a resource allocated to it found below:
@@ -660,9 +667,7 @@ export function HowToPlayPage() {
                                 pay the cost, you must have the required resources in your resource
                                 pool&mdash;an imaginary area where resources go when a card says to
                                 "add" a resource of the color you need; they stay there until the end
-                                of the turn. Most resource tokens have two abilities, the first is always the following
-                                even if it is not printed on the card: "<GameIcon name="expend"/>,<GameIcon name="dismantle"/>: Add one resoruce of its respective colours to
-                                your resource pool".
+                                of the turn.
 
                                 <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                     <img
@@ -676,16 +681,16 @@ export function HowToPlayPage() {
                             <p>
                                 For example, say I want to play the Needle Jet card. I need a
                                 RAM (blue) and Unit of Power (yellow) in my resource pool to play the card. I
-                                already have a RAM and a unit of Power readied in my stockpile, and each
-                                has two abilities: the first adds a resource of its respective color to my
-                                pool when I expend the resource card as a cost; the second makes me
-                                lose 1 life and dismantle the resource, then adds 2 of its respective
-                                color.
+                                already have a RAM and a unit of Power readied in my stockpile:
+                                I then activate the RAM's ability of "<GameIcon name="expend" />: Add a <GameIcon name="ram" /> to your resource pool"
+                                by turing the ram sideways as that is the cost then. i get to add a <GameIcon name="ram" /> to
+                                my resource pool.
+
                             </p>
                             <p>
-                                Because I have what I need, I'll expend both the RAM and Spirit Power
+                                Because I have what I need, I'll expend both the RAM and Unit of Power
                                 resources, which adds resources of the respective color when I expend
-                                them, as shown in the image below.
+                                them, as shown in the images below.
 
                                 <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                     <img
@@ -707,7 +712,7 @@ export function HowToPlayPage() {
                             <p>
                                 Once you have paid the cost by removing the resources in your resource pool equal to the invoke cost&mdash;and if the card says to target, you
                                 must have legal targets before you play the card, or you cannot play
-                                it&mdash;reveal the card you intend to play. It goes to the lock; declare its legal targets, then trigger any{" "}
+                                it; then reveal the card you intend to play. It goes to the lock; declare its legal targets, then trigger any{" "}
                                 <GameIcon name="invoke" /> tags printed on the card and resolve those tags immediately.
                             </p>
 
@@ -748,97 +753,226 @@ export function HowToPlayPage() {
                             >
                                 How to Attack
                             </h3>
+                            <p>
+                                Attakcing is the primary way to get damage in along with potentailly reducing you opponents resources
+                                on there turn to mount a counter attack. <Important> NOTE: Damage stays marked on a unit turn after turn. you can heal the damage
+                                    with cards and effect that say to heal it. </Important>
+                            </p>
                             <ol className="list-decimal space-y-1 pl-6">
-                                <li>Choose unit(s) that did not enter play this turn (units with Blitz qualify), play a cyberspell strike card, or activate an augment that says it makes an attack. When attacking with multiple units, the group is considered a single attack and must share the same target, but each attacker is treated separately for blocking purposes. you can combine units, strikes and weapon attacks together, just keep inmind both weapon attacks and strike use the lock so you can only combine one of those at a time with other units.</li>
-                                <li>Expend the chosen unit(s), declare an attack target (another unit or an opponent), and trigger the <GameIcon name="attack" /> abilities of the attacking units.</li>
-                                <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
+                                <li>Choose unit(s), play a cyberspell strike card, or activate an augment that says it makes an attack.
+                                    When attacking with multiple units, the group is considered a
+                                    single attack and must share the same target, but each attacker
+                                    is treated separately for blocking purposes.
+                                    Programs, technologies, processes, and quick hacks cannot attack,
+                                    even if they have a <GameIcon name="threat_lvl" /> rating.
+                                </li>
+                                <li>Expend the chosen unit(s), declare an attack target
+                                    (another unit or an opponent), and trigger the
+                                    <GameIcon name="attack" /> abilities of the attacking units. When
+                                    declaring the target of your attack you must target a readied unit
+                                    the defending player controls if able. (Every readied unit has
+                                    this requirement built in.)
+                                    <Note>If you cannot target the a readied unit a defending player controls, you cannot make the attack. If they control more than one readied unit, you choose which to target.</Note></li>
+                                <li> The unit(s), cyberspell, or weapon is now considered attacking. In this step you must choose whether to pay additional costs for cards with them such as stealth.</li>
+                                <li>Players may play Quick Hacks or activate abilities,
+                                    starting with the active player, until no one wants to adds more effects.
+                                    <Note>The Active player is usually the one attacking see the lock for details.</Note>
+                                    
+                                </li>
+                                    
                                 <li>
-                                    Block incoming damage. You may, in any order:
+                                    Block incoming damage. you can do so only for attacks
+                                    that target you directly. You may, in any order:
                                     <ul className="list-disc space-y-1 pl-6 pt-1">
-                                        <li>Discard any number of cards in hand with a <GameIcon name="threat_lvl" /> rating. The maximuim a card can block using its <GameIcon name="threat_lvl" /> is 3, however the block keyword can increase this limit. add the discarded cards together, and reduce the damage from an attacker of your choice by that total.</li>
-                                        <li>Expend any number of augments you control, choose an attacker for each, reduce the incoming damage by that augment's <GameIcon name="threat_lvl" /> rating, and add a depletion counter to that augment.</li>
+                                        <li>Discard any number of cards in hand with a
+                                        {" "}<GameIcon name="threat_lvl" /> rating (including
+                                            processes and quick hacks). The maximuim a
+                                            card can block using its <GameIcon name="threat_lvl" />{" "}
+                                            is 4, however the block keyword can increase this limit.
+                                            add the discarded cards together, and reduce the damage
+                                            from an attacker of your choice by that total.</li>
+                                        <li>Expend any number of augments you control, choose an
+                                            attacker for each, reduce the incoming damage by that
+                                            augment's <GameIcon name="threat_lvl" /> rating, and
+                                            add a depletion counter to that augment.</li>
+                                        <li>Expend any number of non-unit entities you control
+                                            (including programs and technologies), choose an
+                                            attacker for each, reduce the incoming damage by that
+                                            entity's <GameIcon name="threat_lvl" /> rating, and
+                                            then trash the entity(s) you expended.</li>
                                     </ul>
                                 </li>
-                                <li>Deal Preemptive Strike damage equal to your <GameIcon name="threat_lvl" />.</li>
-                                <li>If you did not already deal Preemptive Strike damage, deal damage equal to your <GameIcon name="threat_lvl" /> to the target of your attack. If the target is readied, it deals damage equal to its <GameIcon name="threat_lvl" /> back to the attacker. Damage dealt this way is simultaneous.</li>
-                                <li>If a unit's damage is greater than or equal to its <GameIcon name="threat_lvl" /> rating, it is defeated (the only exception being the Durable keyword), triggering its <GameIcon name="defeated" /> tag if it had one, along with any other triggered abilities that care about being defeated. A defeated unit goes to the discard pile.</li>
+                                <li>
+                                    The attacker(s) deal Preemptive Strike damage equal to their{" "}
+                                    <GameIcon name="threat_lvl" /> (including modifiers).
+                                </li>
+                                <li>
+                                    If the attacker(s) did not already deal Preemptive Strike
+                                    damage, they deal damage equal to their{" "}
+                                    <GameIcon name="threat_lvl" /> (including modifiers) to the
+                                    target of the attack. Then the defending unit deals damage
+                                    back:
+                                    <ul className="list-disc space-y-1 pl-6 pt-1">
+                                        <li>
+                                            If it is <span className="font-semibold text-cyan-200">readied</span>,
+                                            it deals damage equal to its{" "}
+                                            <GameIcon name="threat_lvl" /> including all
+                                            modifiers (such as Lethal).
+                                        </li>
+                                        <li>
+                                            If it is <span className="font-semibold text-cyan-200">expended</span>,
+                                            it deals 0 damage.
+                                        </li>
+                                    </ul>
+                                    If there are
+                                    multiple attackers, the defending player divides
+                                    this damage among them as they choose.
+                                    Damage dealt this way is simultaneous.
+                                </li>
+                                <li>
+                                    After damage is dealt, check each unit that took damage. A unit
+                                    is defeated if its marked damage is at least its{" "}
+                                    <GameIcon name="threat_lvl" /> — unless it has Durable X, in
+                                    which case it survives until marked damage is at least its{" "}
+                                    <GameIcon name="threat_lvl" /> + X. When a unit is defeated
+                                    this way, trigger its <GameIcon name="defeated" /> tag (if any)
+                                    and any other on-defeat abilities, then put it into the discard
+                                    pile.
+                                    <Note>
+                                        Example: Threat Level 3 with Durable 2 is defeated at 5
+                                        damage, not 3.
+                                    </Note>
+                                </li>
                                 <li>Any damage directed at a player that was not blocked or redirected is dealt as loss of life to that player. Then the attack ends.</li>
                             </ol>
                         </Section>
 
                         <Section id="lock" title="The Lock & Time Counters">
                             <p>
-                                The lock is a special zone where only one effect or card can be at a
-                                time. Every time you play a card without using time
-                                counters, or activate or trigger an ability, it goes to the lock
-                                before resolving.
+                                The lock is a special zone that holds at most one card or effect.
+                                Playing a card without time counters, or generating an effect that
+                                uses the lock, goes to the lock if it is empty, or to that
+                                controller's queue if the lock is already full (see Scenario 2).
                             </p>
                             <p className="font-semibold text-cyan-200">The lock does 4 things:</p>
                             <ol className="list-decimal space-y-1 pl-6">
                                 <li>Determines timing.</li>
                                 <li>Determines who is the active and non-active player.</li>
-                                <li>Determines who can overwrite an asset with a Quick Hack.</li>
+                                <li>Determines who can overwrite the lock occupant with a Quick Hack.</li>
                                 <li>Determines when an ability or asset resolves its effect.</li>
                             </ol>
                             <p>
-                                All effects, abilities, and cards use the lock. It works like an
-                                imaginary zone before effects resolve, and can only ever hold one
-                                effect at a time. Whoever controls the active effect in the lock
-                                determines who is the active and non-active player. The active player
-                                at the start of each turn is always whoever's turn it is. The active
-                                player may take game actions until an ability or asset is added to the
-                                lock. Then whoever controls that asset or ability becomes the
-                                non-active player, and their opponent becomes the active player. (If
-                                two abilities trigger at the same time, the active player chooses one
-                                of theirs to add to the Lock first.)
+                                Whoever controls the lock occupant is the non-active player; the
+                                other player is the active player. At the start of each the player whos 
+                                turn it is, is the active player. The active player may take game actions until
+                                a card or effect is added to the lock. Then the controller of that
+                                occupant becomes non-active, and their opponent becomes active. If
+                                two effects would enter an empty lock at the same time, the active
+                                player puts one of theirs into the lock first; the rest go to queues.
                             </p>
-                            <p>
-                                There are two scenarios, depending on whether the effect in the lock
-                                is an asset (a physical card) or an ability generated by a card in
-                                play, in hand, or in another zone.
-                            </p>
-                            <Note>Note: the active player is the only one able to take actions.</Note>
+                            <Note>
+                                Note: only the active player may Quick Hack overwrite the lock. Paying
+                                costs, using resource abilities, and activating into your queue are
+                                allowed for whoever is currently adding effects (active batch,
+                                non-active batch, or your turn in Alternate)&mdash;even if you are
+                                the non-active player.
+                            </Note>
 
                             <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
-                                Scenario 1 &mdash; Assets and Quick Hacks
+                                Scenario 1 &mdash; The lock occupant and Quick Hacks
                             </h3>
                             <p>
-                                When the active player adds an asset or effect to the lock, they
-                                become the non-active player, and each player adds their ability
-                                triggers to their queue of effects while the lock is full. The
-                                now-active player may choose to play their own Quick Hack and
-                                overwrite the asset in the lock, preventing it from resolving and
-                                sending it to the discard pile. The non-active player is
-                                the one who controls the asset or effect in the lock; the active
-                                player is the one who does not. The active player may play a Quick
-                                Hack of their own or let the asset in the lock resolve. If they
-                                respond, control passes back and forth, recalculating who has an
-                                asset or effect in the lock. If they decline, the asset in the lock
-                                resolves, handing the opponent a free lock and active-player status.
-                                If that player also declines to act, the active player reverts to
-                                whoever's turn it is, and the turn continues as normal. If the lock is
-                                empty but players have abilities in their queues, move to Scenario 2.
+                                The lock holds at most one card or effect.
+                            </p>
+                            <ul className="list-disc space-y-1 pl-6">
+                                <li>
+                                    <strong className="text-cyan-100">Empty lock:</strong> a card
+                                    you play, or an effect that uses the lock, goes to the lock.
+                                </li>
+                                <li>
+                                    <strong className="text-cyan-100">Full lock:</strong> that same
+                                    effect goes to its controller's queue instead. It does not enter
+                                    the lock.
+                                </li>
+                                <li>
+                                    <strong className="text-cyan-100">Exception:</strong> the active
+                                    player may play a Quick Hack. That card goes to the lock and
+                                    replaces the occupant (card or effect). The old occupant is
+                                    discarded and does not resolve. Recalculate who is active: the
+                                    Quick Hack's controller is non-active; their opponent is active.
+                                    Restart from “while the lock is full.”
+                                </li>
+                            </ul>
+                            <p>
+                                Queued effects never overwrite the lock. Only a Quick Hack can.
                             </p>
 
                             <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
-                                Scenario 2 &mdash; Ability Effects and the Queue
+                                Scenario 2 &mdash; The queue (lock is full)
                             </h3>
                             <p>
-                                This follows the same rules as Scenario 1, with two differences.
-                                First, the turn does not continue (whoever's turn it is becomes the
-                                active player) until all players' queues are empty. Second, effects
-                                cannot be overwritten&mdash;only physical cards that are played
-                                can be overwritten.
+                                Whenever an ability or effect would be added to the lock but the lock
+                                already holds a card or effect, it is not added to the lock. Put it
+                                on its controller's queue. Queues record whose overflow effects are
+                                waiting. The turn does not continue as free play until the lock and
+                                all queues are empty.
+                            </p>
+                            <p>Then, with the lock still occupied:</p>
+                            <ol className="list-decimal space-y-2 pl-6">
+                                <li>
+                                    <strong className="text-cyan-100">Active batch.</strong> The
+                                    active player may add any legal overflow effects to their queue.
+                                    They then resolve their entire queue, one effect at a time, in an
+                                    order they choose. Each effect fully resolves before the next. If
+                                    a resolved effect would go to the lock, it goes to its
+                                    controller's queue instead. Effects that land on the active
+                                    player's queue during this batch are still part of this batch.
+                                    Effects that land on the non-active player's queue wait.
+                                </li>
+                                <li>
+                                    <strong className="text-cyan-100">Non-active batch.</strong> The
+                                    non-active player does the same: add, then resolve their entire
+                                    queue, one at a time, in an order they choose. Same overflow rule.
+                                </li>
+                                <li>
+                                    <strong className="text-cyan-100">Alternate.</strong> Starting
+                                    with the active player, a player either puts one overflow effect
+                                    on their queue and resolves that one effect, or passes. After a
+                                    player resolves one, it is the other player's turn to add-one-or-pass.
+                                    When both players pass in succession, stop. On your
+                                    add-one-or-pass turn you may pay costs and use resource abilities
+                                    to activate an ability into your queue, even if you are the
+                                    non-active player. (Example: the active player passes; you are
+                                    non-active; you may still spend resources, pay the activation
+                                    cost, add that effect to your queue, and resolve it.) You still
+                                    cannot Quick Hack overwrite unless you are the active player.
+                                </li>
+                                <li>
+                                    <strong className="text-cyan-100">Lock occupant resolves.</strong>{" "}
+                                    Then: if the lock is full and any queue is not empty, repeat
+                                    steps 1–4. If the lock is empty, queues must also be empty before
+                                    the player who turn it is, is active again and play continues.
+                                </li>
+                            </ol>
+                            <p>
+                                A Quick Hack during steps 1–3 is not a queue effect: it overwrites
+                                the lock (Scenario 1) and you restart from “while the lock is full.”
+                                Only the active player may play that Quick Hack.
                             </p>
                             <p>
-                                While an effect is in the lock, there are a few things you can do:
+                                While the lock is full, the player who is currently adding effects
+                                (active batch, non-active batch, or their Alternate turn) may:
                             </p>
                             <ol className="list-decimal space-y-1 pl-6">
-                                <li>Pay costs (resource abilities do not use the lock) but still with the timing restriction of a Quick Hack, meaning you must be the active player.</li>
-                                <li>Allocate a resource to a unit you control. This is also Quick Hack speed, but you can only do so if you control no units that already have expended resources allocated to them. Each resource allocated to a unit gives it a +1 <GameIcon name="threat_lvl" /> rating. To allocate a resource, expend it and choose a target. This ability does not use the lock and happens immediately.</li>
-                                <li>Activate an activated ability and add it to your queue.</li>
+                                <li>Pay costs and use resource abilities (those abilities do not use the lock).</li>
+                                <li>Allocate a resource to a unit you control. You can only do so if you control no units that already have expended resources allocated to them. Each resource allocated to a unit gives it a +1 <GameIcon name="threat_lvl" /> rating. To allocate a resource, expend it and choose a target. This ability does not use the lock and happens immediately.</li>
+                                <li>Activate an activated ability that uses the lock: it goes to your queue, not the lock.</li>
                                 <li>Block an attack.</li>
                             </ol>
+                            <p>
+                                Overwriting the lock with a Quick Hack is only legal for the active
+                                player.
+                            </p>
 
                             <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Time Counters</h3>
                             <p>
@@ -856,9 +990,7 @@ export function HowToPlayPage() {
                                 has by adding those effects to the lock/queue (but not the card
                                 itself); then move the card to the battlefield if it's an entity, or
                                 to the discard pile if it's a cyberspell. You may have up to 3 cards
-                                with time counters on them in your stockpile at any given time. Cards
-                                with time counters on them in your stockpile cannot be the target of
-                                cyberspells or abilities.
+                                with time counters on them in your stockpile at any given time. 
                             </p>
                         </Section>
 
@@ -933,12 +1065,12 @@ export function HowToPlayPage() {
                             <p>
                                 Activated abilities are formatted (ignoring the brackets) as [cost 1,
                                 cost 2, etc.]: [effect]. Unless they say otherwise, they can be
-                                activated any time you can play a Quick Hack; if you do, add it to
-                                your queue of effects while the lock is full. You must choose legal
-                                targets only when you put the effect into the lock; if no legal
-                                target is found, the ability does nothing. To activate an activated
-                                ability, pay the cost written on the card. Its effect then goes to
-                                the lock and resolves.
+                                activated any time you can play a Quick Hack. To activate one, pay
+                                the cost written on the card. If the lock is empty, the effect goes
+                                to the lock. If the lock is full, the effect goes to your queue
+                                instead (see The Lock). You must choose legal targets when the
+                                effect would enter the lock or queue; if no legal target is found,
+                                the ability does nothing.
                             </p>
                             <p>
                                 Example: the activated ability "<GameIcon name="expend" />, <GameIcon name="power" /> <GameIcon name="gen1" /> : Draw a
@@ -949,7 +1081,7 @@ export function HowToPlayPage() {
                             <ul className="space-y-3">
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="expend" className="mt-0.5 shrink-0" />
-                                    <span>The Expend ability and symbol. Turn a card in play 90 degrees from vertical to horizontal. If this is printed on a unit, it cannot be used the turn the unit enters play unless it has Blitz. (Note: to ready an entity is the opposite of expending; a readied entity is vertical.)</span>
+                                    <span>The Expend ability and symbol. Turn a card in play 90 degrees from vertical to horizontal. (Note: to ready an entity is the opposite of expending; a readied entity is vertical.)</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="recycle" className="mt-0.5 shrink-0" />
@@ -972,12 +1104,12 @@ export function HowToPlayPage() {
                                 will play. Almost always their ability text is displayed on the card;
                                 if not, here is the full list.
                             </p>
-                            <p className="rounded border-l-2 border-red-400 bg-red-900/40 px-3 py-6 text-base lg:text-lg 2xl:text-xl">
+                            <Important>
                                 <Term>! Important !</Term> Multiple instances of the same keyword on
                                 one entity do not stack, unless that keyword has a numerical value; in
                                 that case, they add together. Any keyword with X has a numerical
                                 value.
-                            </p>
+                            </Important>
                             <dl className="space-y-3">
                                 {KEYWORDS.map((keyword) => (
                                     <div key={keyword.name} className="grid gap-1 sm:grid-cols-[200px_1fr]">
@@ -1011,27 +1143,30 @@ export function HowToPlayPage() {
                                             <th className="py-2 pr-4">Deck size</th>
                                             <th className="py-2 pr-4">Capacity (# cards)</th>
                                             <th className="py-2">Equip slots (# augments)</th>
-                                            <th className="py-2">starting resource allocation</th>
+                                            <th className="py-2">Modifier</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/10">
                                         <tr>
-                                            <td className="py-2 pr-4">Light weight</td>
-                                            <td className="py-2 pr-4">30&ndash;39</td>
-                                            <td className="py-2">1</td>
-                                            <td className="py-2">+1</td>
+                                            <td className="py-2 pr-4">Heavy weight</td>
+                                            <td className="py-2 pr-4">30</td>
+                                            <td className="py-2">3</td>
+                                            <td className="py-2">Max 2 copies instead of three per named card</td>
+
                                         </tr>
                                         <tr>
                                             <td className="py-2 pr-4">Medium weight</td>
-                                            <td className="py-2 pr-4">40&ndash;59</td>
+                                            <td className="py-2 pr-4">40&ndash;50</td>
                                             <td className="py-2">2</td>
-                                            <td className="py-2">0</td>
+                                            <td className="py-2">NA</td>
+
                                         </tr>
                                         <tr>
-                                            <td className="py-2 pr-4">Heavy weight</td>
+                                            <td className="py-2 pr-4">Light weight</td>
                                             <td className="py-2 pr-4">60&ndash;70</td>
-                                            <td className="py-2">3</td>
-                                            <td className="py-2">-1</td>
+                                            <td className="py-2">1</td>
+                                            <td className="py-2">Your Pilots coloured invoke cost count as double for determining your colour combination</td>
+
                                         </tr>
                                     </tbody>
                                 </table>

@@ -29,7 +29,7 @@ const SPRITE_TO_ICON: Record<string, GameIconName> = {
   RAM: "ram",
   TIM: "time",
   STL: "steel",
-  GEN: "genX",
+  GEN: "steel",
   GEN0: "gen0",
   GEN1: "gen1",
   GEN2: "gen2",
@@ -39,8 +39,10 @@ const SPRITE_TO_ICON: Record<string, GameIconName> = {
   GEN6: "gen6",
   GEN7: "gen7",
   GEN8: "gen8",
+  GEN9: "gen9",
   GEN10: "gen10",
   GENX: "genX",
+  HS: "hand_size",
 }
 
 export function spriteNameToIcon(sprite: string): GameIconName | null {

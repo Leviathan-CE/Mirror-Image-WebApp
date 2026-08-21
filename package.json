@@ -1,0 +1,7 @@
+{
+  "name": "mirror-image-webapp",
+  "private": true,
+  "scripts": {
+    "migrate": "bash ./scripts/migrate-db.sh"
+  }
+}
