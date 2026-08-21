@@ -16,9 +16,11 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react"
+import { createPortal } from "react-dom"
 
 import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import { handCardSizePx } from "@/components/Playtester/handCardSize.logic"
+import { elementCssPaintScale } from "@/components/Playtester/playFieldScale.logic"
 import { PlayingCard } from "@/components/Playtester/PlayingCard"
 import { HAND_CARD_SIZE } from "@/components/Playtester/playtesterConstants"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
@@ -60,6 +62,13 @@ export type PlayerHandProps = {
   interactive?: boolean
   /** Skip the built-in label + frame when the hand lives in a window. */
   embedded?: boolean
+  /**
+   * Remote (or forced) hover slot — lifts that index so the peer can see
+   * which fog-hand back you're inspecting. `null` clears.
+   */
+  hoveredIndex?: number | null
+  /** Local hover changed — parent may relay index over the net. */
+  onHoverIndexChange?: (index: number | null) => void
 }
 
 type HandDrag = {
@@ -112,6 +121,8 @@ export function PlayerHand({
   hideFaces = false,
   interactive = true,
   embedded = false,
+  hoveredIndex = null,
+  onHoverIndexChange,
 }: PlayerHandProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const [cardPx, setCardPx] = useState(() =>
@@ -381,18 +392,22 @@ export function PlayerHand({
     ? normalizeRect(marquee.x0, marquee.y0, marquee.x1, marquee.y1)
     : null
 
+  const { sx: paintSx, sy: paintSy } = elementCssPaintScale(rootRef.current)
   const ghostCards =
     drag?.moved
       ? drag.groupIds
           .map((id, index) => {
             const card = cards.find((c) => c.instanceId === id)
             if (!card) return null
+            const step = Math.round(
+              cardPx.width * GROUP_GHOST_STEP_RATIO * paintSx
+            )
             return {
               card,
-              left:
-                drag.ghostX +
-                index * Math.round(cardPx.width * GROUP_GHOST_STEP_RATIO),
+              left: drag.ghostX + index * step,
               top: drag.ghostY,
+              width: cardPx.width * paintSx,
+              height: cardPx.height * paintSy,
             }
           })
           .filter(
@@ -402,6 +417,8 @@ export function PlayerHand({
               card: PlayingCardInstance
               left: number
               top: number
+              width: number
+              height: number
             } => item != null
           )
       : []
@@ -435,8 +452,8 @@ export function PlayerHand({
           // the start and makes it unreachable).
           viewportClassName={
             embedded
-              ? "min-h-0 flex-1 overflow-x-auto pb-1 pt-2"
-              : "min-h-32 flex-1 overflow-x-auto pb-1 pt-2"
+              ? "min-h-0 flex-1 overflow-x-auto pb-1 pt-4"
+              : "min-h-32 flex-1 overflow-x-auto pb-1 pt-4"
           }
         >
           <div
@@ -466,8 +483,9 @@ export function PlayerHand({
                 <p className="font-mono text-xs text-white/35">Hand is empty</p>
               </div>
             ) : (
-              cards.map((card) => {
+              cards.map((card, index) => {
                 const isDragging = Boolean(draggingIds?.has(card.instanceId))
+                const isHovered = hoveredIndex === index
                 return (
                   <div
                     key={card.instanceId}
@@ -475,7 +493,10 @@ export function PlayerHand({
                       "shrink-0 touch-none transition-transform duration-150",
                       isDragging
                         ? "cursor-grabbing opacity-30"
-                        : "cursor-grab hover:-translate-y-2",
+                        : interactive
+                          ? "cursor-grab hover:-translate-y-2"
+                          : "cursor-default",
+                      isHovered && !isDragging && "-translate-y-2",
                       card.selected &&
                         !isDragging &&
                         "ring-2 ring-cyan-300 ring-offset-1 ring-offset-black/80"
@@ -484,6 +505,14 @@ export function PlayerHand({
                     onPointerDown={(event) => {
                       if (!interactive) return
                       onCardPointerDown(event, card)
+                    }}
+                    onPointerEnter={() => {
+                      if (!interactive) return
+                      onHoverIndexChange?.(index)
+                    }}
+                    onPointerLeave={() => {
+                      if (!interactive) return
+                      onHoverIndexChange?.(null)
                     }}
                     onContextMenu={(event) => {
                       event.preventDefault()
@@ -510,35 +539,40 @@ export function PlayerHand({
         </MiddleMouseScroll>
       </div>
 
-      {marqueeBox ? (
-        <div
-          className="pointer-events-none fixed z-[90] border border-cyan-300/80 bg-cyan-400/15"
-          style={{
-            left: marqueeBox.left,
-            top: marqueeBox.top,
-            width: marqueeBox.right - marqueeBox.left,
-            height: marqueeBox.bottom - marqueeBox.top,
-          }}
-        />
-      ) : null}
+      {marqueeBox
+        ? createPortal(
+            <div
+              className="pointer-events-none fixed z-[90] border border-cyan-300/80 bg-cyan-400/15"
+              style={{
+                left: marqueeBox.left,
+                top: marqueeBox.top,
+                width: marqueeBox.right - marqueeBox.left,
+                height: marqueeBox.bottom - marqueeBox.top,
+              }}
+            />,
+            document.body
+          )
+        : null}
 
-      {ghostCards.map(({ card, left, top }) => (
-        <div
-          key={`ghost-${card.instanceId}`}
-          className="pointer-events-none fixed z-[80] -translate-x-1/2 -translate-y-1/2"
-          style={{
-            left,
-            top,
-            width: cardPx.width,
-            height: cardPx.height,
-          }}
-        >
-          <PlayingCard
-            card={card}
-            className="h-full w-full shadow-lg shadow-cyan-500/20"
-          />
-        </div>
-      ))}
+      {ghostCards.length > 0
+        ? createPortal(
+            <>
+              {ghostCards.map(({ card, left, top, width, height }) => (
+                <div
+                  key={`ghost-${card.instanceId}`}
+                  className="pointer-events-none fixed z-[80] -translate-x-1/2 -translate-y-1/2"
+                  style={{ left, top, width, height }}
+                >
+                  <PlayingCard
+                    card={card}
+                    className="h-full w-full shadow-lg shadow-cyan-500/20"
+                  />
+                </div>
+              ))}
+            </>,
+            document.body
+          )
+        : null}
 
       <CardEnlargeOverlay
         open={enlarged != null}

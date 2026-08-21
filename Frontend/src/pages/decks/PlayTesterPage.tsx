@@ -154,6 +154,12 @@ export function PlayTesterPage() {
   const [inspectCard, setInspectCard] = useState<PlayingCardInstance | null>(
     null
   )
+  /** Peer’s hovered hand slot (fog backs use index, not shared instance ids). */
+  const [peerHandHoverIndex, setPeerHandHoverIndex] = useState<number | null>(
+    null
+  )
+  /** Peer is hovering their library top card. */
+  const [peerLibraryHover, setPeerLibraryHover] = useState(false)
   const [accumulateChooser, setAccumulateChooser] =
     useState<AccumulateChooserState | null>(null)
   /** Deck row counts persist for the whole playtester session. */
@@ -340,6 +346,15 @@ export function PlayTesterPage() {
           view: viewFor(otherSeat(mySeat), snapshot()),
         })
       },
+      onHover: (msg) => {
+        if (msg.zone === "hand") {
+          setPeerHandHoverIndex(msg.index)
+          return
+        }
+        if (msg.zone === "library") {
+          setPeerLibraryHover(msg.active)
+        }
+      },
     })
   }, [
     playNet.setHandlers,
@@ -351,6 +366,13 @@ export function PlayTesterPage() {
     snapshot,
     sessionCardsRef,
   ])
+
+  useEffect(() => {
+    if (!playNet.peerPresent) {
+      setPeerHandHoverIndex(null)
+      setPeerLibraryHover(false)
+    }
+  }, [playNet.peerPresent])
 
   const zoneRefs = {
     deck: deckRef,
@@ -1084,6 +1106,7 @@ export function PlayTesterPage() {
                           label="Opp library"
                           busy
                           size="lg"
+                          lift={peerLibraryHover}
                         />
                         <TrashyardPile
                           cards={visOppDismantled}
@@ -1134,6 +1157,7 @@ export function PlayTesterPage() {
                               hideFaces
                               interactive={false}
                               embedded
+                              hoveredIndex={peerHandHoverIndex}
                               onReleaseCards={() => undefined}
                             />
                           </DockedHandStrip>
@@ -1183,6 +1207,14 @@ export function PlayTesterPage() {
                             onZoneEmptyContextMenu("hand", x, y)
                           }
                           onSelectionChange={onHandSelectionChange}
+                          onHoverIndexChange={(index) => {
+                            if (!netActive || !playNet.peerPresent) return
+                            playNet.send({
+                              type: "hover",
+                              zone: "hand",
+                              index,
+                            })
+                          }}
                         />
                       </DockedHandStrip>
                       <div
@@ -1241,6 +1273,14 @@ export function PlayTesterPage() {
                       busy={
                         Boolean(bottomAnim) || mulliganOpen || deckSearchOpen
                       }
+                      onHoverChange={(active) => {
+                        if (!netActive || !playNet.peerPresent) return
+                        playNet.send({
+                          type: "hover",
+                          zone: "library",
+                          active,
+                        })
+                      }}
                     />
                     <TrashyardPile
                       ref={trashRef}

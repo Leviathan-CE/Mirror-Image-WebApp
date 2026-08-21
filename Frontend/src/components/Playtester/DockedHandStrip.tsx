@@ -31,7 +31,7 @@ export function DockedHandStrip({
     <div
       ref={panelRef}
       className={cn(
-        "relative z-40 flex shrink-0 flex-col overflow-hidden border border-cyan-500/40 bg-black/80",
+        "relative z-40 flex shrink-0 flex-col overflow-x-hidden overflow-y-visible border border-cyan-500/40 bg-black/80",
         className
       )}
       style={{ height: heightPx }}

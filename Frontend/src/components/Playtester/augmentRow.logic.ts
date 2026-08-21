@@ -84,7 +84,7 @@ export const AUGMENT_LAYOUT: HomeLayout = {
  * Tune `start` to slide the whole fan; tune `offset` for spacing inside a pile.
  */
 export const RESOURCE_FAN_LAYOUT: HomeLayout = {
-  start: { x: 100, y: 80 },
+  start: { x: 100, y: 10 },
   offset: { x: -22, y: -22 },
   pad: 28,
 }

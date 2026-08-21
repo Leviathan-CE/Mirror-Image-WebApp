@@ -17,9 +17,11 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react"
+import { createPortal } from "react-dom"
 
 import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import { PlayingCard } from "@/components/Playtester/PlayingCard"
+import { elementCssPaintScale } from "@/components/Playtester/playFieldScale.logic"
 import { scalePlayPile } from "@/components/Playtester/playPileScale.logic"
 import type { PlayPileSize } from "@/components/Playtester/playtesterConstants"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
@@ -122,6 +124,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
     const { w: cardW, h: cardH, peek: fanPeek } = scalePlayPile(size, scale)
     const revealShift = Math.round(cardH * 0.75)
     const cardBoxClass = "h-full w-full"
+    const measureRef = useRef<HTMLDivElement | null>(null)
 
     const [pileHovered, setPileHovered] = useState(false)
     /** Index into `groups` — covering cards above this slide away. */
@@ -247,10 +250,16 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       onToggleExpended(instanceId)
     }
 
+    const { sx: paintSx, sy: paintSy } = elementCssPaintScale(measureRef.current)
+
     return (
       <>
         <div
-          ref={ref}
+          ref={(node) => {
+            measureRef.current = node
+            if (typeof ref === "function") ref(node)
+            else if (ref) ref.current = node
+          }}
           className={cn(
             "relative z-40 flex shrink-0 flex-col items-center self-stretch",
             className
@@ -410,26 +419,29 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
           </p>
         </div>
 
-        {ghostCard && dragging?.moved ? (
-          <div
-            className="pointer-events-none fixed z-[80] -translate-x-1/2 -translate-y-1/2"
-            style={{
-              left: dragging.ghostX,
-              top: dragging.ghostY,
-              width: cardW,
-              height: cardH,
-            }}
-          >
-            <PlayingCard
-              card={ghostCard}
-              className={cn(
-                cardBoxClass,
-                "shadow-lg shadow-cyan-500/20",
-                ghostCard.expended && "rotate-90"
-              )}
-            />
-          </div>
-        ) : null}
+        {ghostCard && dragging?.moved
+          ? createPortal(
+              <div
+                className="pointer-events-none fixed z-[80] -translate-x-1/2 -translate-y-1/2"
+                style={{
+                  left: dragging.ghostX,
+                  top: dragging.ghostY,
+                  width: cardW * paintSx,
+                  height: cardH * paintSy,
+                }}
+              >
+                <PlayingCard
+                  card={ghostCard}
+                  className={cn(
+                    cardBoxClass,
+                    "shadow-lg shadow-cyan-500/20",
+                    ghostCard.expended && "rotate-90"
+                  )}
+                />
+              </div>,
+              document.body
+            )
+          : null}
 
         <CardEnlargeOverlay
           open={enlarged != null}
