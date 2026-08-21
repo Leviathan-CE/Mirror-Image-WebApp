@@ -2,6 +2,10 @@
 
 The Mirror Image Everything app for sellers, buyer stats, meta, and card catalogue
 
+## Production / hosting
+
+Cloudflare DNS + email alone does not host this app. See **[DEPLOY.md](./DEPLOY.md)** for options and the recommended VPS + Docker Compose plan. Feature work currently lives on the `p2p-play` branch — merge that into `main` before treating `main` as the production source.
+
 ## Run with Docker Compose
 
 From the repository root:
