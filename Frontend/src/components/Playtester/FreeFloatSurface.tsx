@@ -8,6 +8,10 @@
  * pointerdown (not in useEffect) so a quick click cannot miss pointerup.
  * Card drag uses window capture-phase listeners + setPointerCapture so macOS
  * Safari keeps tracking after the pointer leaves the surface.
+ *
+ * Drag ghosts portal to `document.body`. A CSS `transform` on an ancestor
+ * (play-field fit scale) makes `position: fixed` use that ancestor as the
+ * containing block — clientX/Y would then land in the wrong place.
  */
 
 import {
@@ -16,9 +20,15 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react"
+import { createPortal } from "react-dom"
 
 import { LOCAL_SEAT, type PlayerSlot } from "@/components/Playtester/playtesterConstants"
 import { scalePlayPile } from "@/components/Playtester/playPileScale.logic"
+import {
+  PLAY_FLOAT_LOGICAL,
+  clientToLogicalField,
+  logicalFieldPaintScale,
+} from "@/components/Playtester/playFieldScale.logic"
 import { PlayingCard } from "@/components/Playtester/PlayingCard"
 import {
   type CardCounterKind,
@@ -288,14 +298,21 @@ export function FreeFloatSurface({
     }
   }, [enlarged])
 
+  function surfacePaintScale() {
+    const surface = surfaceRef.current
+    if (!surface) return { sx: 1, sy: 1 }
+    return logicalFieldPaintScale(surface.getBoundingClientRect())
+  }
+
   function clientToLocal(clientX: number, clientY: number) {
     const surface = surfaceRef.current
     if (!surface) return { x: 0, y: 0 }
-    const rect = surface.getBoundingClientRect()
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
-    }
+    // Painted rect → shared logical field (same board fraction on every screen).
+    return clientToLogicalField(
+      clientX,
+      clientY,
+      surface.getBoundingClientRect()
+    )
   }
 
   function onSurfacePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
@@ -420,6 +437,7 @@ export function FreeFloatSurface({
       origins[id] = { x: c?.x ?? 0, y: c?.y ?? 0 }
     }
 
+    const { sx, sy } = surfacePaintScale()
     const next: DragState = {
       instanceId: card.instanceId,
       groupIds,
@@ -430,8 +448,9 @@ export function FreeFloatSurface({
       startX: event.clientX,
       startY: event.clientY,
       moved: false,
-      ghostX: event.clientX - (local.x - x),
-      ghostY: event.clientY - (local.y - y),
+      // Ghost is `position: fixed` (screen px); offset is logical — convert.
+      ghostX: event.clientX - (local.x - x) * sx,
+      ghostY: event.clientY - (local.y - y) * sy,
     }
     dragRef.current = next
     setDrag(next)
@@ -446,11 +465,12 @@ export function FreeFloatSurface({
       )
       if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
 
+      const paint = surfacePaintScale()
       const updated: DragState = {
         ...current,
         moved: true,
-        ghostX: moveEvent.clientX - current.offsetX,
-        ghostY: moveEvent.clientY - current.offsetY,
+        ghostX: moveEvent.clientX - current.offsetX * paint.sx,
+        ghostY: moveEvent.clientY - current.offsetY * paint.sy,
       }
       dragRef.current = updated
       setDrag(updated)
@@ -495,14 +515,12 @@ export function FreeFloatSurface({
             }
           })
 
-          const surface = surfaceRef.current
-          const bounds = surface?.getBoundingClientRect()
           const { w, h } = cardSizeRef.current
           const moves = clampMovesToSurface(
             proposed,
             cardsRef.current,
-            bounds?.width ?? 0,
-            bounds?.height ?? 0,
+            PLAY_FLOAT_LOGICAL.width,
+            PLAY_FLOAT_LOGICAL.height,
             w,
             h
           )
@@ -533,6 +551,7 @@ export function FreeFloatSurface({
   const primaryOrigin = drag
     ? (drag.origins[drag.instanceId] ?? { x: 0, y: 0 })
     : null
+  const { sx: paintSx, sy: paintSy } = surfacePaintScale()
   const ghostCards =
     drag?.moved && primaryOrigin
       ? drag.groupIds
@@ -542,8 +561,8 @@ export function FreeFloatSurface({
             if (!card || !origin) return null
             return {
               card,
-              left: drag.ghostX + (origin.x - primaryOrigin.x),
-              top: drag.ghostY + (origin.y - primaryOrigin.y),
+              left: drag.ghostX + (origin.x - primaryOrigin.x) * paintSx,
+              top: drag.ghostY + (origin.y - primaryOrigin.y) * paintSy,
             }
           })
           .filter(
@@ -667,28 +686,35 @@ export function FreeFloatSurface({
         />
       </div>
 
-      {ghostCards.map(({ card, left, top }) => (
-        <div
-          key={`ghost-${card.instanceId}`}
-          className={cn(
-            "pointer-events-none fixed z-[80]",
-            card.expended && "rotate-90",
-            card.selected && "ring-2 ring-cyan-300"
-          )}
-          style={{
-            left,
-            top,
-            width: cardW,
-            height: cardH,
-          }}
-        >
-          <PlayingCard
-            card={card}
-            className="h-full w-full"
-            isSelected={card.selected}
-          />
-        </div>
-      ))}
+      {ghostCards.length > 0
+        ? createPortal(
+            <>
+              {ghostCards.map(({ card, left, top }) => (
+                <div
+                  key={`ghost-${card.instanceId}`}
+                  className={cn(
+                    "pointer-events-none fixed z-[80]",
+                    card.expended && "rotate-90",
+                    card.selected && "ring-2 ring-cyan-300"
+                  )}
+                  style={{
+                    left,
+                    top,
+                    width: cardW * paintSx,
+                    height: cardH * paintSy,
+                  }}
+                >
+                  <PlayingCard
+                    card={card}
+                    className="h-full w-full"
+                    isSelected={card.selected}
+                  />
+                </div>
+              ))}
+            </>,
+            document.body
+          )
+        : null}
     </>
   )
 }

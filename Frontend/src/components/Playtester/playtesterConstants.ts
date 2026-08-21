@@ -95,7 +95,7 @@ export const HAND_FLOAT_SIZE = {
   defaultHeight: 176,
 } as const
 
-/** Layout height of the docked hand strip (title bar + card row). */
+/** Layout height of the docked hand strip (card row; label floats on top). */
 export const HAND_DOCK_HEIGHT_PX = HAND_FLOAT_SIZE.defaultHeight
 
 /**

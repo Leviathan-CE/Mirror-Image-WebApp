@@ -6,12 +6,15 @@ import {
   GENERATED_LAYOUT,
   RESOURCE_FAN_LAYOUT,
   augmentHome,
+  flipFieldPoint,
   generatedResourceHome,
   placeAugmentsForView,
+  placeInPlayForView,
   placedStockpileCount,
   placeStockpileForView,
   resourceAnchorX,
   resourceHomeY,
+  worldToView,
 } from "@/components/Playtester/augmentRow.logic"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 
@@ -174,5 +177,38 @@ describe("generatedResourceHome", () => {
         "p1"
       )
     ).toBe(1)
+  })
+})
+
+describe("world / view field flip", () => {
+  it("is an involution (flip twice returns the origin)", () => {
+    const point = { x: 220, y: 360 }
+    const once = flipFieldPoint(point.x, point.y, FIELD)
+    const twice = flipFieldPoint(once.x, once.y, FIELD)
+    expect(twice).toEqual(point)
+  })
+
+  it("shows p1's bottom-right park as p2's top-left (across the table)", () => {
+    const world = { x: FIELD.width - FACE.w - 10, y: FIELD.height - FACE.h - 40 }
+    const asP1 = placeInPlayForView(
+      [augment("parked", "p1", world)],
+      "p1",
+      FIELD
+    )
+    const asP2 = placeInPlayForView(
+      [augment("parked", "p1", world)],
+      "p2",
+      FIELD
+    )
+    expect(asP1[0]?.x).toBe(world.x)
+    expect(asP1[0]?.y).toBe(world.y)
+    expect(asP2[0]?.x).toBe(flipFieldPoint(world.x, world.y, FIELD).x)
+    expect(asP2[0]?.y).toBe(flipFieldPoint(world.x, world.y, FIELD).y)
+    expect(asP2[0]!.x!).toBeLessThan(FIELD.width / 2)
+    expect(asP2[0]!.y!).toBeLessThan(FIELD.height / 2)
+  })
+
+  it("leaves p1 world coords unchanged for the p1 viewer", () => {
+    expect(worldToView(100, 200, "p1", FIELD)).toEqual({ x: 100, y: 200 })
   })
 })

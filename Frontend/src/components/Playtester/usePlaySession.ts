@@ -15,7 +15,11 @@ import {
 } from "react"
 
 import type { ResourceColor } from "@/components/Playtester/accumulateResources.logic"
+import {
+  viewToWorld,
+} from "@/components/Playtester/augmentRow.logic"
 import { peekTopLibrary } from "@/components/Playtester/deckActions.logic"
+import { PLAY_FLOAT_LOGICAL } from "@/components/Playtester/playFieldScale.logic"
 import {
   LOCAL_SEAT,
   OPENING_MULLIGAN_ENABLED,
@@ -388,7 +392,10 @@ export function usePlaySession({
     if (moves.length === 0) return
     dispatch({
       t: "ps",
-      i: moves.map((m) => ({ id: m.instanceId, x: m.x, y: m.y })),
+      i: moves.map((m) => {
+        const world = viewToWorld(m.x, m.y, localSeat, PLAY_FLOAT_LOGICAL)
+        return { id: m.instanceId, x: world.x, y: world.y }
+      }),
     })
   }
 
@@ -521,6 +528,9 @@ export function usePlaySession({
       onMissing?.()
       return false
     }
+    const world = at
+      ? viewToWorld(at.x, at.y, localSeat, PLAY_FLOAT_LOGICAL)
+      : undefined
     dispatch({
       t: "tk",
       seat: localSeat,
@@ -529,8 +539,8 @@ export function usePlaySession({
       artPath: template.card_art_path,
       artVersion: template.card_art_version ?? null,
       cost: Array.isArray(template.cost) ? template.cost.map(String) : [],
-      x: at?.x,
-      y: at?.y,
+      x: world?.x,
+      y: world?.y,
     })
     return true
   }
@@ -587,6 +597,9 @@ export function usePlaySession({
       const template = resourceByColor.get(color)
       if (!template) return
       const at = homes[index]
+      const world = at
+        ? viewToWorld(at.x, at.y, localSeat, PLAY_FLOAT_LOGICAL)
+        : undefined
       dispatch({
         t: "tk",
         seat: localSeat,
@@ -595,8 +608,8 @@ export function usePlaySession({
         artPath: template.card_art_path,
         artVersion: template.card_art_version ?? null,
         cost: Array.isArray(template.cost) ? template.cost.map(String) : [],
-        x: at?.x,
-        y: at?.y,
+        x: world?.x,
+        y: world?.y,
       })
     })
   }

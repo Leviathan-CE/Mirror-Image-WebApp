@@ -21,11 +21,49 @@ import type { ParentSize } from "@/components/Playtester/handFloatPanel.logic"
 import {
   PLAY_PILE_SIZE,
   PLAY_ZONE,
+  PLAYER_SLOT,
   type PlayerSlot,
 } from "@/components/Playtester/playtesterConstants"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 
 export const FACE = PLAY_PILE_SIZE.lg
+
+/**
+ * World space = p1's view (p1 sits at the bottom of the mat).
+ * p2's screen is the same mat rotated 180° so they also sit at the bottom.
+ * Flip is an involution: viewToWorld === worldToView.
+ */
+export function flipFieldPoint(
+  x: number,
+  y: number,
+  field: ParentSize,
+  faceW: number = FACE.w,
+  faceH: number = FACE.h
+): { x: number; y: number } {
+  return {
+    x: field.width - faceW - x,
+    y: field.height - faceH - y,
+  }
+}
+
+export function worldToView(
+  x: number,
+  y: number,
+  localSeat: PlayerSlot,
+  field: ParentSize
+): { x: number; y: number } {
+  if (localSeat === PLAYER_SLOT.p1) return { x, y }
+  return flipFieldPoint(x, y, field)
+}
+
+export function viewToWorld(
+  x: number,
+  y: number,
+  localSeat: PlayerSlot,
+  field: ParentSize
+): { x: number; y: number } {
+  return worldToView(x, y, localSeat, field)
+}
 
 export type HomeLayout = {
   start: { x: number; y: number }
@@ -301,9 +339,18 @@ export function placeInPlayForView(
   localSeat: PlayerSlot,
   field: ParentSize
 ): PlayingCardInstance[] {
-  return placeStockpileForView(
+  const withHomes = placeStockpileForView(
     placeAugmentsForView(cards, localSeat, field),
     localSeat,
     field
   )
+
+  // Opening homes above are already viewer-relative. Persisted x/y are world
+  // (p1-bottom); rotate them into this seat's view so both boards stay synced.
+  return withHomes.map((card) => {
+    const orig = cards.find((c) => c.instanceId === card.instanceId)
+    if (orig == null || orig.x == null || orig.y == null) return card
+    const view = worldToView(orig.x, orig.y, localSeat, field)
+    return { ...card, x: view.x, y: view.y }
+  })
 }

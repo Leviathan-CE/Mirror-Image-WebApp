@@ -52,8 +52,8 @@ describe("playPileScale.logic", () => {
     )
   })
 
-  it("sizes the natural column for four piles", () => {
-    expect(SIDE_COLUMN_PILE_COUNT).toBe(4)
-    expect(sideColumnNaturalHeightPx()).toBeGreaterThan(PLAY_PILE_SIZE.lg.h * 4)
+  it("sizes the natural column for three piles", () => {
+    expect(SIDE_COLUMN_PILE_COUNT).toBe(3)
+    expect(sideColumnNaturalHeightPx()).toBeGreaterThan(PLAY_PILE_SIZE.lg.h * 3)
   })
 })
