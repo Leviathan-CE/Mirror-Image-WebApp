@@ -2,6 +2,13 @@
 
 The Mirror Image Everything app for sellers, buyer stats, meta, and card catalogue
 
+## CI / code review
+
+PRs and pushes to `main` run lint/tests and a secret scan (`.github/workflows/ci.yml`).
+
+AI PR review is **Cursor Bugbot** (enable in the Cursor dashboard when ready).
+Project rules live in [`.cursor/BUGBOT.md`](./.cursor/BUGBOT.md) — security, flaws, SRP, and readability.
+
 ## Run with Docker Compose
 
 From the repository root:
