@@ -2,6 +2,11 @@
 
 The Mirror Image Everything app for sellers, buyer stats, meta, and card catalogue
 
+## CI / AI code review
+
+PRs and pushes to `main` run lint/tests and a secret scan (`.github/workflows/ci.yml`).
+Non-draft PRs into `main` also get an AI review for **security, flaws, SRP, and readability** — see [`.github/ai-review/README.md`](./.github/ai-review/README.md) (add `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` repo secret).
+
 ## Run with Docker Compose
 
 From the repository root:
