@@ -14,8 +14,10 @@ import {
   placeStockpileForView,
   resourceAnchorX,
   resourceHomeY,
+  worldToDisplay,
   worldToView,
 } from "@/components/Playtester/augmentRow.logic"
+import { PLAY_FLOAT_LOGICAL } from "@/components/Playtester/playFieldScale.logic"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 
 function augment(
@@ -189,7 +191,10 @@ describe("world / view field flip", () => {
   })
 
   it("shows p1's bottom-right park as p2's top-left (across the table)", () => {
-    const world = { x: FIELD.width - FACE.w - 10, y: FIELD.height - FACE.h - 40 }
+    const world = {
+      x: PLAY_FLOAT_LOGICAL.width - FACE.w - 10,
+      y: PLAY_FLOAT_LOGICAL.height - FACE.h - 40,
+    }
     const asP1 = placeInPlayForView(
       [augment("parked", "p1", world)],
       "p1",
@@ -200,12 +205,27 @@ describe("world / view field flip", () => {
       "p2",
       FIELD
     )
-    expect(asP1[0]?.x).toBe(world.x)
-    expect(asP1[0]?.y).toBe(world.y)
-    expect(asP2[0]?.x).toBe(flipFieldPoint(world.x, world.y, FIELD).x)
-    expect(asP2[0]?.y).toBe(flipFieldPoint(world.x, world.y, FIELD).y)
+    const p1View = worldToDisplay(world.x, world.y, "p1", FIELD)
+    const p2View = worldToDisplay(world.x, world.y, "p2", FIELD)
+    expect(asP1[0]?.x).toBeCloseTo(p1View.x, 5)
+    expect(asP1[0]?.y).toBeCloseTo(p1View.y, 5)
+    expect(asP2[0]?.x).toBeCloseTo(p2View.x, 5)
+    expect(asP2[0]?.y).toBeCloseTo(p2View.y, 5)
     expect(asP2[0]!.x!).toBeLessThan(FIELD.width / 2)
     expect(asP2[0]!.y!).toBeLessThan(FIELD.height / 2)
+  })
+
+  it("scales opening world homes onto a smaller painted float", () => {
+    const worldY = PLAY_FLOAT_LOGICAL.height - FACE.h - 20
+    const placed = placeInPlayForView(
+      [token("open", "p1", ["TIM"], { x: 400, y: worldY })],
+      "p1",
+      FIELD
+    )
+    expect(placed[0]?.y).toBeCloseTo(
+      worldY * (FIELD.height / PLAY_FLOAT_LOGICAL.height),
+      5
+    )
   })
 
   it("leaves p1 world coords unchanged for the p1 viewer", () => {

@@ -32,6 +32,28 @@ describe("playFieldFitScale", () => {
     ).toBe(2)
   })
 
+  it("can cap enlargement for shared rooms", () => {
+    expect(
+      playFieldFitScale(
+        PLAY_FIELD_LOGICAL.width * 2,
+        PLAY_FIELD_LOGICAL.height * 2,
+        PLAY_FIELD_LOGICAL,
+        1
+      )
+    ).toBe(1)
+  })
+
+  it("still shrinks under a maxScale cap", () => {
+    expect(
+      playFieldFitScale(
+        PLAY_FIELD_LOGICAL.width / 2,
+        PLAY_FIELD_LOGICAL.height,
+        PLAY_FIELD_LOGICAL,
+        1
+      )
+    ).toBeCloseTo(0.5, 5)
+  })
+
   it("shrinks to the tighter axis on a small host", () => {
     expect(
       playFieldFitScale(PLAY_FIELD_LOGICAL.width / 2, PLAY_FIELD_LOGICAL.height)

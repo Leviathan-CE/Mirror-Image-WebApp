@@ -232,7 +232,7 @@ async def room_socket(ws: WebSocket, code: str, token: str | None = None) -> Non
                     skip=ws,
                 )
                 continue
-            if kind in ("signal", "action", "intent", "event", "fog", "snapshot", "hover", "fx"):
+            if kind in ("signal", "action", "intent", "event", "fog", "snapshot", "hover", "fx", "selection"):
                 payload = {**raw, "fromSeat": seat}
                 await _broadcast(room, payload, skip=ws)
                 continue

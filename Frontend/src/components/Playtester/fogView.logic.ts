@@ -27,6 +27,7 @@ export type FogStub = {
   expended: boolean
   /** Kept so a face-down augment still renders in its owner's augment row. */
   isAugment?: boolean
+  selected?: boolean
 }
 
 export type FogCard = PlayingCardInstance | FogStub
@@ -70,12 +71,14 @@ function asFaceDownStub(card: PlayingCardInstance): FogStub {
     y: card.y,
     expended: card.expended,
     isAugment: card.isAugment,
+    selected: card.selected,
   }
 }
 
 /**
  * Filter full host state for `seat`.
  * Private opponent zones are omitted (counts live on the view object).
+ * Opponent `selected` is stripped — selection is local-only per client.
  */
 export function viewFor(seat: PlayerSlot, state: PlaySessionState): FogView {
   const cards: FogCard[] = []
@@ -86,10 +89,11 @@ export function viewFor(seat: PlayerSlot, state: PlaySessionState): FogView {
     }
     if (PRIVATE_ZONES.has(card.zone)) continue
     if (card.faceDown) {
-      cards.push(asFaceDownStub(card))
+      const stub = asFaceDownStub(card)
+      cards.push(stub.selected ? { ...stub, selected: false } : stub)
       continue
     }
-    cards.push(card)
+    cards.push(card.selected ? { ...card, selected: false } : card)
   }
 
   return {
@@ -126,6 +130,7 @@ export function stubToInstance(stub: FogStub): PlayingCardInstance {
     expended: stub.expended,
     faceDown: true,
     isAugment: stub.isAugment,
+    selected: stub.selected,
   }
 }
 
@@ -165,4 +170,33 @@ export function materializeFog(view: FogView): PlayingCardInstance[] {
   )
   const opp: PlayerSlot = view.viewer === "p1" ? "p2" : "p1"
   return padHiddenHand(mapped, opp, view.handCount[opp])
+}
+
+/**
+ * After fog, keep *this seat's* optimistic selection so a host fog tick
+ * cannot clear local cyan rings mid-click.
+ */
+export function withPreservedSelection(
+  cards: PlayingCardInstance[],
+  selectedIds: ReadonlySet<string>,
+  localSeat: PlayerSlot
+): PlayingCardInstance[] {
+  return cards.map((card) => {
+    if (card.owner !== localSeat) return card
+    const next = selectedIds.has(card.instanceId)
+    return card.selected === next ? card : { ...card, selected: next }
+  })
+}
+
+/** Force peer-owned cards to match selection-chrome ids (incl. empty = clear). */
+export function withPeerSelectionChrome(
+  cards: PlayingCardInstance[],
+  peerSeat: PlayerSlot,
+  selectedIds: ReadonlySet<string>
+): PlayingCardInstance[] {
+  return cards.map((card) => {
+    if (card.owner !== peerSeat) return card
+    const next = selectedIds.has(card.instanceId)
+    return card.selected === next ? card : { ...card, selected: next }
+  })
 }

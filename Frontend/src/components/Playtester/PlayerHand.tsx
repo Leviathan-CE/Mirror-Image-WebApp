@@ -22,7 +22,11 @@ import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import { handCardSizePx } from "@/components/Playtester/handCardSize.logic"
 import { elementCssPaintScale } from "@/components/Playtester/playFieldScale.logic"
 import { PlayingCard } from "@/components/Playtester/PlayingCard"
-import { HAND_CARD_SIZE } from "@/components/Playtester/constants"
+import { HAND_CARD_SIZE, LOCAL_SEAT, type PlayerSlot } from "@/components/Playtester/constants"
+import {
+  cardIsPaintSelected,
+  selectionRingClass,
+} from "@/components/Playtester/selectionChrome"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { MiddleMouseScroll } from "@/components/ui/MiddleMouseScroll"
 import { useLatestRef } from "@/hooks/useLatestRef"
@@ -70,6 +74,8 @@ export type PlayerHandProps = {
   hoveredIndex?: number | null
   /** Local hover changed — parent may relay index over the net. */
   onHoverIndexChange?: (index: number | null) => void
+  /** Seat at the bottom of this client — colours selection rings. */
+  localSeat?: PlayerSlot
 }
 
 type HandDrag = {
@@ -126,6 +132,7 @@ export function PlayerHand({
   embedded = false,
   hoveredIndex = null,
   onHoverIndexChange,
+  localSeat = LOCAL_SEAT,
 }: PlayerHandProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const [cardPx, setCardPx] = useState(() =>
@@ -508,9 +515,9 @@ export function PlayerHand({
                           ? "cursor-grab hover:-translate-y-2"
                           : "cursor-default",
                       isHovered && !isDragging && "-translate-y-2",
-                      card.selected &&
+                      cardIsPaintSelected(card, localSeat) &&
                         !isDragging &&
-                        "ring-2 ring-cyan-300 ring-offset-1 ring-offset-black/80"
+                        selectionRingClass()
                     )}
                     style={{ width: cardPx.width, height: cardPx.height }}
                     onPointerDown={(event) => {

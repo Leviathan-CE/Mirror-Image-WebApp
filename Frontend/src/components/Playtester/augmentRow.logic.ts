@@ -66,6 +66,48 @@ export function viewToWorld(
   return worldToView(x, y, localSeat, field)
 }
 
+export function scaleFieldPoint(
+  point: { x: number; y: number },
+  from: ParentSize,
+  to: ParentSize
+): { x: number; y: number } {
+  if (from.width <= 0 || from.height <= 0) return { ...point }
+  if (to.width <= 0 || to.height <= 0) return { ...point }
+  return {
+    x: point.x * (to.width / from.width),
+    y: point.y * (to.height / from.height),
+  }
+}
+
+/**
+ * Pointer / layout coords on the painted float → stored world (always
+ * `PLAY_FLOAT_LOGICAL` so P2P seats agree).
+ */
+export function displayToWorld(
+  x: number,
+  y: number,
+  localSeat: PlayerSlot,
+  displayField: ParentSize,
+  canonicalField: ParentSize = PLAY_FLOAT_LOGICAL
+): { x: number; y: number } {
+  const inCanonical = scaleFieldPoint({ x, y }, displayField, canonicalField)
+  return viewToWorld(inCanonical.x, inCanonical.y, localSeat, canonicalField)
+}
+
+/**
+ * Stored world (canonical) → coords for the current float rect on screen.
+ */
+export function worldToDisplay(
+  x: number,
+  y: number,
+  localSeat: PlayerSlot,
+  displayField: ParentSize,
+  canonicalField: ParentSize = PLAY_FLOAT_LOGICAL
+): { x: number; y: number } {
+  const inCanonical = worldToView(x, y, localSeat, canonicalField)
+  return scaleFieldPoint(inCanonical, canonicalField, displayField)
+}
+
 export type HomeLayout = {
   start: { x: number; y: number }
   offset: { x: number; y: number }
@@ -348,12 +390,11 @@ export function placeInPlayForView(
     field
   )
 
-  // World x/y (opening stamps + drags) → this seat's view. Cards still missing
-  // coords keep the viewer-relative homes from place*ForView above.
+  // World x/y (opening stamps + drags) → this seat's view on the painted float.
   return withHomes.map((card) => {
     const orig = cards.find((c) => c.instanceId === card.instanceId)
     if (orig == null || orig.x == null || orig.y == null) return card
-    const view = worldToView(orig.x, orig.y, localSeat, field)
+    const view = worldToDisplay(orig.x, orig.y, localSeat, field)
     return { ...card, x: view.x, y: view.y }
   })
 }

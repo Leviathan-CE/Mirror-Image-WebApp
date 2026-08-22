@@ -84,4 +84,4 @@ export {
 } from "./sessionActions.logic"
 
 export type { FogView, FogCard, FogStub } from "./fogView.logic"
-export { viewFor, isFogStub, materializeFog, stubToInstance } from "./fogView.logic"
+export { viewFor, isFogStub, materializeFog, stubToInstance, withPreservedSelection, withPeerSelectionChrome } from "./fogView.logic"
