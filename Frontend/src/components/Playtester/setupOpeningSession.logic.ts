@@ -15,6 +15,7 @@ import {
   spawnResourceTokenInstance,
   type ResourceColor,
 } from "@/components/Playtester/accumulateResources.logic"
+import { stampStockpileWorldHomes } from "@/components/Playtester/augmentRow.logic"
 import {
   expandDeckToPlayInstances,
   LOCAL_SEAT,
@@ -53,8 +54,7 @@ export function startingLifeFromPilot(
 }
 
 /**
- * Spawn starting resource tokens. Positions are left unset so the shared
- * field can fan them by colour on that owner's home-left.
+ * Spawn starting resource tokens (no positions yet — caller stamps world homes).
  */
 export function spawnGroupedStockpileResources(
   colors: ResourceColor[],
@@ -173,11 +173,15 @@ export function setupOpeningSession(
 
   session.push(...hand, ...library)
 
+  // World homes (p1 bottom / p2 top) so fog sync + guest view agree on side.
   session.push(
-    ...spawnGroupedStockpileResources(
-      startingResourceColorsFromPilot(pilotEntry),
-      resourceByColor,
-      0,
+    ...stampStockpileWorldHomes(
+      spawnGroupedStockpileResources(
+        startingResourceColorsFromPilot(pilotEntry),
+        resourceByColor,
+        0,
+        owner
+      ),
       owner
     )
   )

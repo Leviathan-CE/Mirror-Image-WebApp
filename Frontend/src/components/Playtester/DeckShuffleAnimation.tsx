@@ -3,7 +3,8 @@
  * Two passes, alternating which side leads.
  */
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
+import { useLatestRef } from "@/hooks/useLatestRef"
 
 import { sharedImages } from "@/assets/shared"
 import { cn } from "@/lib/utils"
@@ -24,8 +25,7 @@ export function DeckShuffleAnimation({
   onComplete,
 }: DeckShuffleAnimationProps) {
   const [step, setStep] = useState(0)
-  const onCompleteRef = useRef(onComplete)
-  onCompleteRef.current = onComplete
+  const onCompleteRef = useLatestRef(onComplete)
 
   useEffect(() => {
     const timers = Array.from({ length: STEPS }, (_, i) =>

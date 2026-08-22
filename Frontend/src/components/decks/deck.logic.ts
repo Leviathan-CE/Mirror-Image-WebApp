@@ -6,7 +6,7 @@ import type { DeckCardSortMode } from "@/components/decks/DeckCardSortControls"
 import {
   DECK_CARD_MAX_COPIES,
   deckCardSelectionKey,
-} from "@/components/decks/DeckCardStack"
+} from "@/components/decks/deckCardDrag"
 import {
   AUGMENT_SECTION_NAME,
   PILOT_SECTION_NAME,
@@ -262,13 +262,6 @@ export function canAddCopyToDeck(
     }
   }
   return { ok: true }
-}
-
-/** @deprecated Prefer `canAddCopyToDeck` + `totalCopiesOfCard`. */
-export function canAddCopyToMain(
-  existingQuantity: number | undefined
-): { ok: true } | { ok: false; message: string } {
-  return canAddCopyToDeck(existingQuantity ?? 0)
 }
 
 export function clampQuantityToMax(

@@ -6,7 +6,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import { deckCardSelectionKey } from "@/components/decks/DeckCardStack"
+import {
+  deckCardSelectionKey,
+} from "@/components/decks/deckCardDrag"
 import type { DeckCardSortMode } from "@/components/decks/DeckCardSortControls"
 import {
   orderedSelectionKeys,

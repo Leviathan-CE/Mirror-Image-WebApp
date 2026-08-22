@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   PLAY_ZONE,
   type PlayZone,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
 import type { PlayingCardInstance } from "@/components/Playtester/playCard.logic"
 import {
   moveToBattlefield,

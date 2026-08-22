@@ -33,9 +33,7 @@ export function CardRulesText({
   let bold = false
   let key = 0
 
-  TOKEN_RE.lastIndex = 0
-  let match: RegExpExecArray | null
-  while ((match = TOKEN_RE.exec(text)) !== null) {
+  for (const match of text.matchAll(TOKEN_RE)) {
     const [, sprite, tag, plain] = match
 
     if (sprite) {

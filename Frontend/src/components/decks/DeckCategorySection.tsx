@@ -6,11 +6,13 @@
 import { useEffect, useState, type DragEvent } from "react"
 
 import {
-  DeckCardStack,
   deckCardDropEffect,
   isDeckCardDrag,
   parseDeckCardDrag,
   type DeckCardDragPayload,
+} from "@/components/decks/deckCardDrag"
+import {
+  DeckCardStack,
 } from "@/components/decks/DeckCardStack"
 import type { DeckCardViewMode } from "@/components/decks/DeckCardViewControls"
 import { Button } from "@/components/ui/button"

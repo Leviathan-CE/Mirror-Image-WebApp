@@ -3,7 +3,7 @@
  * Library order = session array order among zone === library (first = top).
  */
 
-import { LOCAL_SEAT, PLAY_ZONE, type PlayerSlot } from "@/components/Playtester/playtesterConstants"
+import { LOCAL_SEAT, PLAY_ZONE, type PlayerSlot } from "@/components/Playtester/constants"
 import {
   cardsInZone,
   shuffleInPlace,

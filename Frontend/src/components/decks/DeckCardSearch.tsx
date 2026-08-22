@@ -5,6 +5,7 @@
 import { useEffect, useId, useRef, useState } from "react"
 
 import { CardSearchBar } from "@/components/cards/CardSearchBar"
+import { useLatestRef } from "@/hooks/useLatestRef"
 import { searchCards, type CardSearchHit } from "@/lib/api/cards"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
@@ -26,15 +27,13 @@ export function DeckCardSearch({
   const listId = useId()
   const inputId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
-  const onOpenChangeRef = useRef(onOpenChange)
+  const onOpenChangeRef = useLatestRef(onOpenChange)
   const [query, setQuery] = useState("")
   const [hits, setHits] = useState<CardSearchHit[]>([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
   const [busyPick, setBusyPick] = useState(false)
-
-  onOpenChangeRef.current = onOpenChange
 
   function setMenuOpen(next: boolean) {
     setOpen((prev) => {

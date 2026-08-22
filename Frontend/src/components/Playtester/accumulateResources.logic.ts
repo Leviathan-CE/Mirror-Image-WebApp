@@ -193,7 +193,9 @@ export function spawnResourceTokenInstance(
   owner: PlayerSlot = LOCAL_SEAT
 ): PlayingCardInstance {
   return {
-    instanceId: `resource-${template.id}-${seq}-${Date.now()}`,
+    // Owner must be in the id — both seats spawn the same template/seq in one
+    // deal tick, and Date.now() alone collides (P2P “extra” resources one side).
+    instanceId: `${owner}-resource-${template.id}-${seq}`,
     cardId: template.id,
     owner,
     name: template.card_name,

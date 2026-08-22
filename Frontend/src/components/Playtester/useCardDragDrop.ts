@@ -31,7 +31,7 @@ import {
   LOCAL_SEAT,
   PLAY_ZONE,
   type PlayerSlot,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
 import type {
   FlipFlyAnim,
   PlaytesterZoneRefs,

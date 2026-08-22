@@ -12,7 +12,7 @@
 import {
   HAND_DOCK_HEIGHT_PX,
   PLAY_PILE_SIZE,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
 
 /** Design canvas for the whole play row (not just the float surface). */
 export const PLAY_FIELD_LOGICAL = {
@@ -77,29 +77,6 @@ export function playFieldFitScale(
     return 1
   }
   return Math.min(availWidth / logical.width, availHeight / logical.height)
-}
-
-/**
- * @deprecated Screen chrome is inside `PLAY_FIELD_LOGICAL` now — use
- * `playFieldFitScale` on the host. Kept so older call sites keep compiling.
- */
-export type PlayBoardChrome = {
-  handStrips: number
-  sideColumns: number
-  handDockPx: number
-  pileFaceW: number
-  gapXPx?: number
-  gapYPx?: number
-}
-
-/** @deprecated prefer playFieldFitScale(host) */
-export function playBoardFitScale(
-  availWidth: number,
-  availHeight: number,
-  _chrome?: PlayBoardChrome,
-  logical: FieldSize = PLAY_FIELD_LOGICAL
-): number {
-  return playFieldFitScale(availWidth, availHeight, logical)
 }
 
 /**

@@ -16,6 +16,19 @@ export type AuthUser = {
   features?: string[]
 }
 
+/** Narrow unknown JSON (e.g. localStorage) to a usable AuthUser. */
+export function isAuthUser(value: unknown): value is AuthUser {
+  if (value == null || typeof value !== "object") return false
+  const row = value as Record<string, unknown>
+  return (
+    typeof row.id === "number" &&
+    Number.isFinite(row.id) &&
+    typeof row.user_name === "string" &&
+    typeof row.email === "string" &&
+    typeof row.role === "string"
+  )
+}
+
 export type LoginResponse = {
   access_token: string
   token_type: string

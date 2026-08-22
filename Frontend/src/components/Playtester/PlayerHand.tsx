@@ -22,9 +22,10 @@ import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import { handCardSizePx } from "@/components/Playtester/handCardSize.logic"
 import { elementCssPaintScale } from "@/components/Playtester/playFieldScale.logic"
 import { PlayingCard } from "@/components/Playtester/PlayingCard"
-import { HAND_CARD_SIZE } from "@/components/Playtester/playtesterConstants"
+import { HAND_CARD_SIZE } from "@/components/Playtester/constants"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { MiddleMouseScroll } from "@/components/ui/MiddleMouseScroll"
+import { useLatestRef } from "@/hooks/useLatestRef"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
@@ -80,6 +81,8 @@ type HandDrag = {
   moved: boolean
   ghostX: number
   ghostY: number
+  paintSx: number
+  paintSy: number
 }
 
 type MarqueeState = {
@@ -130,21 +133,21 @@ export function PlayerHand({
   )
   const dragRef = useRef<HandDrag | null>(null)
   const marqueeRef = useRef<MarqueeState | null>(null)
-  const cardsRef = useRef(cards)
-  cardsRef.current = cards
-  const onSelectionRef = useRef(onSelectionChange)
-  onSelectionRef.current = onSelectionChange
-  const onReleaseRef = useRef(onReleaseCards)
-  onReleaseRef.current = onReleaseCards
+  const cardsRef = useLatestRef(cards)
+  const onSelectionRef = useLatestRef(onSelectionChange)
+  const onReleaseRef = useLatestRef(onReleaseCards)
 
   useEffect(() => {
     const el = rootRef.current
     if (!el) return
     const sync = () => setCardPx(handCardSizePx(el.clientHeight))
-    sync()
+    const raf = requestAnimationFrame(sync)
     const observer = new ResizeObserver(sync)
     observer.observe(el)
-    return () => observer.disconnect()
+    return () => {
+      cancelAnimationFrame(raf)
+      observer.disconnect()
+    }
   }, [])
   /** Exact listener refs attached for this gesture (identity must match remove). */
   const cardDragListenersRef = useRef<{
@@ -322,6 +325,7 @@ export function PlayerHand({
       onSelectionRef.current?.([card.instanceId])
     }
 
+    const paint = elementCssPaintScale(rootRef.current)
     const next: HandDrag = {
       instanceId: card.instanceId,
       groupIds,
@@ -331,6 +335,8 @@ export function PlayerHand({
       moved: false,
       ghostX: event.clientX,
       ghostY: event.clientY,
+      paintSx: paint.sx,
+      paintSy: paint.sy,
     }
     dragRef.current = next
     setDrag(next)
@@ -345,11 +351,14 @@ export function PlayerHand({
       )
       if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
 
+      const nextPaint = elementCssPaintScale(rootRef.current)
       const updated: HandDrag = {
         ...current,
         moved: true,
         ghostX: moveEvent.clientX,
         ghostY: moveEvent.clientY,
+        paintSx: nextPaint.sx,
+        paintSy: nextPaint.sy,
       }
       dragRef.current = updated
       setDrag(updated)
@@ -392,7 +401,9 @@ export function PlayerHand({
     ? normalizeRect(marquee.x0, marquee.y0, marquee.x1, marquee.y1)
     : null
 
-  const { sx: paintSx, sy: paintSy } = elementCssPaintScale(rootRef.current)
+  // Scale sampled in pointer handlers — do not read refs during render.
+  const paintSx = drag?.paintSx ?? 1
+  const paintSy = drag?.paintSy ?? 1
   const ghostCards =
     drag?.moved
       ? drag.groupIds

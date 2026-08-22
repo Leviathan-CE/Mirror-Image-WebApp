@@ -9,7 +9,7 @@ import {
   FLIP_FLY_MODE,
   PLAY_ZONE,
   type FlipFlyMode,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
 import { isSessionTokenInstance } from "@/components/Playtester/sessionResources.logic"
 import type { PlayingCardInstance } from "@/components/Playtester/playCard.logic"
 

@@ -14,7 +14,7 @@ Ask: **is this file a React component?**
 | Feature **domain rules** (pure, no JSX) | **camelCase** + **`.logic.ts`** | `deck.logic.ts`, `playCard.logic.ts`, `accumulateResources.logic.ts` |
 | API clients / HTTP | **camelCase** `.ts` under `lib/api/` | `cards.ts`, `decks.ts`, `auth.ts` |
 | Shared utils | **camelCase** `.ts` | `utils.ts`, `route.ts` |
-| Constants catalogs | **camelCase** + `Constants` / `.constants` | `playtesterConstants.ts`, `loginBoot.constants.ts` |
+| Constants catalogs | **`constants.ts`** (one per feature folder) | `Playtester/constants.ts`, `cards/constants.ts`, `decks/constants.ts` |
 | Style tokens (non-CSS) | **camelCase** + `Styles` | `headerStyles.ts`, `authFormStyles.ts` |
 | Hooks | **camelCase** + `use` prefix | `useBootSequence.ts`, `useDeckDetail.ts` |
 | Compatibility barrels | short name | `types.ts`, `index.ts` |
@@ -33,10 +33,19 @@ PlayingCard.tsx           → UI
 playCard.logic.ts         → session card rules
 zoneMoves.logic.ts        → zone transfers
 usePlayContextMenu.tsx    → hook (React)
-playtesterConstants.ts    → identity constants (not rules)
+constants.ts              → knobs / identity values (not rules)
 ```
 
 **Do not** put `.logic` on API clients, hooks, utils, or style/constant catalogs — those already have a clear home/name.
+
+### Why `constants.ts` (one per folder)?
+
+Tunable values should be easy to find and change without hunting through UI or `.logic` files.
+
+- **At most one** constants file per feature folder: always named **`constants.ts`** (lowercase — matches `cards/` / `decks/`; avoid `Constants.ts` / `*Constants.ts` so Windows and Linux stay in sync).
+- **Put in it:** sizes, limits, MIME strings, icon maps, label copy, feature flags, identity enums (`PLAY_ZONE`, menu ids, …).
+- **Keep out:** React components, hooks, drag/session behavior, API calls. Those stay in `.tsx` / `.logic.ts` / dedicated helpers (e.g. `deckCardDrag.ts` may *re-export* limits from `constants.ts`).
+- Prefer **one source of truth** for a map (e.g. cost colour → icon in `cards/constants.ts`) over duplicating the same table in another folder.
 
 ### Why camelCase for logic, PascalCase for components?
 
@@ -137,7 +146,7 @@ npm run test:run -- src/components/decks
 2. Feature domain rules (pure)? → `somethingName.logic.ts`
 3. Hook? → `useSomething.ts`
 4. HTTP? → `lib/api/something.ts`
-5. Constants only? → `somethingConstants.ts` / `something.constants.ts`
+5. Constants / knobs for a feature folder? → that folder’s `constants.ts` (create if missing; don’t add a second specialty `*Icons.ts` / `*Constants.ts`)
 6. Put it under the matching folder (`components/…`, `lib/…`, `pages/…`).
 7. Add `*.test.ts(x)` next to it when it has non-trivial behavior.
 
@@ -156,7 +165,9 @@ deck.logic.test.ts              → unit test for rules
 lib/api/decks.ts                → API client module
 lib/utils.ts                    → shared util (cn, etc.)
 lib/subscription.logic.ts       → entitlement helpers
-playtesterConstants.ts          → zone / menu identity constants
+Playtester/constants.ts         → zone / menu / pile knobs
+cards/constants.ts              → cost token → icon maps
+decks/constants.ts              → max copies, drag MIME, classified copy
 ```
 
 When unsure, open a neighbor file in the same folder and copy its naming pattern.

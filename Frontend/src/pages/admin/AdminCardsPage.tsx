@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react"
 
 import { useAuth } from "@/app/providers/AuthProvider"
 import { CardDetailOverlay } from "@/components/cards/CardDetailOverlay"
-import { costTokenToIcon } from "@/components/cards/CardCostIcons"
+import { costTokenToIcon } from "@/components/cards/constants"
 import { CardSearchBar } from "@/components/cards/CardSearchBar"
 import { SearchPaginationBar } from "@/components/cards/SearchPaginationBar"
 import { GameIcon } from "@/components/common/GameIcon"

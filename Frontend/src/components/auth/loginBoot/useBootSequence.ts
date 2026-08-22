@@ -1,8 +1,8 @@
 /**
  * Boot sequence timing + continue input.
  *
- * Does not depend on `onComplete` identity — parent auth re-renders must not
- * restart the effect (that snapped progress back to 0%).
+ * `onComplete` is mirrored via `useLatestRef` so the duration effect can omit
+ * it from deps (parent auth re-renders must not snap progress back to 0%).
  */
 
 import { useEffect, useRef, useState } from "react"
@@ -11,6 +11,7 @@ import {
   BOOT_LINES,
   INPUT_ARM_MS,
 } from "@/components/auth/loginBoot/loginBoot.constants"
+import { useLatestRef } from "@/hooks/useLatestRef"
 
 export type BootSequenceState = {
   visibleCount: number
@@ -28,10 +29,8 @@ export function useBootSequence(
   const [progress, setProgress] = useState(0)
   const [inputArmed, setInputArmed] = useState(false)
 
-  const onCompleteRef = useRef(onComplete)
+  const onCompleteRef = useLatestRef(onComplete)
   const finishedRef = useRef(false)
-
-  onCompleteRef.current = onComplete
 
   function continueToMain() {
     if (finishedRef.current) return
@@ -64,7 +63,11 @@ export function useBootSequence(
     }
     frame = requestAnimationFrame(tick)
 
-    const doneTimer = window.setTimeout(() => continueToMain(), durationMs)
+    const doneTimer = window.setTimeout(() => {
+      if (finishedRef.current) return
+      finishedRef.current = true
+      onCompleteRef.current()
+    }, durationMs)
 
     return () => {
       clearTimeout(armTimer)
@@ -73,7 +76,7 @@ export function useBootSequence(
       cancelAnimationFrame(frame)
     }
     // Intentionally omit onComplete — see file header.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onComplete via ref; duration only
   }, [durationMs])
 
   useEffect(() => {
@@ -82,11 +85,14 @@ export function useBootSequence(
     function onKeyDown(event: KeyboardEvent) {
       if (isModifierOnlyKey(event.key)) return
       event.preventDefault()
-      continueToMain()
+      if (finishedRef.current) return
+      finishedRef.current = true
+      onCompleteRef.current()
     }
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- continue via ref; arm flag only
   }, [inputArmed])
 
   return { visibleCount, progress, inputArmed, continueToMain }

@@ -19,7 +19,8 @@ import {
   type PropsWithChildren,
 } from "react"
 
-import { fetchCurrentUser, type AuthUser } from "@/lib/api/auth"
+import { fetchCurrentUser, isAuthUser, type AuthUser } from "@/lib/api/auth"
+import { safeJsonParse } from "@/lib/utils"
 
 const TOKEN_KEY = "mi_access_token"
 const USER_KEY = "mi_user"
@@ -38,13 +39,10 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 /** Best-effort parse of the stored user JSON; returns null on missing/invalid data. */
 function readStoredUser(): AuthUser | null {
-  try {
-    const raw = localStorage.getItem(USER_KEY)
-    if (!raw) return null
-    return JSON.parse(raw) as AuthUser
-  } catch {
-    return null
-  }
+  const raw = localStorage.getItem(USER_KEY)
+  if (!raw) return null
+  const parsed = safeJsonParse(raw)
+  return isAuthUser(parsed) ? parsed : null
 }
 
 export function AuthProvider({ children }: PropsWithChildren) {

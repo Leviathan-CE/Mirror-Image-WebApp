@@ -14,9 +14,10 @@ import { useEffect, useRef, useState, type TransitionEvent } from "react"
 
 import { sharedImages } from "@/assets/shared"
 import { cardArtUrl } from "@/lib/api/decks"
+import { useLatestRef } from "@/hooks/useLatestRef"
 import { cn } from "@/lib/utils"
 
-import { FLIP_FLY_MODE, type FlipFlyMode } from "./playtesterConstants"
+import { FLIP_FLY_MODE, type FlipFlyMode } from "./constants"
 import type { PlayingCardInstance } from "./types"
 
 export type { FlipFlyMode }
@@ -43,8 +44,7 @@ export function CardFlipFlyAnimation({
 }: CardFlipFlyAnimationProps) {
   const [active, setActive] = useState(false)
   const doneRef = useRef(false)
-  const onCompleteRef = useRef(onComplete)
-  onCompleteRef.current = onComplete
+  const onCompleteRef = useLatestRef(onComplete)
   const faceSrc = cardArtUrl(card.artPath, card.artVersion)
 
   function finish() {
@@ -56,7 +56,11 @@ export function CardFlipFlyAnimation({
   useEffect(() => {
     const raf = requestAnimationFrame(() => setActive(true))
     // Always clear the parent lock even if transitionend never fires.
-    const timer = window.setTimeout(finish, FLIP_MS + 50)
+    const timer = window.setTimeout(() => {
+      if (doneRef.current) return
+      doneRef.current = true
+      onCompleteRef.current()
+    }, FLIP_MS + 50)
     return () => {
       cancelAnimationFrame(raf)
       window.clearTimeout(timer)
@@ -167,6 +171,3 @@ export function CardFlipFlyAnimation({
     </div>
   )
 }
-
-/** @deprecated Prefer CardFlipFlyAnimation — kept name for older imports. */
-export const DrawFlipAnimation = CardFlipFlyAnimation

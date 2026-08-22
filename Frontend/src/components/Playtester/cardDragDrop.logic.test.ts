@@ -17,7 +17,7 @@ import {
 import {
   FLIP_FLY_MODE,
   PLAY_ZONE,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
 import type { PlayingCardInstance } from "@/components/Playtester/playCard.logic"
 
 function card(

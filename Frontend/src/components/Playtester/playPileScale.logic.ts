@@ -12,7 +12,7 @@
 import {
   PLAY_PILE_SIZE,
   type PlayPileSize,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
 
 /** How many piles sit in one side column (deck / trash / dismantled). */
 export const SIDE_COLUMN_PILE_COUNT = 3

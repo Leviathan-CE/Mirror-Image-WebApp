@@ -8,6 +8,12 @@
 import type { CSSProperties } from "react"
 import { Link } from "react-router-dom"
 
+import {
+  CLASSIFIED_EYEBROW,
+  CLASSIFIED_STAMP,
+  CLASSIFIED_SUBSCRIBE_CTA,
+  TOP_SECRET_FOOTER,
+} from "@/components/decks/constants"
 import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
 
@@ -108,13 +114,17 @@ export function ClassifiedCardFace({
       </div>
 
       <p className="classified-card-face__eyebrow">
-        {isTopSecret ? "UNRELEASED ASSET" : "RESTRICTED ACCESS"}
+        {isTopSecret
+          ? CLASSIFIED_EYEBROW.top_secret
+          : CLASSIFIED_EYEBROW.classified}
       </p>
 
       <div className="classified-card-face__stamp">
         <span className="classified-card-face__stamp-ring" aria-hidden />
         <span className="classified-card-face__tag font-glitch">
-          {isTopSecret ? "TOP SECRET" : "CLASSIFIED"}
+          {isTopSecret
+            ? CLASSIFIED_STAMP.top_secret
+            : CLASSIFIED_STAMP.classified}
         </span>
       </div>
 
@@ -123,7 +133,7 @@ export function ClassifiedCardFace({
       {showFooter ? (
         isTopSecret ? (
           <span className="classified-card-face__soon font-buahs93">
-            Coming soon to preview
+            {TOP_SECRET_FOOTER}
           </span>
         ) : (
           <Link
@@ -133,7 +143,7 @@ export function ClassifiedCardFace({
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
           >
-            AQUIRE LEVEL 3 ACCESS
+            {CLASSIFIED_SUBSCRIBE_CTA}
           </Link>
         )
       ) : (

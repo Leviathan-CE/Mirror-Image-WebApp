@@ -10,7 +10,7 @@ import {
   spawnResourceTokenInstance,
   type ResourceColor,
 } from "@/components/Playtester/accumulateResources.logic"
-import { PLAY_ZONE } from "@/components/Playtester/playtesterConstants"
+import { PLAY_ZONE } from "@/components/Playtester/constants"
 import {
   cardsInZone,
   duplicatePlayingCards,

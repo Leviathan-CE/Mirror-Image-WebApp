@@ -3,7 +3,7 @@
  * (`isResourceToken`) and leave-zone destroy policy.
  */
 
-import { PLAY_ZONE, type PlayZone } from "./playtesterConstants"
+import { PLAY_ZONE, type PlayZone } from "./constants"
 import { removeCard, type PlayingCardInstance } from "./playCard.logic"
 
 /**
@@ -24,9 +24,6 @@ export function isSessionTokenInstance(
 ): boolean {
   return Boolean(card?.isToken)
 }
-
-/** @deprecated Prefer `isSessionTokenInstance` — same check. */
-export const isResourceTokenInstance = isSessionTokenInstance
 
 /**
  * If `instanceId` is a session token and `targetZone` destroys tokens,
@@ -56,9 +53,3 @@ export function destroySessionCardIfLeaving(
   if (!isSessionTokenInstance(card)) return null
   return removeCard(cards, card.instanceId)
 }
-
-/** @deprecated Prefer `destroySessionTokenIfLeaving`. */
-export const destroyResourceTokenIfLeaving = destroySessionTokenIfLeaving
-
-/** @deprecated Prefer `destroySessionCardIfLeaving`. */
-export const destroyResourceCardIfLeaving = destroySessionCardIfLeaving

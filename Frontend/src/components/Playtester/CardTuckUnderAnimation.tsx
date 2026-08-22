@@ -3,7 +3,8 @@
  * Used when putting cards from the top of the deck on the bottom (stays face down).
  */
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
+import { useLatestRef } from "@/hooks/useLatestRef"
 
 import { sharedImages } from "@/assets/shared"
 import { cn } from "@/lib/utils"
@@ -24,8 +25,7 @@ export function CardTuckUnderAnimation({
   onComplete,
 }: CardTuckUnderAnimationProps) {
   const [phase, setPhase] = useState<Phase>("start")
-  const onCompleteRef = useRef(onComplete)
-  onCompleteRef.current = onComplete
+  const onCompleteRef = useLatestRef(onComplete)
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => setPhase("lifted"))

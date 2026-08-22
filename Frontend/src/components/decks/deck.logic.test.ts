@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest"
 
-import { DECK_CARD_MAX_COPIES } from "./DeckCardStack"
+import { DECK_CARD_MAX_COPIES } from "./deckCardDrag"
 import {
   applyCardMove,
   augmentCards,
   canAddCopyToDeck,
-  canAddCopyToMain,
   cardsByCategory,
   categoryCountsInDeck,
   clampQuantityToMax,
@@ -330,8 +329,6 @@ describe("quantity rules", () => {
   it("canAddCopyToDeck blocks at deck-wide max", () => {
     expect(canAddCopyToDeck(3).ok).toBe(false)
     expect(canAddCopyToDeck(2).ok).toBe(true)
-    expect(canAddCopyToMain(3).ok).toBe(false)
-    expect(canAddCopyToMain(2).ok).toBe(true)
   })
 
   it("clamps quantity to max copies", () => {

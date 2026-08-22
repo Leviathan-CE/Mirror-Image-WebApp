@@ -9,7 +9,7 @@ import {
   isDeckCardDrag,
   parseDeckCardDrag,
   type DeckCardDragPayload,
-} from "@/components/decks/DeckCardStack"
+} from "@/components/decks/deckCardDrag"
 import { cn } from "@/lib/utils"
 
 type NewSectionDropZoneProps = {

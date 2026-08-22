@@ -4,6 +4,9 @@
  * UI copy (button labels) stays inline at the call site.
  */
 
+import type { GameIconName } from "@/components/common/GameIcon"
+import type { ResourceColor } from "@/components/Playtester/accumulateResources.logic"
+
 /** Two seats at a shared table. Solo play is always p1. */
 export const PLAYER_SLOT = {
   p1: "p1",
@@ -167,3 +170,20 @@ export const CTX_MENU_ACTION = {
 
 export type CtxMenuActionId =
   (typeof CTX_MENU_ACTION)[keyof typeof CTX_MENU_ACTION]
+
+/** Cost colour → GameIcon asset name (context menu / accumulate UI). */
+export const RESOURCE_COLOR_ICON: Record<ResourceColor, GameIconName> = {
+  LIF: "life",
+  MET: "metal",
+  POW: "power",
+  RAM: "ram",
+  TIM: "time",
+  STL: "steel",
+}
+
+/** Map a pilot +GEN bonus (1–10) to a cost icon. */
+export function genIconForCount(n: number): GameIconName {
+  if (n <= 0) return "gen0"
+  if (n >= 10) return "gen10"
+  return `gen${n}` as GameIconName
+}

@@ -13,7 +13,7 @@ import {
   isDeckCardDrag,
   parseDeckCardDrag,
   type DeckCardDragPayload,
-} from "@/components/decks/DeckCardStack"
+} from "@/components/decks/deckCardDrag"
 import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import "@/components/decks/DeckCardStack.css"
 import { cardArtUrl, type DeckCardEntry } from "@/lib/api/decks"

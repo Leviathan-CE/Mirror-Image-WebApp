@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
-import { DECK_CARD_DRAG_MIME } from "./DeckCardStack"
+import { DECK_CARD_DRAG_MIME } from "./deckCardDrag"
 import { NewSectionDropZone } from "./NewSectionDropZone"
 
 function dragDataTransfer(payload: object) {

@@ -6,7 +6,8 @@
 import {
   HAND_FLOAT_SIZE,
   PLAYTESTER_STORAGE,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
+import { safeJsonParse } from "@/lib/utils"
 
 export type HandFloatBox = {
   x: number
@@ -99,14 +100,15 @@ export function readStoredHandFloatBox(
   try {
     const raw = window.localStorage.getItem(storageKey(anchor))
     if (!raw) return fallback
-    const parsed = JSON.parse(raw) as Partial<HandFloatBox> | null
+    const parsed = safeJsonParse(raw)
     if (!parsed || typeof parsed !== "object") return fallback
+    const row = parsed as Partial<HandFloatBox>
     return clampHandFloatBox(
       {
-        x: Number.isFinite(Number(parsed.x)) ? Number(parsed.x) : fallback.x,
-        y: Number.isFinite(Number(parsed.y)) ? Number(parsed.y) : fallback.y,
-        width: Number(parsed.width),
-        height: Number(parsed.height),
+        x: Number.isFinite(Number(row.x)) ? Number(row.x) : fallback.x,
+        y: Number.isFinite(Number(row.y)) ? Number(row.y) : fallback.y,
+        width: Number(row.width),
+        height: Number(row.height),
       },
       parent
     )

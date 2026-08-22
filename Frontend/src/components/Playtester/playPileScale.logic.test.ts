@@ -8,7 +8,7 @@ import {
   sideColumnHeightAfterScale,
   sideColumnNaturalHeightPx,
 } from "@/components/Playtester/playPileScale.logic"
-import { PLAY_PILE_SIZE } from "@/components/Playtester/playtesterConstants"
+import { PLAY_PILE_SIZE } from "@/components/Playtester/constants"
 
 describe("playPileScale.logic", () => {
   it("keeps full size when the row is taller than the column", () => {

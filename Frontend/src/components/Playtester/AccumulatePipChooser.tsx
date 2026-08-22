@@ -5,7 +5,7 @@
 import { useMemo, useState } from "react"
 
 import { GameIcon } from "@/components/common/GameIcon"
-import { costTokenToIcon } from "@/components/cards/CardCostIcons"
+import { costTokenToIcon } from "@/components/cards/constants"
 import { cn } from "@/lib/utils"
 
 import {

@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
-import { DECK_CARD_DRAG_MIME } from "./DeckCardStack"
+import { DECK_CARD_DRAG_MIME } from "./deckCardDrag"
 import { DeckPilotSlot } from "./DeckPilotSlot"
 import type { DeckCardEntry } from "@/lib/api/decks"
 

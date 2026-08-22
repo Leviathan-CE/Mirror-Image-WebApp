@@ -4,7 +4,6 @@
  */
 
 import { GameIcon } from "@/components/common/GameIcon"
-import type { GameIconName } from "@/components/common/GameIcon"
 import {
   extractGainablePips,
   RESOURCE_COLORS,
@@ -15,9 +14,11 @@ import {
   LOCAL_SEAT,
   PILOT_GEN_MAX,
   PLAY_ZONE,
+  RESOURCE_COLOR_ICON,
   SELECTABLE_ACTION_ZONES,
+  genIconForCount,
   type PlayerSlot,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
 import {
   selectableActionTargets,
   cardsInZone,
@@ -29,38 +30,6 @@ import {
 import type { DropdownMenuItem } from "@/components/ui/DropdownMenu"
 import type { CardLibraryItem } from "@/lib/api/cards"
 import { cn } from "@/lib/utils"
-
-/** Cost colour → GameIcon asset name. */
-export const RESOURCE_COLOR_ICON: Record<ResourceColor, GameIconName> = {
-  LIF: "life",
-  MET: "metal",
-  POW: "power",
-  RAM: "ram",
-  TIM: "time",
-  STL: "steel",
-}
-
-/** Map a pilot +GEN bonus (1–10) to a cost icon. */
-export function genIconForCount(n: number): GameIconName {
-  if (n <= 0) return "gen0"
-  if (n >= 10) return "gen10"
-  return `gen${n}` as GameIconName
-}
-
-/** Miniature of the counter badge it adds, so the row reads like the card. */
-function CounterSwatch({ className }: { className: string }) {
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "clip-angled inline-flex min-h-6 min-w-6 items-center justify-center border px-1 font-glitch text-sm leading-none",
-        className
-      )}
-    >
-      1
-    </span>
-  )
-}
 
 export type CtxMenuState =
   | { kind: "card"; instanceId: string; x: number; y: number }
@@ -435,7 +404,7 @@ export function usePlayContextMenu({
             id: CTX_MENU_ACTION.addGeneric,
             label: (
               <>
-                Add <CounterSwatch className="border-zinc-300/70 bg-zinc-800/90 text-zinc-100" />{" "}
+                Add <span aria-hidden className={cn("clip-angled inline-flex min-h-6 min-w-6 items-center justify-center border px-1 font-glitch text-sm leading-none", "border-zinc-300/70 bg-zinc-800/90 text-zinc-100")}>1</span>{" "}
                 generic counter
               </>
             ),
@@ -447,7 +416,7 @@ export function usePlayContextMenu({
             label: (
               <>
                 Add{" "}
-                <CounterSwatch className="border-orange-400/80 bg-orange-950/90 text-orange-200" />{" "}
+                <span aria-hidden className={cn("clip-angled inline-flex min-h-6 min-w-6 items-center justify-center border px-1 font-glitch text-sm leading-none", "border-orange-400/80 bg-orange-950/90 text-orange-200")}>1</span>{" "}
                 depletion counter
               </>
             ),

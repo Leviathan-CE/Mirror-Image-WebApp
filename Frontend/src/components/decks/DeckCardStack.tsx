@@ -18,110 +18,16 @@ import { cardArtUrl, type DeckCardEntry } from "@/lib/api/decks"
 
 import "./DeckCardStack.css"
 
-export const DECK_CARD_DRAG_MIME = "application/x-mi-deck-card"
-export const DECK_CARD_MAX_COPIES = 3
-/** Sentinel `fromCategoryId` for drags that originate in the card library browser. */
-export const LIBRARY_DRAG_CATEGORY_ID = -1
+import {
+  beginDeckCardDrag,
+  DECK_CARD_DRAG_MIME,
+  DECK_CARD_MAX_COPIES,
+  deckCardSelectionKey,
+  endDeckCardDrag,
+  type DeckCardDragItem,
+  type DeckCardDragPayload,
+} from "@/components/decks/deckCardDrag"
 
-export type DeckCardDragItem = {
-  cardId: number
-  fromCategoryId: number
-}
-
-export type DeckCardDragPayload = DeckCardDragItem & {
-  /** Full set when dragging a multi-selection (includes the primary item). */
-  cards?: DeckCardDragItem[]
-}
-
-/** Set during an in-app card drag (types are unreliable mid-drag in some browsers). */
-let activeDeckCardDrag: DeckCardDragPayload | null = null
-
-export function getActiveDeckCardDrag(): DeckCardDragPayload | null {
-  return activeDeckCardDrag
-}
-
-export function beginDeckCardDrag(payload: DeckCardDragPayload): void {
-  activeDeckCardDrag = payload
-}
-
-export function endDeckCardDrag(): void {
-  activeDeckCardDrag = null
-}
-
-export function isLibraryDragPayload(payload: DeckCardDragPayload): boolean {
-  return payload.fromCategoryId === LIBRARY_DRAG_CATEGORY_ID
-}
-
-/** Cursor hint while hovering a drop zone (library = copy, deck = move). */
-export function deckCardDropEffect(): "copy" | "move" {
-  const active = getActiveDeckCardDrag()
-  if (active && isLibraryDragPayload(active)) return "copy"
-  return "move"
-}
-
-export function deckCardSelectionKey(
-  categoryId: number,
-  cardId: number
-): string {
-  return `${categoryId}:${cardId}`
-}
-
-export function cardsFromDragPayload(
-  payload: DeckCardDragPayload
-): DeckCardDragItem[] {
-  if (payload.cards && payload.cards.length > 0) return payload.cards
-  return [
-    { cardId: payload.cardId, fromCategoryId: payload.fromCategoryId },
-  ]
-}
-
-function parsePayloadJson(raw: string): DeckCardDragPayload | null {
-  try {
-    const data = JSON.parse(raw) as DeckCardDragPayload
-    if (
-      typeof data.cardId === "number" &&
-      typeof data.fromCategoryId === "number"
-    ) {
-      if (Array.isArray(data.cards)) {
-        const cards = data.cards.filter(
-          (item): item is DeckCardDragItem =>
-            typeof item?.cardId === "number" &&
-            typeof item?.fromCategoryId === "number"
-        )
-        return cards.length > 0 ? { ...data, cards } : data
-      }
-      return data
-    }
-  } catch {
-    /* ignore */
-  }
-  return null
-}
-
-/** Read drag payload from the drop event (or the in-memory fallback). */
-export function parseDeckCardDrag(event: {
-  dataTransfer: DataTransfer
-}): DeckCardDragPayload | null {
-  const fromMime = event.dataTransfer.getData(DECK_CARD_DRAG_MIME)
-  if (fromMime) {
-    const parsed = parsePayloadJson(fromMime)
-    if (parsed) return parsed
-  }
-  const fromText = event.dataTransfer.getData("text/plain")
-  if (fromText) {
-    const parsed = parsePayloadJson(fromText)
-    if (parsed) return parsed
-  }
-  return getActiveDeckCardDrag()
-}
-
-/** True while an in-app card drag is over a drop target. */
-export function isDeckCardDrag(event: {
-  dataTransfer: DataTransfer
-}): boolean {
-  if (getActiveDeckCardDrag()) return true
-  return [...event.dataTransfer.types].includes(DECK_CARD_DRAG_MIME)
-}
 
 type DeckCardStackProps = {
   cards: DeckCardEntry[]

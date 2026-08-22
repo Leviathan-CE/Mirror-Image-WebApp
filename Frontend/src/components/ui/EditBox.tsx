@@ -125,6 +125,8 @@ function EditBox({
   useLayoutEffect(() => {
     if (focused) syncCaret()
     if (autoWidth) syncAutoWidth()
+    // syncCaret/syncAutoWidth recreate each render; value/focus are the real triggers
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- layout sync on value/focus only
   }, [focused, autoWidth, password, props.value, props.defaultValue, props.placeholder])
 
   return (

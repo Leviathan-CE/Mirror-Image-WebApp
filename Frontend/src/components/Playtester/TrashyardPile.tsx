@@ -23,8 +23,9 @@ import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import { PlayingCard } from "@/components/Playtester/PlayingCard"
 import { elementCssPaintScale } from "@/components/Playtester/playFieldScale.logic"
 import { scalePlayPile } from "@/components/Playtester/playPileScale.logic"
-import type { PlayPileSize } from "@/components/Playtester/playtesterConstants"
+import type { PlayPileSize } from "@/components/Playtester/constants"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
+import { useLatestRef } from "@/hooks/useLatestRef"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
@@ -108,6 +109,8 @@ type TrashDrag = {
   moved: boolean
   ghostX: number
   ghostY: number
+  paintSx: number
+  paintSy: number
 }
 
 export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
@@ -141,8 +144,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
     const [drag, setDrag] = useState<TrashDrag | null>(null)
     const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
     const dragRef = useRef<TrashDrag | null>(null)
-    const onReleaseRef = useRef(onReleaseCard)
-    onReleaseRef.current = onReleaseCard
+    const onReleaseRef = useLatestRef(onReleaseCard)
 
     const groups = groupTrashCards(cards)
     const topCard = cards.length > 0 ? cards[cards.length - 1]! : null
@@ -165,11 +167,14 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
           event.clientY - current.startY
         )
         if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
+        const paint = elementCssPaintScale(measureRef.current)
         const next: TrashDrag = {
           ...current,
           moved: true,
           ghostX: event.clientX,
           ghostY: event.clientY,
+          paintSx: paint.sx,
+          paintSy: paint.sy,
         }
         dragRef.current = next
         setDrag(next)
@@ -230,6 +235,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       // If the fan is open, lock it open until pointer-up (avoids unmount mid-drag).
       if (pileHovered || fanLocked) setFanLocked(true)
       setHoveredIndex(null)
+      const paint = elementCssPaintScale(measureRef.current)
       const next: TrashDrag = {
         instanceId,
         pointerId: event.pointerId,
@@ -238,6 +244,8 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
         moved: false,
         ghostX: event.clientX,
         ghostY: event.clientY,
+        paintSx: paint.sx,
+        paintSy: paint.sy,
       }
       dragRef.current = next
       setDrag(next)
@@ -257,7 +265,9 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       onToggleExpended(instanceId)
     }
 
-    const { sx: paintSx, sy: paintSy } = elementCssPaintScale(measureRef.current)
+    // Scale sampled in pointer handlers — do not read refs during render.
+    const paintSx = dragging?.paintSx ?? 1
+    const paintSy = dragging?.paintSy ?? 1
 
     return (
       <>

@@ -31,7 +31,7 @@ import {
   type DeckSearchBox,
 } from "@/components/Playtester/deckSearchPanel.logic"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
-import { LOCAL_SEAT, type PlayerSlot } from "@/components/Playtester/playtesterConstants"
+import { LOCAL_SEAT, type PlayerSlot } from "@/components/Playtester/constants"
 import { MiddleMouseScroll } from "@/components/ui/MiddleMouseScroll"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"

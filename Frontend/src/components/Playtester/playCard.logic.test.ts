@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { PLAY_ZONE } from "@/components/Playtester/playtesterConstants"
+import { PLAY_ZONE } from "@/components/Playtester/constants"
 import {
   adjustCardCounter,
   CARD_COUNTER_FIELD,

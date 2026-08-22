@@ -3,7 +3,7 @@
  */
 
 import type { GameIconName } from "@/components/common/GameIcon"
-import { costTokenToIcon } from "@/components/cards/CardCostIcons"
+import { costTokenToIcon } from "@/components/cards/constants"
 
 const SPRITE_TO_ICON: Record<string, GameIconName> = {
   EFFECT: "effect",

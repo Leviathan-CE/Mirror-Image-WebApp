@@ -20,12 +20,13 @@ import {
   type FlipFlyMode,
   type PlayZone,
   type PlayerSlot,
-} from "@/components/Playtester/playtesterConstants";
+} from "@/components/Playtester/constants";
 import { peekTopLibrary } from "@/components/Playtester/deckActions.logic";
 import {
   type PlayingCardInstance,
   type SessionAction,
 } from "@/components/Playtester/types";
+import { useLatestRef } from "@/hooks/useLatestRef";
 import { cardArtUrl } from "@/lib/api/decks";
 
 export type FlipFlyAnim = {
@@ -114,29 +115,24 @@ export function useDrawAnimations({
   mulliganOpen,
   emitFx,
 }: UseDrawAnimationsArgs) {
-  const emitFxRef = useRef(emitFx);
-  emitFxRef.current = emitFx;
+  const emitFxRef = useLatestRef(emitFx);
   const [flipAnims, setFlipAnims] = useState<FlipFlyAnim[]>([]);
-  const flipAnimsRef = useRef<FlipFlyAnim[]>([]);
-  flipAnimsRef.current = flipAnims;
+  const flipAnimsRef = useLatestRef(flipAnims);
   const flipAnimIdRef = useRef(0);
 
   const [bottomAnim, setBottomAnim] = useState<BottomSlideAnim | null>(null);
-  const bottomAnimRef = useRef<BottomSlideAnim | null>(null);
-  bottomAnimRef.current = bottomAnim;
+  const bottomAnimRef = useLatestRef(bottomAnim);
 
   const [accumulatePeerAnim, setAccumulatePeerAnim] =
     useState<BottomSlideAnim | null>(null);
 
   const [tuckAnims, setTuckAnims] = useState<TuckUnderAnim[]>([]);
-  const tuckAnimsRef = useRef<TuckUnderAnim[]>([]);
-  tuckAnimsRef.current = tuckAnims;
+  const tuckAnimsRef = useLatestRef(tuckAnims);
   const tuckAnimIdRef = useRef(0);
 
   const [shuffleAnim, setShuffleAnim] = useState<ShuffleAnim | null>(null);
   const [flyingIds, setFlyingIds] = useState<string[]>([]);
-  const flyingIdsRef = useRef<string[]>([]);
-  flyingIdsRef.current = flyingIds;
+  const flyingIdsRef = useLatestRef(flyingIds);
 
   const mulliganTimersRef = useRef<number[]>([]);
   const drawBurstOffsetRef = useRef(0);

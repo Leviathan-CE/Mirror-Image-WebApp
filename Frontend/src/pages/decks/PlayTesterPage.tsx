@@ -9,6 +9,7 @@ import { useAuth } from "@/app/providers/AuthProvider"
 import { sharedImages } from "@/assets/shared"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { AccumulatePipChooser } from "@/components/Playtester/AccumulatePipChooser"
+import { genIconForCount } from "@/components/Playtester/constants"
 import {
   generatedResourceHome,
   placeInPlayForView,
@@ -38,7 +39,7 @@ import {
   PLAYER_SLOT,
   otherSeat,
   type PlayerSlot,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
 import {
   PLAY_FIELD_LOGICAL,
   PLAY_FLOAT_LOGICAL,
@@ -56,7 +57,6 @@ import {
   type PlaySessionEffects,
 } from "@/components/Playtester/usePlaySession"
 import {
-  genIconForCount,
   usePlayContextMenu,
   type CtxMenuState,
   type DeckActionCounts,
@@ -444,11 +444,13 @@ export function PlayTesterPage() {
     playPeerFx,
   ])
 
-  effectsRef.current = {
-    clearDrawTimers,
-    queueStockpileTimeCompletions,
-    queueDrawsToHand,
-  }
+  useEffect(() => {
+    effectsRef.current = {
+      clearDrawTimers,
+      queueStockpileTimeCompletions,
+      queueDrawsToHand,
+    }
+  })
 
   const {
     onHandRelease,

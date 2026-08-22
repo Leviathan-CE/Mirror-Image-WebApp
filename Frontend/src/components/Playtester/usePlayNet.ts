@@ -13,8 +13,10 @@ import {
   type PlayTransport,
   type SignalPayload,
 } from "@/components/Playtester/playNet.logic"
-import type { PlayerSlot } from "@/components/Playtester/playtesterConstants"
+import type { PlayerSlot } from "@/components/Playtester/constants"
+import { useLatestRef } from "@/hooks/useLatestRef"
 import { createPlayRoom, playWsUrl } from "@/lib/api/playRooms"
+import { safeJsonParse } from "@/lib/utils"
 
 export type PlayNetStatus =
   | "idle"
@@ -63,14 +65,10 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
     onFx?: (fx: Extract<PlayNetMessage, { type: "fx" }>["fx"]) => void
   }>({})
 
-  const tokenRef = useRef(token)
-  tokenRef.current = token
-  const deckIdRef = useRef(localDeckId)
-  deckIdRef.current = localDeckId
-  const isHostRef = useRef(isHost)
-  isHostRef.current = isHost
-  const codeRef = useRef(code)
-  codeRef.current = code
+  const tokenRef = useLatestRef(token)
+  const deckIdRef = useLatestRef(localDeckId)
+  const isHostRef = useLatestRef(isHost)
+  const codeRef = useLatestRef(code)
 
   const sendWs = useCallback((msg: PlayNetMessage) => {
     const ws = wsRef.current
@@ -130,11 +128,9 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
         }
       }
       dc.onmessage = (event) => {
-        try {
-          handleGameMessage(JSON.parse(String(event.data)))
-        } catch {
-          /* ignore malformed */
-        }
+        const raw = safeJsonParse(String(event.data))
+        if (raw == null) return
+        handleGameMessage(raw)
       }
     },
     [handleGameMessage]
@@ -286,12 +282,8 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
       }
       ws.onmessage = (event) => {
         if (gen !== connectGenRef.current) return
-        let raw: unknown
-        try {
-          raw = JSON.parse(String(event.data))
-        } catch {
-          return
-        }
+        const raw: unknown = safeJsonParse(String(event.data))
+        if (raw == null) return
         if (!isPlayNetMessage(raw)) return
         if (raw.type === "welcome") {
           if (isHostRef.current) {

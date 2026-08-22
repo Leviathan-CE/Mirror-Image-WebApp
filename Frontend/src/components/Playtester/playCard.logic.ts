@@ -8,7 +8,7 @@ import {
   type PlayerSlot,
   type PlayZone,
   type SelectableActionZone,
-} from "./playtesterConstants"
+} from "./constants"
 
 export type { PlayerSlot, PlayZone, SelectableActionZone }
 export { LOCAL_SEAT, PLAYER_SLOT, PLAY_ZONE, SELECTABLE_ACTION_ZONES }
