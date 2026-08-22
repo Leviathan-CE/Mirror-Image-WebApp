@@ -25,9 +25,6 @@ export function isSessionTokenInstance(
   return Boolean(card?.isToken)
 }
 
-/** @deprecated Prefer `isSessionTokenInstance` — same check. */
-export const isResourceTokenInstance = isSessionTokenInstance
-
 /**
  * If `instanceId` is a session token and `targetZone` destroys tokens,
  * remove it and return the new list. Otherwise return null (caller moves normally).
@@ -56,9 +53,3 @@ export function destroySessionCardIfLeaving(
   if (!isSessionTokenInstance(card)) return null
   return removeCard(cards, card.instanceId)
 }
-
-/** @deprecated Prefer `destroySessionTokenIfLeaving`. */
-export const destroyResourceTokenIfLeaving = destroySessionTokenIfLeaving
-
-/** @deprecated Prefer `destroySessionCardIfLeaving`. */
-export const destroyResourceCardIfLeaving = destroySessionCardIfLeaving

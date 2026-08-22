@@ -171,6 +171,3 @@ export function CardFlipFlyAnimation({
     </div>
   )
 }
-
-/** @deprecated Prefer CardFlipFlyAnimation — kept name for older imports. */
-export const DrawFlipAnimation = CardFlipFlyAnimation

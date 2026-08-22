@@ -36,11 +36,8 @@ export {
 
 export {
   isSessionTokenInstance,
-  isResourceTokenInstance,
   destroySessionTokenIfLeaving,
   destroySessionCardIfLeaving,
-  destroyResourceTokenIfLeaving,
-  destroyResourceCardIfLeaving,
 } from "./sessionResources.logic"
 
 export type {

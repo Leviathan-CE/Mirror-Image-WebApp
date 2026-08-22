@@ -155,24 +155,6 @@ export function augmentHome(
   }
 }
 
-/** @deprecated prefer augmentHome — kept for older call sites / tests */
-export function augmentHomeX(
-  index: number,
-  field: ParentSize,
-  nearLocal = true
-): number {
-  return augmentHome(index, field, nearLocal).x
-}
-
-/** @deprecated prefer augmentHome */
-export function augmentHomeY(
-  nearLocal: boolean,
-  field: ParentSize,
-  index = 0
-): number {
-  return augmentHome(index, field, nearLocal).y
-}
-
 export function resourceHomeY(nearLocal: boolean, field: ParentSize): number {
   const layout = RESOURCE_FAN_LAYOUT
   const origin = nearLocal

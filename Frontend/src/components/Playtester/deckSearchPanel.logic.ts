@@ -8,6 +8,7 @@ import {
   DECK_SEARCH_SIZE,
   PLAYTESTER_STORAGE,
 } from "@/components/Playtester/constants"
+import { safeJsonParse } from "@/lib/utils"
 
 export type DeckSearchBox = {
   x: number
@@ -95,17 +96,18 @@ export function readStoredDeckSearchBox(viewport: ViewportSize): DeckSearchBox {
   try {
     const raw = window.localStorage.getItem(PLAYTESTER_STORAGE.deckSearchBoxPx)
     if (!raw) return defaultDeckSearchBox(viewport)
-    const parsed = JSON.parse(raw) as Partial<DeckSearchBox> | null
+    const parsed = safeJsonParse(raw)
     if (!parsed || typeof parsed !== "object") {
       return defaultDeckSearchBox(viewport)
     }
+    const row = parsed as Partial<DeckSearchBox>
     const fallback = defaultDeckSearchBox(viewport)
     return clampDeckSearchBox(
       {
-        x: Number.isFinite(Number(parsed.x)) ? Number(parsed.x) : fallback.x,
-        y: Number.isFinite(Number(parsed.y)) ? Number(parsed.y) : fallback.y,
-        width: Number(parsed.width),
-        height: Number(parsed.height),
+        x: Number.isFinite(Number(row.x)) ? Number(row.x) : fallback.x,
+        y: Number.isFinite(Number(row.y)) ? Number(row.y) : fallback.y,
+        width: Number(row.width),
+        height: Number(row.height),
       },
       viewport
     )

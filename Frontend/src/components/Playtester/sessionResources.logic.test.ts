@@ -5,7 +5,6 @@ import type { PlayingCardInstance } from "@/components/Playtester/playCard.logic
 import {
   destroySessionCardIfLeaving,
   destroySessionTokenIfLeaving,
-  isResourceTokenInstance,
   isSessionTokenInstance,
 } from "@/components/Playtester/sessionResources.logic"
 
@@ -36,15 +35,6 @@ describe("isSessionTokenInstance", () => {
         card({ instanceId: "c", zone: PLAY_ZONE.hand, isToken: false })
       )
     ).toBe(false)
-  })
-
-  it("aliases isResourceTokenInstance", () => {
-    const token = card({
-      instanceId: "r",
-      zone: PLAY_ZONE.stockpile,
-      isToken: true,
-    })
-    expect(isResourceTokenInstance(token)).toBe(isSessionTokenInstance(token))
   })
 })
 

@@ -16,6 +16,7 @@ import {
 import type { PlayerSlot } from "@/components/Playtester/constants"
 import { useLatestRef } from "@/hooks/useLatestRef"
 import { createPlayRoom, playWsUrl } from "@/lib/api/playRooms"
+import { safeJsonParse } from "@/lib/utils"
 
 export type PlayNetStatus =
   | "idle"
@@ -127,11 +128,9 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
         }
       }
       dc.onmessage = (event) => {
-        try {
-          handleGameMessage(JSON.parse(String(event.data)))
-        } catch {
-          /* ignore malformed */
-        }
+        const raw = safeJsonParse(String(event.data))
+        if (raw == null) return
+        handleGameMessage(raw)
       }
     },
     [handleGameMessage]
@@ -283,12 +282,8 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
       }
       ws.onmessage = (event) => {
         if (gen !== connectGenRef.current) return
-        let raw: unknown
-        try {
-          raw = JSON.parse(String(event.data))
-        } catch {
-          return
-        }
+        let raw: unknown = safeJsonParse(String(event.data))
+        if (raw == null) return
         if (!isPlayNetMessage(raw)) return
         if (raw.type === "welcome") {
           if (isHostRef.current) {

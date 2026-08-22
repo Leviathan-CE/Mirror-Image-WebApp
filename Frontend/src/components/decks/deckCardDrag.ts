@@ -7,6 +7,7 @@ import {
   DECK_CARD_DRAG_MIME,
   LIBRARY_DRAG_CATEGORY_ID,
 } from "@/components/decks/constants"
+import { safeJsonParse } from "@/lib/utils"
 
 export {
   DECK_CARD_DRAG_MIME,
@@ -67,26 +68,26 @@ export function cardsFromDragPayload(
 }
 
 function parsePayloadJson(raw: string): DeckCardDragPayload | null {
-  try {
-    const data = JSON.parse(raw) as DeckCardDragPayload
-    if (
-      typeof data.cardId === "number" &&
-      typeof data.fromCategoryId === "number"
-    ) {
-      if (Array.isArray(data.cards)) {
-        const cards = data.cards.filter(
-          (item): item is DeckCardDragItem =>
-            typeof item?.cardId === "number" &&
-            typeof item?.fromCategoryId === "number"
-        )
-        return cards.length > 0 ? { ...data, cards } : data
-      }
-      return data
-    }
-  } catch {
-    /* ignore */
+  const data = safeJsonParse(raw)
+  if (data == null || typeof data !== "object") return null
+  const row = data as Partial<DeckCardDragPayload>
+  if (
+    typeof row.cardId !== "number" ||
+    typeof row.fromCategoryId !== "number"
+  ) {
+    return null
   }
-  return null
+  if (Array.isArray(row.cards)) {
+    const cards = row.cards.filter(
+      (item): item is DeckCardDragItem =>
+        typeof item?.cardId === "number" &&
+        typeof item?.fromCategoryId === "number"
+    )
+    return cards.length > 0
+      ? { cardId: row.cardId, fromCategoryId: row.fromCategoryId, cards }
+      : { cardId: row.cardId, fromCategoryId: row.fromCategoryId }
+  }
+  return { cardId: row.cardId, fromCategoryId: row.fromCategoryId }
 }
 
 /** Read drag payload from the drop event (or the in-memory fallback). */

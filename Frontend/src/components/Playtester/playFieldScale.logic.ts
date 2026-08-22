@@ -80,29 +80,6 @@ export function playFieldFitScale(
 }
 
 /**
- * @deprecated Screen chrome is inside `PLAY_FIELD_LOGICAL` now — use
- * `playFieldFitScale` on the host. Kept so older call sites keep compiling.
- */
-export type PlayBoardChrome = {
-  handStrips: number
-  sideColumns: number
-  handDockPx: number
-  pileFaceW: number
-  gapXPx?: number
-  gapYPx?: number
-}
-
-/** @deprecated prefer playFieldFitScale(host) */
-export function playBoardFitScale(
-  availWidth: number,
-  availHeight: number,
-  _chrome?: PlayBoardChrome,
-  logical: FieldSize = PLAY_FIELD_LOGICAL
-): number {
-  return playFieldFitScale(availWidth, availHeight, logical)
-}
-
-/**
  * Map a pointer on the *painted* float rect into shared float logical coords.
  */
 export function clientToLogicalField(

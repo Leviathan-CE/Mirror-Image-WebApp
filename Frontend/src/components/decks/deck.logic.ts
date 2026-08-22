@@ -264,13 +264,6 @@ export function canAddCopyToDeck(
   return { ok: true }
 }
 
-/** @deprecated Prefer `canAddCopyToDeck` + `totalCopiesOfCard`. */
-export function canAddCopyToMain(
-  existingQuantity: number | undefined
-): { ok: true } | { ok: false; message: string } {
-  return canAddCopyToDeck(existingQuantity ?? 0)
-}
-
 export function clampQuantityToMax(
   quantity: number,
   maxCopies: number = DECK_CARD_MAX_COPIES

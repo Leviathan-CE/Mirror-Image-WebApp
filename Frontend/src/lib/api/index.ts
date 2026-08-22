@@ -6,6 +6,7 @@
 export { ApiError, apiBaseUrl } from "@/lib/api/client"
 export {
   loginRequest,
+  isAuthUser,
   type AuthUser,
   type LoginResponse,
 } from "@/lib/api/auth"
