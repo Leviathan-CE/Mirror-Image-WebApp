@@ -163,6 +163,8 @@ type TopDrag = {
   moved: boolean
   ghostX: number
   ghostY: number
+  paintSx: number
+  paintSy: number
 }
 
 export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
@@ -202,10 +204,8 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
     const showLift = (lift || hovered) && !drag?.moved && count > 0
     const underCount =
       count <= 1 ? 0 : Math.min(MAX_UNDER_LAYERS, count - 1)
-    // Live CSS paint scale — board fit-scale on an ancestor skips ResizeObserver.
-    const { sx: paintSx, sy: paintSy } = drag?.moved
-      ? elementCssPaintScale(measureRef.current)
-      : { sx: 1, sy: 1 }
+    const paintSx = drag?.paintSx ?? 1
+    const paintSy = drag?.paintSy ?? 1
 
     useEffect(() => {
       if (!drag) return
@@ -218,11 +218,14 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
           event.clientY - current.startY
         )
         if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
+        const paint = elementCssPaintScale(measureRef.current)
         const next: TopDrag = {
           ...current,
           moved: true,
           ghostX: event.clientX,
           ghostY: event.clientY,
+          paintSx: paint.sx,
+          paintSy: paint.sy,
         }
         dragRef.current = next
         setDrag(next)
@@ -280,6 +283,7 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
       if (event.button !== 0 || !interactive) return
       event.preventDefault()
       event.stopPropagation()
+      const paint = elementCssPaintScale(measureRef.current)
       const next: TopDrag = {
         pointerId: event.pointerId,
         startX: event.clientX,
@@ -287,6 +291,8 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
         moved: false,
         ghostX: event.clientX,
         ghostY: event.clientY,
+        paintSx: paint.sx,
+        paintSy: paint.sy,
       }
       dragRef.current = next
       setDrag(next)

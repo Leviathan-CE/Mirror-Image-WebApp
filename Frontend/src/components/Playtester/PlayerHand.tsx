@@ -81,6 +81,8 @@ type HandDrag = {
   moved: boolean
   ghostX: number
   ghostY: number
+  paintSx: number
+  paintSy: number
 }
 
 type MarqueeState = {
@@ -323,6 +325,7 @@ export function PlayerHand({
       onSelectionRef.current?.([card.instanceId])
     }
 
+    const paint = elementCssPaintScale(rootRef.current)
     const next: HandDrag = {
       instanceId: card.instanceId,
       groupIds,
@@ -332,6 +335,8 @@ export function PlayerHand({
       moved: false,
       ghostX: event.clientX,
       ghostY: event.clientY,
+      paintSx: paint.sx,
+      paintSy: paint.sy,
     }
     dragRef.current = next
     setDrag(next)
@@ -346,11 +351,14 @@ export function PlayerHand({
       )
       if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
 
+      const nextPaint = elementCssPaintScale(rootRef.current)
       const updated: HandDrag = {
         ...current,
         moved: true,
         ghostX: moveEvent.clientX,
         ghostY: moveEvent.clientY,
+        paintSx: nextPaint.sx,
+        paintSy: nextPaint.sy,
       }
       dragRef.current = updated
       setDrag(updated)
@@ -393,10 +401,9 @@ export function PlayerHand({
     ? normalizeRect(marquee.x0, marquee.y0, marquee.x1, marquee.y1)
     : null
 
-  // Live CSS paint scale — ancestor board fit-scale does not trigger ResizeObserver.
-  const { sx: paintSx, sy: paintSy } = drag?.moved
-    ? elementCssPaintScale(rootRef.current)
-    : { sx: 1, sy: 1 }
+  // Scale sampled in pointer handlers — do not read refs during render.
+  const paintSx = drag?.paintSx ?? 1
+  const paintSy = drag?.paintSy ?? 1
   const ghostCards =
     drag?.moved
       ? drag.groupIds

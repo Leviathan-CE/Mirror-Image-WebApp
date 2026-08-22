@@ -282,7 +282,7 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
       }
       ws.onmessage = (event) => {
         if (gen !== connectGenRef.current) return
-        let raw: unknown = safeJsonParse(String(event.data))
+        const raw: unknown = safeJsonParse(String(event.data))
         if (raw == null) return
         if (!isPlayNetMessage(raw)) return
         if (raw.type === "welcome") {

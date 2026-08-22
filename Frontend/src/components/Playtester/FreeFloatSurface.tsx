@@ -10,9 +10,8 @@
  * Safari keeps tracking after the pointer leaves the surface.
  *
  * Drag ghosts portal to `document.body` so they escape the board's CSS
- * `transform: scale(boardScale)`. Size/offset them with a *live*
- * painted/logical ratio (`surfacePaintScale`) — ResizeObserver misses
- * ancestor transform changes, so a cached paint scale goes stale.
+ * `transform: scale(boardScale)`. Sample painted/logical scale in pointer
+ * handlers and store it on the drag state — do not read refs during render.
  */
 
 import {
@@ -109,6 +108,9 @@ type DragState = {
   moved: boolean
   ghostX: number
   ghostY: number
+  /** Painted/logical scale sampled in pointer handlers (not during render). */
+  paintSx: number
+  paintSy: number
 }
 
 type MarqueeState = {
@@ -461,6 +463,8 @@ export function FreeFloatSurface({
       // Ghost is `position: fixed` (screen px); offset is logical — convert.
       ghostX: event.clientX - (local.x - x) * sx,
       ghostY: event.clientY - (local.y - y) * sy,
+      paintSx: sx,
+      paintSy: sy,
     }
     dragRef.current = next
     setDrag(next)
@@ -481,6 +485,8 @@ export function FreeFloatSurface({
         moved: true,
         ghostX: moveEvent.clientX - current.offsetX * paint.sx,
         ghostY: moveEvent.clientY - current.offsetY * paint.sy,
+        paintSx: paint.sx,
+        paintSy: paint.sy,
       }
       dragRef.current = updated
       setDrag(updated)
@@ -564,11 +570,9 @@ export function FreeFloatSurface({
   const primaryOrigin = drag
     ? (drag.origins[drag.instanceId] ?? { x: 0, y: 0 })
     : null
-  // Live measure — ancestor `scale(boardScale)` does not resize layout, so a
-  // cached paintScale from ResizeObserver goes stale (host too big / guest too small).
-  const { sx: paintSx, sy: paintSy } = drag?.moved
-    ? surfacePaintScale()
-    : { sx: 1, sy: 1 }
+  // Scale was sampled in pointer handlers — reading refs during render is banned.
+  const paintSx = drag?.paintSx ?? 1
+  const paintSy = drag?.paintSy ?? 1
   const ghostCards =
     drag?.moved && primaryOrigin
       ? drag.groupIds

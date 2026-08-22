@@ -109,6 +109,8 @@ type TrashDrag = {
   moved: boolean
   ghostX: number
   ghostY: number
+  paintSx: number
+  paintSy: number
 }
 
 export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
@@ -165,11 +167,14 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
           event.clientY - current.startY
         )
         if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
+        const paint = elementCssPaintScale(measureRef.current)
         const next: TrashDrag = {
           ...current,
           moved: true,
           ghostX: event.clientX,
           ghostY: event.clientY,
+          paintSx: paint.sx,
+          paintSy: paint.sy,
         }
         dragRef.current = next
         setDrag(next)
@@ -230,6 +235,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       // If the fan is open, lock it open until pointer-up (avoids unmount mid-drag).
       if (pileHovered || fanLocked) setFanLocked(true)
       setHoveredIndex(null)
+      const paint = elementCssPaintScale(measureRef.current)
       const next: TrashDrag = {
         instanceId,
         pointerId: event.pointerId,
@@ -238,6 +244,8 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
         moved: false,
         ghostX: event.clientX,
         ghostY: event.clientY,
+        paintSx: paint.sx,
+        paintSy: paint.sy,
       }
       dragRef.current = next
       setDrag(next)
@@ -257,10 +265,9 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       onToggleExpended(instanceId)
     }
 
-    // Live CSS paint scale — board fit-scale on an ancestor skips ResizeObserver.
-    const { sx: paintSx, sy: paintSy } = dragging?.moved
-      ? elementCssPaintScale(measureRef.current)
-      : { sx: 1, sy: 1 }
+    // Scale sampled in pointer handlers — do not read refs during render.
+    const paintSx = dragging?.paintSx ?? 1
+    const paintSy = dragging?.paintSy ?? 1
 
     return (
       <>
