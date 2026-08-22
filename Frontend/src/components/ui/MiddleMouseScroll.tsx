@@ -16,7 +16,6 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
-  type UIEvent,
 } from "react"
 
 import { cn } from "@/lib/utils"
@@ -180,7 +179,7 @@ export function MiddleMouseScroll({
     }
   }, [])
 
-  function onScroll(_event: UIEvent<HTMLDivElement>) {
+  function onScroll() {
     syncThumbs()
   }
 

@@ -4,7 +4,13 @@ The Mirror Image Everything app for sellers, buyer stats, meta, and card catalog
 
 ## Production / hosting
 
-Cloudflare DNS + email alone does not host this app. See **[DEPLOY.md](./DEPLOY.md)** for options and the recommended VPS + Docker Compose plan. Feature work currently lives on the `p2p-play` branch — merge that into `main` before treating `main` as the production source.
+Cloudflare DNS + email alone does not host this app. See **[DEPLOY.md](./DEPLOY.md)** for options and the recommended VPS + Docker Compose plan.
+
+## CI / code review
+
+Pushes and PRs to `main` run frontend lint/tests/build, backend pytest, and a gitleaks secret scan (`.github/workflows/ci.yml`).
+
+AI PR review is **Cursor Bugbot** (enable in the Cursor dashboard when ready). Project rules live in [`.cursor/BUGBOT.md`](./.cursor/BUGBOT.md).
 
 ## Run with Docker Compose
 

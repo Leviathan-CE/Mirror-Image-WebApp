@@ -7,3 +7,5 @@ __pycache__/
 
 # Card/deck art — keep local/Docker only; do not commit binary bloat
 Backend/app/thumbnails/
+
+.DS_Store
