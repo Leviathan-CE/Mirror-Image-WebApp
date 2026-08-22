@@ -177,6 +177,82 @@ describe("spawnGroupedStockpileResources", () => {
     expect(spawned).toHaveLength(1)
     expect(spawned[0]?.name).toBe("Steel")
   })
+
+  it("gives each seat unique instance ids (same template/seq must not collide)", () => {
+    const byColor = new Map<ResourceColor, CardLibraryItem>([
+      ["TIM", resource(10, "Natural Time", ["TIM"])],
+    ])
+    const p1 = spawnGroupedStockpileResources(["TIM", "TIM"], byColor, 0, "p1")
+    const p2 = spawnGroupedStockpileResources(["TIM", "TIM"], byColor, 0, "p2")
+    const ids = new Set([...p1, ...p2].map((c) => c.instanceId))
+    expect(ids.size).toBe(4)
+  })
+
+  it("keeps owner stamps when both seats are merged into one session list", () => {
+    const byColor = new Map<ResourceColor, CardLibraryItem>([
+      ["TIM", resource(10, "Natural Time", ["TIM"])],
+      ["STL", resource(11, "Steel", ["GEN"])],
+    ])
+    const opening = [
+      ...spawnGroupedStockpileResources(["TIM", "STL"], byColor, 0, "p1"),
+      ...spawnGroupedStockpileResources(["TIM", "STL"], byColor, 0, "p2"),
+    ]
+    expect(opening).toHaveLength(4)
+    expect(new Set(opening.map((c) => c.instanceId)).size).toBe(4)
+    expect(opening.filter((c) => c.owner === "p1")).toHaveLength(2)
+    expect(opening.filter((c) => c.owner === "p2")).toHaveLength(2)
+  })
+})
+
+describe("stampStockpileWorldHomes via setupOpeningSession", () => {
+  it("puts p1 resources lower on the mat than p2 (world = p1 view)", () => {
+    const byColor = new Map<ResourceColor, CardLibraryItem>([
+      ["TIM", resource(10, "Natural Time", ["TIM"])],
+    ])
+    // Use full setup so world homes are stamped.
+    const deck = (name: string): DeckDetail => ({
+      id: 1,
+      name,
+      description: null,
+      is_public: true,
+      author_name: "a",
+      cover_image_path: null,
+      card_count: 1,
+      categories: [
+        { id: 1, name: "Pilot", sort_order: -1, in_deck: false },
+        { id: 2, name: "Entity", sort_order: 0, in_deck: true },
+      ],
+      cards: [
+        {
+          ...pilot({ time_capacity: 1, hand_size: 0 }),
+          card_id: 1,
+          category_id: 1,
+          quantity: 1,
+        },
+        {
+          ...pilot(),
+          card_id: 2,
+          card_name: "Runner",
+          category_id: 2,
+          category_name: "Entity",
+          quantity: 1,
+          time_capacity: undefined,
+          hand_size: undefined,
+        },
+      ],
+    })
+    const p1 = setupOpeningSession(deck("A"), byColor, "p1").filter(
+      (c) => c.isToken
+    )
+    const p2 = setupOpeningSession(deck("B"), byColor, "p2").filter(
+      (c) => c.isToken
+    )
+    expect(p1[0]?.y).toBeTypeOf("number")
+    expect(p2[0]?.y).toBeTypeOf("number")
+    expect(p1[0]!.y!).toBeGreaterThan(p2[0]!.y!)
+    expect(p1[0]?.owner).toBe("p1")
+    expect(p2[0]?.owner).toBe("p2")
+  })
 })
 
 describe("libraryDeckEntries", () => {

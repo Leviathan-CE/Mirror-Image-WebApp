@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState, type DragEvent as ReactDragEvent } from "react"
 
 import { CardDetailOverlay } from "@/components/cards/CardDetailOverlay"
-import { costTokenToIcon } from "@/components/cards/CardCostIcons"
+import { costTokenToIcon } from "@/components/cards/constants"
 import { CardSearchBar } from "@/components/cards/CardSearchBar"
 import { SearchPaginationBar } from "@/components/cards/SearchPaginationBar"
 import { GameIcon } from "@/components/common/GameIcon"
@@ -16,7 +16,7 @@ import {
   endDeckCardDrag,
   LIBRARY_DRAG_CATEGORY_ID,
   type DeckCardDragPayload,
-} from "@/components/decks/DeckCardStack"
+} from "@/components/decks/deckCardDrag"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { Button } from "@/components/ui/button"
 import { EditBox } from "@/components/ui/EditBox"

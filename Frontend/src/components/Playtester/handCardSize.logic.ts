@@ -3,7 +3,7 @@
  * Width of the window only changes how many cards you see before scrolling.
  */
 
-import { HAND_CARD_SIZE } from "@/components/Playtester/playtesterConstants"
+import { HAND_CARD_SIZE } from "@/components/Playtester/constants"
 
 export type HandCardPx = {
   width: number

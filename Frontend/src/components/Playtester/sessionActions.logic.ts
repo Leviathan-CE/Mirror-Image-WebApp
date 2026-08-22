@@ -11,7 +11,7 @@ import {
   PILOT_GEN_MAX,
   type PlayerSlot,
   type PlayZone,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
 import {
   adjustCardCounter,
   duplicatePlayingCard,

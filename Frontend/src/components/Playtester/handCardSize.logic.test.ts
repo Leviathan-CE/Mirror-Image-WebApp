@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { handCardSizePx } from "@/components/Playtester/handCardSize.logic"
-import { HAND_CARD_SIZE } from "@/components/Playtester/playtesterConstants"
+import { HAND_CARD_SIZE } from "@/components/Playtester/constants"
 
 describe("handCardSizePx", () => {
   it("uses the default footprint when the host has no size yet", () => {

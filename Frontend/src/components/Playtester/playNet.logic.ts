@@ -2,10 +2,10 @@
  * Compact playtester net messages. Same JSON on WebRTC datachannel and WS relay.
  */
 
-import type { PlayerSlot } from "@/components/Playtester/playtesterConstants";
+import type { PlayerSlot } from "@/components/Playtester/constants";
 import type { FogView } from "@/components/Playtester/fogView.logic";
 import type { SessionAction } from "@/components/Playtester/sessionActions.logic";
-import type { FlipFlyMode } from "@/components/Playtester/playtesterConstants";
+import type { FlipFlyMode } from "@/components/Playtester/constants";
 
 export const PLAY_ICE_SERVERS: RTCIceServer[] = [
   { urls: "stun:stun.l.google.com:19302" },

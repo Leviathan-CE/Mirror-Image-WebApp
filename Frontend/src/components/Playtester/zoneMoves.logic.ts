@@ -5,7 +5,7 @@ import {
   destroySessionTokenIfLeaving,
   isSessionTokenInstance,
 } from "./sessionResources.logic"
-import { LOCAL_SEAT, PLAY_ZONE, type PlayZone, type PlayerSlot } from "./playtesterConstants"
+import { LOCAL_SEAT, PLAY_ZONE, type PlayZone, type PlayerSlot } from "./constants"
 import {
   CARD_COUNTER_FIELD,
   type CardCounterField,

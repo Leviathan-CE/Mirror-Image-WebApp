@@ -59,7 +59,7 @@ export function FloatingHandPanel({
         ? clampHandFloatBox(prev, parentSize)
         : readStoredHandFloatBox(parentSize, anchor)
     )
-  }, [parentSize.width, parentSize.height, anchor])
+  }, [parentSize, anchor])
 
   useEffect(() => {
     if (!box) return

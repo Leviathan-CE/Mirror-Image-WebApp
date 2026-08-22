@@ -11,7 +11,7 @@ import type { DeckCardViewMode } from "@/components/decks/DeckCardViewControls"
 import {
   isLibraryDragPayload,
   type DeckCardDragPayload,
-} from "@/components/decks/DeckCardStack"
+} from "@/components/decks/deckCardDrag"
 import {
   augmentCards,
   augmentCategory,

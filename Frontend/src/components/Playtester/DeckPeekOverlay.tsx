@@ -16,6 +16,7 @@ import { createPortal } from "react-dom"
 
 import { PlayingCard } from "@/components/Playtester/PlayingCard"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
+import { useLatestRef } from "@/hooks/useLatestRef"
 import { cn } from "@/lib/utils"
 
 const DRAG_THRESHOLD_PX = 5
@@ -65,8 +66,7 @@ export function DeckPeekOverlay({
   const dragRef = useRef<DragState | null>(null)
   /** Slot elements, keyed by instance id, for pointer hit-testing. */
   const slotRefs = useRef<Map<string, HTMLLIElement>>(new Map())
-  const orderedRef = useRef<PlayingCardInstance[]>(cards)
-  orderedRef.current = ordered
+  const orderedRef = useLatestRef(ordered)
 
   useEffect(() => {
     if (!open) return

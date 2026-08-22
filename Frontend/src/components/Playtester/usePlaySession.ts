@@ -15,6 +15,7 @@ import {
 } from "react"
 
 import type { ResourceColor } from "@/components/Playtester/accumulateResources.logic"
+import { useLatestRef } from "@/hooks/useLatestRef"
 import {
   viewToWorld,
 } from "@/components/Playtester/augmentRow.logic"
@@ -26,7 +27,7 @@ import {
   PLAY_ZONE,
   otherSeat,
   type PlayerSlot,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
 import {
   setupOpeningSession,
   startingLifeFromPilot,
@@ -101,8 +102,7 @@ export function usePlaySession({
   const [sessionCardsState, setSessionCardsState] = useState<
     PlayingCardInstance[]
   >([])
-  const sessionCardsRef = useRef<PlayingCardInstance[]>([])
-  sessionCardsRef.current = sessionCardsState
+  const sessionCardsRef = useLatestRef(sessionCardsState)
 
   const [lifeBySeat, setLifeBySeat] = useState(seatRecord(0))
   const [turn, setTurn] = useState(1)
@@ -124,20 +124,13 @@ export function usePlaySession({
   } | null>(null)
   const guestMulliganArmed = useRef(false)
   const guestPlaceholderDealt = useRef(false)
-  const netRoleRef = useRef(netRole)
-  netRoleRef.current = netRole
-  const sendIntentRef = useRef(sendIntent)
-  sendIntentRef.current = sendIntent
-  const onHostCommitRef = useRef(onHostCommit)
-  onHostCommitRef.current = onHostCommit
-  const lifeRef = useRef(lifeBySeat)
-  lifeRef.current = lifeBySeat
-  const turnRef = useRef(turn)
-  turnRef.current = turn
-  const turnSeatRef = useRef(turnSeat)
-  turnSeatRef.current = turnSeat
-  const pilotGenRef = useRef(pilotGenBySeat)
-  pilotGenRef.current = pilotGenBySeat
+  const netRoleRef = useLatestRef(netRole)
+  const sendIntentRef = useLatestRef(sendIntent)
+  const onHostCommitRef = useLatestRef(onHostCommit)
+  const lifeRef = useLatestRef(lifeBySeat)
+  const turnRef = useLatestRef(turn)
+  const turnSeatRef = useLatestRef(turnSeat)
+  const pilotGenRef = useLatestRef(pilotGenBySeat)
 
   const setSessionCards: Dispatch<SetStateAction<PlayingCardInstance[]>> = (
     action

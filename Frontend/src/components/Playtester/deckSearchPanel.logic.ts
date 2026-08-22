@@ -7,7 +7,7 @@
 import {
   DECK_SEARCH_SIZE,
   PLAYTESTER_STORAGE,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
 
 export type DeckSearchBox = {
   x: number

@@ -23,8 +23,9 @@ import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import { PlayingCard } from "@/components/Playtester/PlayingCard"
 import { elementCssPaintScale } from "@/components/Playtester/playFieldScale.logic"
 import { scalePlayPile } from "@/components/Playtester/playPileScale.logic"
-import type { PlayPileSize } from "@/components/Playtester/playtesterConstants"
+import type { PlayPileSize } from "@/components/Playtester/constants"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
+import { useLatestRef } from "@/hooks/useLatestRef"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
@@ -141,8 +142,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
     const [drag, setDrag] = useState<TrashDrag | null>(null)
     const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
     const dragRef = useRef<TrashDrag | null>(null)
-    const onReleaseRef = useRef(onReleaseCard)
-    onReleaseRef.current = onReleaseCard
+    const onReleaseRef = useLatestRef(onReleaseCard)
 
     const groups = groupTrashCards(cards)
     const topCard = cards.length > 0 ? cards[cards.length - 1]! : null
@@ -257,7 +257,10 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       onToggleExpended(instanceId)
     }
 
-    const { sx: paintSx, sy: paintSy } = elementCssPaintScale(measureRef.current)
+    // Live CSS paint scale — board fit-scale on an ancestor skips ResizeObserver.
+    const { sx: paintSx, sy: paintSy } = dragging?.moved
+      ? elementCssPaintScale(measureRef.current)
+      : { sx: 1, sy: 1 }
 
     return (
       <>

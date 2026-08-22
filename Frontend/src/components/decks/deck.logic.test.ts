@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { DECK_CARD_MAX_COPIES } from "./DeckCardStack"
+import { DECK_CARD_MAX_COPIES } from "./deckCardDrag"
 import {
   applyCardMove,
   augmentCards,

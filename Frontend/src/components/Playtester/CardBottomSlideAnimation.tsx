@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState, type TransitionEvent } from "react"
 
 import { cardArtUrl } from "@/lib/api/decks"
+import { useLatestRef } from "@/hooks/useLatestRef"
 import { cn } from "@/lib/utils"
 
 import type { PlayingCardInstance } from "./types"
@@ -28,8 +29,7 @@ export function CardBottomSlideAnimation({
 }: CardBottomSlideAnimationProps) {
   const [active, setActive] = useState(false)
   const doneRef = useRef(false)
-  const onCompleteRef = useRef(onComplete)
-  onCompleteRef.current = onComplete
+  const onCompleteRef = useLatestRef(onComplete)
   const faceSrc = cardArtUrl(card.artPath, card.artVersion)
 
   function finish() {
@@ -40,7 +40,11 @@ export function CardBottomSlideAnimation({
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => setActive(true))
-    const timer = window.setTimeout(finish, SLIDE_MS + 80)
+    const timer = window.setTimeout(() => {
+      if (doneRef.current) return
+      doneRef.current = true
+      onCompleteRef.current()
+    }, SLIDE_MS + 80)
     return () => {
       cancelAnimationFrame(raf)
       window.clearTimeout(timer)

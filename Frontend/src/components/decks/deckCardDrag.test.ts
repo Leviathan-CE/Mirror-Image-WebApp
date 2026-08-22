@@ -10,7 +10,7 @@ import {
   LIBRARY_DRAG_CATEGORY_ID,
   parseDeckCardDrag,
   type DeckCardDragPayload,
-} from "./DeckCardStack"
+} from "./deckCardDrag"
 
 function fakeDataTransfer(
   data: Record<string, string> = {},

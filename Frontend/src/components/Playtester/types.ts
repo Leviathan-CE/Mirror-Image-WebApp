@@ -1,13 +1,13 @@
 /** Playtester session domain — barrel re-export (prefer direct module imports over time). */
 
-export type { PlayerSlot, PlayZone, SelectableActionZone } from "./playtesterConstants"
+export type { PlayerSlot, PlayZone, SelectableActionZone } from "./constants"
 export {
   LOCAL_SEAT,
   PLAYER_SLOT,
   PLAY_ZONE,
   SELECTABLE_ACTION_ZONES,
   otherSeat,
-} from "./playtesterConstants"
+} from "./constants"
 
 export type {
   PlayingCardInstance,

@@ -10,6 +10,7 @@ import { useEffect, useRef, useState, type TransitionEvent } from "react";
 
 import { sharedImages } from "@/assets/shared";
 import { cardArtUrl } from "@/lib/api/decks";
+import { useLatestRef } from "@/hooks/useLatestRef";
 import { cn } from "@/lib/utils";
 
 import type { PlayingCardInstance } from "./types";
@@ -39,8 +40,7 @@ export function CardAccumulatePeerAnimation({
 }: CardAccumulatePeerAnimationProps) {
   const [phase, setPhase] = useState<Phase>("idle");
   const doneRef = useRef(false);
-  const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
+  const onCompleteRef = useLatestRef(onComplete);
   const faceSrc = cardArtUrl(card.artPath, card.artVersion);
 
   function finish() {
@@ -56,10 +56,11 @@ export function CardAccumulatePeerAnimation({
       () => setPhase("tuck"),
       REVEAL_MS + HOLD_MS + 40,
     );
-    const doneAt = window.setTimeout(
-      finish,
-      REVEAL_MS + HOLD_MS + TUCK_MS + 120,
-    );
+    const doneAt = window.setTimeout(() => {
+      if (doneRef.current) return;
+      doneRef.current = true;
+      onCompleteRef.current();
+    }, REVEAL_MS + HOLD_MS + TUCK_MS + 120);
     return () => {
       cancelAnimationFrame(raf);
       window.clearTimeout(holdAt);

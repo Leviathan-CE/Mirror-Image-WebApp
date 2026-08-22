@@ -12,7 +12,7 @@
 import {
   HAND_DOCK_HEIGHT_PX,
   PLAY_PILE_SIZE,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
 
 /** Design canvas for the whole play row (not just the float surface). */
 export const PLAY_FIELD_LOGICAL = {

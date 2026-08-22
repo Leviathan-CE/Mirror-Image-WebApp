@@ -3,7 +3,7 @@
  * (`isResourceToken`) and leave-zone destroy policy.
  */
 
-import { PLAY_ZONE, type PlayZone } from "./playtesterConstants"
+import { PLAY_ZONE, type PlayZone } from "./constants"
 import { removeCard, type PlayingCardInstance } from "./playCard.logic"
 
 /**

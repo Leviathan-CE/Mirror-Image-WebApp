@@ -7,7 +7,7 @@ import {
   PLAY_ZONE,
   type PlayerSlot,
   type PlayZone,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
 import type { PlayingCardInstance } from "@/components/Playtester/playCard.logic"
 import type { PlaySessionState, SeatRecord } from "@/components/Playtester/sessionActions.logic"
 

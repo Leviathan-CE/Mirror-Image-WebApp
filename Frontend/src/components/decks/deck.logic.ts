@@ -6,7 +6,7 @@ import type { DeckCardSortMode } from "@/components/decks/DeckCardSortControls"
 import {
   DECK_CARD_MAX_COPIES,
   deckCardSelectionKey,
-} from "@/components/decks/DeckCardStack"
+} from "@/components/decks/deckCardDrag"
 import {
   AUGMENT_SECTION_NAME,
   PILOT_SECTION_NAME,

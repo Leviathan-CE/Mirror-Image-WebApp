@@ -6,7 +6,7 @@
 import {
   HAND_FLOAT_SIZE,
   PLAYTESTER_STORAGE,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
 
 export type HandFloatBox = {
   x: number

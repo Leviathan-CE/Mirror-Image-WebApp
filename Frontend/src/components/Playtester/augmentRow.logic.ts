@@ -23,7 +23,8 @@ import {
   PLAY_ZONE,
   PLAYER_SLOT,
   type PlayerSlot,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
+import { PLAY_FLOAT_LOGICAL } from "@/components/Playtester/playFieldScale.logic"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 
 export const FACE = PLAY_PILE_SIZE.lg
@@ -276,6 +277,26 @@ export function layoutResourceFans(
   return placed
 }
 
+/**
+ * Pin opening stockpile tokens into **world** space for `owner`.
+ * World = p1's view: p1 fans sit at the bottom, p2 at the top. Each client
+ * then runs `worldToView` so guest and host agree which side a token sits on.
+ */
+export function stampStockpileWorldHomes(
+  tokens: PlayingCardInstance[],
+  owner: PlayerSlot,
+  field: ParentSize = PLAY_FLOAT_LOGICAL
+): PlayingCardInstance[] {
+  if (tokens.length === 0) return tokens
+  // World space matches p1's screen: local fan for p1, opp fan for p2.
+  const nearLocalInWorld = owner === PLAYER_SLOT.p1
+  const homes = layoutResourceFans(tokens, nearLocalInWorld, field)
+  return tokens.map((card) => {
+    const home = homes.get(card.instanceId)
+    return home ? { ...card, x: home.x, y: home.y } : card
+  })
+}
+
 export function placeAugmentsForView(
   cards: PlayingCardInstance[],
   localSeat: PlayerSlot,
@@ -345,8 +366,8 @@ export function placeInPlayForView(
     field
   )
 
-  // Opening homes above are already viewer-relative. Persisted x/y are world
-  // (p1-bottom); rotate them into this seat's view so both boards stay synced.
+  // World x/y (opening stamps + drags) → this seat's view. Cards still missing
+  // coords keep the viewer-relative homes from place*ForView above.
   return withHomes.map((card) => {
     const orig = cards.find((c) => c.instanceId === card.instanceId)
     if (orig == null || orig.x == null || orig.y == null) return card

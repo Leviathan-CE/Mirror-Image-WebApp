@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'eslint-report.json']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -19,14 +19,28 @@ export default defineConfig([
       globals: globals.browser,
     },
     rules: {
-      // React Compiler–era hooks rules flag many existing playtester patterns
-      // (refs during render, setState in fetch effects). Keep visible as warnings
-      // so CI stays green while we refactor; treat new code carefully in review.
+      // Constants co-exported with components (buttonVariants, stack sizes, …).
+      'react-refresh/only-export-components': [
+        'warn',
+        {
+          allowConstantExport: true,
+          allowExportNames: [
+            "buttonVariants",
+            "editBoxVariants",
+            "hoverThumbPoint",
+            "titleCaseTagWords",
+            "useAuth",
+            "cardClassification",
+            "isClassifiedCard",
+            "hashSeed",
+            "flickerStyleForSeed",
+            "collectTocSpyIds",
+            "tocItemsFromHeadings",
+          ],
+        },
+      ],
+      // Still common in data-fetch / prop-reset effects — keep warn until refactored.
       'react-hooks/set-state-in-effect': 'warn',
-      'react-hooks/refs': 'warn',
-      'react-hooks/immutability': 'warn',
-      'react-refresh/only-export-components': 'warn',
-      'preserve-caught-error': 'warn',
     },
   },
 ])

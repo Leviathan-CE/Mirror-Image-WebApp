@@ -22,9 +22,10 @@ import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
 import { handCardSizePx } from "@/components/Playtester/handCardSize.logic"
 import { elementCssPaintScale } from "@/components/Playtester/playFieldScale.logic"
 import { PlayingCard } from "@/components/Playtester/PlayingCard"
-import { HAND_CARD_SIZE } from "@/components/Playtester/playtesterConstants"
+import { HAND_CARD_SIZE } from "@/components/Playtester/constants"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { MiddleMouseScroll } from "@/components/ui/MiddleMouseScroll"
+import { useLatestRef } from "@/hooks/useLatestRef"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
@@ -130,21 +131,21 @@ export function PlayerHand({
   )
   const dragRef = useRef<HandDrag | null>(null)
   const marqueeRef = useRef<MarqueeState | null>(null)
-  const cardsRef = useRef(cards)
-  cardsRef.current = cards
-  const onSelectionRef = useRef(onSelectionChange)
-  onSelectionRef.current = onSelectionChange
-  const onReleaseRef = useRef(onReleaseCards)
-  onReleaseRef.current = onReleaseCards
+  const cardsRef = useLatestRef(cards)
+  const onSelectionRef = useLatestRef(onSelectionChange)
+  const onReleaseRef = useLatestRef(onReleaseCards)
 
   useEffect(() => {
     const el = rootRef.current
     if (!el) return
     const sync = () => setCardPx(handCardSizePx(el.clientHeight))
-    sync()
+    const raf = requestAnimationFrame(sync)
     const observer = new ResizeObserver(sync)
     observer.observe(el)
-    return () => observer.disconnect()
+    return () => {
+      cancelAnimationFrame(raf)
+      observer.disconnect()
+    }
   }, [])
   /** Exact listener refs attached for this gesture (identity must match remove). */
   const cardDragListenersRef = useRef<{
@@ -392,7 +393,10 @@ export function PlayerHand({
     ? normalizeRect(marquee.x0, marquee.y0, marquee.x1, marquee.y1)
     : null
 
-  const { sx: paintSx, sy: paintSy } = elementCssPaintScale(rootRef.current)
+  // Live CSS paint scale — ancestor board fit-scale does not trigger ResizeObserver.
+  const { sx: paintSx, sy: paintSy } = drag?.moved
+    ? elementCssPaintScale(rootRef.current)
+    : { sx: 1, sy: 1 }
   const ghostCards =
     drag?.moved
       ? drag.groupIds

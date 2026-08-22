@@ -25,7 +25,7 @@ import {
   cardsFromDragPayload,
   isLibraryDragPayload,
   type DeckCardDragPayload,
-} from "@/components/decks/DeckCardStack"
+} from "@/components/decks/deckCardDrag"
 import { CardLibraryBrowser } from "@/components/cards/CardLibraryBrowser"
 import "@/components/decks/DeckCardStack.css"
 import {
@@ -559,7 +559,7 @@ export function DeckPage() {
           ? PUBLIC_TEXT_BLOCKED_MESSAGE
           : "Could not rename category."
       )
-      throw new Error("rename_failed")
+      throw new Error("rename_failed", { cause: error })
     } finally {
       setSaving(false)
     }
@@ -611,7 +611,7 @@ export function DeckPage() {
           ? "Remove all cards from this section before deleting it."
           : "Could not delete category."
       )
-      throw new Error("delete_failed")
+      throw new Error("delete_failed", { cause: error })
     } finally {
       setSaving(false)
     }

@@ -13,7 +13,8 @@ import {
   type PlayTransport,
   type SignalPayload,
 } from "@/components/Playtester/playNet.logic"
-import type { PlayerSlot } from "@/components/Playtester/playtesterConstants"
+import type { PlayerSlot } from "@/components/Playtester/constants"
+import { useLatestRef } from "@/hooks/useLatestRef"
 import { createPlayRoom, playWsUrl } from "@/lib/api/playRooms"
 
 export type PlayNetStatus =
@@ -63,14 +64,10 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
     onFx?: (fx: Extract<PlayNetMessage, { type: "fx" }>["fx"]) => void
   }>({})
 
-  const tokenRef = useRef(token)
-  tokenRef.current = token
-  const deckIdRef = useRef(localDeckId)
-  deckIdRef.current = localDeckId
-  const isHostRef = useRef(isHost)
-  isHostRef.current = isHost
-  const codeRef = useRef(code)
-  codeRef.current = code
+  const tokenRef = useLatestRef(token)
+  const deckIdRef = useLatestRef(localDeckId)
+  const isHostRef = useLatestRef(isHost)
+  const codeRef = useLatestRef(code)
 
   const sendWs = useCallback((msg: PlayNetMessage) => {
     const ws = wsRef.current

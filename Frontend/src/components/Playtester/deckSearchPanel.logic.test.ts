@@ -9,7 +9,7 @@ import {
 import {
   DECK_SEARCH_SIZE,
   PLAYTESTER_STORAGE,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
 
 const viewport = { width: 1280, height: 800 }
 

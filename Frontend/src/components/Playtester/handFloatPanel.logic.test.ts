@@ -9,7 +9,7 @@ import {
 import {
   HAND_FLOAT_SIZE,
   PLAYTESTER_STORAGE,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
 
 const parent = { width: 900, height: 500 }
 

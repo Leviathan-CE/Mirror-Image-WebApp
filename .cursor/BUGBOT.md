@@ -47,6 +47,7 @@ Flag:
 - Comments that restate code instead of explaining *why*
 - Magic numbers/strings without named constants where meaning is unclear
 - Inconsistent patterns next to existing code in the same file
+- linear when possible logic flow top down break points where if a condition isnèt met the rest of the funtion doe not need to be read. 
 
 ## Reporting style
 

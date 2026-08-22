@@ -11,7 +11,7 @@ import {
 import {
   HAND_DOCK_HEIGHT_PX,
   PLAY_PILE_SIZE,
-} from "@/components/Playtester/playtesterConstants"
+} from "@/components/Playtester/constants"
 
 describe("playFieldFitScale", () => {
   it("is 1 when the host matches the design screen", () => {

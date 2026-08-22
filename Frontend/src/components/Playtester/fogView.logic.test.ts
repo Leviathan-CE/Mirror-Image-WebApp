@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { materializeFog, viewFor } from "@/components/Playtester/fogView.logic"
 import { createPlaySessionState } from "@/components/Playtester/sessionActions.logic"
-import type { PlayerSlot } from "@/components/Playtester/playtesterConstants"
+import type { PlayerSlot } from "@/components/Playtester/constants"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 
 function augment(

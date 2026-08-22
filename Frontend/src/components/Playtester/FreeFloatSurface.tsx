@@ -9,9 +9,10 @@
  * Card drag uses window capture-phase listeners + setPointerCapture so macOS
  * Safari keeps tracking after the pointer leaves the surface.
  *
- * Drag ghosts portal to `document.body`. A CSS `transform` on an ancestor
- * (play-field fit scale) makes `position: fixed` use that ancestor as the
- * containing block — clientX/Y would then land in the wrong place.
+ * Drag ghosts portal to `document.body` so they escape the board's CSS
+ * `transform: scale(boardScale)`. Size/offset them with a *live*
+ * painted/logical ratio (`surfacePaintScale`) — ResizeObserver misses
+ * ancestor transform changes, so a cached paint scale goes stale.
  */
 
 import {
@@ -23,7 +24,7 @@ import {
 } from "react"
 import { createPortal } from "react-dom"
 
-import { LOCAL_SEAT, type PlayerSlot } from "@/components/Playtester/playtesterConstants"
+import { LOCAL_SEAT, type PlayerSlot } from "@/components/Playtester/constants"
 import { scalePlayPile } from "@/components/Playtester/playPileScale.logic"
 import {
   PLAY_FLOAT_LOGICAL,
@@ -35,6 +36,7 @@ import {
   type CardCounterKind,
   type PlayingCardInstance,
 } from "@/components/Playtester/types"
+import { useLatestRef } from "@/hooks/useLatestRef"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
@@ -230,8 +232,7 @@ export function FreeFloatSurface({
     onCardCounterAdjust,
   } = actions
   const { w: cardW, h: cardH } = scalePlayPile("lg", cardScale)
-  const cardSizeRef = useRef({ w: cardW, h: cardH })
-  cardSizeRef.current = { w: cardW, h: cardH }
+  const cardSizeRef = useLatestRef({ w: cardW, h: cardH })
   const surfaceRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragState | null>(null)
   const marqueeRef = useRef<MarqueeState | null>(null)
@@ -239,22 +240,19 @@ export function FreeFloatSurface({
   const [marquee, setMarquee] = useState<MarqueeState | null>(null)
   const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
 
-  const cardsRef = useRef(cards)
-  cardsRef.current = cards
-  const onSelectionRef = useRef(onSelectionChange)
-  onSelectionRef.current = onSelectionChange
-  const onMoveCardsRef = useRef(onMoveCards)
-  onMoveCardsRef.current = onMoveCards
+  const cardsRef = useLatestRef(cards)
+  const onSelectionRef = useLatestRef(onSelectionChange)
+  const onMoveCardsRef = useLatestRef(onMoveCards)
   /**
    * Position tween must already be ON when left/top change (CSS can't
    * animate a past paint). Keep left/top transition armed; suppress only
    * for the paint that applies a local drop so the source doesn't "follow".
    */
-  const suppressPosTweenRef = useRef(new Set<string>())
-  const onCardsReleasedRef = useRef(onCardsReleased)
-  onCardsReleasedRef.current = onCardsReleased
-  const localSeatRef = useRef(localSeat)
-  localSeatRef.current = localSeat
+  const [suppressPosTween, setSuppressPosTween] = useState(
+    () => new Set<string>()
+  )
+  const onCardsReleasedRef = useLatestRef(onCardsReleased)
+  const localSeatRef = useLatestRef(localSeat)
   const cardDragListenersRef = useRef<{
     move: (event: PointerEvent) => void
     up: (event: PointerEvent) => void
@@ -266,8 +264,7 @@ export function FreeFloatSurface({
 
   // After the no-tween drop paint, clear suppress so the next remote move tweens.
   useLayoutEffect(() => {
-    if (suppressPosTweenRef.current.size === 0) return
-    suppressPosTweenRef.current = new Set()
+    setSuppressPosTween((prev) => (prev.size === 0 ? prev : new Set()))
   }, [cards])
 
   function detachWindowDrag() {
@@ -537,8 +534,8 @@ export function FreeFloatSurface({
             w,
             h
           )
-          suppressPosTweenRef.current = new Set(
-            moves.map((move) => move.instanceId)
+          setSuppressPosTween(
+            new Set(moves.map((move) => move.instanceId))
           )
           onMoveCardsRef.current(moves)
         }
@@ -567,7 +564,11 @@ export function FreeFloatSurface({
   const primaryOrigin = drag
     ? (drag.origins[drag.instanceId] ?? { x: 0, y: 0 })
     : null
-  const { sx: paintSx, sy: paintSy } = surfacePaintScale()
+  // Live measure — ancestor `scale(boardScale)` does not resize layout, so a
+  // cached paintScale from ResizeObserver goes stale (host too big / guest too small).
+  const { sx: paintSx, sy: paintSy } = drag?.moved
+    ? surfacePaintScale()
+    : { sx: 1, sy: 1 }
   const ghostCards =
     drag?.moved && primaryOrigin
       ? drag.groupIds
@@ -612,7 +613,7 @@ export function FreeFloatSurface({
       >
         {cards.map((card) => {
           const isDragging = Boolean(draggingIds?.has(card.instanceId))
-          const suppressPosTween = suppressPosTweenRef.current.has(
+          const suppressTween = suppressPosTween.has(
             card.instanceId
           )
 
@@ -638,7 +639,7 @@ export function FreeFloatSurface({
                 width: cardW,
                 height: cardH,
                 transform: card.expended ? "rotate(90deg)" : "rotate(0deg)",
-                transition: suppressPosTween
+                transition: suppressTween
                   ? "transform 300ms ease-out"
                   : "left 300ms ease-out, top 300ms ease-out, transform 300ms ease-out",
               }}
