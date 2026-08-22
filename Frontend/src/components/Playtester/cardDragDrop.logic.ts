@@ -9,6 +9,7 @@ import {
   FLIP_FLY_MODE,
   PLAY_ZONE,
   type FlipFlyMode,
+  type PlayerSlot,
 } from "@/components/Playtester/constants"
 import { isSessionTokenInstance } from "@/components/Playtester/sessionResources.logic"
 import type { PlayingCardInstance } from "@/components/Playtester/playCard.logic"
@@ -136,13 +137,15 @@ export function shouldFlipIntoHand(
 }
 
 export function clearFloatSelection(
-  cards: PlayingCardInstance[]
+  cards: PlayingCardInstance[],
+  owner?: PlayerSlot
 ): PlayingCardInstance[] {
   return cards.map((c) =>
     (c.zone === PLAY_ZONE.battlefield ||
       c.zone === PLAY_ZONE.stockpile ||
       c.zone === PLAY_ZONE.hand) &&
-    c.selected
+    c.selected &&
+    (owner == null || c.owner === owner)
       ? { ...c, selected: false }
       : c
   )

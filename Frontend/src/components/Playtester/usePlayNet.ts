@@ -62,6 +62,8 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
     onFog?: (view: Extract<PlayNetMessage, { type: "fog" }>["view"]) => void
     onSnapshot?: () => void
     onHover?: (msg: Extract<PlayNetMessage, { type: "hover" }>) => void
+    onSelection?: (msg: Extract<PlayNetMessage, { type: "selection" }>) => void
+    onEvent?: (action: Extract<PlayNetMessage, { type: "event" }>["action"]) => void
     onFx?: (fx: Extract<PlayNetMessage, { type: "fx" }>["fx"]) => void
   }>({})
 
@@ -104,6 +106,14 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
     }
     if (raw.type === "hover") {
       handlersRef.current.onHover?.(raw)
+      return
+    }
+    if (raw.type === "selection") {
+      handlersRef.current.onSelection?.(raw)
+      return
+    }
+    if (raw.type === "event") {
+      handlersRef.current.onEvent?.(raw.action)
       return
     }
     if (raw.type === "fx") {

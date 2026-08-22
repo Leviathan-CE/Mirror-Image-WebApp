@@ -102,6 +102,8 @@ export type SessionAction =
   | { t: "rdy"; seat: PlayerSlot }
   | { t: "lf"; seat: PlayerSlot; d: number }
   | { t: "xp"; i: string[] }
+  /** Replace this seat's selection (other seats untouched). */
+  | { t: "sel"; seat: PlayerSlot; i: string[] }
   | { t: "cp"; i: string[] }
   | { t: "rm"; i: string[] }
   | {
@@ -231,6 +233,17 @@ export function applyAction(
       let cards = state.cards
       for (const id of action.i) cards = toggleExpended(cards, id)
       return bump(state, cards)
+    }
+    case "sel": {
+      const ids = new Set(action.i)
+      return bump(
+        state,
+        state.cards.map((card) => {
+          if (card.owner !== action.seat) return card
+          const next = ids.has(card.instanceId)
+          return card.selected === next ? card : { ...card, selected: next }
+        })
+      )
     }
     case "cp": {
       let cards = state.cards

@@ -987,8 +987,8 @@ export function HowToPlayPage() {
                                 of each of your turns, you may remove 1 counter from each card you
                                 have in play with time counters on it. When the last time counter is
                                 removed from a card in your stockpile, you may resolve any effects it
-                                has by adding those effects to the lock/queue (but not the card
-                                itself); then move the card to the battlefield if it's an entity, or
+                                has by adding those effects to the lock/queue, in an order of your choosing;
+                                then move the card to the battlefield if it's an entity, or
                                 to the discard pile if it's a cyberspell. You may have up to 3 cards
                                 with time counters on them in your stockpile at any given time. 
                             </p>
@@ -1015,7 +1015,7 @@ export function HowToPlayPage() {
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="entersPlay" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when this card enters play for the first time, whether the battlefield or the stockpile. This ability always has this tag.</span>
+                                    <span>Triggers when this card enters play for the first time, whether the battlefield or the stockpile. This ability always has the  <GameIcon name="atomic" className="mt-0.5 shrink-0" />  tag.</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="battlefield" className="mt-0.5 shrink-0" />
@@ -1085,7 +1085,7 @@ export function HowToPlayPage() {
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="recycle" className="mt-0.5 shrink-0" />
-                                    <span>The Recycle ability and symbol. Discard this card from hand to gain an effect, at any time you can play a Quick Hack, except when the lock is full.</span>
+                                    <span>The Recycle ability and symbol. Discard this card from hand to gain an effect, at any time you can play a Quick Hack.</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="trash" className="mt-0.5 shrink-0" />

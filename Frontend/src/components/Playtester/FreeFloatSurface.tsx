@@ -24,6 +24,10 @@ import {
 import { createPortal } from "react-dom"
 
 import { LOCAL_SEAT, type PlayerSlot } from "@/components/Playtester/constants"
+import {
+  cardIsPaintSelected,
+  selectionRingClass,
+} from "@/components/Playtester/selectionChrome"
 import { scalePlayPile } from "@/components/Playtester/playPileScale.logic"
 import {
   PLAY_FLOAT_LOGICAL,
@@ -94,6 +98,11 @@ export type FreeFloatSurfaceProps = {
    * battlefield faces proportional to Pilot / Deck on short viewports.
    */
   cardScale?: number
+  /**
+   * Logical float size for clamp / pointer mapping. Rooms use the shared
+   * `PLAY_FLOAT_LOGICAL`; local solo may pass a host-derived size.
+   */
+  fieldSize?: { width: number; height: number }
 }
 
 type DragState = {
@@ -225,6 +234,7 @@ export function FreeFloatSurface({
   plain = false,
   localSeat = LOCAL_SEAT,
   cardScale = 1,
+  fieldSize = PLAY_FLOAT_LOGICAL,
 }: FreeFloatSurfaceProps) {
   const {
     onMoveCards,
@@ -235,6 +245,7 @@ export function FreeFloatSurface({
   } = actions
   const { w: cardW, h: cardH } = scalePlayPile("lg", cardScale)
   const cardSizeRef = useLatestRef({ w: cardW, h: cardH })
+  const fieldSizeRef = useLatestRef(fieldSize)
   const surfaceRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragState | null>(null)
   const marqueeRef = useRef<MarqueeState | null>(null)
@@ -313,17 +324,21 @@ export function FreeFloatSurface({
   function surfacePaintScale() {
     const surface = surfaceRef.current
     if (!surface) return { sx: 1, sy: 1 }
-    return logicalFieldPaintScale(surface.getBoundingClientRect())
+    return logicalFieldPaintScale(
+      surface.getBoundingClientRect(),
+      fieldSizeRef.current
+    )
   }
 
   function clientToLocal(clientX: number, clientY: number) {
     const surface = surfaceRef.current
     if (!surface) return { x: 0, y: 0 }
-    // Painted rect → shared logical field (same board fraction on every screen).
+    // Painted rect → logical field (shared design in rooms; host-sized solo).
     return clientToLogicalField(
       clientX,
       clientY,
-      surface.getBoundingClientRect()
+      surface.getBoundingClientRect(),
+      fieldSizeRef.current
     )
   }
 
@@ -417,7 +432,7 @@ export function FreeFloatSurface({
     event.preventDefault()
 
     const selectedIds = cards
-      .filter((c) => c.selected)
+      .filter((c) => c.owner === localSeat && c.selected)
       .map((c) => c.instanceId)
 
     // Ctrl/Cmd+click toggles membership without starting a drag.
@@ -532,11 +547,12 @@ export function FreeFloatSurface({
           })
 
           const { w, h } = cardSizeRef.current
+          const field = fieldSizeRef.current
           const moves = clampMovesToSurface(
             proposed,
             cardsRef.current,
-            PLAY_FLOAT_LOGICAL.width,
-            PLAY_FLOAT_LOGICAL.height,
+            field.width,
+            field.height,
             w,
             h
           )
@@ -633,9 +649,9 @@ export function FreeFloatSurface({
                   : card.owner === localSeat
                     ? "z-10 cursor-grab"
                     : "z-10 cursor-default",
-                card.selected &&
+                cardIsPaintSelected(card, localSeat) &&
                   !isDragging &&
-                  "ring-2 ring-cyan-300 ring-offset-1 ring-offset-black/80"
+                  selectionRingClass()
               )}
               style={{
                 left: card.x ?? 0,
@@ -667,7 +683,7 @@ export function FreeFloatSurface({
                 }
                 if (card.selected) {
                   const ids = cards
-                    .filter((c) => c.selected)
+                    .filter((c) => c.owner === localSeat && c.selected)
                     .map((c) => c.instanceId)
                   onToggleExpended(ids.length > 0 ? ids : [card.instanceId])
                 } else {
@@ -678,7 +694,7 @@ export function FreeFloatSurface({
               <PlayingCard
                 card={card}
                 className="h-full w-full"
-                isSelected={card.selected}
+                isSelected={card.owner === localSeat && Boolean(card.selected)}
                 onCounterAdjust={
                   onCardCounterAdjust
                     ? (kind, delta) =>
@@ -720,7 +736,8 @@ export function FreeFloatSurface({
                   className={cn(
                     "pointer-events-none fixed z-[80]",
                     card.expended && "rotate-90",
-                    card.selected && "ring-2 ring-cyan-300"
+                    cardIsPaintSelected(card, localSeat) &&
+                    selectionRingClass()
                   )}
                   style={{
                     left,
@@ -732,7 +749,7 @@ export function FreeFloatSurface({
                   <PlayingCard
                     card={card}
                     className="h-full w-full"
-                    isSelected={card.selected}
+                    isSelected={card.owner === localSeat && Boolean(card.selected)}
                   />
                 </div>
               ))}

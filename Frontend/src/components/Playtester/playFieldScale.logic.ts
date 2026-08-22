@@ -48,25 +48,37 @@ export function playFloatLogicalSize(
   handDockPx: number = HAND_DOCK_HEIGHT_PX
 ): FieldSize {
   return {
-    width:
+    width: Math.max(
+      1,
       screen.width -
-      PLAY_BOARD_SIDE_COLUMNS * pileFaceW -
-      PLAY_BOARD_GAP_X_PX,
-    height:
+        PLAY_BOARD_SIDE_COLUMNS * pileFaceW -
+        PLAY_BOARD_GAP_X_PX
+    ),
+    height: Math.max(
+      1,
       screen.height -
-      PLAY_BOARD_HAND_STRIPS * handDockPx -
-      PLAY_BOARD_GAP_Y_PX,
+        PLAY_BOARD_HAND_STRIPS * handDockPx -
+        PLAY_BOARD_GAP_Y_PX
+    ),
   }
 }
 
 /** Cached float size for the current design screen. */
 export const PLAY_FLOAT_LOGICAL: FieldSize = playFloatLogicalSize()
 
-/** Scale that fits the design *screen* inside the host box (letterboxed). */
+/**
+ * Scale that fits the design *screen* inside the host box (letterboxed).
+ *
+ * `maxScale` caps enlargement (P2P rooms use `1` so every client paints the
+ * shared design at or below native size). Local solo passes no cap so the
+ * board can grow with a large monitor — or skip this helper and size the
+ * screen to the host at scale 1 (see PlayTesterPage).
+ */
 export function playFieldFitScale(
   availWidth: number,
   availHeight: number,
-  logical: FieldSize = PLAY_FIELD_LOGICAL
+  logical: FieldSize = PLAY_FIELD_LOGICAL,
+  maxScale: number = Number.POSITIVE_INFINITY
 ): number {
   if (
     !finitePositive(availWidth) ||
@@ -76,7 +88,12 @@ export function playFieldFitScale(
   ) {
     return 1
   }
-  return Math.min(availWidth / logical.width, availHeight / logical.height)
+  const fit = Math.min(availWidth / logical.width, availHeight / logical.height)
+  const cap =
+    Number.isFinite(maxScale) && maxScale > 0
+      ? maxScale
+      : Number.POSITIVE_INFINITY
+  return Math.min(fit, cap)
 }
 
 /**

@@ -106,6 +106,47 @@ describe("applyAction replay", () => {
     expect(next.nextId).toBe(5)
     expect(next.cards[1]?.owner).toBe("p1")
   })
+
+  it("sel replaces only that seat's selection", () => {
+    const cards = [
+      card({ instanceId: "p1-a", zone: PLAY_ZONE.stockpile, selected: true }),
+      card({ instanceId: "p1-b", zone: PLAY_ZONE.stockpile }),
+      card({
+        instanceId: "p2-a",
+        zone: PLAY_ZONE.stockpile,
+        owner: "p2",
+        selected: true,
+      }),
+    ]
+    const next = applyAction(createPlaySessionState({ cards }), {
+      t: "sel",
+      seat: "p1",
+      i: ["p1-b"],
+    })
+    expect(next.cards.find((c) => c.instanceId === "p1-a")?.selected).toBe(
+      false
+    )
+    expect(next.cards.find((c) => c.instanceId === "p1-b")?.selected).toBe(true)
+    expect(next.cards.find((c) => c.instanceId === "p2-a")?.selected).toBe(true)
+  })
+
+  it("viewFor strips selection on public opponent cards", () => {
+    const cards = [
+      card({
+        instanceId: "p1-a",
+        zone: PLAY_ZONE.stockpile,
+        selected: true,
+      }),
+    ]
+    const next = applyAction(createPlaySessionState({ cards }), {
+      t: "sel",
+      seat: "p1",
+      i: ["p1-a"],
+    })
+    const guestView = viewFor("p2", next)
+    const seen = materializeFog(guestView).find((c) => c.instanceId === "p1-a")
+    expect(seen?.selected).toBe(false)
+  })
 })
 
 describe("viewFor fog", () => {

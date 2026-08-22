@@ -13,7 +13,7 @@ import { genIconForCount } from "@/components/Playtester/constants"
 import {
   generatedResourceHome,
   placeInPlayForView,
-  viewToWorld,
+  displayToWorld,
 } from "@/components/Playtester/augmentRow.logic"
 import {
   autoResolveColors,
@@ -44,7 +44,9 @@ import {
   PLAY_FIELD_LOGICAL,
   PLAY_FLOAT_LOGICAL,
   playFieldFitScale,
+  playFloatLogicalSize,
   clientToLogicalField,
+  type FieldSize,
 } from "@/components/Playtester/playFieldScale.logic"
 import { viewFor } from "@/components/Playtester/fogView.logic"
 import { intentAllowed, type PlayFx } from "@/components/Playtester/playNet.logic"
@@ -171,16 +173,54 @@ export function PlayTesterPage() {
   })
   const [deckPeek, setDeckPeek] = useState<DeckPeekState | null>(null)
   const [deckSearchOpen, setDeckSearchOpen] = useState(false)
-  const [resourceTokens, setResourceTokens] = useState<CardLibraryItem[]>([])
-  const [resourcesReady, setResourcesReady] = useState(false)
+  const [resourceCache, setResourceCache] = useState<{
+    key: string
+    tokens: CardLibraryItem[]
+  } | null>(null)
+  const resourceCacheKey =
+    status === "ready" && token ? `ready:${token}` : "idle"
+  const resourceTokens = useMemo(
+    () =>
+      resourceCache?.key === resourceCacheKey ? resourceCache.tokens : [],
+    [resourceCache, resourceCacheKey]
+  )
+  const resourcesReady =
+    status === "ready" &&
+    !!token &&
+    resourceCache?.key === resourceCacheKey
   const [vsDraft, setVsDraft] = useState("")
   const [playNotice, setPlayNotice] = useState<string | null>(null)
   /**
-   * Fit scale for the shared design *screen* (`PLAY_FIELD_LOGICAL`).
-   * Hands / piles / float all lay out in that canvas; one CSS scale syncs them.
-   * Card x/y live on `PLAY_FLOAT_LOGICAL` (leftover float rect inside the screen).
+   * Board canvas + CSS fit-scale.
+   * - In a room: fixed `PLAY_FIELD_LOGICAL` so both seats share coords; fit
+   *   scale letterboxes into the host (capped at 1× so nobody paints larger
+   *   than the design).
+   * - Local solo: canvas = measured host at scale 1 — fills the space, no
+   *   artificial design ceiling.
    */
   const [boardScale, setBoardScale] = useState(1)
+  const [boardScreen, setBoardScreen] = useState<FieldSize>({
+    width: PLAY_FIELD_LOGICAL.width,
+    height: PLAY_FIELD_LOGICAL.height,
+  })
+  /** Solo: measured from the flex-grown surface (not the fixed design canvas). */
+  const [measuredFloatSize, setMeasuredFloatSize] = useState<FieldSize>(
+    PLAY_FLOAT_LOGICAL
+  )
+  const floatLogical = useMemo(
+    () =>
+      netActive
+        ? boardScreen.width === PLAY_FIELD_LOGICAL.width &&
+          boardScreen.height === PLAY_FIELD_LOGICAL.height
+          ? PLAY_FLOAT_LOGICAL
+          : playFloatLogicalSize(boardScreen)
+        : measuredFloatSize,
+    [netActive, boardScreen, measuredFloatSize]
+  )
+  const floatLogicalRef = useRef(floatLogical)
+  useEffect(() => {
+    floatLogicalRef.current = floatLogical
+  }, [floatLogical])
   const surfaceRef = useRef<HTMLDivElement>(null)
   const playRowRef = useRef<HTMLDivElement>(null)
   const stockpileRef = useRef<HTMLDivElement>(null)
@@ -272,8 +312,12 @@ export function PlayTesterPage() {
     onHostCommit: (action, state) => {
       if (!playNet.isHost) return
       playNet.send({ type: "fog", view: viewFor(otherSeat(mySeat), state) })
-      if (action) playNet.send({ type: "event", action })
+      // Selection is local-only — don't relay `sel` as a peer event.
+      if (action && action.t !== "sel") {
+        playNet.send({ type: "event", action })
+      }
     },
+    displayFieldRef: floatLogicalRef,
   })
 
   function clientToLocalIn(
@@ -282,7 +326,12 @@ export function PlayTesterPage() {
     clientY: number
   ) {
     if (!el) return { x: 0, y: 0 }
-    return clientToLogicalField(clientX, clientY, el.getBoundingClientRect())
+    return clientToLogicalField(
+      clientX,
+      clientY,
+      el.getBoundingClientRect(),
+      floatLogicalRef.current
+    )
   }
 
   function clientToSurfaceLocal(clientX: number, clientY: number) {
@@ -398,6 +447,8 @@ export function PlayTesterPage() {
     playNet.setHandlers({
       onIntent: (msg) => {
         if (!playNet.isHost) return
+        // Selection is local-only for now (no peer orange chrome).
+        if (msg.action.t === "sel") return
         const actor = otherSeat(mySeat)
         if (
           !intentAllowed(msg.action, actor, (id) =>
@@ -462,6 +513,7 @@ export function PlayTesterPage() {
     setSessionCards,
     dispatch,
     localSeat,
+    fieldSize: floatLogical,
     hideFlying,
     zoneRefs,
     clientToSurfaceLocal,
@@ -481,7 +533,7 @@ export function PlayTesterPage() {
         !flyingHide.has(c.instanceId)
     ),
     localSeat,
-    PLAY_FLOAT_LOGICAL
+    floatLogical
   )
 
   // Peer library → hand: slide backs when hand grows and library shrinks.
@@ -521,30 +573,56 @@ export function PlayTesterPage() {
   const pileW = PLAY_PILE_SIZE.lg.w
   const handDockPx = HAND_DOCK_HEIGHT_PX
   const pilotColW = pileW
-  const boardLayoutW = PLAY_FIELD_LOGICAL.width * boardScale
-  const boardLayoutH = PLAY_FIELD_LOGICAL.height * boardScale
+  const boardLayoutW = boardScreen.width * boardScale
+  const boardLayoutH = boardScreen.height * boardScale
 
   useEffect(() => {
-    const el = playRowRef.current
+    if (netActive) return
+    const el = surfaceRef.current
     if (!el) return
     const sync = () => {
       const { width, height } = el.getBoundingClientRect()
-      setBoardScale(playFieldFitScale(width, height))
+      const w = Math.round(width)
+      const h = Math.round(height)
+      if (w <= 0 || h <= 0) return
+      setMeasuredFloatSize((prev) =>
+        prev.width === w && prev.height === h ? prev : { width: w, height: h }
+      )
     }
     sync()
     const observer = new ResizeObserver(sync)
     observer.observe(el)
     return () => observer.disconnect()
-  }, [status, twoSeat])
+  }, [status, netActive, twoSeat])
 
   useEffect(() => {
-    if (status !== "ready") {
-      setResourceTokens([])
-      setResourcesReady(false)
+    if (!netActive) {
+      setBoardScale(1)
       return
     }
+    const el = playRowRef.current
+    if (!el) return
+    const sync = () => {
+      const { width, height } = el.getBoundingClientRect()
+      if (!Number.isFinite(width) || !Number.isFinite(height)) return
+      if (width <= 0 || height <= 0) return
+      // Shared design canvas — both seats must agree on card x/y.
+      setBoardScreen({
+        width: PLAY_FIELD_LOGICAL.width,
+        height: PLAY_FIELD_LOGICAL.height,
+      })
+      setBoardScale(playFieldFitScale(width, height, PLAY_FIELD_LOGICAL, 1))
+    }
+    sync()
+    const observer = new ResizeObserver(sync)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [status, twoSeat, netActive])
+
+  useEffect(() => {
+    if (status !== "ready" || !token) return
     let cancelled = false
-    setResourcesReady(false)
+    const key = `ready:${token}`
 
     // Resource tokens: identify by super type Resource + invoke-cost colour.
     void Promise.all([
@@ -558,13 +636,11 @@ export function PlayTesterPage() {
             byId.set(item.id, item)
           }
         }
-        setResourceTokens([...byId.values()])
-        setResourcesReady(true)
+        setResourceCache({ key, tokens: [...byId.values()] })
       })
       .catch(() => {
         if (!cancelled) {
-          setResourceTokens([])
-          setResourcesReady(true)
+          setResourceCache({ key, tokens: [] })
         }
       })
     return () => {
@@ -603,7 +679,12 @@ export function PlayTesterPage() {
 
       const selectable = SELECTABLE_ACTION_ZONES as readonly string[]
       const ids = sessionCardsRef.current
-        .filter((c) => c.selected && selectable.includes(c.zone))
+        .filter(
+          (c) =>
+            c.selected &&
+            c.owner === localSeat &&
+            selectable.includes(c.zone)
+        )
         .map((c) => c.instanceId)
       if (ids.length === 0) return
 
@@ -622,6 +703,7 @@ export function PlayTesterPage() {
     deckSearchOpen,
     deleteSessionCards,
     sessionCardsRef,
+    localSeat,
   ])
 
   function onStartTurn() {
@@ -669,7 +751,7 @@ export function PlayTesterPage() {
       card,
       colors,
       colors.map((_, index) =>
-        generatedResourceHome(PLAY_FLOAT_LOGICAL, true, index)
+        generatedResourceHome(floatLogical, true, index)
       )
     )
     startBottomSlide(card, from, { skipEmit: true })
@@ -751,7 +833,7 @@ export function PlayTesterPage() {
       () => {
         setPlayNotice(`No catalog card loaded for ${color}.`)
       },
-      generatedResourceHome(PLAY_FLOAT_LOGICAL, true, 0)
+      generatedResourceHome(floatLogical, true, 0)
     )
   }
 
@@ -1044,7 +1126,7 @@ export function PlayTesterPage() {
           const world =
             card.x != null && card.y != null
               ? { x: card.x, y: card.y }
-              : viewToWorld(viewX, viewY, localSeat, PLAY_FLOAT_LOGICAL)
+              : displayToWorld(viewX, viewY, localSeat, floatLogical)
           dispatch({
             t: "mv",
             seat: localSeat,
@@ -1057,6 +1139,234 @@ export function PlayTesterPage() {
       },
     },
   })
+
+  function renderPlayBoard(fixedLayout: boolean) {
+    return (
+      <>
+        {twoSeat ? (
+          <div
+            className="z-40 flex shrink-0 flex-col items-center justify-start gap-1 overflow-visible py-1 opacity-90"
+            style={{ width: pileW }}
+          >
+            <TrashyardPile
+              ref={oppTrashRef}
+              cards={visOppTrash}
+              label="Opp trash"
+              size="lg"
+              fanDirection="down"
+              onReleaseCard={() => undefined}
+            />
+            <DeckPile
+              ref={oppDeckRef}
+              count={oppLibraryCount}
+              label="Opp library"
+              busy
+              size="lg"
+              lift={peerLibraryHover}
+            />
+            <TrashyardPile
+              ref={oppDismantledRef}
+              cards={visOppDismantled}
+              label="Opp dismantled"
+              size="lg"
+              fanDirection="down"
+              onReleaseCard={() => undefined}
+            />
+          </div>
+        ) : null}
+
+        <div
+          className={
+            fixedLayout
+              ? "flex min-h-0 shrink-0 flex-col gap-1"
+              : "flex min-h-0 min-w-0 flex-1 flex-col gap-1"
+          }
+          style={fixedLayout ? { width: floatLogical.width } : undefined}
+        >
+          {twoSeat ? (
+            <div
+              className="relative z-40 flex shrink-0 items-start gap-2"
+              style={{ height: handDockPx }}
+            >
+              <div
+                className="relative shrink-0"
+                style={{ width: pilotColW, height: handDockPx }}
+              >
+                <div className="absolute top-0 left-0 flex w-full flex-col items-center gap-1">
+                  <TrashyardPile
+                    cards={visOppPilot}
+                    label="Opp pilot"
+                    size="lg"
+                    onReleaseCard={() => undefined}
+                  />
+                  <LifeCounter
+                    life={oppLife}
+                    onAdjust={() => undefined}
+                    className="min-h-10 min-w-16 px-3 py-1 text-2xl"
+                  />
+                </div>
+              </div>
+              <DockedHandStrip
+                className="min-w-0 flex-1"
+                panelRef={oppHandRef}
+                heightPx={handDockPx}
+                label={`Opp hand · ${visOppHand.length}`}
+              >
+                <PlayerHand
+                  className="h-full min-h-0"
+                  cards={visOppHand}
+                  hideFaces
+                  interactive={false}
+                  embedded
+                  localSeat={localSeat}
+                  hoveredIndex={peerHandHoverIndex}
+                  onReleaseCards={() => undefined}
+                />
+              </DockedHandStrip>
+            </div>
+          ) : null}
+
+          <div
+            ref={surfaceRef}
+            className={
+              fixedLayout
+                ? "relative z-0 shrink-0 overflow-hidden"
+                : "relative z-0 min-h-0 flex-1 overflow-hidden"
+            }
+            style={
+              fixedLayout
+                ? {
+                    width: floatLogical.width,
+                    height: floatLogical.height,
+                  }
+                : undefined
+            }
+          >
+            <FreeFloatSurface
+              plain
+              localSeat={localSeat}
+              fieldSize={floatLogical}
+              className="absolute inset-0 h-full min-h-0 w-full"
+              cards={visInPlay}
+              actions={floatSurfaceActions}
+              onSelectionChange={onFloatSelectionChange}
+              onCardsReleased={onBattlefieldRelease}
+              onEmptyContextMenu={(x, y) =>
+                onZoneEmptyContextMenu("battlefield", x, y)
+              }
+            />
+          </div>
+
+          <div
+            className="relative z-40 flex shrink-0 items-end gap-2"
+            style={{ height: handDockPx }}
+          >
+            <DockedHandStrip
+              className="min-w-0 flex-1"
+              panelRef={handRef}
+              heightPx={handDockPx}
+              label={`Hand · ${visHand.length}`}
+            >
+              <PlayerHand
+                className="h-full min-h-0"
+                cards={visHand}
+                embedded
+                localSeat={localSeat}
+                onReleaseCards={onHandRelease}
+                onCardContextMenu={onHandContextMenu}
+                onEmptyContextMenu={(x, y) =>
+                  onZoneEmptyContextMenu("hand", x, y)
+                }
+                onSelectionChange={onHandSelectionChange}
+                onHoverIndexChange={(index) => {
+                  if (!netActive || !playNet.peerPresent) return
+                  playNet.send({
+                    type: "hover",
+                    zone: "hand",
+                    index,
+                  })
+                }}
+              />
+            </DockedHandStrip>
+            <div
+              className="relative shrink-0"
+              style={{ width: pilotColW, height: handDockPx }}
+            >
+              <div className="absolute bottom-0 left-0 flex w-full flex-col items-center gap-1">
+                <LifeCounter
+                  life={life}
+                  onAdjust={(delta) =>
+                    setLife((prev) => Math.max(0, prev + delta))
+                  }
+                  className="min-h-10 min-w-16 px-3 py-1 text-2xl"
+                />
+                <TrashyardPile
+                  ref={pilotRef}
+                  cards={visPilot}
+                  label="Pilot"
+                  size="lg"
+                  onReleaseCard={onFaceUpPileRelease}
+                  onCardContextMenu={onFloatCardContextMenu}
+                  onToggleExpended={(instanceId) =>
+                    onToggleExpended([instanceId])
+                  }
+                  cardOverlay={pilotGenOverlay}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="z-40 flex shrink-0 flex-col items-center justify-end gap-1 overflow-hidden py-1"
+          style={{ width: pileW }}
+        >
+          <TrashyardPile
+            ref={dismantledRef}
+            cards={visDismantled}
+            label="Dismantled"
+            size="lg"
+            onReleaseCard={onFaceUpPileRelease}
+            onCardContextMenu={onFloatCardContextMenu}
+            onPileContextMenu={(x, y) =>
+              onFaceUpPileContextMenu(PLAY_ZONE.dismantled, x, y)
+            }
+          />
+          <DeckPile
+            ref={deckRef}
+            count={libraryCount}
+            size="lg"
+            onClickDraw={onDrawFromDeck}
+            onTopCardRelease={onDeckTopRelease}
+            onContextMenu={onDeckContextMenu}
+            topCard={topLibraryCard}
+            topRevealed={topRevealed}
+            busy={Boolean(bottomAnim) || mulliganOpen || deckSearchOpen}
+            onHoverChange={(active) => {
+              if (!netActive || !playNet.peerPresent) return
+              playNet.send({
+                type: "hover",
+                zone: "library",
+                active,
+              })
+            }}
+          />
+          <TrashyardPile
+            ref={trashRef}
+            cards={visTrash}
+            label="Trashyard"
+            size="lg"
+            onReleaseCard={onFaceUpPileRelease}
+            onCardContextMenu={onFloatCardContextMenu}
+            onPileContextMenu={(x, y) =>
+              onFaceUpPileContextMenu(PLAY_ZONE.trashyard, x, y)
+            }
+          />
+        </div>
+      </>
+    )
+  }
+
   return (
     <section
       className="relative flex h-svh flex-col overflow-hidden bg-cover bg-center bg-no-repeat select-none"
@@ -1131,237 +1441,32 @@ export function PlayTesterPage() {
               ref={playRowRef}
               className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
             >
-              <div
-                className="absolute top-1/2 left-1/2"
-                style={{
-                  width: boardLayoutW,
-                  height: boardLayoutH,
-                  marginLeft: -boardLayoutW / 2,
-                  marginTop: -boardLayoutH / 2,
-                }}
-              >
+              {netActive ? (
                 <div
-                  className="flex origin-top-left gap-2 overflow-hidden"
+                  className="absolute top-1/2 left-1/2"
                   style={{
-                    width: PLAY_FIELD_LOGICAL.width,
-                    height: PLAY_FIELD_LOGICAL.height,
-                    transform: `scale(${boardScale})`,
+                    width: boardLayoutW,
+                    height: boardLayoutH,
+                    marginLeft: -boardLayoutW / 2,
+                    marginTop: -boardLayoutH / 2,
                   }}
                 >
-                  {/* Side column always reserved so float size stays stable. */}
                   <div
-                    className="z-40 flex shrink-0 flex-col items-center justify-start gap-1 overflow-visible py-1 opacity-90"
-                    style={{ width: pileW }}
+                    className="flex origin-top-left gap-2 overflow-hidden"
+                    style={{
+                      width: boardScreen.width,
+                      height: boardScreen.height,
+                      transform: `scale(${boardScale})`,
+                    }}
                   >
-                    {twoSeat ? (
-                      <>
-                        <TrashyardPile
-                          ref={oppTrashRef}
-                          cards={visOppTrash}
-                          label="Opp trash"
-                          size="lg"
-                          fanDirection="down"
-                          onReleaseCard={() => undefined}
-                        />
-                        <DeckPile
-                          ref={oppDeckRef}
-                          count={oppLibraryCount}
-                          label="Opp library"
-                          busy
-                          size="lg"
-                          lift={peerLibraryHover}
-                        />
-                        <TrashyardPile
-                          ref={oppDismantledRef}
-                          cards={visOppDismantled}
-                          label="Opp dismantled"
-                          size="lg"
-                          fanDirection="down"
-                          onReleaseCard={() => undefined}
-                        />
-                      </>
-                    ) : null}
-                  </div>
-
-                  <div
-                    className="flex min-h-0 shrink-0 flex-col gap-1"
-                    style={{ width: PLAY_FLOAT_LOGICAL.width }}
-                  >
-                    <div
-                      className="relative z-40 flex shrink-0 items-start gap-2"
-                      style={{ height: handDockPx }}
-                    >
-                      {twoSeat ? (
-                        <>
-                          <div
-                            className="relative shrink-0"
-                            style={{ width: pilotColW, height: handDockPx }}
-                          >
-                            <div className="absolute top-0 left-0 flex w-full flex-col items-center gap-1">
-                              <TrashyardPile
-                                cards={visOppPilot}
-                                label="Opp pilot"
-                                size="lg"
-                                onReleaseCard={() => undefined}
-                              />
-                              <LifeCounter
-                                life={oppLife}
-                                onAdjust={() => undefined}
-                                className="min-h-10 min-w-16 px-3 py-1 text-2xl"
-                              />
-                            </div>
-                          </div>
-                          <DockedHandStrip
-                            className="min-w-0 flex-1"
-                            panelRef={oppHandRef}
-                            heightPx={handDockPx}
-                            label={`Opp hand · ${visOppHand.length}`}
-                          >
-                            <PlayerHand
-                              className="h-full min-h-0"
-                              cards={visOppHand}
-                              hideFaces
-                              interactive={false}
-                              embedded
-                              hoveredIndex={peerHandHoverIndex}
-                              onReleaseCards={() => undefined}
-                            />
-                          </DockedHandStrip>
-                        </>
-                      ) : null}
-                    </div>
-
-                    <div
-                      ref={surfaceRef}
-                      className="relative z-0 shrink-0 overflow-hidden"
-                      style={{
-                        width: PLAY_FLOAT_LOGICAL.width,
-                        height: PLAY_FLOAT_LOGICAL.height,
-                      }}
-                    >
-                      <FreeFloatSurface
-                        plain
-                        localSeat={localSeat}
-                        className="absolute inset-0 h-full min-h-0 w-full"
-                        cards={visInPlay}
-                        actions={floatSurfaceActions}
-                        onSelectionChange={onFloatSelectionChange}
-                        onCardsReleased={onBattlefieldRelease}
-                        onEmptyContextMenu={(x, y) =>
-                          onZoneEmptyContextMenu("battlefield", x, y)
-                        }
-                      />
-                    </div>
-
-                    <div
-                      className="relative z-40 flex shrink-0 items-end gap-2"
-                      style={{ height: handDockPx }}
-                    >
-                      <DockedHandStrip
-                        className="min-w-0 flex-1"
-                        panelRef={handRef}
-                        heightPx={handDockPx}
-                        label={`Hand · ${visHand.length}`}
-                      >
-                        <PlayerHand
-                          className="h-full min-h-0"
-                          cards={visHand}
-                          embedded
-                          onReleaseCards={onHandRelease}
-                          onCardContextMenu={onHandContextMenu}
-                          onEmptyContextMenu={(x, y) =>
-                            onZoneEmptyContextMenu("hand", x, y)
-                          }
-                          onSelectionChange={onHandSelectionChange}
-                          onHoverIndexChange={(index) => {
-                            if (!netActive || !playNet.peerPresent) return
-                            playNet.send({
-                              type: "hover",
-                              zone: "hand",
-                              index,
-                            })
-                          }}
-                        />
-                      </DockedHandStrip>
-                      <div
-                        className="relative shrink-0"
-                        style={{ width: pilotColW, height: handDockPx }}
-                      >
-                        <div className="absolute bottom-0 left-0 flex w-full flex-col items-center gap-1">
-                          <LifeCounter
-                            life={life}
-                            onAdjust={(delta) =>
-                              setLife((prev) => Math.max(0, prev + delta))
-                            }
-                            className="min-h-10 min-w-16 px-3 py-1 text-2xl"
-                          />
-                          <TrashyardPile
-                            ref={pilotRef}
-                            cards={visPilot}
-                            label="Pilot"
-                            size="lg"
-                            onReleaseCard={onFaceUpPileRelease}
-                            onCardContextMenu={onFloatCardContextMenu}
-                            onToggleExpended={(instanceId) =>
-                              onToggleExpended([instanceId])
-                            }
-                            cardOverlay={pilotGenOverlay}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    className="z-40 flex shrink-0 flex-col items-center justify-end gap-1 overflow-hidden py-1"
-                    style={{ width: pileW }}
-                  >
-                    <TrashyardPile
-                      ref={dismantledRef}
-                      cards={visDismantled}
-                      label="Dismantled"
-                      size="lg"
-                      onReleaseCard={onFaceUpPileRelease}
-                      onCardContextMenu={onFloatCardContextMenu}
-                      onPileContextMenu={(x, y) =>
-                        onFaceUpPileContextMenu(PLAY_ZONE.dismantled, x, y)
-                      }
-                    />
-                    <DeckPile
-                      ref={deckRef}
-                      count={libraryCount}
-                      size="lg"
-                      onClickDraw={onDrawFromDeck}
-                      onTopCardRelease={onDeckTopRelease}
-                      onContextMenu={onDeckContextMenu}
-                      topCard={topLibraryCard}
-                      topRevealed={topRevealed}
-                      busy={
-                        Boolean(bottomAnim) || mulliganOpen || deckSearchOpen
-                      }
-                      onHoverChange={(active) => {
-                        if (!netActive || !playNet.peerPresent) return
-                        playNet.send({
-                          type: "hover",
-                          zone: "library",
-                          active,
-                        })
-                      }}
-                    />
-                    <TrashyardPile
-                      ref={trashRef}
-                      cards={visTrash}
-                      label="Trashyard"
-                      size="lg"
-                      onReleaseCard={onFaceUpPileRelease}
-                      onCardContextMenu={onFloatCardContextMenu}
-                      onPileContextMenu={(x, y) =>
-                        onFaceUpPileContextMenu(PLAY_ZONE.trashyard, x, y)
-                      }
-                    />
+                    {renderPlayBoard(true)}
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex h-full min-h-0 w-full gap-2 overflow-hidden">
+                  {renderPlayBoard(false)}
+                </div>
+              )}
             </div>
 
             <div className="relative z-40 flex shrink-0 items-center gap-2 border-t border-cyan-500/25 bg-black/55 px-2 py-1.5">

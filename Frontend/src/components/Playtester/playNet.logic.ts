@@ -64,6 +64,8 @@ export type PlayNetMessage =
   /** UI-only peer chrome (fog hands have no shared ids; library is a boolean lift). */
   | { type: "hover"; zone: "hand"; index: number | null }
   | { type: "hover"; zone: "library"; active: boolean }
+  /** Immediate selection chrome — not stored on `card.selected`. */
+  | { type: "selection"; ids: string[]; seat?: PlayerSlot }
   | { type: "fx"; fx: PlayFx }
   | {
       type: "welcome";
@@ -112,6 +114,7 @@ const ACTOR_SEAT_TAGS = new Set<SessionAction["t"]>([
   "ro",
   "pg",
   "tk",
+  "sel",
 ]);
 
 /** Host-side: guest may only touch their seat and their instance ids. */

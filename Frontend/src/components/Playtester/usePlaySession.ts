@@ -17,10 +17,11 @@ import {
 import type { ResourceColor } from "@/components/Playtester/accumulateResources.logic"
 import { useLatestRef } from "@/hooks/useLatestRef"
 import {
-  viewToWorld,
+  displayToWorld,
 } from "@/components/Playtester/augmentRow.logic"
 import { peekTopLibrary } from "@/components/Playtester/deckActions.logic"
 import { PLAY_FLOAT_LOGICAL } from "@/components/Playtester/playFieldScale.logic"
+import type { ParentSize } from "@/components/Playtester/handFloatPanel.logic"
 import {
   LOCAL_SEAT,
   OPENING_MULLIGAN_ENABLED,
@@ -37,6 +38,7 @@ import {
   cardsInZone,
   createPlaySessionState,
   materializeFog,
+  withPreservedSelection,
   seatRecord,
   type CardCounterKind,
   type FogView,
@@ -83,6 +85,8 @@ export type UsePlaySessionArgs = {
   peerPresent?: boolean
   sendIntent?: (action: SessionAction) => void
   onHostCommit?: (action: SessionAction | null, state: PlaySessionState) => void
+  /** Painted float size — coords from drag/spawn convert through this ref. */
+  displayFieldRef?: MutableRefObject<ParentSize>
 }
 
 export function usePlaySession({
@@ -98,7 +102,10 @@ export function usePlaySession({
   peerPresent = false,
   sendIntent,
   onHostCommit,
+  displayFieldRef: displayFieldRefArg,
 }: UsePlaySessionArgs) {
+  const fallbackDisplayRef = useRef<ParentSize>(PLAY_FLOAT_LOGICAL)
+  const displayFieldRef = displayFieldRefArg ?? fallbackDisplayRef
   const [sessionCardsState, setSessionCardsState] = useState<
     PlayingCardInstance[]
   >([])
@@ -165,6 +172,12 @@ export function usePlaySession({
   const dispatch = useCallback(
     (action: SessionAction) => {
       if (netRoleRef.current === "guest") {
+        // Selection is local-only — never send as intent / never wait for fog.
+        if (action.t === "sel") {
+          const next = applyAction(snapshot(), action)
+          commitCards(next.cards)
+          return snapshot()
+        }
         sendIntentRef.current?.(action)
         // Keep local seq behind host — fog will set seq. Optimistic so
         // release / expend don't wait on RTT (snap-back / missed spin).
@@ -190,15 +203,30 @@ export function usePlaySession({
   )
 
   const applyFog = useCallback((view: FogView) => {
-    const nextCards = materializeFog(view)
+    // Drop stale fog so an older select cannot repaint rings after a deselect.
+    if (view.seq < seqRef.current) return
+
+    let nextCards = materializeFog(view)
     const viewerHasCards = nextCards.some((c) => c.owner === view.viewer)
     const viewerCounts =
       (view.handCount[view.viewer] ?? 0) + (view.libraryCount[view.viewer] ?? 0)
     if (!viewerHasCards && viewerCounts === 0 && view.seq === 0) {
       return
     }
+
+    const keepLocal = new Set(
+      sessionCardsRef.current
+        .filter((card) => card.selected && card.owner === view.viewer)
+        .map((card) => card.instanceId)
+    )
+    // Selection is local-only — never copy peer `selected` onto the action bag.
+    nextCards = nextCards.map((card) =>
+      card.owner === view.viewer || !card.selected
+        ? card
+        : { ...card, selected: false }
+    )
     seqRef.current = view.seq
-    commitCards(nextCards)
+    commitCards(withPreservedSelection(nextCards, keepLocal, view.viewer))
     setLifeBySeat(view.life)
     setTurn(view.turn)
     setTurnSeat(view.turnSeat)
@@ -392,7 +420,12 @@ export function usePlaySession({
     dispatch({
       t: "ps",
       i: moves.map((m) => {
-        const world = viewToWorld(m.x, m.y, localSeat, PLAY_FLOAT_LOGICAL)
+        const world = displayToWorld(
+          m.x,
+          m.y,
+          localSeat,
+          displayFieldRef.current
+        )
         return { id: m.instanceId, x: world.x, y: world.y }
       }),
     })
@@ -407,47 +440,21 @@ export function usePlaySession({
   }
 
   function toggleExpendedIds(instanceIds: string[]) {
-    if (instanceIds.length === 0) return
-    dispatch({ t: "xp", i: instanceIds })
+    const owned = instanceIds.filter(
+      (id) =>
+        sessionCardsRef.current.find((c) => c.instanceId === id)?.owner ===
+        localSeat
+    )
+    if (owned.length === 0) return
+    dispatch({ t: "xp", i: owned })
   }
 
   function changeFloatSelection(instanceIds: string[]) {
-    const selected = new Set(instanceIds)
-    setSessionCards((prev) =>
-      prev.map((card) => {
-        if (
-          card.zone !== PLAY_ZONE.battlefield &&
-          card.zone !== PLAY_ZONE.stockpile
-        ) {
-          return card.selected ? { ...card, selected: false } : card
-        }
-        const nextSelected = selected.has(card.instanceId)
-        return card.selected === nextSelected
-          ? card
-          : { ...card, selected: nextSelected }
-      })
-    )
+    dispatch({ t: "sel", seat: localSeat, i: instanceIds })
   }
 
   function changeHandSelection(instanceIds: string[]) {
-    const selected = new Set(instanceIds)
-    setSessionCards((prev) =>
-      prev.map((card) => {
-        if (card.zone === PLAY_ZONE.hand && card.owner === localSeat) {
-          const nextSelected = selected.has(card.instanceId)
-          return card.selected === nextSelected
-            ? card
-            : { ...card, selected: nextSelected }
-        }
-        if (
-          (card.zone === "battlefield" || card.zone === "stockpile") &&
-          card.selected
-        ) {
-          return { ...card, selected: false }
-        }
-        return card
-      })
-    )
+    dispatch({ t: "sel", seat: localSeat, i: instanceIds })
   }
 
   function startTurn(blocked: boolean) {
@@ -528,7 +535,7 @@ export function usePlaySession({
       return false
     }
     const world = at
-      ? viewToWorld(at.x, at.y, localSeat, PLAY_FLOAT_LOGICAL)
+      ? displayToWorld(at.x, at.y, localSeat, displayFieldRef.current)
       : undefined
     dispatch({
       t: "tk",
@@ -597,7 +604,7 @@ export function usePlaySession({
       if (!template) return
       const at = homes[index]
       const world = at
-        ? viewToWorld(at.x, at.y, localSeat, PLAY_FLOAT_LOGICAL)
+        ? displayToWorld(at.x, at.y, localSeat, displayFieldRef.current)
         : undefined
       dispatch({
         t: "tk",

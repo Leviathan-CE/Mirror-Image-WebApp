@@ -23,7 +23,7 @@ import {
   type DropZone,
   type DropZoneRects,
 } from "@/components/Playtester/cardDragDrop.logic"
-import { viewToWorld } from "@/components/Playtester/augmentRow.logic"
+import { displayToWorld } from "@/components/Playtester/augmentRow.logic"
 import { PLAY_FLOAT_LOGICAL } from "@/components/Playtester/playFieldScale.logic"
 import type { PlayFx } from "@/components/Playtester/playNet.logic"
 import {
@@ -46,6 +46,8 @@ export type UseCardDragDropArgs = {
   setSessionCards: Dispatch<SetStateAction<PlayingCardInstance[]>>
   dispatch: (action: SessionAction) => unknown
   localSeat?: PlayerSlot
+  /** Float logical size for view↔world (rooms: shared; solo: host-derived). */
+  fieldSize?: { width: number; height: number }
   hideFlying?: (ids: string[]) => void
   zoneRefs: PlaytesterZoneRefs
   clientToSurfaceLocal: (clientX: number, clientY: number) => {
@@ -83,6 +85,7 @@ export function useCardDragDrop({
   setSessionCards,
   dispatch,
   localSeat = LOCAL_SEAT,
+  fieldSize = PLAY_FLOAT_LOGICAL,
   hideFlying,
   zoneRefs,
   clientToSurfaceLocal,
@@ -103,12 +106,12 @@ export function useCardDragDrop({
     let worldX = x
     let worldY = y
     if (x != null && y != null) {
-      const world = viewToWorld(x, y, localSeat, PLAY_FLOAT_LOGICAL)
+      const world = displayToWorld(x, y, localSeat, fieldSize)
       worldX = world.x
       worldY = world.y
     }
     dispatch({ t: "mv", seat: localSeat, i, z, x: worldX, y: worldY })
-    setSessionCards((prev) => clearFloatSelection(prev))
+    setSessionCards((prev) => clearFloatSelection(prev, localSeat))
   }
   function applyLibraryDrop(
     instanceIds: string[],
@@ -121,7 +124,7 @@ export function useCardDragDrop({
 
     if (plan.kind === "destroyOnly") {
       dispatch({ t: "rm", i: ownIds(plan.resourceIds) })
-      setSessionCards((prev) => clearFloatSelection(prev))
+      setSessionCards((prev) => clearFloatSelection(prev, localSeat))
       return true
     }
 
