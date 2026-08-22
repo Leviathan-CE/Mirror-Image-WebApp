@@ -104,7 +104,8 @@ export function MainPage() {
         if (cancelled) return
         setCommunityStatus("error")
         setErrorText("Could not load community decks.")
-      })
+      }) 
+      
 
     return () => {
       cancelled = true
