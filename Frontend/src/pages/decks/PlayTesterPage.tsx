@@ -173,8 +173,21 @@ export function PlayTesterPage() {
   })
   const [deckPeek, setDeckPeek] = useState<DeckPeekState | null>(null)
   const [deckSearchOpen, setDeckSearchOpen] = useState(false)
-  const [resourceTokens, setResourceTokens] = useState<CardLibraryItem[]>([])
-  const [resourcesReady, setResourcesReady] = useState(false)
+  const [resourceCache, setResourceCache] = useState<{
+    key: string
+    tokens: CardLibraryItem[]
+  } | null>(null)
+  const resourceCacheKey =
+    status === "ready" && token ? `ready:${token}` : "idle"
+  const resourceTokens = useMemo(
+    () =>
+      resourceCache?.key === resourceCacheKey ? resourceCache.tokens : [],
+    [resourceCache, resourceCacheKey]
+  )
+  const resourcesReady =
+    status === "ready" &&
+    !!token &&
+    resourceCache?.key === resourceCacheKey
   const [vsDraft, setVsDraft] = useState("")
   const [playNotice, setPlayNotice] = useState<string | null>(null)
   /**
@@ -205,7 +218,9 @@ export function PlayTesterPage() {
     [netActive, boardScreen, measuredFloatSize]
   )
   const floatLogicalRef = useRef(floatLogical)
-  floatLogicalRef.current = floatLogical
+  useEffect(() => {
+    floatLogicalRef.current = floatLogical
+  }, [floatLogical])
   const surfaceRef = useRef<HTMLDivElement>(null)
   const playRowRef = useRef<HTMLDivElement>(null)
   const stockpileRef = useRef<HTMLDivElement>(null)
@@ -605,13 +620,9 @@ export function PlayTesterPage() {
   }, [status, twoSeat, netActive])
 
   useEffect(() => {
-    if (status !== "ready") {
-      setResourceTokens([])
-      setResourcesReady(false)
-      return
-    }
+    if (status !== "ready" || !token) return
     let cancelled = false
-    setResourcesReady(false)
+    const key = `ready:${token}`
 
     // Resource tokens: identify by super type Resource + invoke-cost colour.
     void Promise.all([
@@ -625,13 +636,11 @@ export function PlayTesterPage() {
             byId.set(item.id, item)
           }
         }
-        setResourceTokens([...byId.values()])
-        setResourcesReady(true)
+        setResourceCache({ key, tokens: [...byId.values()] })
       })
       .catch(() => {
         if (!cancelled) {
-          setResourceTokens([])
-          setResourcesReady(true)
+          setResourceCache({ key, tokens: [] })
         }
       })
     return () => {
