@@ -26,6 +26,18 @@ import { ROUTES } from "@/lib/route"
 
 type DeckTab = "mine" | "community"
 
+type FetchStatus = "idle" | "loading" | "ready" | "error"
+
+/** Show loading on first fetch (idle) without syncing setState inside an effect. */
+function tabFetchStatus(
+  status: FetchStatus,
+  shouldFetch: boolean
+): FetchStatus {
+  if (!shouldFetch) return status
+  if (status === "idle") return "loading"
+  return status
+}
+
 /**
  * Logged-in home: operator profile + my decks / community public decks.
  */
@@ -35,12 +47,8 @@ export function MainPage() {
   const [tab, setTab] = useState<DeckTab>("mine")
   const [myDecks, setMyDecks] = useState<DeckSummary[]>([])
   const [communityDecks, setCommunityDecks] = useState<DeckSummary[]>([])
-  const [myStatus, setMyStatus] = useState<"idle" | "loading" | "ready" | "error">(
-    "idle"
-  )
-  const [communityStatus, setCommunityStatus] = useState<
-    "idle" | "loading" | "ready" | "error"
-  >("idle")
+  const [myStatus, setMyStatus] = useState<FetchStatus>("idle")
+  const [communityStatus, setCommunityStatus] = useState<FetchStatus>("idle")
   const [errorText, setErrorText] = useState("")
   const [creating, setCreating] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -53,8 +61,6 @@ export function MainPage() {
     if (tab !== "mine") return
 
     let cancelled = false
-    setMyStatus("loading")
-    setErrorText("")
 
     fetchMyDecks(token)
       .then((list) => {
@@ -87,8 +93,6 @@ export function MainPage() {
     if (tab !== "community") return
 
     let cancelled = false
-    setCommunityStatus("loading")
-    setErrorText("")
 
     fetchPublicDecks()
       .then((page) => {
@@ -118,6 +122,11 @@ export function MainPage() {
     const next = id === "community" ? "community" : "mine"
     setErrorText("")
     if (next !== "mine") resetCreateForm()
+    if (next === "community") {
+      setCommunityStatus("loading")
+    } else if (isAuthenticated && token) {
+      setMyStatus("loading")
+    }
     setTab(next)
   }
 
@@ -184,7 +193,12 @@ export function MainPage() {
     )
   }
 
-  const activeStatus = tab === "mine" ? myStatus : communityStatus
+  const shouldFetchMine = isAuthenticated && !!token && tab === "mine"
+  const shouldFetchCommunity = tab === "community"
+  const activeStatus =
+    tab === "mine"
+      ? tabFetchStatus(myStatus, shouldFetchMine)
+      : tabFetchStatus(communityStatus, shouldFetchCommunity)
   const activeDecks = tab === "mine" ? myDecks : communityDecks
 
   return (
