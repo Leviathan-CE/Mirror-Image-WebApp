@@ -51,7 +51,7 @@ services:
       SMTP_USE_SSL: ${SMTP_USE_SSL:-false}
       MAIL_FROM: ${MAIL_FROM:-}
     ports:
-      - "8000:8000"
+      - "8001:8001"
     # Named volume — same idea as production: art lives in the container
     # filesystem, not a host folder (and stays out of git).
     volumes:
@@ -63,7 +63,7 @@ services:
       context: ./Frontend
       args:
         # Baked into the JS bundle at build time (Vite). Rebuild frontend after API URL changes.
-        VITE_API_URL: ${VITE_API_URL:-http://127.0.0.1:8000}
+        VITE_API_URL: ${VITE_API_URL:-http://127.0.0.1:8001}
     depends_on:
       - api
     ports:
