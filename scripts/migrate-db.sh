@@ -7,6 +7,7 @@
 #   ./scripts/migrate-db.sh 17_users_stripe_subscription.sql   # one file
 #
 # Env overrides (optional):
+#   COMPOSE_FILE        default: docker-compose.yml (set to docker-compose.yml:docker-compose.prod.yml in prod)
 #   COMPOSE_DB_SERVICE  default: db
 #   POSTGRES_USER       default: postgres
 #   POSTGRES_DB         default: mirror_image

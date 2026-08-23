@@ -2,6 +2,9 @@
   "name": "mirror-image-webapp",
   "private": true,
   "scripts": {
-    "migrate": "bash ./scripts/migrate-db.sh"
+    "migrate": "bash ./scripts/migrate-db.sh",
+    "deploy": "bash ./scripts/deploy-production.sh",
+    "deploy:check": "bash ./scripts/check-production-env.sh",
+    "deploy:backup": "COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml bash ./scripts/backup-db.sh"
   }
 }

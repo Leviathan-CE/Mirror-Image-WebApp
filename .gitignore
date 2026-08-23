@@ -1,4 +1,7 @@
 .env
+deploy/nginx/ssl/*
+!deploy/nginx/ssl/README.md
+backups/
 .venv/
 __pycache__/
 *.py[cod]

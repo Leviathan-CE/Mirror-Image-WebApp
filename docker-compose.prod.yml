@@ -1,0 +1,32 @@
+# Production overrides — use with root compose file:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Exposes only nginx on 80/443. App services stay on the internal Docker network.
+
+services:
+  db:
+    ports: []
+
+  api:
+    ports: []
+
+  frontend:
+    ports: []
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?Set SITE_DOMAIN in .env (e.g. mirrorimagetcg.net)}
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN in .env (e.g. api.mirrorimagetcg.net)}
+    volumes:
+      - ./deploy/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./deploy/nginx/ssl.conf.template:/etc/nginx/ssl.conf.template:ro
+      - ./deploy/nginx/40-optional-ssl.sh:/docker-entrypoint.d/40-optional-ssl.sh:ro
+      - ./deploy/nginx/ssl:/etc/nginx/ssl:ro
