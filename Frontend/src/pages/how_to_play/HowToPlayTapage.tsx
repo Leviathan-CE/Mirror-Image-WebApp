@@ -389,10 +389,11 @@ export function HowToPlayPage() {
                                     Maintenance Phase
                                 </p>
                                 <div className="border-l-2 border-cyan-500/0 pl-4">
-                                    <ol className="list-decimal space-y-1 pl-6">
+                                    <ol className="list-decimal space-y-1 pl-6">                                        
                                         <li>Ready all entities you control.</li>
                                         <li> Trigger all Abilities with the <GameIcon name="start" /> tag.</li>
                                         <li>Remove a time counter from each card you control in play, and resolve any effect triggered when the last time counter is removed from a card in your stockpile.</li>
+                                        <li>If you control no resoruces in your stockpile, you loose the game.</li>
                                     </ol>
                                 </div>
                             </div>
@@ -986,8 +987,8 @@ export function HowToPlayPage() {
                                 since cards with time counters on them have no abilities. At the start
                                 of each of your turns, you may remove 1 counter from each card you
                                 have in play with time counters on it. When the last time counter is
-                                removed from a card in your stockpile, you may resolve any effects it
-                                has by adding those effects to the lock/queue, in an order of your choosing;
+                                removed from a card in your stockpile, you may resolve any effects without using the lock and
+                                in an order of your choosing;
                                 then move the card to the battlefield if it's an entity, or
                                 to the discard pile if it's a cyberspell. You may have up to 3 cards
                                 with time counters on them in your stockpile at any given time. 
