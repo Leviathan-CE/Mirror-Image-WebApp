@@ -358,11 +358,11 @@ export function useCardDragDrop({
   }
 
   function onFaceUpPileRelease(
-    instanceId: string,
+    instanceIds: string[],
     clientX: number,
     clientY: number
   ): boolean {
-    return applyDrop("faceUpPile", [instanceId], clientX, clientY)
+    return applyDrop("faceUpPile", instanceIds, clientX, clientY)
   }
 
   function onLibraryCardRelease(
@@ -374,7 +374,7 @@ export function useCardDragDrop({
       (c) => c.instanceId === instanceId && c.zone === PLAY_ZONE.library
     )
     if (!card) return
-    onFaceUpPileRelease(instanceId, clientX, clientY)
+    onFaceUpPileRelease([instanceId], clientX, clientY)
   }
 
   return {

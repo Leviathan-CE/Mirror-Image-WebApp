@@ -114,6 +114,10 @@ export type PlayContextMenuActions = {
   /** Play with the deck's top card face up on the pile (flip in place). */
   toggleDeckTopRevealed: () => void
   openDeckSearch: () => void
+  /** Open the deck-search style browser for trashyard or dismantled. */
+  openFaceUpPileSearch: (
+    zone: typeof PLAY_ZONE.trashyard | typeof PLAY_ZONE.dismantled
+  ) => void
   moveAllFromZone: (
     from: MoveAllSourceZone,
     to: MoveAllDestinationZone
@@ -275,7 +279,18 @@ export function usePlayContextMenu({
   }
 
   if (ctxMenu.kind === "faceUpPile") {
+    const pileCount = cardsInZone(sessionCards, ctxMenu.zone, owner).length
+    const searchLabel =
+      ctxMenu.zone === PLAY_ZONE.trashyard
+        ? "Search trashyard…"
+        : "Search dismantled…"
     return [
+      {
+        id: CTX_MENU_ACTION.pileSearch,
+        label: searchLabel,
+        disabled: pileCount === 0 || animBusy,
+        onSelect: () => actions.openFaceUpPileSearch(ctxMenu.zone),
+      },
       buildMoveAllMenuItem(
         ctxMenu.zone,
         sessionCards,
@@ -479,10 +494,21 @@ export function usePlayContextMenu({
     card.zone === PLAY_ZONE.trashyard ||
     card.zone === PLAY_ZONE.dismantled
   ) {
+    const pileZone = card.zone
+    const searchLabel =
+      pileZone === PLAY_ZONE.trashyard
+        ? "Search trashyard…"
+        : "Search dismantled…"
     return [
+      {
+        id: CTX_MENU_ACTION.pileSearch,
+        label: searchLabel,
+        disabled: animBusy,
+        onSelect: () => actions.openFaceUpPileSearch(pileZone),
+      },
       putOnBottomItem,
       buildMoveAllMenuItem(
-        card.zone,
+        pileZone,
         sessionCards,
         animBusy,
         actions.moveAllFromZone,

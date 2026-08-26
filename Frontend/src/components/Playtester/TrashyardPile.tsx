@@ -1,11 +1,7 @@
 /**
- * Face-up trashyard (discard) pile.
- *
- * Collapsed: only the top card shows.
- * Hover: fan condensed unique faces; duplicates share one slot with ×N.
- *
- * Important: stay expanded for the whole drag. Collapsing mid-drag unmounts
- * the pointer-capture target and kills the gesture.
+ * Face-up trashyard / dismantled / pilot pile — collapsed top card only.
+ * Click (without drag) opens a deck-search style browser for the pile.
+ * Drag the top card to move it onto a zone.
  */
 
 import {
@@ -31,73 +27,28 @@ import { cn } from "@/lib/utils"
 
 const DRAG_THRESHOLD_PX = 5
 
-type TrashGroup = {
-  cardId: number
-  display: PlayingCardInstance
-  instances: PlayingCardInstance[]
-}
-
-function groupTrashCards(cards: PlayingCardInstance[]): TrashGroup[] {
-  const byId = new Map<number, PlayingCardInstance[]>()
-  const order: number[] = []
-  for (const card of cards) {
-    const list = byId.get(card.cardId)
-    if (!list) {
-      byId.set(card.cardId, [card])
-      order.push(card.cardId)
-    } else {
-      list.push(card)
-    }
-  }
-  return order.map((cardId) => {
-    const instances = byId.get(cardId)!
-    return {
-      cardId,
-      display: instances[instances.length - 1]!,
-      instances,
-    }
-  })
-}
-
 export type TrashyardPileProps = {
   cards: PlayingCardInstance[]
   className?: string
-  /** Zone title under the pile. */
   label?: string
-  /** Card footprint. Default `md`. Use `lg` to match the pilot column. */
   size?: PlayPileSize
-  onReleaseCard: (
-    instanceId: string,
+  onReleaseCards: (
+    instanceIds: string[],
     clientX: number,
     clientY: number
   ) => void
-  /** Right-click a pile card (zone actions). */
+  /** Click the pile (no drag) to open the search-style browser. */
+  onBrowse?: () => void
   onCardContextMenu?: (
     instanceId: string,
     clientX: number,
     clientY: number
   ) => void
-  /** Right-click empty pile space (e.g. Move all). */
   onPileContextMenu?: (clientX: number, clientY: number) => void
-  /**
-   * Optional badge drawn on top of the pile (e.g. pilot +GEN).
-   * Shown even when the pile is empty so zone-persistent counters stay visible.
-   */
   cardOverlay?: ReactNode
-  /**
-   * Double-click a pile card to expend / ready (pilot slot).
-   * Omit on trashyard / dismantled — those cards are not in-play.
-   */
   onToggleExpended?: (instanceId: string) => void
-  /**
-   * Uniform shrink for short viewports (1 = full size). Applied to the face
-   * and fan peek so layout + drag rects stay aligned.
-   */
   scale?: number
-  /**
-   * Which way the hover fan grows from the resting face.
-   * Opp piles at the top of the board use `"down"` so cards stay on-screen.
-   */
+  /** Kept for call-site compatibility; fan UI removed in favour of browser. */
   fanDirection?: "up" | "down"
 }
 
@@ -120,42 +71,32 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       className,
       label = "Trashyard",
       size = "md",
-      onReleaseCard,
+      onReleaseCards,
+      onBrowse,
       onCardContextMenu,
       onPileContextMenu,
       cardOverlay,
       onToggleExpended,
       scale = 1,
-      fanDirection = "up",
     },
     ref
   ) {
-    const { w: cardW, h: cardH, peek: fanPeek } = scalePlayPile(size, scale)
-    const revealShift = Math.round(cardH * 0.75)
-    const fanDown = fanDirection === "down"
+    const { w: cardW, h: cardH } = scalePlayPile(size, scale)
     const cardBoxClass = "h-full w-full"
     const measureRef = useRef<HTMLDivElement | null>(null)
 
-    const [pileHovered, setPileHovered] = useState(false)
-    /** Index into `groups` — covering cards above this slide away. */
-    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
-    /** Keeps the fan mounted for the whole drag if the gesture started expanded. */
-    const [fanLocked, setFanLocked] = useState(false)
     const [drag, setDrag] = useState<TrashDrag | null>(null)
     const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
     const dragRef = useRef<TrashDrag | null>(null)
-    const onReleaseRef = useLatestRef(onReleaseCard)
+    const onReleaseRef = useLatestRef(onReleaseCards)
+    const onBrowseRef = useLatestRef(onBrowse)
 
-    const groups = groupTrashCards(cards)
     const topCard = cards.length > 0 ? cards[cards.length - 1]! : null
-    const expanded = (pileHovered || fanLocked) && groups.length > 0
-
     const dragging = drag
     const ghostCard = dragging
       ? cards.find((c) => c.instanceId === dragging.instanceId)
       : null
 
-    // Window listeners survive leaving the pile / card bounds.
     useEffect(() => {
       if (!drag) return
 
@@ -185,12 +126,13 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
         if (!current || current.pointerId !== event.pointerId) return
         dragRef.current = null
         setDrag(null)
-        setFanLocked(false)
-        setPileHovered(false)
-        setHoveredIndex(null)
-        if (!current.moved) return
+        if (!current.moved) {
+          // Click without drag → open browser (same idea as searching the deck).
+          onBrowseRef.current?.()
+          return
+        }
         onReleaseRef.current(
-          current.instanceId,
+          [current.instanceId],
           event.clientX,
           event.clientY
         )
@@ -232,9 +174,6 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       }
       if (event.button !== 0) return
       event.preventDefault()
-      // If the fan is open, lock it open until pointer-up (avoids unmount mid-drag).
-      if (pileHovered || fanLocked) setFanLocked(true)
-      setHoveredIndex(null)
       const paint = elementCssPaintScale(measureRef.current)
       const next: TrashDrag = {
         instanceId,
@@ -251,10 +190,6 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       setDrag(next)
     }
 
-    function dragInstanceIdForGroup(group: TrashGroup): string {
-      return group.instances[group.instances.length - 1]!.instanceId
-    }
-
     function onCardDoubleClick(
       event: ReactMouseEvent<HTMLDivElement>,
       instanceId: string
@@ -265,7 +200,6 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       onToggleExpended(instanceId)
     }
 
-    // Scale sampled in pointer handlers — do not read refs during render.
     const paintSx = dragging?.paintSx ?? 1
     const paintSy = dragging?.paintSy ?? 1
 
@@ -278,8 +212,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
             else if (ref) ref.current = node
           }}
           className={cn(
-            "relative flex shrink-0 flex-col items-center self-stretch",
-            expanded ? "z-50" : "z-40",
+            "relative z-40 flex shrink-0 flex-col items-center self-stretch",
             className
           )}
           style={{ width: cardW }}
@@ -287,24 +220,12 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
           <div
             className="relative shrink-0 overflow-visible"
             style={{ width: cardW, height: cardH }}
-            onMouseEnter={() => {
-              if (!dragRef.current) setPileHovered(true)
-            }}
-            onMouseLeave={() => {
-              if (!dragRef.current) {
-                setPileHovered(false)
-                setHoveredIndex(null)
-              }
-            }}
           >
             {cards.length === 0 ? (
               <div
-                className={cn(
-                  "absolute inset-x-0 flex items-center justify-center",
-                  fanDown ? "top-0" : "bottom-0",
-                  "border border-dashed border-cyan-500/25 bg-black/40 clip-angled"
-                )}
+                className="absolute inset-x-0 bottom-0 flex items-center justify-center border border-dashed border-cyan-500/25 bg-black/40 clip-angled"
                 style={{ height: cardH }}
+                onClick={() => onBrowse?.()}
                 onContextMenu={(event) => {
                   event.preventDefault()
                   event.stopPropagation()
@@ -313,101 +234,15 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
               >
                 <span className="font-mono text-[10px] text-white/35">Empty</span>
               </div>
-            ) : expanded ? (
-              groups.map((group, index) => {
-                const qty = group.instances.length
-                const instanceId = dragInstanceIdForGroup(group)
-                const isDragging =
-                  dragging?.instanceId === instanceId && dragging.moved
-                const isHovered =
-                  hoveredIndex === index && !dragging?.moved
-                // Higher index sits further along the fan; covering cards slide
-                // away from the resting edge to uncover the hovered face.
-                const isCovering =
-                  hoveredIndex != null &&
-                  index > hoveredIndex &&
-                  !isHovered &&
-                  !dragging?.moved
-
-                return (
-                  <div
-                    key={group.cardId}
-                    className={cn(
-                      "absolute left-0 touch-none select-none",
-                      "origin-center transition-[transform,filter] duration-220 ease-out",
-                      isDragging
-                        ? "cursor-grabbing opacity-30"
-                        : "cursor-grab"
-                    )}
-                    style={{
-                      ...(fanDown
-                        ? { top: index * fanPeek }
-                        : { bottom: index * fanPeek }),
-                      width: cardW,
-                      height: cardH,
-                      zIndex: index + 1,
-                      transform: [
-                        isHovered
-                          ? "scale(1.06)"
-                          : isCovering
-                            ? `translateY(${fanDown ? revealShift : -revealShift}px)`
-                            : "translateY(0) scale(1)",
-                        group.display.expended ? "rotate(90deg)" : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" "),
-                      filter: isHovered
-                        ? "brightness(1.08)"
-                        : isCovering
-                          ? "brightness(0.88)"
-                          : "brightness(0.95)",
-                    }}
-                    onMouseEnter={() => {
-                      if (!dragRef.current) setHoveredIndex(index)
-                    }}
-                    onPointerDown={(event) =>
-                      onCardPointerDown(event, instanceId)
-                    }
-                    onDoubleClick={(event) =>
-                      onCardDoubleClick(event, instanceId)
-                    }
-                    onContextMenu={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      onCardContextMenu?.(
-                        instanceId,
-                        event.clientX,
-                        event.clientY
-                      )
-                    }}
-                  >
-                    <PlayingCard
-                      card={group.display}
-                      className={cardBoxClass}
-                    />
-                    {qty > 1 ? (
-                      <span
-                        className={cn(
-                          "pointer-events-none absolute bottom-1 right-1 z-10",
-                          "border border-cyan-400/50 bg-black/80 px-1.5 py-0.5",
-                          "font-mono text-[10px] text-cyan-100"
-                        )}
-                      >
-                        ×{qty}
-                      </span>
-                    ) : null}
-                  </div>
-                )
-              })
             ) : (
               <div
                 className={cn(
-                  "absolute inset-x-0 touch-none select-none origin-center transition-transform duration-250 ease-out",
-                  fanDown ? "top-0" : "bottom-0",
+                  "absolute inset-x-0 bottom-0 touch-none select-none origin-center",
                   dragging?.moved ? "cursor-grabbing opacity-30" : "cursor-grab",
                   topCard?.expended && "rotate-90"
                 )}
                 style={{ width: cardW, height: cardH }}
+                title={onBrowse ? "Click to browse · drag to move top card" : undefined}
                 onPointerDown={(event) => {
                   if (topCard) onCardPointerDown(event, topCard.instanceId)
                 }}

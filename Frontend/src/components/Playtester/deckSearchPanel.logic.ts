@@ -126,3 +126,43 @@ export function writeStoredDeckSearchBox(box: DeckSearchBox): void {
     /* storage unavailable (private mode / quota) — box stays session-only */
   }
 }
+
+/** Same clamp/default helpers; separate storage key for trash / dismantled browser. */
+export function readStoredFaceUpPileBrowserBox(
+  viewport: ViewportSize
+): DeckSearchBox {
+  try {
+    const raw = window.localStorage.getItem(
+      PLAYTESTER_STORAGE.faceUpPileBrowserBoxPx
+    )
+    if (!raw) return defaultDeckSearchBox(viewport)
+    const parsed = safeJsonParse(raw)
+    if (!parsed || typeof parsed !== "object") {
+      return defaultDeckSearchBox(viewport)
+    }
+    const row = parsed as Partial<DeckSearchBox>
+    const fallback = defaultDeckSearchBox(viewport)
+    return clampDeckSearchBox(
+      {
+        x: Number.isFinite(Number(row.x)) ? Number(row.x) : fallback.x,
+        y: Number.isFinite(Number(row.y)) ? Number(row.y) : fallback.y,
+        width: Number(row.width),
+        height: Number(row.height),
+      },
+      viewport
+    )
+  } catch {
+    return defaultDeckSearchBox(viewport)
+  }
+}
+
+export function writeStoredFaceUpPileBrowserBox(box: DeckSearchBox): void {
+  try {
+    window.localStorage.setItem(
+      PLAYTESTER_STORAGE.faceUpPileBrowserBoxPx,
+      JSON.stringify(box)
+    )
+  } catch {
+    /* storage unavailable */
+  }
+}

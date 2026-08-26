@@ -6,6 +6,7 @@ import {
   filterLibraryByName,
   groupCardsByPrinting,
   libraryCardsInOrder,
+  lookAtTopCommitOrder,
   peekTopLibrary,
   putTopLibraryOnBottom,
   reorderTopLibrary,
@@ -141,6 +142,21 @@ describe("deckActions.logic", () => {
 
   it("reorderTopLibrary no-ops on a mismatched id set", () => {
     expect(reorderTopLibrary(mixed, ["a", "h"])).toBe(mixed)
+  })
+
+  it("lookAtTopCommitOrder puts discards first so degrade can mill them", () => {
+    const peeked = [card("a", "library"), card("b", "library"), card("c", "library")]
+    expect(lookAtTopCommitOrder(["c", "a"], ["b"], peeked)).toEqual([
+      "b",
+      "c",
+      "a",
+    ])
+  })
+
+  it("lookAtTopCommitOrder rejects a mismatched peek set", () => {
+    const peeked = [card("a", "library"), card("b", "library")]
+    expect(lookAtTopCommitOrder(["a"], ["c"], peeked)).toBeNull()
+    expect(lookAtTopCommitOrder(["a", "a"], [], peeked)).toBeNull()
   })
 
   it("groupCardsByPrinting collapses copies in first-appearance order", () => {

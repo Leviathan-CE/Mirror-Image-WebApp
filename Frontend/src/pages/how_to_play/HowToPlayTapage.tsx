@@ -1187,25 +1187,24 @@ export function HowToPlayPage() {
                             <p>
                                 Your pilot's invoke cost plus your chosen augments' augment color
                                 determine your deck's color combination (see Reading Your Cards for an
-                                image). There are two requirements a card must meet to be included in
+                                image). There are is one requirement; a card must meet to be included in
                                 your deck:
                             </p>
                             <ol className="list-decimal space-y-2 pl-6">
-                                <li>Each card's invoke cost must have the same number of colored symbols as&mdash;or fewer than&mdash;the combined colored symbols of your pilot's invoke cost and your augments' augment color.</li>
-                                <li>The total invoke cost of the card must be less than the total invoke cost provided by the colored symbols across your augments and pilot, where each colored symbol on your pilot and augments counts as 2 toward the total.</li>
+                                <li>Each card's invoke cost must have the same number of colored symbols or fewer than the combined colored symbols of your pilot's invoke cost and your augments' augment color.</li>
+                              
                             </ol>
                             <Note>
                                 Note: grey numbered-value symbols are disregarded for colored
                                 <GameIcon name="ram" /><GameIcon name="power" /><GameIcon name="metal" />
-                                <GameIcon name="time" /><GameIcon name="life" /> total invoke costs but still
-                                count as 2 toward colorless and steel <GameIcon name="steel" /> total
-                                invoke costs.
+                                <GameIcon name="time" /><GameIcon name="life" /> total invoke costs.
                             </Note>
                             <p>
                                 For this starter deck, your total color combination of: <GameIcon name="ram" /><GameIcon name="ram" /><GameIcon name="ram" /><GameIcon name="power" /><GameIcon name="power" /><GameIcon name="power" /><GameIcon name="steel" /> allows you to play
-                                any card costing up to 3 blue, 3 yellow, and 1 steel or colorless&mdash;
-                                with a total invoke-cost budget of 2 for colorless and steel costs, 6
-                                for blue, 6 for yellow, and 12 for blue and yellow combined.
+                                any card with up to 3 blue, 3 yellow, and total access to colourless steel cards;
+                               <Note>
+                                if your pilot has a colurless numbered symbol or the steel symbol, it can play any coloulress.
+                               </Note>
                             </p>
                             <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                 <img
@@ -1215,24 +1214,15 @@ export function HowToPlayPage() {
                                 />
                             </div>
                             <p>
-                                In the examples below you can see how the system works. Grey colorless
-                                symbols do not count as steel when other colors are involved; they only
-                                count toward the total invoke cost. That's why our HMIV MK IV unit is
-                                legal: we can afford up to 12 total invoke cost and also meet its
-                                required 2 blue and 3 yellow symbols (numbered grey symbols only count
-                                toward the total invoke cost). We have up to 2 invoke cost available for
-                                steel and colorless cards; for our second example, the Heavy Duty RIG
-                                card has a total invoke cost of 3 and no color, so we would need one
-                                more steel symbol in our suite&mdash;or our pilot would need a grey
-                                That is why the Heavy Duty RIG card cannot be part of
-                                the deck.
+                                In the examples below you can see how the system works. Grey colorless numbered
+                                symbols do not count as steel. That's why our HMIV MK IV unit is
+                                legal.
                             </p>
 
 
                             <p>
                                 Finally, the Flame Kin Elementalist requires blue (which we have) and
-                                red (which we lack). Even though our 3 blue provides a total invoke cost
-                                of 6&mdash;enough for the card's total invoke cost of 2&mdash;we cannot
+                                red (which we lack). We cannot
                                 include it, because we lack the red symbol.
                             </p>
 

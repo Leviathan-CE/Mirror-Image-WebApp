@@ -65,11 +65,12 @@ import {
   type DeckCountKey,
 } from "@/components/Playtester/usePlayContextMenu"
 import { DeckPile } from "@/components/Playtester/DeckPile"
-import { DeckPeekOverlay } from "@/components/Playtester/DeckPeekOverlay"
+import { DeckPeekOverlay, type DeckPeekCloseResult } from "@/components/Playtester/DeckPeekOverlay"
 import { DeckShuffleAnimation } from "@/components/Playtester/DeckShuffleAnimation"
 import { DeckSearchModal } from "@/components/Playtester/DeckSearchModal"
 import {
   clampDeckCount,
+  lookAtTopCommitOrder,
   peekTopLibrary,
 } from "@/components/Playtester/deckActions.logic"
 import {
@@ -81,6 +82,7 @@ import { DockedHandStrip } from "@/components/Playtester/DockedHandStrip"
 import { PlayerHand } from "@/components/Playtester/PlayerHand"
 import { TrashyardPile } from "@/components/Playtester/TrashyardPile"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
+import { selectableActionTargets } from "@/components/Playtester/playCard.logic"
 import { ContextMenu } from "@/components/ui/ContextMenu"
 import {
   DropdownMenu,
@@ -173,6 +175,9 @@ export function PlayTesterPage() {
   })
   const [deckPeek, setDeckPeek] = useState<DeckPeekState | null>(null)
   const [deckSearchOpen, setDeckSearchOpen] = useState(false)
+  const [pileBrowser, setPileBrowser] = useState<
+    null | "trashyard" | "dismantled" | "oppTrash" | "oppDismantled"
+  >(null)
   const [resourceCache, setResourceCache] = useState<{
     key: string
     tokens: CardLibraryItem[]
@@ -824,7 +829,14 @@ export function PlayTesterPage() {
     kind: Parameters<typeof adjustCardCounters>[1],
     delta: number
   ) {
-    adjustCardCounters([instanceId], kind, delta)
+    // Same bulk rule as the context menu: if the clicked card is selected,
+    // adjust that counter kind on every selected card in a free-float zone.
+    // −1 floors at 0, so cards without that counter are left alone.
+    const focus = sessionCards.find((c) => c.instanceId === instanceId)
+    const targets = focus
+      ? selectableActionTargets(sessionCards, focus)
+      : [instanceId]
+    adjustCardCounters(targets, kind, delta)
   }
 
   function spawnResourceColor(color: ResourceColor) {
@@ -908,16 +920,46 @@ export function PlayTesterPage() {
     setPlayNotice(next ? "Top card revealed." : "Top card hidden.")
   }
 
-  function onDeckPeekDone(orderedCards: PlayingCardInstance[]) {
+  function onDeckPeekDone(result: DeckPeekCloseResult) {
     const peek = deckPeek
     setDeckPeek(null)
-    if (!peek?.allowReorder || orderedCards.length === 0) return
-    reorderTop(orderedCards.map((c) => c.instanceId))
+    if (!peek?.allowReorder) return
+
+    const discardIds = result.discarded.map((c) => c.instanceId)
+    const remainingIds = result.remaining.map((c) => c.instanceId)
+    const commitOrder = lookAtTopCommitOrder(
+      remainingIds,
+      discardIds,
+      peek.cards
+    )
+    if (!commitOrder || commitOrder.length === 0) return
+
+    // Discarded cards sit on top so degrade mills them with the usual
+    // deck → trash flip-fly; keepers become the new top afterward.
+    reorderTop(commitOrder)
+    if (discardIds.length > 0) {
+      if (hasPendingDrawTimers() || isFlipFlying()) {
+        setPlayNotice("Wait for animations to finish, then mill again.")
+        return
+      }
+      queueDegradeToTrashyard(discardIds.length)
+      setPlayNotice(
+        discardIds.length === 1
+          ? "Milled 1 card from the look."
+          : `Milled ${discardIds.length} cards from the look.`
+      )
+    }
   }
 
   function openDeckSearch() {
     if (libraryCount <= 0) return
     setDeckSearchOpen(true)
+  }
+
+  function openFaceUpPileSearch(
+    zone: typeof PLAY_ZONE.trashyard | typeof PLAY_ZONE.dismantled
+  ) {
+    setPileBrowser(zone)
   }
 
   /** Searching the deck means shuffling it afterwards, however you close it. */
@@ -1114,6 +1156,7 @@ export function PlayTesterPage() {
       shuffleDeck,
       toggleDeckTopRevealed,
       openDeckSearch,
+      openFaceUpPileSearch,
       moveAllFromZone: moveAll,
       moveInPlayToZone: (instanceIds, zone) => {
         instanceIds.forEach((id) => {
@@ -1153,8 +1196,8 @@ export function PlayTesterPage() {
               cards={visOppTrash}
               label="Opp trash"
               size="lg"
-              fanDirection="down"
-              onReleaseCard={() => undefined}
+              onReleaseCards={() => undefined}
+              onBrowse={() => setPileBrowser("oppTrash")}
             />
             <DeckPile
               ref={oppDeckRef}
@@ -1169,8 +1212,8 @@ export function PlayTesterPage() {
               cards={visOppDismantled}
               label="Opp dismantled"
               size="lg"
-              fanDirection="down"
-              onReleaseCard={() => undefined}
+              onReleaseCards={() => undefined}
+              onBrowse={() => setPileBrowser("oppDismantled")}
             />
           </div>
         ) : null}
@@ -1197,7 +1240,7 @@ export function PlayTesterPage() {
                     cards={visOppPilot}
                     label="Opp pilot"
                     size="lg"
-                    onReleaseCard={() => undefined}
+                    onReleaseCards={() => undefined}
                   />
                   <LifeCounter
                     life={oppLife}
@@ -1305,7 +1348,7 @@ export function PlayTesterPage() {
                   cards={visPilot}
                   label="Pilot"
                   size="lg"
-                  onReleaseCard={onFaceUpPileRelease}
+                  onReleaseCards={onFaceUpPileRelease}
                   onCardContextMenu={onFloatCardContextMenu}
                   onToggleExpended={(instanceId) =>
                     onToggleExpended([instanceId])
@@ -1326,7 +1369,8 @@ export function PlayTesterPage() {
             cards={visDismantled}
             label="Dismantled"
             size="lg"
-            onReleaseCard={onFaceUpPileRelease}
+            onReleaseCards={onFaceUpPileRelease}
+            onBrowse={() => setPileBrowser("dismantled")}
             onCardContextMenu={onFloatCardContextMenu}
             onPileContextMenu={(x, y) =>
               onFaceUpPileContextMenu(PLAY_ZONE.dismantled, x, y)
@@ -1356,7 +1400,8 @@ export function PlayTesterPage() {
             cards={visTrash}
             label="Trashyard"
             size="lg"
-            onReleaseCard={onFaceUpPileRelease}
+            onReleaseCards={onFaceUpPileRelease}
+            onBrowse={() => setPileBrowser("trashyard")}
             onCardContextMenu={onFloatCardContextMenu}
             onPileContextMenu={(x, y) =>
               onFaceUpPileContextMenu(PLAY_ZONE.trashyard, x, y)
@@ -1599,10 +1644,43 @@ export function PlayTesterPage() {
 
       <DeckSearchModal
         open={deckSearchOpen}
+        mode="library"
         sessionCards={sessionCards}
         owner={localSeat}
         onCancel={closeDeckSearch}
-        onCardRelease={onLibraryCardRelease}
+        onCardRelease={(ids, x, y) => {
+          const id = ids[0]
+          if (id) onLibraryCardRelease(id, x, y)
+        }}
+        onCardContextMenu={onFloatCardContextMenu}
+      />
+
+      <DeckSearchModal
+        open={pileBrowser != null}
+        mode="pile"
+        title={
+          pileBrowser === "trashyard"
+            ? "Trashyard"
+            : pileBrowser === "dismantled"
+              ? "Dismantled"
+              : pileBrowser === "oppTrash"
+                ? "Opp trash"
+                : "Opp dismantled"
+        }
+        cards={
+          pileBrowser === "trashyard"
+            ? visTrash
+            : pileBrowser === "dismantled"
+              ? visDismantled
+              : pileBrowser === "oppTrash"
+                ? visOppTrash
+                : visOppDismantled
+        }
+        canDragOut={
+          pileBrowser === "trashyard" || pileBrowser === "dismantled"
+        }
+        onCancel={() => setPileBrowser(null)}
+        onCardRelease={onFaceUpPileRelease}
         onCardContextMenu={onFloatCardContextMenu}
       />
     </section>

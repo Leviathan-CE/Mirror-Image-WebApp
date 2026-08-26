@@ -1,8 +1,10 @@
 /**
  * Face-up peek of library cards (Look at top X / Reveal top).
  * When `allowReorder` is set, drag cards to change top-of-deck order; Done commits.
+ * Cards can also be dragged into a discard pile — on Done those mill to trash
+ * (deck → trash flip-fly) after the keepers become the new top.
  *
- * Pointer events (not HTML5 drag): the overlay is portalled but still bubbles
+ * Pointer events (not HTML5 drag): the overlay is portaled but still bubbles
  * React events into the playtester surface, which cancels dragstart.
  */
 
@@ -23,17 +25,25 @@ const DRAG_THRESHOLD_PX = 5
 const GHOST_W = 112
 const GHOST_H = 144
 
+export type DeckPeekCloseResult = {
+  remaining: PlayingCardInstance[]
+  discarded: PlayingCardInstance[]
+}
+
 export type DeckPeekOverlayProps = {
   open: boolean
   title: string
   cards: PlayingCardInstance[]
-  /** When true, player may drag to rearrange; Done returns the new order. */
+  /** When true, player may drag to rearrange / discard; Done commits. */
   allowReorder?: boolean
-  onClose: (orderedCards: PlayingCardInstance[]) => void
+  onClose: (result: DeckPeekCloseResult) => void
 }
+
+type DragSource = "ordered" | "discard"
 
 type DragState = {
   pointerId: number
+  source: DragSource
   fromIndex: number
   card: PlayingCardInstance
   startX: number
@@ -41,7 +51,9 @@ type DragState = {
   moved: boolean
   ghostX: number
   ghostY: number
+  /** Slot under cursor when source is ordered, or insert index when restoring. */
   overIndex: number
+  overDiscard: boolean
 }
 
 function moveIndex<T>(list: T[], from: number, to: number): T[] {
@@ -54,6 +66,21 @@ function moveIndex<T>(list: T[], from: number, to: number): T[] {
   return next
 }
 
+function pointInRect(
+  clientX: number,
+  clientY: number,
+  el: HTMLElement | null
+): boolean {
+  if (!el) return false
+  const r = el.getBoundingClientRect()
+  return (
+    clientX >= r.left &&
+    clientX <= r.right &&
+    clientY >= r.top &&
+    clientY <= r.bottom
+  )
+}
+
 export function DeckPeekOverlay({
   open,
   title,
@@ -62,15 +89,19 @@ export function DeckPeekOverlay({
   onClose,
 }: DeckPeekOverlayProps) {
   const [ordered, setOrdered] = useState<PlayingCardInstance[]>(cards)
+  const [discarded, setDiscarded] = useState<PlayingCardInstance[]>([])
   const [drag, setDrag] = useState<DragState | null>(null)
   const dragRef = useRef<DragState | null>(null)
   /** Slot elements, keyed by instance id, for pointer hit-testing. */
   const slotRefs = useRef<Map<string, HTMLLIElement>>(new Map())
+  const discardZoneRef = useRef<HTMLDivElement | null>(null)
   const orderedRef = useLatestRef(ordered)
+  const discardedRef = useLatestRef(discarded)
 
   useEffect(() => {
     if (!open) return
     setOrdered(cards)
+    setDiscarded([])
     setDrag(null)
     dragRef.current = null
   }, [open, cards])
@@ -78,7 +109,7 @@ export function DeckPeekOverlay({
   useEffect(() => {
     if (!drag) return
 
-    /** Index of the slot under the cursor (falls back to the dragged slot). */
+    /** Index of the keepers slot under the cursor (falls back to the dragged slot). */
     function slotIndexAt(clientX: number, clientY: number, fallback: number) {
       let found = fallback
       orderedRef.current.forEach((card, index) => {
@@ -105,16 +136,20 @@ export function DeckPeekOverlay({
         event.clientY - current.startY
       )
       if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
+      const overDiscard = pointInRect(
+        event.clientX,
+        event.clientY,
+        discardZoneRef.current
+      )
       const next: DragState = {
         ...current,
         moved: true,
         ghostX: event.clientX,
         ghostY: event.clientY,
-        overIndex: slotIndexAt(
-          event.clientX,
-          event.clientY,
-          current.fromIndex
-        ),
+        overDiscard,
+        overIndex: overDiscard
+          ? current.fromIndex
+          : slotIndexAt(event.clientX, event.clientY, current.fromIndex),
       }
       dragRef.current = next
       setDrag(next)
@@ -126,8 +161,57 @@ export function DeckPeekOverlay({
       dragRef.current = null
       setDrag(null)
       if (!current.moved) return
-      const to = slotIndexAt(event.clientX, event.clientY, current.overIndex)
-      setOrdered((prev) => moveIndex(prev, current.fromIndex, to))
+
+      const overDiscard = pointInRect(
+        event.clientX,
+        event.clientY,
+        discardZoneRef.current
+      )
+
+      if (current.source === "ordered") {
+        if (overDiscard) {
+          setOrdered((prev) => prev.filter((_, i) => i !== current.fromIndex))
+          setDiscarded((prev) => [...prev, current.card])
+          return
+        }
+        const to = slotIndexAt(event.clientX, event.clientY, current.overIndex)
+        setOrdered((prev) => moveIndex(prev, current.fromIndex, to))
+        return
+      }
+
+      // Dragging from the discard pile — drop back into keepers, or stay.
+      if (overDiscard) return
+      const insertAt = Math.min(
+        Math.max(
+          0,
+          slotIndexAt(event.clientX, event.clientY, orderedRef.current.length)
+        ),
+        orderedRef.current.length
+      )
+      // If we didn't hit a slot, append.
+      let at = insertAt
+      if (
+        orderedRef.current.length > 0 &&
+        !orderedRef.current.some((card) => {
+          const el = slotRefs.current.get(card.instanceId)
+          if (!el) return false
+          const r = el.getBoundingClientRect()
+          return (
+            event.clientX >= r.left &&
+            event.clientX <= r.right &&
+            event.clientY >= r.top &&
+            event.clientY <= r.bottom
+          )
+        })
+      ) {
+        at = orderedRef.current.length
+      }
+      setDiscarded((prev) => prev.filter((_, i) => i !== current.fromIndex))
+      setOrdered((prev) => {
+        const next = [...prev]
+        next.splice(at, 0, current.card)
+        return next
+      })
     }
 
     window.addEventListener("pointermove", onMove)
@@ -142,8 +226,9 @@ export function DeckPeekOverlay({
 
   if (!open || typeof document === "undefined") return null
 
-  function onSlotPointerDown(
-    event: ReactPointerEvent<HTMLLIElement>,
+  function beginDrag(
+    event: ReactPointerEvent,
+    source: DragSource,
     card: PlayingCardInstance,
     index: number
   ) {
@@ -152,6 +237,7 @@ export function DeckPeekOverlay({
     event.stopPropagation()
     const next: DragState = {
       pointerId: event.pointerId,
+      source,
       fromIndex: index,
       card,
       startX: event.clientX,
@@ -160,9 +246,17 @@ export function DeckPeekOverlay({
       ghostX: event.clientX,
       ghostY: event.clientY,
       overIndex: index,
+      overDiscard: false,
     }
     dragRef.current = next
     setDrag(next)
+  }
+
+  function finish() {
+    onClose({
+      remaining: orderedRef.current,
+      discarded: discardedRef.current,
+    })
   }
 
   return createPortal(
@@ -181,19 +275,20 @@ export function DeckPeekOverlay({
               </h2>
               <p className="mt-1 font-mono text-[11px] text-cyan-100/60">
                 {allowReorder
-                  ? "Drag cards to rearrange. #1 is the top of the deck. Done applies the new order."
+                  ? "Drag to rearrange (#1 = top). Drop cards on Discard to mill them when you press Done."
                   : "These cards stay in the deck in the same order."}
               </p>
             </div>
             <button
               type="button"
               className="font-buahs93 border border-cyan-500/40 px-3 py-1.5 text-xs text-cyan-100 hover:bg-cyan-500/10"
-              onClick={() => onClose(orderedRef.current)}
+              onClick={finish}
             >
               Done
             </button>
           </div>
-          {ordered.length === 0 ? (
+
+          {ordered.length === 0 && discarded.length === 0 ? (
             <p className="mt-6 font-mono text-xs text-white/40">No cards.</p>
           ) : (
             <ul className="mt-4 flex flex-wrap gap-3">
@@ -205,15 +300,18 @@ export function DeckPeekOverlay({
                     else slotRefs.current.delete(card.instanceId)
                   }}
                   onPointerDown={(event) =>
-                    onSlotPointerDown(event, card, index)
+                    beginDrag(event, "ordered", card, index)
                   }
                   className={cn(
                     "flex flex-col items-center gap-1",
                     allowReorder && "cursor-grab touch-none select-none",
                     drag?.moved &&
+                      drag.source === "ordered" &&
                       drag.fromIndex === index &&
                       "cursor-grabbing opacity-30",
                     drag?.moved &&
+                      !drag.overDiscard &&
+                      drag.source === "ordered" &&
                       drag.overIndex === index &&
                       drag.fromIndex !== index &&
                       "ring-2 ring-cyan-400/70"
@@ -231,6 +329,59 @@ export function DeckPeekOverlay({
               ))}
             </ul>
           )}
+
+          {allowReorder ? (
+            <div
+              ref={discardZoneRef}
+              className={cn(
+                "mt-5 min-h-[10.5rem] border border-dashed border-red-400/40 bg-red-950/20 p-3 transition-colors",
+                drag?.moved &&
+                  drag.overDiscard &&
+                  "border-red-300/80 bg-red-500/15 ring-2 ring-red-400/50"
+              )}
+              aria-label="Discard pile drop zone"
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="font-buahs93 text-xs tracking-wide text-red-200/90">
+                  DISCARD
+                </p>
+                <p className="font-mono text-[10px] text-red-100/50">
+                  {discarded.length === 0
+                    ? "Drop cards here · milled on Done"
+                    : `${discarded.length} to mill`}
+                </p>
+              </div>
+              {discarded.length === 0 ? (
+                <p className="mt-6 text-center font-mono text-[11px] text-red-100/35">
+                  Drag a peeked card onto this pile
+                </p>
+              ) : (
+                <ul className="mt-3 flex flex-wrap gap-2">
+                  {discarded.map((card, index) => (
+                    <li
+                      key={card.instanceId}
+                      onPointerDown={(event) =>
+                        beginDrag(event, "discard", card, index)
+                      }
+                      className={cn(
+                        "cursor-grab touch-none select-none",
+                        drag?.moved &&
+                          drag.source === "discard" &&
+                          drag.fromIndex === index &&
+                          "cursor-grabbing opacity-30"
+                      )}
+                      title="Drag back to the look order to keep it"
+                    >
+                      <PlayingCard
+                        card={{ ...card, faceDown: false }}
+                        className="pointer-events-none h-28 w-[5.5rem]"
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
 

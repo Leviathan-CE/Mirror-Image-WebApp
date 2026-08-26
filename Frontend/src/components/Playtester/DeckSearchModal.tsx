@@ -1,9 +1,11 @@
 /**
- * Search library: free-floating panel with a filter + scrolling card grid.
+ * Searchable floating card browser (library or face-up piles).
  * Drag the header to move, the corner grip to resize; both persist.
- * Copies of the same printing share one tile (×N badge); dragging a tile pulls
- * its topmost copy. Backdrop is pointer-events-none so cards can be dragged
- * onto play zones.
+ * Copies of the same printing share one tile (×N badge). Backdrop is
+ * pointer-events-none so cards can be dragged onto play zones.
+ *
+ * Library mode: drag pulls the topmost copy of a printing.
+ * Pile mode: Ctrl/Cmd+click cycles ×N selection; drag moves the selection.
  */
 
 import {
@@ -21,18 +23,29 @@ import { PlayingCard } from "@/components/Playtester/PlayingCard"
 import {
   filterLibraryByName,
   groupCardsByPrinting,
+  type CardPrintingGroup,
 } from "@/components/Playtester/deckActions.logic"
 import {
   clampDeckSearchBox,
   currentViewport,
   defaultDeckSearchBox,
   readStoredDeckSearchBox,
+  readStoredFaceUpPileBrowserBox,
   writeStoredDeckSearchBox,
+  writeStoredFaceUpPileBrowserBox,
   type DeckSearchBox,
 } from "@/components/Playtester/deckSearchPanel.logic"
+import { selectionOverlayClass } from "@/components/Playtester/selectionChrome"
+import {
+  cycleGroupSelection,
+  selectSingleFromGroup,
+  selectedCountInGroup,
+  trashDragGroupIds,
+} from "@/components/Playtester/trashyardSelect.logic"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { LOCAL_SEAT, type PlayerSlot } from "@/components/Playtester/constants"
 import { MiddleMouseScroll } from "@/components/ui/MiddleMouseScroll"
+import { useLatestRef } from "@/hooks/useLatestRef"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
@@ -42,16 +55,29 @@ const DRAG_THRESHOLD_PX = 5
 
 export type DeckSearchModalProps = {
   open: boolean
-  sessionCards: PlayingCardInstance[]
+  /**
+   * `library` — filter owner's library (shuffle-on-close stays in the page).
+   * `pile` — browse an explicit face-up list (trash / dismantled / opp).
+   */
+  mode?: "library" | "pile"
+  title?: string
+  /** Library mode: full session; pile mode unused. */
+  sessionCards?: PlayingCardInstance[]
   owner?: PlayerSlot
+  /** Pile mode: cards to browse (newest-on-top order preferred). */
+  cards?: PlayingCardInstance[]
+  /** Pile mode: Ctrl-cycle multi-select. Library always single-top. */
+  multiSelect?: boolean
+  /** When false, tiles cannot be dragged out (e.g. opponent piles). */
+  canDragOut?: boolean
+  dismissLabel?: string
   onCancel: () => void
-  /** Drop a library card onto a zone under the floating panel. */
+  /** Drop one or more cards onto a zone under the floating panel. */
   onCardRelease: (
-    instanceId: string,
+    instanceIds: string[],
     clientX: number,
     clientY: number
   ) => void
-  /** Right-click a tile (view details). */
   onCardContextMenu?: (
     instanceId: string,
     clientX: number,
@@ -59,7 +85,6 @@ export type DeckSearchModalProps = {
   ) => void
 }
 
-/** Header drag (move) and corner drag (resize) share this gesture shape. */
 type BoxDragState = {
   pointerId: number
   startX: number
@@ -70,6 +95,7 @@ type BoxDragState = {
 type DragState = {
   pointerId: number
   instanceId: string
+  groupIds: string[]
   startX: number
   startY: number
   moved: boolean
@@ -78,31 +104,52 @@ type DragState = {
   card: PlayingCardInstance
 }
 
+function filterCardsByName(
+  cards: PlayingCardInstance[],
+  query: string
+): PlayingCardInstance[] {
+  const q = query.trim().toLowerCase()
+  if (!q) return cards
+  return cards.filter((c) => c.name.toLowerCase().includes(q))
+}
+
 export function DeckSearchModal({
   open,
-  sessionCards,
+  mode = "library",
+  title = mode === "pile" ? "Pile" : "Deck",
+  sessionCards = [],
   owner = LOCAL_SEAT,
+  cards = [],
+  multiSelect = mode === "pile",
+  canDragOut = true,
+  dismissLabel = mode === "pile" ? "Close" : "Cancel",
   onCancel,
   onCardRelease,
   onCardContextMenu,
 }: DeckSearchModalProps) {
+  const isPile = mode === "pile"
   const [query, setQuery] = useState("")
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const selectedIdsRef = useLatestRef(selectedIds)
   const [drag, setDrag] = useState<DragState | null>(null)
   const dragRef = useRef<DragState | null>(null)
-  /** Middle-mouse hold zoom — local to this panel (same as hand / float zones). */
   const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
-  /** Position + size survive closing the panel and reloads. */
   const [box, setBox] = useState<DeckSearchBox>(() =>
-    readStoredDeckSearchBox(currentViewport())
+    isPile
+      ? readStoredFaceUpPileBrowserBox(currentViewport())
+      : readStoredDeckSearchBox(currentViewport())
   )
   const resizeRef = useRef<BoxDragState | null>(null)
   const moveRef = useRef<BoxDragState | null>(null)
 
-  const visible = useMemo(
-    () => filterLibraryByName(sessionCards, query, owner),
-    [sessionCards, query, owner]
-  )
-  /** One tile per printing; copies show as ×N instead of repeating tiles. */
+  const visible = useMemo(() => {
+    if (isPile) {
+      // Newest on top of the pile should lead grouping (display = topmost copy).
+      return filterCardsByName([...cards].reverse(), query)
+    }
+    return filterLibraryByName(sessionCards, query, owner)
+  }, [isPile, cards, sessionCards, query, owner])
+
   const groups = useMemo(() => groupCardsByPrinting(visible), [visible])
 
   useEffect(() => {
@@ -111,12 +158,14 @@ export function DeckSearchModal({
       setDrag(null)
       dragRef.current = null
       setEnlarged(null)
+      setSelectedIds([])
     }
   }, [open])
 
   useEffect(() => {
-    writeStoredDeckSearchBox(box)
-  }, [box])
+    if (isPile) writeStoredFaceUpPileBrowserBox(box)
+    else writeStoredDeckSearchBox(box)
+  }, [box, isPile])
 
   useEffect(() => {
     function onResize() {
@@ -143,7 +192,6 @@ export function DeckSearchModal({
     if (!open) return
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return
-      // Sticky “View details” overlay owns Escape; don’t close the search under it.
       if (document.querySelector('.deck-card-enlarge[aria-modal="true"]')) {
         return
       }
@@ -180,7 +228,8 @@ export function DeckSearchModal({
       dragRef.current = null
       setDrag(null)
       if (!current.moved) return
-      onCardRelease(current.instanceId, event.clientX, event.clientY)
+      onCardRelease(current.groupIds, event.clientX, event.clientY)
+      setSelectedIds([])
     }
 
     window.addEventListener("pointermove", onMove)
@@ -195,23 +244,54 @@ export function DeckSearchModal({
 
   if (!open || typeof document === "undefined") return null
 
+  function groupForSelect(group: CardPrintingGroup) {
+    // Selection helpers expect oldest→newest; pile display list is newest-first.
+    const instances = isPile
+      ? [...group.instances].reverse()
+      : group.instances
+    return { cardId: group.cardId, instances }
+  }
+
   function onCardPointerDown(
     event: ReactPointerEvent<HTMLDivElement>,
-    card: PlayingCardInstance
+    group: CardPrintingGroup
   ) {
-    // Hold middle mouse to zoom — stopPropagation so MiddleMouseScroll does not pan.
     if (event.button === 1) {
       event.preventDefault()
       event.stopPropagation()
-      setEnlarged(card)
+      setEnlarged(group.display)
       return
     }
     if (event.button !== 0) return
     event.preventDefault()
     event.stopPropagation()
+
+    const card = group.display
+
+    if (multiSelect && (event.ctrlKey || event.metaKey)) {
+      setSelectedIds((prev) => cycleGroupSelection(groupForSelect(group), prev))
+      return
+    }
+
+    if (!canDragOut) return
+
+    const topId = card.instanceId
+    let groupIds: string[]
+
+    if (multiSelect) {
+      const currentSel = selectedIdsRef.current
+      groupIds = trashDragGroupIds(topId, currentSel)
+      if (!currentSel.includes(topId)) {
+        setSelectedIds(selectSingleFromGroup(groupForSelect(group)))
+      }
+    } else {
+      groupIds = [topId]
+    }
+
     const next: DragState = {
       pointerId: event.pointerId,
-      instanceId: card.instanceId,
+      instanceId: topId,
+      groupIds,
       startX: event.clientX,
       startY: event.clientY,
       moved: false,
@@ -253,54 +333,8 @@ export function DeckSearchModal({
     }
   }
 
-  function onResizePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-    beginBoxDrag(event, resizeRef)
-  }
-
-  function onResizePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
-    const resize = resizeRef.current
-    if (!resize || resize.pointerId !== event.pointerId) return
-    setBox(
-      clampDeckSearchBox(
-        {
-          ...resize.startBox,
-          width: resize.startBox.width + (event.clientX - resize.startX),
-          height: resize.startBox.height + (event.clientY - resize.startY),
-        },
-        currentViewport()
-      )
-    )
-  }
-
-  function onHeaderPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-    // Cancel button / search field keep their own pointer behaviour.
-    if (
-      event.target instanceof Element &&
-      event.target.closest("button, input")
-    ) {
-      return
-    }
-    beginBoxDrag(event, moveRef)
-  }
-
-  function onHeaderPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
-    const move = moveRef.current
-    if (!move || move.pointerId !== event.pointerId) return
-    setBox(
-      clampDeckSearchBox(
-        {
-          ...move.startBox,
-          x: move.startBox.x + (event.clientX - move.startX),
-          y: move.startBox.y + (event.clientY - move.startY),
-        },
-        currentViewport()
-      )
-    )
-  }
-
   return createPortal(
     <>
-      {/* Non-blocking layer so zones remain drop targets. */}
       <div className="pointer-events-none fixed inset-0 z-[125]">
         <div
           className={cn(
@@ -310,29 +344,52 @@ export function DeckSearchModal({
           style={{ left: box.x, top: box.y, width: box.width }}
           role="dialog"
           aria-modal="false"
-          aria-label="Search deck"
+          aria-label={`Search ${title.toLowerCase()}`}
         >
           <div
             className="flex cursor-move items-center gap-2 border-b border-cyan-500/30 p-2 touch-none"
             title="Drag to move · double-click to recentre"
-            onPointerDown={onHeaderPointerDown}
-            onPointerMove={onHeaderPointerMove}
+            onPointerDown={(event) => {
+              if (
+                event.target instanceof Element &&
+                event.target.closest("button, input")
+              ) {
+                return
+              }
+              beginBoxDrag(event, moveRef)
+            }}
+            onPointerMove={(event) => {
+              const move = moveRef.current
+              if (!move || move.pointerId !== event.pointerId) return
+              setBox(
+                clampDeckSearchBox(
+                  {
+                    ...move.startBox,
+                    x: move.startBox.x + (event.clientX - move.startX),
+                    y: move.startBox.y + (event.clientY - move.startY),
+                  },
+                  currentViewport()
+                )
+              )
+            }}
             onPointerUp={(event) => endBoxDrag(event, moveRef)}
             onPointerCancel={(event) => endBoxDrag(event, moveRef)}
-            onDoubleClick={() => setBox(defaultDeckSearchBox(currentViewport()))}
+            onDoubleClick={() =>
+              setBox(defaultDeckSearchBox(currentViewport()))
+            }
           >
             <button
               type="button"
               className="font-buahs93 shrink-0 border border-cyan-500/40 px-2 py-1 text-[10px] text-cyan-100 hover:bg-cyan-500/10"
               onClick={onCancel}
             >
-              Cancel
+              {dismissLabel}
             </button>
             <input
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search deck…"
+              placeholder={`Search ${title.toLowerCase()}…`}
               autoFocus
               className="min-w-0 flex-1 border border-cyan-500/35 bg-black/80 px-2 py-1 font-mono text-xs text-cyan-50 outline-none placeholder:text-cyan-100/35 focus:border-cyan-300"
             />
@@ -342,7 +399,7 @@ export function DeckSearchModal({
           </div>
 
           <MiddleMouseScroll
-            label="Deck search results"
+            label={`${title} results`}
             horizontal={false}
             vertical
             style={{ height: box.height }}
@@ -356,6 +413,10 @@ export function DeckSearchModal({
               groups.map((group) => {
                 const card = group.display
                 const copies = group.instances.length
+                const picked = multiSelect
+                  ? selectedCountInGroup(groupForSelect(group), selectedIds)
+                  : 0
+                const isSelected = multiSelect && picked > 0
                 return (
                   <div
                     key={group.cardId}
@@ -363,10 +424,10 @@ export function DeckSearchModal({
                     tabIndex={0}
                     aria-label={
                       copies > 1
-                        ? `Drag ${card.name}, ${copies} copies in deck`
+                        ? `Drag ${card.name}, ${copies} copies`
                         : `Drag ${card.name}`
                     }
-                    onPointerDown={(event) => onCardPointerDown(event, card)}
+                    onPointerDown={(event) => onCardPointerDown(event, group)}
                     onContextMenu={(event) => {
                       event.preventDefault()
                       event.stopPropagation()
@@ -377,27 +438,36 @@ export function DeckSearchModal({
                       )
                     }}
                     className={cn(
-                      "relative flex cursor-grab flex-col items-center touch-none select-none",
+                      "relative flex flex-col items-center touch-none select-none",
+                      canDragOut ? "cursor-grab" : "cursor-default",
                       drag?.instanceId === card.instanceId &&
                         drag.moved &&
                         "opacity-30"
                     )}
                   >
-                    <PlayingCard
-                      card={{ ...card, faceDown: false }}
-                      className="h-24 w-[4.5rem]"
-                    />
-                    {copies > 1 ? (
-                      <span
-                        className={cn(
-                          "pointer-events-none absolute top-1 right-1 z-10",
-                          "border border-cyan-400/50 bg-black/80 px-1 py-0.5",
-                          "font-mono text-[10px] text-cyan-100"
-                        )}
-                      >
-                        ×{copies}
-                      </span>
-                    ) : null}
+                    <div className="relative">
+                      <PlayingCard
+                        card={{ ...card, faceDown: false }}
+                        className="h-24 w-[4.5rem]"
+                      />
+                      {isSelected ? (
+                        <span
+                          aria-hidden
+                          className={selectionOverlayClass()}
+                        />
+                      ) : null}
+                      {copies > 1 ? (
+                        <span
+                          className={cn(
+                            "pointer-events-none absolute top-1 right-1 z-30",
+                            "border border-cyan-400/50 bg-black/80 px-1 py-0.5",
+                            "font-mono text-[10px] text-cyan-100"
+                          )}
+                        >
+                          {picked > 0 ? `${picked}/` : ""}×{copies}
+                        </span>
+                      ) : null}
+                    </div>
                     <span className="w-full truncate text-center font-mono text-[9px] leading-tight text-cyan-100/70">
                       {card.name}
                     </span>
@@ -410,14 +480,31 @@ export function DeckSearchModal({
           <div
             role="button"
             tabIndex={-1}
-            aria-label="Resize deck search"
+            aria-label={`Resize ${title}`}
             title="Drag to resize · double-click to reset"
             className="absolute bottom-0 right-0 z-20 h-4 w-4 cursor-nwse-resize touch-none"
-            onPointerDown={onResizePointerDown}
-            onPointerMove={onResizePointerMove}
+            onPointerDown={(event) => beginBoxDrag(event, resizeRef)}
+            onPointerMove={(event) => {
+              const resize = resizeRef.current
+              if (!resize || resize.pointerId !== event.pointerId) return
+              setBox(
+                clampDeckSearchBox(
+                  {
+                    ...resize.startBox,
+                    width:
+                      resize.startBox.width + (event.clientX - resize.startX),
+                    height:
+                      resize.startBox.height + (event.clientY - resize.startY),
+                  },
+                  currentViewport()
+                )
+              )
+            }}
             onPointerUp={(event) => endBoxDrag(event, resizeRef)}
             onPointerCancel={(event) => endBoxDrag(event, resizeRef)}
-            onDoubleClick={() => setBox(defaultDeckSearchBox(currentViewport()))}
+            onDoubleClick={() =>
+              setBox(defaultDeckSearchBox(currentViewport()))
+            }
           >
             <div
               className="absolute right-1 bottom-1 h-2 w-2 border-r-2 border-b-2 border-cyan-400/70"
@@ -441,6 +528,11 @@ export function DeckSearchModal({
             card={{ ...drag.card, faceDown: false }}
             className="h-full w-full shadow-lg shadow-cyan-500/25"
           />
+          {drag.groupIds.length > 1 ? (
+            <span className="absolute -top-1 -right-1 border border-cyan-400/50 bg-black/85 px-1 font-mono text-[10px] text-cyan-100">
+              ×{drag.groupIds.length}
+            </span>
+          ) : null}
         </div>
       ) : null}
 

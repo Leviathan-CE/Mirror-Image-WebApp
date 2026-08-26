@@ -136,6 +136,26 @@ export function clampDeckCount(raw: number, librarySize: number): number {
 }
 
 /**
+ * Build the library top order after a Look-at-top session.
+ * Discarded ids are placed first so `degradeTopLibrary(n)` / the degrade
+ * animation can mill them off the top; remaining ids follow in keeper order.
+ * Returns null if the combined set does not match `originalPeeked`.
+ */
+export function lookAtTopCommitOrder(
+  remainingOrderedIds: string[],
+  discardIds: string[],
+  originalPeeked: PlayingCardInstance[]
+): string[] | null {
+  const combined = [...discardIds, ...remainingOrderedIds]
+  if (combined.length !== originalPeeked.length) return null
+  if (new Set(combined).size !== combined.length) return null
+  const orig = originalPeeked.map((c) => c.instanceId).sort()
+  const got = [...combined].sort()
+  if (orig.some((id, i) => id !== got[i])) return null
+  return combined
+}
+
+/**
  * Replace the top N library cards with `orderedInstanceIds` (same N cards, new order).
  * Index 0 of `orderedInstanceIds` becomes the new top of the deck.
  * No-op if the id set does not match the current top N.
