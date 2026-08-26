@@ -122,6 +122,24 @@ describe("resolveDropZone", () => {
     expect(resolveDropZone(999, 999, rects, "stockpile")).toBeNull()
   })
 
+  it("prefers an open search-panel overlay over the small pile rect", () => {
+    const overlays: DropZoneRects = {
+      [PLAY_ZONE.trashyard]: rect(100, 100, 500, 400),
+    }
+    // Over the overlay, far from the side-pile trash rect at (300,0)-(340,40).
+    expect(
+      resolveDropZone(200, 200, rects, "hand", overlays)
+    ).toBe(PLAY_ZONE.trashyard)
+    // Overlay beats battlefield when they occupy the same point.
+    const fieldUnderPanel: DropZoneRects = {
+      [PLAY_ZONE.battlefield]: rect(100, 100, 500, 400),
+      [PLAY_ZONE.trashyard]: rect(300, 0, 340, 40),
+    }
+    expect(
+      resolveDropZone(200, 200, fieldUnderPanel, "hand", overlays)
+    ).toBe(PLAY_ZONE.trashyard)
+  })
+
   it("lists every drop source in DROP_ZONE_PRIORITY", () => {
     expect(Object.keys(DROP_ZONE_PRIORITY).sort()).toEqual(
       ["battlefield", "faceUpPile", "hand", "stockpile"].sort()

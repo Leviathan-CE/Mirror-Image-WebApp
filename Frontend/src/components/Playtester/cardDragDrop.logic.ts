@@ -105,14 +105,17 @@ export function elementToZoneRect(
 
 export type DropZoneRects = Partial<Record<DropZone, ZoneRect | null>>
 
-/** Resolve which zone the pointer is over, using the source's priority list. */
+/** Resolve which zone the pointer is over, using the source's priority list.
+ *  `overlays` are checked first per zone (e.g. open search panel = that pile). */
 export function resolveDropZone(
   clientX: number,
   clientY: number,
   rects: DropZoneRects,
-  source: DropSource
+  source: DropSource,
+  overlays?: DropZoneRects | null
 ): DropZone | null {
   for (const zone of DROP_ZONE_PRIORITY[source]) {
+    if (pointInZoneRect(clientX, clientY, overlays?.[zone])) return zone
     if (pointInZoneRect(clientX, clientY, rects[zone])) return zone
   }
   return null

@@ -233,6 +233,7 @@ export function PlayTesterPage() {
   const handRef = useRef<HTMLDivElement>(null)
   const deckRef = useRef<HTMLDivElement>(null)
   const trashRef = useRef<HTMLDivElement>(null)
+  const searchPanelRef = useRef<HTMLDivElement>(null)
   const dismantledRef = useRef<HTMLDivElement>(null)
   const oppHandRef = useRef<HTMLDivElement>(null)
   const oppDeckRef = useRef<HTMLDivElement>(null)
@@ -508,6 +509,15 @@ export function PlayTesterPage() {
     }
   })
 
+  const searchDropZone =
+    deckSearchOpen
+      ? PLAY_ZONE.library
+      : pileBrowser === "trashyard"
+        ? PLAY_ZONE.trashyard
+        : pileBrowser === "dismantled"
+          ? PLAY_ZONE.dismantled
+          : null
+
   const {
     onHandRelease,
     onBattlefieldRelease,
@@ -521,6 +531,9 @@ export function PlayTesterPage() {
     fieldSize: floatLogical,
     hideFlying,
     zoneRefs,
+    searchDrop: searchDropZone
+      ? { zone: searchDropZone, panelRef: searchPanelRef }
+      : null,
     clientToSurfaceLocal,
     clientToStockpileLocal,
     isFlipFlying,
@@ -1647,6 +1660,7 @@ export function PlayTesterPage() {
         mode="library"
         sessionCards={sessionCards}
         owner={localSeat}
+        panelRef={searchPanelRef}
         onCancel={closeDeckSearch}
         onCardRelease={(ids, x, y) => {
           const id = ids[0]
@@ -1658,6 +1672,11 @@ export function PlayTesterPage() {
       <DeckSearchModal
         open={pileBrowser != null}
         mode="pile"
+        panelRef={
+          pileBrowser === "trashyard" || pileBrowser === "dismantled"
+            ? searchPanelRef
+            : undefined
+        }
         title={
           pileBrowser === "trashyard"
             ? "Trashyard"
@@ -1665,7 +1684,9 @@ export function PlayTesterPage() {
               ? "Dismantled"
               : pileBrowser === "oppTrash"
                 ? "Opp trash"
-                : "Opp dismantled"
+                : pileBrowser === "oppDismantled"
+                  ? "Opp dismantled"
+                  : "Pile"
         }
         cards={
           pileBrowser === "trashyard"
@@ -1674,7 +1695,9 @@ export function PlayTesterPage() {
               ? visDismantled
               : pileBrowser === "oppTrash"
                 ? visOppTrash
-                : visOppDismantled
+                : pileBrowser === "oppDismantled"
+                  ? visOppDismantled
+                  : []
         }
         canDragOut={
           pileBrowser === "trashyard" || pileBrowser === "dismantled"

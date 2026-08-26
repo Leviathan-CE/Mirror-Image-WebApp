@@ -71,6 +71,8 @@ export type DeckSearchModalProps = {
   /** When false, tiles cannot be dragged out (e.g. opponent piles). */
   canDragOut?: boolean
   dismissLabel?: string
+  /** Exposes the panel root for drop hit-testing while search is open. */
+  panelRef?: RefObject<HTMLDivElement | null>
   onCancel: () => void
   /** Drop one or more cards onto a zone under the floating panel. */
   onCardRelease: (
@@ -123,6 +125,7 @@ export function DeckSearchModal({
   multiSelect = mode === "pile",
   canDragOut = true,
   dismissLabel = mode === "pile" ? "Close" : "Cancel",
+  panelRef,
   onCancel,
   onCardRelease,
   onCardContextMenu,
@@ -337,6 +340,7 @@ export function DeckSearchModal({
     <>
       <div className="pointer-events-none fixed inset-0 z-[125]">
         <div
+          ref={panelRef}
           className={cn(
             "pointer-events-auto absolute",
             "border border-cyan-500/40 bg-black/95 shadow-xl"

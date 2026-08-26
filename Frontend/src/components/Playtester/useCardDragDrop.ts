@@ -5,7 +5,7 @@
  * (priority, anim modes, face-down rules). Change drop rules there, not here.
  */
 
-import type { Dispatch, SetStateAction } from "react"
+import type { Dispatch, RefObject, SetStateAction } from "react"
 
 import {
   DROP_ZONE_PRIORITY,
@@ -50,6 +50,14 @@ export type UseCardDragDropArgs = {
   fieldSize?: { width: number; height: number }
   hideFlying?: (ids: string[]) => void
   zoneRefs: PlaytesterZoneRefs
+  /**
+   * When a search panel is open, its DOM node is an alternate hit target for
+   * that zone (library / trashyard / dismantled) so cards can be dropped in.
+   */
+  searchDrop?: {
+    zone: typeof PLAY_ZONE.library | typeof PLAY_ZONE.trashyard | typeof PLAY_ZONE.dismantled
+    panelRef: RefObject<HTMLElement | null>
+  } | null
   clientToSurfaceLocal: (clientX: number, clientY: number) => {
     x: number
     y: number
@@ -80,6 +88,15 @@ function readDropRects(zoneRefs: PlaytesterZoneRefs): DropZoneRects {
   }
 }
 
+function readSearchDropOverlays(
+  searchDrop: UseCardDragDropArgs["searchDrop"]
+): DropZoneRects | null {
+  if (!searchDrop) return null
+  const rect = elementToZoneRect(searchDrop.panelRef.current)
+  if (!rect) return null
+  return { [searchDrop.zone]: rect }
+}
+
 export function useCardDragDrop({
   sessionCards,
   setSessionCards,
@@ -88,6 +105,7 @@ export function useCardDragDrop({
   fieldSize = PLAY_FLOAT_LOGICAL,
   hideFlying,
   zoneRefs,
+  searchDrop = null,
   clientToSurfaceLocal,
   clientToStockpileLocal,
   isFlipFlying,
@@ -297,7 +315,8 @@ export function useCardDragDrop({
       clientX,
       clientY,
       readDropRects(zoneRefs),
-      source
+      source,
+      readSearchDropOverlays(searchDrop)
     )
     if (!zone) return false
 
