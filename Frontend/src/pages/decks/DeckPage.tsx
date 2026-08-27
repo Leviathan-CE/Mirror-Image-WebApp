@@ -15,6 +15,7 @@ import { GlitchFx } from "@/components/effects/GlitchFx"
 import { DeckBoard } from "@/components/decks/DeckBoard"
 import { DeckCardSearch } from "@/components/decks/DeckCardSearch"
 import { DeckDescription } from "@/components/decks/DeckDescription"
+import { collectDeckPrintoutSlots } from "@/components/decks/deckPrintout.logic"
 import {
   DeckCardSortControls,
   type DeckCardSortMode,
@@ -81,7 +82,7 @@ import {
   updateDeckCategory,
   type DeckCardEntry,
 } from "@/lib/api/decks"
-import { ROUTES } from "@/lib/route"
+import { ROUTES, ADMIN_ROLE } from "@/lib/route"
 import { cn } from "@/lib/utils"
 
 const BROWSE_WIDTH_STORAGE_KEY = "mi-deck-browse-width-px"
@@ -180,6 +181,7 @@ export function DeckPage() {
     typeof window === "undefined" ? CARD_VIEW_DEFAULT : readStoredCardViewMode()
   )
   const [tagDraft, setTagDraft] = useState("")
+  const [printoutBusy, setPrintoutBusy] = useState(false)
   const browseResizeRef = useRef<{
     pointerId: number
     startX: number
@@ -264,6 +266,36 @@ export function DeckPage() {
 
   const canEdit =
     Boolean(deck && user && deck.author_name === user.user_name && token)
+  const isAdmin = user?.role === ADMIN_ROLE
+
+  async function onCreatePrintout() {
+    if (!deck || printoutBusy) return
+    const slots = collectDeckPrintoutSlots(deck)
+    if (slots.length === 0) {
+      setErrorText("No cards marked for the deck to print.")
+      return
+    }
+    setPrintoutBusy(true)
+    setErrorText("")
+    try {
+      const { generateDeckPrintoutPdf } = await import(
+        "@/components/decks/generateDeckPrintoutPdf"
+      )
+      const result = await generateDeckPrintoutPdf({
+        deckName: deck.name ?? `Deck ${deck.id}`,
+        slots,
+      })
+      if (result.missingArt > 0) {
+        setErrorText(
+          `Printout saved — ${result.missingArt} card(s) had no art and used name placeholders.`
+        )
+      }
+    } catch {
+      setErrorText("Could not build the printout PDF.")
+    } finally {
+      setPrintoutBusy(false)
+    }
+  }
 
   async function onCopyDeck() {
     if (!token || !deck || saving) return
@@ -1492,6 +1524,15 @@ export function DeckPage() {
                       label={browseOpen ? "HIDE BROWSE" : "BROWSE"}
                       className="font-buahs93 h-9 rounded-none border border-cyan-500/40 bg-black/70 px-4 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10"
                       onClick={() => setBrowseOpen((prev) => !prev)}
+                    />
+                  ) : null}
+                  {isAdmin ? (
+                    <GlitchFx
+                      type="button"
+                      label={printoutBusy ? "BUILDING PDF…" : "CREATE PRINTOUT"}
+                      disabled={printoutBusy || saving}
+                      className="font-buahs93 h-9 rounded-none bg-orange-600 px-4 text-white hover:bg-orange-800 disabled:opacity-60"
+                      onClick={() => void onCreatePrintout()}
                     />
                   ) : null}
                   <GlitchFx

@@ -10,6 +10,7 @@ import { costTokenToIcon } from "@/components/cards/constants"
 import { CardSearchBar } from "@/components/cards/CardSearchBar"
 import { SearchPaginationBar } from "@/components/cards/SearchPaginationBar"
 import { GameIcon } from "@/components/common/GameIcon"
+import { GlitchFx } from "@/components/effects/GlitchFx"
 import { Button } from "@/components/ui/button"
 import { EditBox } from "@/components/ui/EditBox"
 import { ApiError } from "@/lib/api/client"
@@ -88,6 +89,7 @@ export function AdminCardsPage() {
   const [actionMessage, setActionMessage] = useState("")
   const [detail, setDetail] = useState<AdminCardDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedName(nameQuery.trim()), 200)
@@ -306,6 +308,52 @@ export function AdminCardsPage() {
   const pageEnd = Math.min(offset + items.length, total)
   const canPrev = offset > 0
   const canNext = offset + PAGE_SIZE < total
+  const advancedActive =
+    descriptionQuery.trim() !== "" ||
+    invokeMin.trim() !== "" ||
+    invokeMax.trim() !== "" ||
+    typesLine !== "" ||
+    superType !== "" ||
+    subType !== "" ||
+    publishedFilter !== ""
+
+  const colorCostFilters = (
+    <div className="grid w-fit grid-cols-6 gap-2">
+      {facets.colors.map((color) => {
+        const on = colors.includes(color)
+        const icon = costTokenToIcon(color)
+        return (
+          <Button
+            key={color}
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-pressed={on}
+            aria-label={`Filter ${color}`}
+            title={color}
+            className={cn(
+              "size-9 overflow-visible rounded-none border",
+              on
+                ? "border-cyan-400 bg-cyan-700 hover:bg-cyan-800"
+                : "border-cyan-500/40 bg-black/70 hover:border-cyan-400/70 hover:bg-cyan-500/10"
+            )}
+            onClick={() => toggleColor(color)}
+          >
+            {icon ? (
+              <GameIcon
+                name={icon}
+                className="!h-5 !w-5 shrink-0 object-contain"
+              />
+            ) : (
+              <span className="font-buahs93 text-[10px] text-cyan-100">
+                {color}
+              </span>
+            )}
+          </Button>
+        )
+      })}
+    </div>
+  )
 
   return (
     <AdminPageShell
@@ -313,177 +361,172 @@ export function AdminCardsPage() {
       title="CARDS DB"
       description="Search and filter the catalogue like the public library, multi-select cards, then set publish status or lagality in bulk."
     >
-      <div className="mb-4 grid gap-4 border border-cyan-500/25 bg-black/55 p-4 lg:grid-cols-[minmax(0,1fr)_14rem]">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <CardSearchBar
-              label="NAME"
-              value={nameQuery}
-              onChange={setNameQuery}
-              placeholder="Closest name match…"
+      <div className="mb-4 border border-cyan-500/25 bg-black/55 p-4">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+            <div className="min-w-0 flex-1 basis-48">
+              <CardSearchBar
+                label=""
+                value={nameQuery}
+                onChange={setNameQuery}
+                placeholder="Closest name match…"
+              />
+            </div>
+            <div className="shrink-0">{colorCostFilters}</div>
+            <GlitchFx
+              type="button"
+              label="CLEAR FILTERS"
+              className={cn(secondaryActionClassName, "shrink-0 px-2 text-xs")}
+              onClick={clearFilters}
             />
           </div>
 
-          <label className="block sm:col-span-2">
-            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-              DESCRIPTION
-            </span>
-            <EditBox
-              value={descriptionQuery}
-              onChange={(e) => setDescriptionQuery(e.target.value)}
-              placeholder="Rules text contains…"
-              size="sm"
-              autoComplete="off"
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-              INVOKE MIN
-            </span>
-            <EditBox
-              value={invokeMin}
-              onChange={(e) => setInvokeMin(e.target.value.replace(/\D/g, ""))}
-              placeholder={`${facets.invoke_cost_min}`}
-              size="sm"
-              inputMode="numeric"
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-              INVOKE MAX
-            </span>
-            <EditBox
-              value={invokeMax}
-              onChange={(e) => setInvokeMax(e.target.value.replace(/\D/g, ""))}
-              placeholder={`${facets.invoke_cost_max}`}
-              size="sm"
-              inputMode="numeric"
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-              TYPE LINE
-            </span>
-            <select
-              value={typesLine}
-              onChange={(e) => setTypesLine(e.target.value)}
-              className={filterSelectClassName}
+          <div>
+            <button
+              type="button"
+              aria-expanded={advancedOpen}
+              className={cn(
+                "flex w-full items-center justify-between border border-cyan-500/30 bg-black/60 px-3 py-2",
+                "font-buahs93 text-xs tracking-wide text-cyan-100 hover:border-cyan-400/50 hover:bg-cyan-500/10"
+              )}
+              onClick={() => setAdvancedOpen((prev) => !prev)}
             >
-              <option value="">Any</option>
-              {facets.types_lines.map((line) => (
-                <option key={line} value={line}>
-                  {line}
-                </option>
-              ))}
-            </select>
-          </label>
+              <span className="inline-flex items-center gap-2">
+                ADVANCED SEARCH
+                {advancedActive ? (
+                  <span
+                    className="inline-block size-1.5 rounded-full bg-cyan-400"
+                    title="Filters active"
+                    aria-label="Advanced filters active"
+                  />
+                ) : null}
+              </span>
+              <span className="font-mono text-[10px] text-cyan-300/70">
+                {advancedOpen ? "▲" : "▼"}
+              </span>
+            </button>
 
-          <label className="block">
-            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-              SUPER TYPE
-            </span>
-            <select
-              value={superType}
-              onChange={(e) => setSuperType(e.target.value)}
-              className={filterSelectClassName}
-            >
-              <option value="">Any</option>
-              {facets.super_types.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
+            {advancedOpen ? (
+              <div className="mt-2 grid gap-3 border border-cyan-500/20 border-t-0 bg-black/40 p-3 sm:grid-cols-2">
+                <label className="block sm:col-span-2">
+                  <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                    DESCRIPTION
+                  </span>
+                  <EditBox
+                    value={descriptionQuery}
+                    onChange={(e) => setDescriptionQuery(e.target.value)}
+                    placeholder="Rules text contains…"
+                    size="sm"
+                    autoComplete="off"
+                  />
+                </label>
 
-          <label className="block sm:col-span-2">
-            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-              SUB TYPE
-            </span>
-            <select
-              value={subType}
-              onChange={(e) => setSubType(e.target.value)}
-              className={filterSelectClassName}
-            >
-              <option value="">Any</option>
-              {facets.sub_types.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
+                <label className="block">
+                  <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                    INVOKE MIN
+                  </span>
+                  <EditBox
+                    value={invokeMin}
+                    onChange={(e) =>
+                      setInvokeMin(e.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder={`${facets.invoke_cost_min}`}
+                    size="sm"
+                    inputMode="numeric"
+                  />
+                </label>
 
-          <label className="block sm:col-span-2">
-            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-              PUBLISH STATUS
-            </span>
-            <select
-              value={publishedFilter}
-              onChange={(e) =>
-                setPublishedFilter(e.target.value as PublishStatus | "")
-              }
-              className={filterSelectClassName}
-            >
-              <option value="">Any</option>
-              {PUBLISH_STATUSES.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+                <label className="block">
+                  <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                    INVOKE MAX
+                  </span>
+                  <EditBox
+                    value={invokeMax}
+                    onChange={(e) =>
+                      setInvokeMax(e.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder={`${facets.invoke_cost_max}`}
+                    size="sm"
+                    inputMode="numeric"
+                  />
+                </label>
 
-        <div>
-          <p className="mb-2 font-buahs93 text-xs text-cyan-200/70">
-            COLOR COST
-          </p>
-          <div className="grid w-fit grid-cols-3 gap-2">
-            {facets.colors.map((color) => {
-              const on = colors.includes(color)
-              const icon = costTokenToIcon(color)
-              return (
-                <Button
-                  key={color}
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  aria-pressed={on}
-                  aria-label={`Filter ${color}`}
-                  title={color}
-                  className={cn(
-                    "size-9 rounded-none border",
-                    on
-                      ? "border-cyan-400 bg-cyan-700 hover:bg-cyan-800"
-                      : "border-cyan-500/40 bg-black/70 hover:border-cyan-400/70 hover:bg-cyan-500/10"
-                  )}
-                  onClick={() => toggleColor(color)}
-                >
-                  {icon ? (
-                    <GameIcon
-                      name={icon}
-                      className="h-5 w-auto lg:h-5 2xl:h-5"
-                    />
-                  ) : (
-                    <span className="font-buahs93 text-[10px] text-cyan-100">
-                      {color}
-                    </span>
-                  )}
-                </Button>
-              )
-            })}
+                <label className="block">
+                  <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                    TYPE LINE
+                  </span>
+                  <select
+                    value={typesLine}
+                    onChange={(e) => setTypesLine(e.target.value)}
+                    className={filterSelectClassName}
+                  >
+                    <option value="">Any</option>
+                    {facets.types_lines.map((line) => (
+                      <option key={line} value={line}>
+                        {line}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                    SUPER TYPE
+                  </span>
+                  <select
+                    value={superType}
+                    onChange={(e) => setSuperType(e.target.value)}
+                    className={filterSelectClassName}
+                  >
+                    <option value="">Any</option>
+                    {facets.super_types.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block sm:col-span-2">
+                  <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                    SUB TYPE
+                  </span>
+                  <select
+                    value={subType}
+                    onChange={(e) => setSubType(e.target.value)}
+                    className={filterSelectClassName}
+                  >
+                    <option value="">Any</option>
+                    {facets.sub_types.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block sm:col-span-2">
+                  <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                    PUBLISH STATUS
+                  </span>
+                  <select
+                    value={publishedFilter}
+                    onChange={(e) =>
+                      setPublishedFilter(e.target.value as PublishStatus | "")
+                    }
+                    className={filterSelectClassName}
+                  >
+                    <option value="">Any</option>
+                    {PUBLISH_STATUSES.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : null}
           </div>
-          <Button
-            type="button"
-            className={cn(secondaryActionClassName, "mt-4")}
-            onClick={clearFilters}
-          >
-            CLEAR FILTERS
-          </Button>
         </div>
       </div>
 

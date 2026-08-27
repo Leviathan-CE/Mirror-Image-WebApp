@@ -819,9 +819,8 @@ export function CardLibraryBrowser({
       </div>
     </div>
   ) : (
-    <div className="mb-6 grid gap-4 border border-cyan-500/25 bg-black/55 p-4 lg:grid-cols-[minmax(0,1fr)_14rem]">
+    <div className="mb-6 border border-cyan-500/25 bg-black/55 p-4">
       {filterFields}
-      
     </div>
   )
 
