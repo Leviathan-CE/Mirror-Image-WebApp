@@ -13,6 +13,7 @@ export type DeckPrintoutSlot = {
   card_id: number
   card_name: string
   card_art_path: string | null
+  card_thumbnail_path?: string | null
   card_art_version?: number | null
   section: "pilot" | "augment" | "deck"
 }
@@ -26,6 +27,7 @@ function expandQuantity(entries: DeckCardEntry[]): DeckPrintoutSlot[] {
         card_id: entry.card.id,
         card_name: entry.card.card_name,
         card_art_path: entry.card.card_art_path,
+        card_thumbnail_path: entry.card.card_thumbnail_path,
         card_art_version: entry.card.card_art_version,
         section: "deck",
       })
@@ -44,6 +46,7 @@ export function collectDeckPrintoutSlots(deck: DeckDetail): DeckPrintoutSlot[] {
       card_id: pilot.card.id,
       card_name: pilot.card.card_name,
       card_art_path: pilot.card.card_art_path,
+      card_thumbnail_path: pilot.card.card_thumbnail_path,
       card_art_version: pilot.card.card_art_version,
       section: "pilot",
     })
@@ -56,6 +59,7 @@ export function collectDeckPrintoutSlots(deck: DeckDetail): DeckPrintoutSlot[] {
         card_id: entry.card.id,
         card_name: entry.card.card_name,
         card_art_path: entry.card.card_art_path,
+        card_thumbnail_path: entry.card.card_thumbnail_path,
         card_art_version: entry.card.card_art_version,
         section: "augment",
       })

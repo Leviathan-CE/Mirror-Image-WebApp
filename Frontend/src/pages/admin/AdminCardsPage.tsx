@@ -28,7 +28,7 @@ import {
   type AdminCardItem,
   type PublishStatus,
 } from "@/lib/api/cards_admin"
-import { cardArtUrl } from "@/lib/api/decks"
+import { cardFaceUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 import { AdminPageShell } from "@/pages/admin/AdminPageShell"
 
@@ -671,7 +671,7 @@ export function AdminCardsPage() {
               </tr>
             ) : null}
             {items.map((item) => {
-              const art = cardArtUrl(item.card_art_path, item.card_art_version)
+              const art = cardFaceUrl(item)
               const checked = selectedIds.has(item.id)
               return (
                 <tr

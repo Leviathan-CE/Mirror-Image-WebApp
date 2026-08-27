@@ -33,6 +33,7 @@ class AdminCardItem(BaseModel):
     published: str
     is_deprecated: bool = False
     card_art_path: str | None = None
+    card_thumbnail_path: str | None = None
     card_art_version: int | None = None
 
 
@@ -171,6 +172,7 @@ def admin_browse_cards(
                         COALESCE(p.published, 'not published'),
                         c.is_deprecated,
                         c.illustration_thumbnail_path,
+                        c.card_thumbnail_path,
                         EXTRACT(EPOCH FROM c.updated_at)::bigint
                       FROM cards c
                       LEFT JOIN publish_cards p ON p.card_id = c.id
@@ -198,7 +200,8 @@ def admin_browse_cards(
             published=row[5] or "not published",
             is_deprecated=bool(row[6]),
             card_art_path=signed_media_path(row[7]),
-            card_art_version=int(row[8]) if row[8] is not None else None,
+            card_thumbnail_path=signed_media_path(row[8]),
+            card_art_version=int(row[9]) if row[9] is not None else None,
         )
         for row in rows
     ]
@@ -244,6 +247,7 @@ def admin_get_card(
                         c.show_help_text,
                         c.threat_level,
                         c.illustration_thumbnail_path,
+                        c.card_thumbnail_path,
                         EXTRACT(EPOCH FROM c.updated_at)::bigint,
                         c.is_pilot,
                         c.is_augment,
@@ -290,20 +294,21 @@ def admin_get_card(
         show_help_text=bool(row[11]),
         threat_level=str(row[12] if row[12] is not None else "0"),
         card_art_path=signed_media_path(row[13]),
-        card_art_version=int(row[14]) if row[14] is not None else None,
-        is_pilot=bool(row[15]),
-        is_augment=bool(row[16]),
-        hand_size=int(row[17] or 0),
-        ram_capacity=int(row[18] or 0),
-        power_capacity=int(row[19] or 0),
-        metal_capacity=int(row[20] or 0),
-        spirit_capacity=int(row[21] or 0),
-        steel_capacity=int(row[22] or 0),
-        time_capacity=int(row[23] or 0),
-        lif_capacity=int(row[24] or 0),
-        lagality=row[25] or "Legal",
-        published=row[26] or "not published",
-        is_deprecated=bool(row[27]),
+        card_thumbnail_path=signed_media_path(row[14]),
+        card_art_version=int(row[15]) if row[15] is not None else None,
+        is_pilot=bool(row[16]),
+        is_augment=bool(row[17]),
+        hand_size=int(row[18] or 0),
+        ram_capacity=int(row[19] or 0),
+        power_capacity=int(row[20] or 0),
+        metal_capacity=int(row[21] or 0),
+        spirit_capacity=int(row[22] or 0),
+        steel_capacity=int(row[23] or 0),
+        time_capacity=int(row[24] or 0),
+        lif_capacity=int(row[25] or 0),
+        lagality=row[26] or "Legal",
+        published=row[27] or "not published",
+        is_deprecated=bool(row[28]),
     )
 
 

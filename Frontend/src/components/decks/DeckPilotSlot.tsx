@@ -16,7 +16,7 @@ import {
 } from "@/components/decks/deckCardDrag"
 import { CardEnlargeOverlay } from "@/components/Playtester/board/CardLargeOverlay"
 import "@/components/decks/DeckCardStack.css"
-import { cardArtUrl, type DeckCardEntry } from "@/lib/api/decks"
+import { cardFaceUrl, type DeckCardEntry } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
 type DeckPilotSlotProps = {
@@ -43,7 +43,7 @@ export function DeckPilotSlot({
   const classified = classification != null
   const art =
     pilot && !classified
-      ? cardArtUrl(pilot.card.card_art_path, pilot.card.card_art_version)
+      ? cardFaceUrl(pilot.card)
       : null
 
   useEffect(() => {

@@ -199,7 +199,7 @@ export function spawnResourceTokenInstance(
     cardId: template.id,
     owner,
     name: template.card_name,
-    artPath: template.card_art_path,
+    artPath: template.card_thumbnail_path ?? template.card_art_path,
     artVersion: template.card_art_version ?? null,
     cost: Array.isArray(template.cost) ? template.cost.map(String) : [],
     zone: "stockpile",

@@ -24,6 +24,8 @@ export type DeckSummary = {
   liked_by_me?: boolean
   card_art_path?: string | null
   card_art_version?: number | null
+  /** Pilot + augment invoke-cost pips (deck colour identity). */
+  identity_cost?: string[]
 }
 
 export type DeckListPage = {
@@ -469,4 +471,19 @@ export function cardArtUrl(
 ): string | null {
   if (!path) return null
   return mediaUrl(path, version)
+}
+
+type CardFaceSource = {
+  card_thumbnail_path?: string | null
+  card_art_path?: string | null
+  card_art_version?: number | null
+}
+
+/** Full-card face for hovers, stacks, and play — prefers ``card_thumbnail_path``. */
+export function cardFaceUrl(card: CardFaceSource | null | undefined): string | null {
+  if (!card) return null
+  return cardArtUrl(
+    card.card_thumbnail_path ?? card.card_art_path,
+    card.card_art_version
+  )
 }

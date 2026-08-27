@@ -14,7 +14,7 @@ import {
 import { DeckCardListRow } from "@/components/decks/DeckCardListRow"
 import type { DeckCardViewMode } from "@/components/decks/DeckCardViewControls"
 import { CardEnlargeOverlay } from "@/components/Playtester/board/CardLargeOverlay"
-import { cardArtUrl, type DeckCardEntry } from "@/lib/api/decks"
+import { cardFaceUrl, type DeckCardEntry } from "@/lib/api/decks"
 
 import "./DeckCardStack.css"
 
@@ -119,7 +119,7 @@ export function DeckCardStack({
           const classified = classification != null
           const src = classified
             ? null
-            : cardArtUrl(card.card.card_art_path, card.card.card_art_version)
+            : cardFaceUrl(card.card)
           const isHovered = !isList && hoveredIndex === index
           const isCovering =
             !isList &&
@@ -322,9 +322,9 @@ export function DeckCardStack({
               classification={cardClassification(enlarged)!}
               size="enlarge"
             />
-          ) : cardArtUrl(enlarged.card.card_art_path, enlarged.card.card_art_version) ? (
+          ) : cardFaceUrl(enlarged.card) ? (
             <img
-              src={cardArtUrl(enlarged.card.card_art_path, enlarged.card.card_art_version)!}
+              src={cardFaceUrl(enlarged.card)!}
               alt={enlarged.card.card_name}
               className="deck-card-enlarge__art clip-angled"
               draggable={false}

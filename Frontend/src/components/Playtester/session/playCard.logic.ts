@@ -72,6 +72,7 @@ export function deckEntryToPlayInstance(
       id: number
       card_name: string
       card_art_path: string | null
+      card_thumbnail_path?: string | null
       card_art_version?: number | null
       cost?: string[] | null
     }
@@ -92,7 +93,9 @@ export function deckEntryToPlayInstance(
     instanceId: `preview-${entry.card.id}`,
     cardId: entry.card.id,
     name: entry.card.card_name,
-    artPath: classified ? null : entry.card.card_art_path,
+    artPath: classified
+      ? null
+      : (entry.card.card_thumbnail_path ?? entry.card.card_art_path),
     artVersion: classified ? null : (entry.card.card_art_version ?? null),
     cost: classified
       ? []
@@ -117,6 +120,7 @@ export function expandDeckToPlayInstances(
       id: number
       card_name: string
       card_art_path: string | null
+      card_thumbnail_path?: string | null
       card_art_version?: number | null
       cost?: string[] | null
     }

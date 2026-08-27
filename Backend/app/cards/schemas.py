@@ -18,6 +18,8 @@ class CardSummary(BaseModel):
     id: int
     card_name: str
     card_art_path: str | None = None
+    # Full-card PNG (DB: card_thumbnail_path) for faces, hovers, library tiles.
+    card_thumbnail_path: str | None = None
     # Epoch seconds from cards.updated_at — bust browser image cache.
     # Stored in DB as illustration_thumbnail_path.
     card_art_version: int | None = None

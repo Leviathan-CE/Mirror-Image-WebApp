@@ -30,6 +30,7 @@ export type AdminCardItem = {
   published: PublishStatus | string
   is_deprecated: boolean
   card_art_path: string | null
+  card_thumbnail_path?: string | null
   card_art_version?: number | null
 }
 

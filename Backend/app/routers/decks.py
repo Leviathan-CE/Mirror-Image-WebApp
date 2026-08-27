@@ -56,6 +56,7 @@ from app.deck_community import (
 from app.deck_defaults import DEFAULT_DECK_CATEGORY_NAMES, category_in_deck_default
 from app.decks.access import require_owned_deck, require_readable_deck
 from app.decks.copy import copy_deck_for_user
+from app.decks.colors import fetch_deck_identity_costs
 from app.decks.queries import (
     PILOT_ART_SELECT,
     card_count,
@@ -339,6 +340,9 @@ def list_public_decks(
             with conn.cursor() as cur:
                 cur.execute(sql, params)
                 rows = cur.fetchall()
+                identity_by_deck = fetch_deck_identity_costs(
+                    cur, [int(row[0]) for row in rows]
+                )
     except OperationalError as e:
         raise _db_unavailable(e) from e
 
@@ -358,6 +362,7 @@ def list_public_decks(
             liked_by_me=bool(row[10]) if user_id is not None else False,
             card_art_path=signed_media_path(row[11]),
             card_art_version=int(row[12]) if row[12] is not None else None,
+            identity_cost=identity_by_deck.get(int(row[0]), []),
         )
         for row in rows
     ]
@@ -395,6 +400,9 @@ def list_my_decks(user_id: int = Depends(get_current_user_id)):
             with conn.cursor() as cur:
                 cur.execute(sql, {"user_id": user_id})
                 rows = cur.fetchall()
+                identity_by_deck = fetch_deck_identity_costs(
+                    cur, [int(row[0]) for row in rows]
+                )
     except OperationalError as e:
         raise _db_unavailable(e) from e
 
@@ -409,6 +417,7 @@ def list_my_decks(user_id: int = Depends(get_current_user_id)):
             card_count=int(row[6] or 0),
             card_art_path=signed_media_path(row[7]),
             card_art_version=int(row[8]) if row[8] is not None else None,
+            identity_cost=identity_by_deck.get(int(row[0]), []),
         )
         for row in rows
     ]

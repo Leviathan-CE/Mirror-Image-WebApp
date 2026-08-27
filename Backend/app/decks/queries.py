@@ -20,6 +20,7 @@ from app.deck_community import community_fields
 from app.deck_defaults import (
     DEFAULT_DECK_CATEGORIES,
 )
+from app.decks.colors import fetch_deck_identity_costs
 from app.decks.schemas import CardSummary, DeckCardEntry, DeckCategoryOut, DeckSummary
 from app.media_urls import signed_media_path
 from app.profanity import reject_if_profane
@@ -147,6 +148,7 @@ def fetch_deck_cards(
             dc.name,
             dhc.sort_order,
             c.illustration_thumbnail_path,
+            c.card_thumbnail_path,
             c.invoke_cost,
             c.types_line,
             EXTRACT(EPOCH FROM c.updated_at)::bigint,
@@ -184,23 +186,24 @@ def fetch_deck_cards(
             id=int(row[0]),
             card_name=row[1],
             card_art_path=signed_media_path(row[6]),
-            invoke_cost=int(row[7] or 0),
-            types_line=row[8] or "",
-            card_art_version=int(row[9]) if row[9] is not None else None,
-            cost=list(row[10] or []),
-            hand_size=int(row[11] or 0),
-            ram_capacity=int(row[12] or 0),
-            power_capacity=int(row[13] or 0),
-            metal_capacity=int(row[14] or 0),
-            spirit_capacity=int(row[15] or 0),
-            steel_capacity=int(row[16] or 0),
-            time_capacity=int(row[17] or 0),
-            lif_capacity=int(row[18] or 0),
-            threat_level=str(row[19] if row[19] is not None else "0"),
-            super_types=list(row[20] or []),
-            sub_types=list(row[21] or []),
-            is_pilot=bool(row[22]),
-            is_augment=bool(row[23]),
+            card_thumbnail_path=signed_media_path(row[7]),
+            invoke_cost=int(row[8] or 0),
+            types_line=row[9] or "",
+            card_art_version=int(row[10]) if row[10] is not None else None,
+            cost=list(row[11] or []),
+            hand_size=int(row[12] or 0),
+            ram_capacity=int(row[13] or 0),
+            power_capacity=int(row[14] or 0),
+            metal_capacity=int(row[15] or 0),
+            spirit_capacity=int(row[16] or 0),
+            steel_capacity=int(row[17] or 0),
+            time_capacity=int(row[18] or 0),
+            lif_capacity=int(row[19] or 0),
+            threat_level=str(row[20] if row[20] is not None else "0"),
+            super_types=list(row[21] or []),
+            sub_types=list(row[22] or []),
+            is_pilot=bool(row[23]),
+            is_augment=bool(row[24]),
         )
         entry = DeckCardEntry(
             quantity=int(row[2]),
@@ -212,7 +215,7 @@ def fetch_deck_cards(
             classification=None,
         )
         kind = deck_card_classification(
-            row[24],
+            row[25],
             bypass=bypass,
             include_preview=include_preview,
         )
@@ -336,6 +339,7 @@ def summary_from_owner_row(
     liked_by_me: bool = False,
     card_art_path: str | None = None,
     card_art_version: int | None = None,
+    identity_cost: list[str] | None = None,
 ) -> DeckSummary:
     return DeckSummary(
         id=row[0],
@@ -351,6 +355,7 @@ def summary_from_owner_row(
         liked_by_me=liked_by_me,
         card_art_path=card_art_path,
         card_art_version=card_art_version,
+        identity_cost=list(identity_cost or []),
     )
 
 
@@ -362,11 +367,14 @@ def summary_with_community(
     viewer_id: int | None = None,
 ) -> DeckSummary:
     stats = community_fields(cur, int(row[0]), viewer_id=viewer_id)
-    art_path, art_version = fetch_pilot_card_art(cur, int(row[0]))
+    deck_id = int(row[0])
+    art_path, art_version = fetch_pilot_card_art(cur, deck_id)
+    identity_cost = fetch_deck_identity_costs(cur, [deck_id]).get(deck_id, [])
     return summary_from_owner_row(
         row,
         card_count_value,
         card_art_path=art_path,
         card_art_version=art_version,
+        identity_cost=identity_cost,
         **stats,
     )

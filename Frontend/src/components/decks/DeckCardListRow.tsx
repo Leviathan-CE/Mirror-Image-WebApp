@@ -10,7 +10,7 @@ import { CardCostIcons } from "@/components/cards/CardCostIcons"
 import { GameIcon } from "@/components/common/GameIcon"
 import type { CardClassification } from "@/components/decks/ClassifiedCardFace"
 import { deckCardRowStyle } from "@/components/decks/deckCardColors"
-import { cardArtUrl, type DeckCardEntry } from "@/lib/api/decks"
+import { cardFaceUrl, type DeckCardEntry } from "@/lib/api/decks"
 
 type DeckCardListRowProps = {
   card: DeckCardEntry
@@ -52,7 +52,7 @@ export function DeckCardListRow({ card, classified }: DeckCardListRowProps) {
   const style = classified ? undefined : deckCardRowStyle(card.card.cost)
   const art =
     classified == null
-      ? cardArtUrl(card.card.card_art_path, card.card.card_art_version)
+      ? cardFaceUrl(card.card)
       : null
   const [thumbPos, setThumbPos] = useState<{ x: number; y: number } | null>(
     null

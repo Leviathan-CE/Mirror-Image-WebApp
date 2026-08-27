@@ -12,6 +12,7 @@ export type CardSearchHit = {
   card_set_name: string
   rarity: string
   card_art_path: string | null
+  card_thumbnail_path?: string | null
   card_art_version?: number | null
 }
 
@@ -33,6 +34,7 @@ export type CardSummary = {
   id: number
   card_name: string
   card_art_path: string | null
+  card_thumbnail_path?: string | null
   /** Epoch seconds — changes when card art is re-uploaded. */
   card_art_version?: number | null
   invoke_cost?: number

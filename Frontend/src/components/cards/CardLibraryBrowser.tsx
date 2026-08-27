@@ -28,7 +28,7 @@ import {
   type CardLibraryItem,
   type CardLibrarySortMode,
 } from "@/lib/api/cards"
-import { cardArtUrl } from "@/lib/api/decks"
+import { cardFaceUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
 const PAGE_SIZE_OPTIONS = [50, 100, 150, 200] as const
@@ -313,7 +313,9 @@ export function CardLibraryBrowser({
 
   function clearFilters() {
     setNameQuery("")
+    setDebouncedName("")
     setDescriptionQuery("")
+    setDebouncedDescription("")
     setColors([])
     setInvokeMin("")
     setInvokeMax("")
@@ -368,6 +370,9 @@ export function CardLibraryBrowser({
     invokeMax.trim() !== "" ||
     superType !== "" ||
     subType !== ""
+
+  const filtersActive =
+    nameQuery.trim() !== "" || colors.length > 0 || advancedActive
 
   const paginationBar = (placement: "top" | "bottom") => (
     <SearchPaginationBar
@@ -551,6 +556,7 @@ export function CardLibraryBrowser({
           <GlitchFx
             type="button"
             label="CLEAR FILTERS"
+            disabled={!filtersActive}
             className={cn(secondaryActionClassName, "shrink-0 px-2 text-xs")}
             onClick={clearFilters}
           />
@@ -687,6 +693,13 @@ export function CardLibraryBrowser({
           />
         </div>
         {colorCostFilters}
+        <GlitchFx
+          type="button"
+          label="CLEAR FILTERS"
+          disabled={!filtersActive}
+          className={cn(secondaryActionClassName, "shrink-0 px-2 text-xs")}
+          onClick={clearFilters}
+        />
       </div>
       {previewSizeControl}
       <div>
@@ -825,7 +838,7 @@ export function CardLibraryBrowser({
         }}
       >
         {items.map((card) => {
-          const art = cardArtUrl(card.card_art_path, card.card_art_version)
+          const art = cardFaceUrl(card)
           return (
             <li key={card.id}>
               <button

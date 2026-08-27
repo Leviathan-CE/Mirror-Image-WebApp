@@ -157,6 +157,7 @@ def classified_deck_card_overrides(classification: str = "classified") -> dict:
         "classification": kind,
         "card": {
             "card_art_path": None,
+            "card_thumbnail_path": None,
             "card_art_version": None,
             "invoke_cost": 0,
             "cost": [],

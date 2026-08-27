@@ -59,6 +59,7 @@ export {
   updateDeckCard,
   updateDeckCategory,
   cardArtUrl,
+  cardFaceUrl,
   type AddDeckCardPayload,
   type DeckCardEntry,
   type DeckCategoryOut,

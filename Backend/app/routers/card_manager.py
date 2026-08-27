@@ -315,6 +315,7 @@ class CardSearchHit(BaseModel):
     card_set_name: str
     rarity: str
     card_art_path: str | None = None
+    card_thumbnail_path: str | None = None
     card_art_version: int | None = None
 
 
@@ -351,6 +352,7 @@ def search_cards(
                         c.card_set_name,
                         c.rarity,
                         c.illustration_thumbnail_path,
+                        c.card_thumbnail_path,
                         EXTRACT(EPOCH FROM c.updated_at)::bigint
                       FROM cards c
                      WHERE c.is_deprecated = false
@@ -386,7 +388,8 @@ def search_cards(
             card_set_name=row[2],
             rarity=row[3],
             card_art_path=signed_media_path(row[4]),
-            card_art_version=int(row[5]) if row[5] is not None else None,
+            card_thumbnail_path=signed_media_path(row[5]),
+            card_art_version=int(row[6]) if row[6] is not None else None,
         )
         for row in rows
     ]
@@ -572,6 +575,7 @@ def browse_card_library(
                         show_help_text,
                         threat_level,
                         illustration_thumbnail_path,
+                        card_thumbnail_path,
                         EXTRACT(EPOCH FROM updated_at)::bigint,
                         is_pilot,
                         is_augment,
@@ -614,17 +618,18 @@ def browse_card_library(
             show_help_text=bool(row[11]),
             threat_level=str(row[12] if row[12] is not None else "0"),
             card_art_path=signed_media_path(row[13]),
-            card_art_version=int(row[14]) if row[14] is not None else None,
-            is_pilot=bool(row[15]),
-            is_augment=bool(row[16]),
-            hand_size=int(row[17] or 0),
-            ram_capacity=int(row[18] or 0),
-            power_capacity=int(row[19] or 0),
-            metal_capacity=int(row[20] or 0),
-            spirit_capacity=int(row[21] or 0),
-            steel_capacity=int(row[22] or 0),
-            time_capacity=int(row[23] or 0),
-            lif_capacity=int(row[24] or 0),
+            card_thumbnail_path=signed_media_path(row[14]),
+            card_art_version=int(row[15]) if row[15] is not None else None,
+            is_pilot=bool(row[16]),
+            is_augment=bool(row[17]),
+            hand_size=int(row[18] or 0),
+            ram_capacity=int(row[19] or 0),
+            power_capacity=int(row[20] or 0),
+            metal_capacity=int(row[21] or 0),
+            spirit_capacity=int(row[22] or 0),
+            steel_capacity=int(row[23] or 0),
+            time_capacity=int(row[24] or 0),
+            lif_capacity=int(row[25] or 0),
         )
         for row in rows
     ]

@@ -5,7 +5,7 @@
 import { jsPDF } from "jspdf"
 
 import type { DeckPrintoutSlot } from "@/components/decks/deckPrintout.logic"
-import { cardArtUrl } from "@/lib/api/decks"
+import { cardFaceUrl } from "@/lib/api/decks"
 
 const PAGE_W_MM = 215.9
 const PAGE_H_MM = 279.4
@@ -125,7 +125,7 @@ export async function generateDeckPrintoutPdf(opts: {
     }
 
     const { x, y } = slotPosition(layout, indexOnPage)
-    const artUrl = cardArtUrl(slot.card_art_path, slot.card_art_version)
+    const artUrl = cardFaceUrl(slot)
     let drawn = false
 
     if (artUrl) {

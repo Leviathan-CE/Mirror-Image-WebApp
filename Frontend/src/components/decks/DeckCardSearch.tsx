@@ -7,7 +7,7 @@ import { useEffect, useId, useRef, useState } from "react"
 import { CardSearchBar } from "@/components/cards/CardSearchBar"
 import { useLatestRef } from "@/hooks/useLatestRef"
 import { searchCards, type CardSearchHit } from "@/lib/api/cards"
-import { cardArtUrl } from "@/lib/api/decks"
+import { cardFaceUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
 type DeckCardSearchProps = {
@@ -161,7 +161,7 @@ export function DeckCardSearch({
             </li>
           ) : null}
           {hits.map((hit, index) => {
-            const art = cardArtUrl(hit.card_art_path, hit.card_art_version)
+            const art = cardFaceUrl(hit)
             const active = index === activeIndex
             return (
               <li key={hit.id} role="option" aria-selected={active}>

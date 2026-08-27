@@ -10,7 +10,7 @@ import { CardRulesText } from "@/components/cards/CardRulesText"
 import { parseKeyword } from "@/components/cards/keywordHelp.logic"
 import { GameIcon } from "@/components/common/GameIcon"
 import { GlitchFx } from "@/components/effects/GlitchFx"
-import { cardArtUrl } from "@/lib/api/decks"
+import { cardFaceUrl } from "@/lib/api/decks"
 
 const closeButtonClassName =
   "font-buahs93 h-9 rounded-none border border-cyan-500/35 bg-black/70 px-3 text-sm text-cyan-100 hover:border-cyan-400/60 hover:bg-cyan-500/10 hover:text-white"
@@ -28,6 +28,7 @@ export type CardDetailOverlayData = {
   keywords?: string[]
   description?: string
   card_art_path: string | null
+  card_thumbnail_path?: string | null
   card_art_version?: number | null
   /** Optional admin metadata line. */
   metaLine?: string | null
@@ -50,7 +51,7 @@ export function CardDetailOverlay({ card, onClose }: CardDetailOverlayProps) {
 
   if (!card || typeof document === "undefined") return null
 
-  const art = cardArtUrl(card.card_art_path, card.card_art_version)
+  const art = cardFaceUrl(card)
   const threat = (card.threat_level ?? "0").trim()
   const showThreat = threat !== "" && threat !== "0"
   const keywords = card.keywords ?? []

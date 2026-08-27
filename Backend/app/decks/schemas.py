@@ -22,6 +22,8 @@ class DeckSummary(BaseModel):
     # Pilot slot illustration (DB: illustration_thumbnail_path; same JSON as CardSummary).
     card_art_path: str | None = None
     card_art_version: int | None = None
+    # Pilot invoke cost + augment colours, in pip order (deck-building identity).
+    identity_cost: list[str] = Field(default_factory=list)
 
 
 class DeckListPage(BaseModel):
