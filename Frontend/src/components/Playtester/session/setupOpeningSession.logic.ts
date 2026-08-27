@@ -37,12 +37,12 @@ export function startingResourceColorsFromPilot(
     const n = Math.max(0, Math.floor(count ?? 0))
     for (let i = 0; i < n; i++) out.push(color)
   }
-  push("RAM", pilot.ram_capacity)
-  push("POW", pilot.power_capacity)
-  push("MET", pilot.metal_capacity)
-  push("LIF", pilot.spirit_capacity)
-  push("TIM", pilot.time_capacity)
-  push("STL", pilot.steel_capacity)
+  push("RAM", pilot.card.ram_capacity)
+  push("POW", pilot.card.power_capacity)
+  push("MET", pilot.card.metal_capacity)
+  push("LIF", pilot.card.spirit_capacity)
+  push("TIM", pilot.card.time_capacity)
+  push("STL", pilot.card.steel_capacity)
   return out
 }
 
@@ -50,7 +50,7 @@ export function startingResourceColorsFromPilot(
 export function startingLifeFromPilot(
   pilot: DeckCardEntry | null | undefined
 ): number {
-  return Math.max(0, Math.floor(pilot?.lif_capacity ?? 0))
+  return Math.max(0, Math.floor(pilot?.card.lif_capacity ?? 0))
 }
 
 /**
@@ -146,7 +146,7 @@ export function setupOpeningSession(
     })
   }
 
-  const handSize = Math.max(0, Math.floor(pilotEntry?.hand_size ?? 0))
+  const handSize = Math.max(0, Math.floor(pilotEntry?.card.hand_size ?? 0))
   const pool = shuffleInPlace(
     expandDeckToPlayInstances(mainEntries, "library", owner)
   )

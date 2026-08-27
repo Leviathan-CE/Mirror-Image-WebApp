@@ -280,7 +280,7 @@ export function usePlaySession({
         }))
         setPilotHandBySeat((prev) => ({
           ...prev,
-          [mySeat]: Math.max(0, Math.floor(pilot?.hand_size ?? 0)),
+          [mySeat]: Math.max(0, Math.floor(pilot?.card.hand_size ?? 0)),
         }))
         setTurnSeat(mySeat)
         if (OPENING_MULLIGAN_ENABLED) {
@@ -313,8 +313,8 @@ export function usePlaySession({
     life[mySeat] = startingLifeFromPilot(pilot)
     life[theirSeat] = startingLifeFromPilot(oppPilot)
     const handSizes = seatRecord(0)
-    handSizes[mySeat] = Math.max(0, Math.floor(pilot?.hand_size ?? 0))
-    handSizes[theirSeat] = Math.max(0, Math.floor(oppPilot?.hand_size ?? 0))
+    handSizes[mySeat] = Math.max(0, Math.floor(pilot?.card.hand_size ?? 0))
+    handSizes[theirSeat] = Math.max(0, Math.floor(oppPilot?.card.hand_size ?? 0))
     setLifeBySeat(life)
     setTurn(1)
     setTurnSeat(mySeat)

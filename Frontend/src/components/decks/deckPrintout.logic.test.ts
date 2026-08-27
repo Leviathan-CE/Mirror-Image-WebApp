@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { collectDeckPrintoutSlots } from "@/components/decks/deckPrintout.logic"
 import type { DeckCardEntry, DeckCategoryOut, DeckDetail } from "@/lib/api/decks"
+import { deckEntry } from "@/test/deckEntry.fixture"
 
 function category(
   id: number,
@@ -13,16 +14,12 @@ function category(
 }
 
 function card(
-  overrides: Partial<DeckCardEntry> & Pick<DeckCardEntry, "card_id" | "category_id">
+  overrides: Parameters<typeof deckEntry>[0] & { category_id: number }
 ): DeckCardEntry {
-  return {
-    card_name: `Card ${overrides.card_id}`,
-    quantity: 1,
-    category_name: "Entity",
-    sort_order: 0,
+  return deckEntry({
     card_art_path: "/media/test.png",
     ...overrides,
-  }
+  })
 }
 
 function deck(

@@ -61,33 +61,17 @@ export type DeckCategoryOut = {
   in_deck?: boolean
 }
 
+/** Shared catalogue projection — defined with the card domain. */
+export type { CardSummary } from "@/lib/api/cards"
+import type { CardSummary } from "@/lib/api/cards"
+
+/** One deck membership row: section placement + nested card summary. */
 export type DeckCardEntry = {
-  card_id: number
-  card_name: string
   quantity: number
   category_id: number
   category_name: string
   sort_order: number
-  card_art_path: string | null
-  invoke_cost?: number
-  /** Invoke-cost icon tokens (LIF, MET, GEN2, …). */
-  cost?: string[]
-  /** Printed threat level (TLV). */
-  threat_level?: string
-  types_line?: string
-  /** Epoch seconds — changes when card art is re-uploaded. */
-  card_art_version?: number | null
-  /** Pilot opening hand size (0 on non-pilots). */
-  hand_size?: number
-  /** Starting stockpile resource counts printed on the pilot. */
-  ram_capacity?: number
-  power_capacity?: number
-  metal_capacity?: number
-  spirit_capacity?: number
-  steel_capacity?: number
-  time_capacity?: number
-  /** Starting life total on pilots (not a resource token). */
-  lif_capacity?: number
+  card: CardSummary
   /**
    * Server stripped preview / unpublished art for this viewer.
    * Trust this flag — do not re-derive from subscription client-side alone.

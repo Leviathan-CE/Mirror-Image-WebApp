@@ -70,16 +70,18 @@ def test_classified_overrides_strip_art_and_stats():
     overrides = classified_deck_card_overrides("classified")
     assert overrides["is_classified"] is True
     assert overrides["classification"] == "classified"
-    assert overrides["card_art_path"] is None
-    assert overrides["card_art_version"] is None
-    assert overrides["cost"] == []
-    assert overrides["threat_level"] == "0"
-    assert overrides["types_line"] == "CLASSIFIED"
-    assert overrides["time_capacity"] == 0
+    card = overrides["card"]
+    assert card["card_art_path"] is None
+    assert card["card_art_version"] is None
+    assert card["cost"] == []
+    assert card["threat_level"] == "0"
+    assert card["types_line"] == "CLASSIFIED"
+    assert card["super_types"] == []
+    assert card["time_capacity"] == 0
 
 
 def test_top_secret_overrides():
     overrides = classified_deck_card_overrides("top_secret")
     assert overrides["classification"] == "top_secret"
-    assert overrides["types_line"] == "TOP SECRET"
+    assert overrides["card"]["types_line"] == "TOP SECRET"
     assert overrides["is_classified"] is True

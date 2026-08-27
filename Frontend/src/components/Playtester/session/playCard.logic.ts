@@ -68,11 +68,13 @@ export type PlayingCardInstance = {
 /** Expand one deck list row into a single play instance (first copy). */
 export function deckEntryToPlayInstance(
   entry: {
-    card_id: number
-    card_name: string
-    card_art_path: string | null
-    card_art_version?: number | null
-    cost?: string[] | null
+    card: {
+      id: number
+      card_name: string
+      card_art_path: string | null
+      card_art_version?: number | null
+      cost?: string[] | null
+    }
     is_classified?: boolean
     classification?: "classified" | "top_secret" | null
   },
@@ -87,15 +89,15 @@ export function deckEntryToPlayInstance(
         : null
   const classified = classification != null
   return {
-    instanceId: `preview-${entry.card_id}`,
-    cardId: entry.card_id,
-    name: entry.card_name,
-    artPath: classified ? null : entry.card_art_path,
-    artVersion: classified ? null : (entry.card_art_version ?? null),
+    instanceId: `preview-${entry.card.id}`,
+    cardId: entry.card.id,
+    name: entry.card.card_name,
+    artPath: classified ? null : entry.card.card_art_path,
+    artVersion: classified ? null : (entry.card.card_art_version ?? null),
     cost: classified
       ? []
-      : Array.isArray(entry.cost)
-        ? entry.cost.map(String)
+      : Array.isArray(entry.card.cost)
+        ? entry.card.cost.map(String)
         : [],
     zone,
     owner,
@@ -111,11 +113,13 @@ export function deckEntryToPlayInstance(
  */
 export function expandDeckToPlayInstances(
   entries: Array<{
-    card_id: number
-    card_name: string
-    card_art_path: string | null
-    card_art_version?: number | null
-    cost?: string[] | null
+    card: {
+      id: number
+      card_name: string
+      card_art_path: string | null
+      card_art_version?: number | null
+      cost?: string[] | null
+    }
     quantity: number
     is_classified?: boolean
     classification?: "classified" | "top_secret" | null
@@ -129,7 +133,7 @@ export function expandDeckToPlayInstances(
     for (let copy = 0; copy < qty; copy++) {
       out.push({
         ...deckEntryToPlayInstance(entry, zone, owner),
-        instanceId: `${owner}-${zone}-${entry.card_id}-c${copy}-${out.length}`,
+        instanceId: `${owner}-${zone}-${entry.card.id}-c${copy}-${out.length}`,
       })
     }
   }

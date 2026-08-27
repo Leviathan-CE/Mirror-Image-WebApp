@@ -37,7 +37,7 @@ import {
   clampQuantityToMax,
   deckCardCount,
   mainCategoryId,
-  maxCopiesForCategory,
+  maxCopiesForDeckCard,
   maxQuantityForStackEntry,
   nextCardQuantity,
   nextNewSectionName,
@@ -666,7 +666,7 @@ export function DeckPage() {
 
     const source = workingCards.find(
       (card) =>
-        card.card_id === cardId && card.category_id === fromCategoryId
+        card.card.id === cardId && card.category_id === fromCategoryId
     )
     if (!source) return workingCards
 
@@ -675,11 +675,11 @@ export function DeckPage() {
       name: "",
       sort_order: 0,
     }
-    const maxCopies = maxCopiesForCategory(destCategory)
     const existingDest = workingCards.find(
       (card) =>
-        card.card_id === cardId && card.category_id === toCategoryId
+        card.card.id === cardId && card.category_id === toCategoryId
     )
+    const maxCopies = maxCopiesForDeckCard(destCategory, source)
     const destQty = existingDest?.quantity ?? 0
     if (destQty >= maxCopies) {
       throw new Error("max_copies")
@@ -806,10 +806,20 @@ export function DeckPage() {
       return
     }
 
-    const maxCopies = maxCopiesForCategory(category)
     const existing = deck.cards.find(
-      (card) => card.card_id === cardId && card.category_id === toCategoryId
+      (card) => card.card.id === cardId && card.category_id === toCategoryId
     )
+    const known =
+      existing ?? deck.cards.find((card) => card.card.id === cardId)
+    let maxCopies = maxCopiesForDeckCard(category, known)
+    if (!known) {
+      try {
+        const detail = await fetchCardById(cardId, token)
+        maxCopies = maxCopiesForDeckCard(category, detail)
+      } catch {
+        // Default to standard 3 until the card is on the board.
+      }
+    }
 
     if (existing) {
       const stackMax = maxQuantityForStackEntry(
@@ -830,7 +840,7 @@ export function DeckPage() {
       try {
         const updated = await updateDeckCard(
           deck.id,
-          existing.card_id,
+          existing.card.id,
           existing.category_id,
           token,
           { quantity: nextQty }
@@ -866,7 +876,7 @@ export function DeckPage() {
       if (clampedQty < entry.quantity) {
         const clamped = await updateDeckCard(
           deck.id,
-          entry.card_id,
+          entry.card.id,
           entry.category_id,
           token,
           { quantity: clampedQty }
@@ -902,12 +912,12 @@ export function DeckPage() {
       name: "",
       sort_order: 0,
     }
-    const maxCopies = maxCopiesForCategory(category)
+    const maxCopies = maxCopiesForDeckCard(category, card)
     const stackMax =
       delta > 0
         ? maxQuantityForStackEntry(
             deck.cards,
-            card.card_id,
+            card.card.id,
             card.quantity,
             maxCopies
           )
@@ -918,12 +928,12 @@ export function DeckPage() {
     setErrorText("")
     try {
       if (nextQty <= 0) {
-        await removeDeckCard(deck.id, card.card_id, card.category_id, token)
+        await removeDeckCard(deck.id, card.card.id, card.category_id, token)
         setDeck((prev) => {
           if (!prev) return prev
           const cards = removeCardEntry(
             prev.cards,
-            card.card_id,
+            card.card.id,
             card.category_id
           )
           return {
@@ -937,7 +947,7 @@ export function DeckPage() {
 
       const updated = await updateDeckCard(
         deck.id,
-        card.card_id,
+        card.card.id,
         card.category_id,
         token,
         { quantity: nextQty }
@@ -945,7 +955,7 @@ export function DeckPage() {
       setDeck((prev) => {
         if (!prev) return prev
         const cards = prev.cards.map((entry) =>
-          entry.card_id === card.card_id &&
+          entry.card.id === card.card.id &&
             entry.category_id === card.category_id
             ? updated
             : entry
@@ -984,7 +994,17 @@ export function DeckPage() {
         return
       }
 
-      const canAdd = canAddCopyToDeck(totalCopiesOfCard(deck.cards, hit.id))
+      const category =
+        deck.categories.find((c) => c.id === categoryId) ?? {
+          id: categoryId,
+          name: "",
+          sort_order: 0,
+        }
+      const maxCopies = maxCopiesForDeckCard(category, detail)
+      const canAdd = canAddCopyToDeck(
+        totalCopiesOfCard(deck.cards, hit.id),
+        maxCopies
+      )
       if (!canAdd.ok) {
         setErrorText(canAdd.message)
         return
@@ -995,11 +1015,11 @@ export function DeckPage() {
         category_id: categoryId,
         quantity: 1,
       })
-      const clampedQty = clampQuantityToMax(entry.quantity)
+      const clampedQty = clampQuantityToMax(entry.quantity, maxCopies)
       if (clampedQty < entry.quantity) {
         const clamped = await updateDeckCard(
           deck.id,
-          entry.card_id,
+          entry.card.id,
           entry.category_id,
           token,
           { quantity: clampedQty }
@@ -1054,7 +1074,7 @@ export function DeckPage() {
     }
 
     const already = deck.cards.find(
-      (card) => card.card_id === cardId && card.category_id === augmentCatId
+      (card) => card.card.id === cardId && card.category_id === augmentCatId
     )
     if (already) {
       setErrorText("That augment is already in the list.")
@@ -1085,7 +1105,7 @@ export function DeckPage() {
             ? prev.cards.filter(
               (card) =>
                 !(
-                  card.card_id === cardId &&
+                  card.card.id === cardId &&
                   card.category_id === fromCategoryId
                 )
             )
@@ -1145,7 +1165,7 @@ export function DeckPage() {
     }
 
     const current = pilotCard(deck.cards, deck.categories)
-    if (current && current.card_id === cardId && current.category_id === pilotCatId) {
+    if (current && current.card.id === cardId && current.category_id === pilotCatId) {
       return
     }
 
@@ -1155,7 +1175,7 @@ export function DeckPage() {
       if (current) {
         await removeDeckCard(
           deck.id,
-          current.card_id,
+          current.card.id,
           current.category_id,
           token
         )
@@ -1185,7 +1205,7 @@ export function DeckPage() {
             ? withoutOldPilot.filter(
               (card) =>
                 !(
-                  card.card_id === cardId &&
+                  card.card.id === cardId &&
                   card.category_id === fromCategoryId
                 )
             )
@@ -1214,7 +1234,7 @@ export function DeckPage() {
     try {
       await removeDeckCard(
         deck.id,
-        current.card_id,
+        current.card.id,
         current.category_id,
         token
       )
@@ -1223,7 +1243,7 @@ export function DeckPage() {
         const cards = prev.cards.filter(
           (card) =>
             !(
-              card.card_id === current.card_id &&
+              card.card.id === current.card.id &&
               card.category_id === current.category_id
             )
         )

@@ -23,10 +23,10 @@ function expandQuantity(entries: DeckCardEntry[]): DeckPrintoutSlot[] {
     const copies = Math.max(0, Math.floor(entry.quantity))
     for (let i = 0; i < copies; i++) {
       out.push({
-        card_id: entry.card_id,
-        card_name: entry.card_name,
-        card_art_path: entry.card_art_path,
-        card_art_version: entry.card_art_version,
+        card_id: entry.card.id,
+        card_name: entry.card.card_name,
+        card_art_path: entry.card.card_art_path,
+        card_art_version: entry.card.card_art_version,
         section: "deck",
       })
     }
@@ -41,10 +41,10 @@ export function collectDeckPrintoutSlots(deck: DeckDetail): DeckPrintoutSlot[] {
   const pilot = pilotCard(deck.cards, deck.categories)
   if (pilot) {
     slots.push({
-      card_id: pilot.card_id,
-      card_name: pilot.card_name,
-      card_art_path: pilot.card_art_path,
-      card_art_version: pilot.card_art_version,
+      card_id: pilot.card.id,
+      card_name: pilot.card.card_name,
+      card_art_path: pilot.card.card_art_path,
+      card_art_version: pilot.card.card_art_version,
       section: "pilot",
     })
   }
@@ -53,10 +53,10 @@ export function collectDeckPrintoutSlots(deck: DeckDetail): DeckPrintoutSlot[] {
     const copies = Math.max(0, Math.floor(entry.quantity))
     for (let i = 0; i < copies; i++) {
       slots.push({
-        card_id: entry.card_id,
-        card_name: entry.card_name,
-        card_art_path: entry.card_art_path,
-        card_art_version: entry.card_art_version,
+        card_id: entry.card.id,
+        card_name: entry.card.card_name,
+        card_art_path: entry.card.card_art_path,
+        card_art_version: entry.card.card_art_version,
         section: "augment",
       })
     }
@@ -65,7 +65,7 @@ export function collectDeckPrintoutSlots(deck: DeckDetail): DeckPrintoutSlot[] {
   const main = libraryDeckEntries(deck).sort((a, b) => {
     const order = a.sort_order - b.sort_order
     if (order !== 0) return order
-    return a.card_name.localeCompare(b.card_name)
+    return a.card.card_name.localeCompare(b.card.card_name)
   })
 
   for (const slot of expandQuantity(main)) {

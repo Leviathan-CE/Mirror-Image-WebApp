@@ -6,8 +6,11 @@
 /** HTML5 drag MIME for in-app card moves. */
 export const DECK_CARD_DRAG_MIME = "application/x-mi-deck-card"
 
-/** Max copies of a card in a normal (non-augment) section. */
+/** Max copies of a card in a normal (non-augment, non-token) section. */
 export const DECK_CARD_MAX_COPIES = 3
+
+/** Max copies for Token super-type (matches backend `le=99`). */
+export const DECK_CARD_MAX_COPIES_UNLIMITED = 99
 
 /** Sentinel `fromCategoryId` for drags that originate in the card library browser. */
 export const LIBRARY_DRAG_CATEGORY_ID = -1

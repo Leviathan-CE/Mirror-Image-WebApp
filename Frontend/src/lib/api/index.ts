@@ -25,6 +25,7 @@ export {
   fetchCardFacets,
   type CardSearchHit,
   type CardDetail,
+  type CardSummary,
   type CardLibraryItem,
   type CardLibraryResponse,
   type CardLibraryFacets,

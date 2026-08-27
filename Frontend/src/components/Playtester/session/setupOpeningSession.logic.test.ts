@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import type { CardLibraryItem } from "@/lib/api/cards"
 import type { DeckCardEntry, DeckDetail } from "@/lib/api/decks"
+import { deckEntry } from "@/test/deckEntry.fixture"
 import type { ResourceColor } from "@/components/Playtester/session/accumulateResources.logic"
 import {
   libraryDeckEntries,
@@ -11,8 +12,8 @@ import {
   startingResourceColorsFromPilot,
 } from "@/components/Playtester/session/setupOpeningSession.logic"
 
-function pilot(overrides: Partial<DeckCardEntry> = {}): DeckCardEntry {
-  return {
+function pilot(overrides: Parameters<typeof deckEntry>[0] = {}): DeckCardEntry {
+  return deckEntry({
     card_id: 1,
     card_name: "Evran",
     quantity: 1,
@@ -30,7 +31,7 @@ function pilot(overrides: Partial<DeckCardEntry> = {}): DeckCardEntry {
     lif_capacity: 0,
     hand_size: 0,
     ...overrides,
-  }
+  })
 }
 
 function resource(
@@ -56,8 +57,8 @@ function resource(
   }
 }
 
-function card(overrides: Partial<DeckCardEntry>): DeckCardEntry {
-  return { ...pilot(), quantity: 1, ...overrides }
+function card(overrides: Parameters<typeof deckEntry>[0]): DeckCardEntry {
+  return pilot({ quantity: 1, ...overrides })
 }
 
 /** Pilot in category 1, two augments in category 2, one main card in 3. */
@@ -223,14 +224,8 @@ describe("stampStockpileWorldHomes via setupOpeningSession", () => {
         { id: 2, name: "Entity", sort_order: 0, in_deck: true },
       ],
       cards: [
-        {
-          ...pilot({ time_capacity: 1, hand_size: 0 }),
-          card_id: 1,
-          category_id: 1,
-          quantity: 1,
-        },
-        {
-          ...pilot(),
+        pilot({ time_capacity: 1, hand_size: 0, card_id: 1, category_id: 1, quantity: 1 }),
+        pilot({
           card_id: 2,
           card_name: "Runner",
           category_id: 2,
@@ -238,7 +233,7 @@ describe("stampStockpileWorldHomes via setupOpeningSession", () => {
           quantity: 1,
           time_capacity: undefined,
           hand_size: undefined,
-        },
+        }),
       ],
     })
     const p1 = setupOpeningSession(deck("A"), byColor, "p1").filter(
@@ -271,25 +266,23 @@ describe("libraryDeckEntries", () => {
         { id: 3, name: "Maybe", sort_order: 1, in_deck: false },
       ],
       cards: [
-        { ...pilot(), card_id: 1, category_id: 1, quantity: 1 },
-        {
-          ...pilot(),
+        pilot({ card_id: 1, category_id: 1, quantity: 1 }),
+        pilot({
           card_id: 2,
           card_name: "Drone",
           category_id: 2,
           category_name: "Entity",
           quantity: 2,
-        },
-        {
-          ...pilot(),
+        }),
+        pilot({
           card_id: 3,
           card_name: "Spare",
           category_id: 3,
           category_name: "Maybe",
           quantity: 1,
-        },
+        }),
       ],
     }
-    expect(libraryDeckEntries(deck).map((card) => card.card_id)).toEqual([2])
+    expect(libraryDeckEntries(deck).map((card) => card.card.id)).toEqual([2])
   })
 })

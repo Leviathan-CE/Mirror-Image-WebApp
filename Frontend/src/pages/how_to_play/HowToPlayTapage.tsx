@@ -245,13 +245,13 @@ export function HowToPlayPage() {
                         label="DOWNLOAD SAMPLE DECK [SPECAIL OPERATIONS]"
                         size="lg"
                         className="font-buahs93 w-auto h-auto min-h-8 shrink whitespace-normal rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
-                        render={<a href="/docs/deck_samples/Deck_Specail_Operations_BY.pdf" download />}
+                        render={<a href="/docs/deck_samples/Demo_Starter_Specail_Operations.pdf" download />}
                     />
                     <GlitchFx
                         label="DOWNLOAD SAMPLE DECK [HUNTER KILLER]"
                         size="lg"
                         className="font-buahs93  w-auto h-auto min-h-8 shrink whitespace-normal rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
-                        render={<a href="/docs/deck_samples/Deck_Hunter_Killer_GRP.pdf" download />}
+                        render={<a href="/docs/deck_samples/Demo_Starter_Hunter_Killer.pdf" download />}
                     />
                 </div>
 

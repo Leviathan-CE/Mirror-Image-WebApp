@@ -458,11 +458,13 @@ describe("deckEntryToPlayInstance classified", () => {
   it("strips art/cost and sets isClassified from the API flag", () => {
     const inst = deckEntryToPlayInstance(
       {
-        card_id: 9,
-        card_name: "Secret Preview",
-        card_art_path: "/art/secret.png",
-        card_art_version: 3,
-        cost: ["LIF"],
+        card: {
+          id: 9,
+          card_name: "Secret Preview",
+          card_art_path: "/art/secret.png",
+          card_art_version: 3,
+          cost: ["LIF"],
+        },
         is_classified: true,
         classification: "classified",
       },
@@ -479,9 +481,11 @@ describe("deckEntryToPlayInstance classified", () => {
   it("maps top_secret unpublished stubs", () => {
     const inst = deckEntryToPlayInstance(
       {
-        card_id: 10,
-        card_name: "Unreleased",
-        card_art_path: "/art/x.png",
+        card: {
+          id: 10,
+          card_name: "Unreleased",
+          card_art_path: "/art/x.png",
+        },
         is_classified: true,
         classification: "top_secret",
       },

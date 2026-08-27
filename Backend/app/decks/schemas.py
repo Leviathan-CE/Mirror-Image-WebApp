@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.cards.schemas import CardSummary
 
 
 class DeckSummary(BaseModel):
@@ -85,30 +85,13 @@ class DeckCategoryUpdate(BaseModel):
 
 
 class DeckCardEntry(BaseModel):
-    card_id: int
-    card_name: str
+    """One deck membership row: section placement + nested card summary."""
+
     quantity: int
     category_id: int
     category_name: str
     sort_order: int
-    card_art_path: str | None = None
-    invoke_cost: int = 0
-    # Invoke-cost icon list (LIF, MET, GEN2, …) — used by playtester Accumulate.
-    cost: list[Any] = Field(default_factory=list)
-    threat_level: str = "0"
-    types_line: str = ""
-    # Epoch seconds from cards.updated_at — used to bust browser image cache.
-    card_art_version: int | None = None
-    # Pilot starting values (also present on other cards; usually 0).
-    hand_size: int = 0
-    ram_capacity: int = 0
-    power_capacity: int = 0
-    metal_capacity: int = 0
-    spirit_capacity: int = 0
-    steel_capacity: int = 0
-    time_capacity: int = 0
-    # Starting life total on pilots (not a resource token).
-    lif_capacity: int = 0
+    card: CardSummary
     # True when preview / unpublished content was stripped for this viewer.
     is_classified: bool = False
     # "classified" (preview lock) | "top_secret" (not published) | null.

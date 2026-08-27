@@ -43,7 +43,7 @@ export function DeckPilotSlot({
   const classified = classification != null
   const art =
     pilot && !classified
-      ? cardArtUrl(pilot.card_art_path, pilot.card_art_version)
+      ? cardArtUrl(pilot.card.card_art_path, pilot.card.card_art_version)
       : null
 
   useEffect(() => {
@@ -129,12 +129,12 @@ export function DeckPilotSlot({
         title={
           pilot
             ? classification === "top_secret"
-              ? `${pilot.card_name} — TOP SECRET · click to inspect`
+              ? `${pilot.card.card_name} — TOP SECRET · click to inspect`
               : classification === "classified"
-                ? `${pilot.card_name} — CLASSIFIED · click for details / become a member`
+                ? `${pilot.card.card_name} — CLASSIFIED · click for details / become a member`
               : canEdit
-                ? `${pilot.card_name} — right-click to clear · middle-hold enlarge`
-                : `${pilot.card_name} — middle-click hold to enlarge`
+                ? `${pilot.card.card_name} — right-click to clear · middle-hold enlarge`
+                : `${pilot.card.card_name} — middle-click hold to enlarge`
             : canEdit
               ? "Drop a pilot card here"
               : "No pilot selected"
@@ -143,20 +143,20 @@ export function DeckPilotSlot({
         {pilot ? (
           classified ? (
             <ClassifiedCardFace
-              name={pilot.card_name}
+              name={pilot.card.card_name}
               classification={classification!}
               size="pilot"
             />
           ) : art ? (
             <img
               src={art}
-              alt={pilot.card_name}
+              alt={pilot.card.card_name}
               className="deck-pilot-slot__art clip-angled"
               draggable={false}
             />
           ) : (
             <p className="px-3 text-center font-mono text-xs text-cyan-200/80">
-              {pilot.card_name}
+              {pilot.card.card_name}
             </p>
           )
         ) : (
@@ -170,28 +170,28 @@ export function DeckPilotSlot({
         <div
           className="deck-card-enlarge"
           role="dialog"
-          aria-label={pilot.card_name}
+          aria-label={pilot.card.card_name}
         >
           {classified ? (
             <ClassifiedCardFace
-              name={pilot.card_name}
+              name={pilot.card.card_name}
               classification={classification!}
               size="enlarge"
             />
           ) : art ? (
             <img
               src={art}
-              alt={pilot.card_name}
+              alt={pilot.card.card_name}
               className="deck-card-enlarge__art clip-angled"
               draggable={false}
             />
           ) : (
             <div className="deck-card-enlarge__fallback clip-angled">
-              {pilot.card_name}
+              {pilot.card.card_name}
             </div>
           )}
           <p className="deck-card-enlarge__caption">
-            {pilot.card_name}
+            {pilot.card.card_name}
             {classification === "top_secret" ? " — TOP SECRET" : classification === "classified" ? " — CLASSIFIED" : ""}
           </p>
         </div>
@@ -199,7 +199,7 @@ export function DeckPilotSlot({
 
       <CardEnlargeOverlay
         open={inspectOpen && pilot != null && classified}
-        name={pilot?.card_name ?? ""}
+        name={pilot?.card.card_name ?? ""}
         artSrc={null}
         classification={classification}
         onDismiss={() => setInspectOpen(false)}

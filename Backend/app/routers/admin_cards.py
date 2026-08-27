@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, field_validator
 from psycopg2 import OperationalError
 
 from app.card_library_query import apply_catalogue_filters, catalogue_order_sql
+from app.cards.schemas import CardLibraryItem
 from app.db import get_connection
 from app.media_urls import signed_media_path
 from app.security import get_current_admin_user_id
@@ -206,24 +207,9 @@ def admin_browse_cards(
     )
 
 
-class AdminCardDetail(BaseModel):
-    """Full catalogue fields for the admin detail overlay."""
+class AdminCardDetail(CardLibraryItem):
+    """Admin detail overlay = library card row + publish / lagality flags."""
 
-    id: int
-    card_name: str
-    card_set_name: str
-    rarity: str
-    invoke_cost: int = 0
-    cost: list[Any] = Field(default_factory=list)
-    super_types: list[Any] = Field(default_factory=list)
-    sub_types: list[Any] = Field(default_factory=list)
-    types_line: str = ""
-    description: str = ""
-    keywords: list[Any] = Field(default_factory=list)
-    show_help_text: bool = True
-    threat_level: str = "0"
-    card_art_path: str | None = None
-    card_art_version: int | None = None
     lagality: str = "Legal"
     published: str = "not published"
     is_deprecated: bool = False
@@ -259,6 +245,16 @@ def admin_get_card(
                         c.threat_level,
                         c.card_art_path,
                         EXTRACT(EPOCH FROM c.updated_at)::bigint,
+                        c.is_pilot,
+                        c.is_augment,
+                        c.hand_size,
+                        c.ram_capacity,
+                        c.power_capacity,
+                        c.metal_capacity,
+                        c.spirit_capacity,
+                        c.steel_capacity,
+                        c.time_capacity,
+                        c.lif_capacity,
                         c.lagality,
                         COALESCE(p.published, 'not published'),
                         c.is_deprecated
@@ -295,9 +291,19 @@ def admin_get_card(
         threat_level=str(row[12] if row[12] is not None else "0"),
         card_art_path=signed_media_path(row[13]),
         card_art_version=int(row[14]) if row[14] is not None else None,
-        lagality=row[15] or "Legal",
-        published=row[16] or "not published",
-        is_deprecated=bool(row[17]),
+        is_pilot=bool(row[15]),
+        is_augment=bool(row[16]),
+        hand_size=int(row[17] or 0),
+        ram_capacity=int(row[18] or 0),
+        power_capacity=int(row[19] or 0),
+        metal_capacity=int(row[20] or 0),
+        spirit_capacity=int(row[21] or 0),
+        steel_capacity=int(row[22] or 0),
+        time_capacity=int(row[23] or 0),
+        lif_capacity=int(row[24] or 0),
+        lagality=row[25] or "Legal",
+        published=row[26] or "not published",
+        is_deprecated=bool(row[27]),
     )
 
 

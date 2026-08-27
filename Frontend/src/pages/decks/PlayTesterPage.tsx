@@ -193,7 +193,6 @@ export function PlayTesterPage() {
     status === "ready" &&
     !!token &&
     resourceCache?.key === resourceCacheKey
-  const [vsDraft, setVsDraft] = useState("")
   const [playNotice, setPlayNotice] = useState<string | null>(null)
   /**
    * Board canvas + CSS fit-scale.
@@ -1037,13 +1036,15 @@ export function PlayTesterPage() {
     navigate(ROUTES.MAIN)
   }
 
-  function startHotseatVs() {
-    const id = Number(vsDraft)
-    if (!Number.isFinite(id) || id <= 0) {
-      setPlayNotice("Enter a numeric deck id to play hotseat.")
-      return
+  async function copyRoomCode() {
+    const code = playNet.code
+    if (!code) return
+    try {
+      await navigator.clipboard.writeText(code)
+      setPlayNotice(`Room ${code} copied.`)
+    } catch {
+      setPlayNotice("Could not copy room code.")
     }
-    navigate(ROUTES.playTesterVs(deckId, id))
   }
 
   const playMenuItems: DropdownMenuItem[] = [
@@ -1060,18 +1061,6 @@ export function PlayTesterPage() {
       label: `Swap seat · now ${localSeat}`,
       onSelect: () => setHotseatSeat((s) => (s === "p1" ? "p2" : "p1")),
     })
-  } else if (!twoSeat) {
-    playMenuItems.push({
-      id: "playtester-hotseat",
-      label: "Hotseat vs",
-      onSelect: startHotseatVs,
-      textInput: {
-        value: vsDraft,
-        onChange: setVsDraft,
-        placeholder: "deck id",
-        ariaLabel: "Opponent deck id",
-      },
-    })
   }
 
   if (netActive) {
@@ -1080,8 +1069,7 @@ export function PlayTesterPage() {
       label: "Copy room code",
       disabled: !playNet.code,
       onSelect: () => {
-        void navigator.clipboard.writeText(playNet.code ?? "")
-        setPlayNotice(`Room ${playNet.code} copied.`)
+        void copyRoomCode()
       },
     })
     if (playNet.status === "disconnected") {
@@ -1126,9 +1114,8 @@ export function PlayTesterPage() {
     )
   }
 
-  const roomStatusText = netActive
+  const roomStatusMeta = netActive
     ? [
-        playNet.code ?? "ROOM",
         playNet.status === "waiting"
           ? "waiting"
           : playNet.transport === "p2p"
@@ -1445,10 +1432,21 @@ export function PlayTesterPage() {
           />
         </div>
 
-        <div className="flex max-w-[55%] flex-col items-end gap-0.5 text-right">
-          {roomStatusText ? (
+        <div className="pointer-events-auto flex max-w-[55%] flex-col items-end gap-0.5 text-right">
+          {netActive && playNet.code ? (
             <span className="font-mono text-[10px] text-cyan-100/80">
-              {roomStatusText}
+              <button
+                type="button"
+                className="underline decoration-cyan-400/50 underline-offset-2 hover:text-cyan-50 hover:decoration-cyan-200"
+                title="Copy room code"
+                aria-label={`Copy room code ${playNet.code}`}
+                onClick={() => {
+                  void copyRoomCode()
+                }}
+              >
+                {playNet.code}
+              </button>
+              {roomStatusMeta ? ` · ${roomStatusMeta}` : null}
             </span>
           ) : null}
           {playNotice ? (
@@ -1471,8 +1469,22 @@ export function PlayTesterPage() {
           </p>
         ) : null}
         {netActive && playNet.status === "waiting" ? (
-          <p className="font-mono text-xs text-cyan-100/80" role="status">
-            Waiting for opponent — share code {playNet.code}
+          <p
+            className="pl-12 font-mono text-xs text-cyan-100/80"
+            role="status"
+          >
+            Waiting for opponent — share code{" "}
+            <button
+              type="button"
+              className="underline decoration-cyan-400/60 underline-offset-2 hover:text-cyan-50 hover:decoration-cyan-200"
+              title="Copy room code"
+              aria-label={`Copy room code ${playNet.code ?? ""}`}
+              onClick={() => {
+                void copyRoomCode()
+              }}
+            >
+              {playNet.code}
+            </button>
           </p>
         ) : null}
         {playNet.status === "disconnected" ? (

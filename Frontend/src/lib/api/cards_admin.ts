@@ -3,7 +3,7 @@
  */
 
 import { apiBaseUrl, authHeaders, readJsonOrThrow } from "@/lib/api/client"
-import type { CardLibraryQuery } from "@/lib/api/cards"
+import type { CardLibraryItem, CardLibraryQuery } from "@/lib/api/cards"
 
 export type PublishStatus = "published" | "preview" | "not published"
 
@@ -90,22 +90,8 @@ export async function fetchAdminCardLibrary(
   )
 }
 
-export type AdminCardDetail = {
-  id: number
-  card_name: string
-  card_set_name: string
-  rarity: string
-  invoke_cost: number
-  cost: string[]
-  super_types: string[]
-  sub_types: string[]
-  types_line: string
-  description: string
-  keywords: string[]
-  show_help_text: boolean
-  threat_level: string
-  card_art_path: string | null
-  card_art_version?: number | null
+/** Admin detail = library card row + publish / lagality flags. */
+export type AdminCardDetail = CardLibraryItem & {
   lagality: string
   published: PublishStatus | string
   is_deprecated: boolean

@@ -302,6 +302,7 @@ export function DeckCategorySection({
         ) : (
           <DeckCardStack
             cards={cards}
+            category={category}
             viewMode={viewMode}
             draggable={canEdit}
             disabled={locked}

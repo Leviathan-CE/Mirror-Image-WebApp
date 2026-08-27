@@ -158,7 +158,6 @@ export function CardLibraryBrowser({
   const [colors, setColors] = useState<string[]>([])
   const [invokeMin, setInvokeMin] = useState("")
   const [invokeMax, setInvokeMax] = useState("")
-  const [typesLine, setTypesLine] = useState("")
   const [superType, setSuperType] = useState("")
   const [subType, setSubType] = useState("")
   const [offset, setOffset] = useState(0)
@@ -240,7 +239,6 @@ export function CardLibraryBrowser({
     colors,
     invokeMin,
     invokeMax,
-    typesLine,
     superType,
     subType,
     pageSize,
@@ -264,7 +262,6 @@ export function CardLibraryBrowser({
         colors,
         invokeCostMin: Number.isFinite(min) ? min : null,
         invokeCostMax: Number.isFinite(max) ? max : null,
-        typesLine: typesLine || undefined,
         superType: superType || undefined,
         subType: subType || undefined,
         sort: sortMode,
@@ -300,7 +297,6 @@ export function CardLibraryBrowser({
     colors,
     invokeMin,
     invokeMax,
-    typesLine,
     superType,
     subType,
     sortMode,
@@ -321,7 +317,6 @@ export function CardLibraryBrowser({
     setColors([])
     setInvokeMin("")
     setInvokeMax("")
-    setTypesLine("")
     setSuperType("")
     setSubType("")
     setOffset(0)
@@ -371,7 +366,6 @@ export function CardLibraryBrowser({
     descriptionQuery.trim() !== "" ||
     invokeMin.trim() !== "" ||
     invokeMax.trim() !== "" ||
-    typesLine !== "" ||
     superType !== "" ||
     subType !== ""
 
@@ -761,23 +755,6 @@ export function CardLibraryBrowser({
                 size="sm"
                 inputMode="numeric"
               />
-            </label>
-            <label className="block">
-              <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-                TYPE LINE
-              </span>
-              <select
-                value={typesLine}
-                onChange={(e) => setTypesLine(e.target.value)}
-                className={filterSelectClassName}
-              >
-                <option value="">Any</option>
-                {facets.types_lines.map((line) => (
-                  <option key={line} value={line}>
-                    {line}
-                  </option>
-                ))}
-              </select>
             </label>
             <label className="block">
               <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">

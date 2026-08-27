@@ -45,14 +45,14 @@ export function useCardSelection({
     if (card) {
       selectionAnchorKeyRef.current = deckCardSelectionKey(
         card.category_id,
-        card.card_id
+        card.card.id
       )
     }
   }, [])
 
   const selectCard = useCallback(
     (card: DeckCardEntry, mode: "toggle" | "range") => {
-      const key = deckCardSelectionKey(card.category_id, card.card_id)
+      const key = deckCardSelectionKey(card.category_id, card.card.id)
 
       if (mode === "toggle") {
         selectionAnchorKeyRef.current = key

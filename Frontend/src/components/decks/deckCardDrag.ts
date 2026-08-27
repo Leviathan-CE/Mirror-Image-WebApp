@@ -12,6 +12,7 @@ import { safeJsonParse } from "@/lib/utils"
 export {
   DECK_CARD_DRAG_MIME,
   DECK_CARD_MAX_COPIES,
+  DECK_CARD_MAX_COPIES_UNLIMITED,
   LIBRARY_DRAG_CATEGORY_ID,
 } from "@/components/decks/constants"
 

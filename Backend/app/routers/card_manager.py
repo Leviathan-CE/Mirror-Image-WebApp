@@ -14,6 +14,7 @@ from psycopg2.extras import Json
 from app.db import get_connection
 from app.card_library_query import apply_catalogue_filters, catalogue_order_sql
 from app.card_publish import catalogue_visibility_sql, get_optional_include_preview
+from app.cards.schemas import CardLibraryItem
 from app.media_urls import signed_media_path
 from app.security import get_current_admin_user_id, get_optional_is_admin
 
@@ -383,26 +384,6 @@ def search_cards(
     ]
 
 
-class CardLibraryItem(BaseModel):
-    """Card row for the public library browser."""
-
-    id: int
-    card_name: str
-    card_set_name: str
-    rarity: str
-    invoke_cost: int
-    cost: list[Any] = Field(default_factory=list)
-    super_types: list[Any] = Field(default_factory=list)
-    sub_types: list[Any] = Field(default_factory=list)
-    types_line: str = ""
-    description: str = ""
-    keywords: list[Any] = Field(default_factory=list)
-    show_help_text: bool = True
-    threat_level: str = "0"
-    card_art_path: str | None = None
-    card_art_version: int | None = None
-
-
 class CardLibraryResponse(BaseModel):
     items: list[CardLibraryItem]
     total: int
@@ -583,7 +564,17 @@ def browse_card_library(
                         show_help_text,
                         threat_level,
                         card_art_path,
-                        EXTRACT(EPOCH FROM updated_at)::bigint
+                        EXTRACT(EPOCH FROM updated_at)::bigint,
+                        is_pilot,
+                        is_augment,
+                        hand_size,
+                        ram_capacity,
+                        power_capacity,
+                        metal_capacity,
+                        spirit_capacity,
+                        steel_capacity,
+                        time_capacity,
+                        lif_capacity
                       FROM cards
                      WHERE {where_sql}
                      ORDER BY {order_sql}
@@ -606,16 +597,26 @@ def browse_card_library(
             card_set_name=row[2],
             rarity=row[3],
             invoke_cost=int(row[4] or 0),
-            cost=row[5] or [],
-            super_types=row[6] or [],
-            sub_types=row[7] or [],
+            cost=list(row[5] or []),
+            super_types=list(row[6] or []),
+            sub_types=list(row[7] or []),
             types_line=row[8] or "",
             description=row[9] or "",
-            keywords=row[10] or [],
+            keywords=list(row[10] or []),
             show_help_text=bool(row[11]),
             threat_level=str(row[12] if row[12] is not None else "0"),
             card_art_path=signed_media_path(row[13]),
             card_art_version=int(row[14]) if row[14] is not None else None,
+            is_pilot=bool(row[15]),
+            is_augment=bool(row[16]),
+            hand_size=int(row[17] or 0),
+            ram_capacity=int(row[18] or 0),
+            power_capacity=int(row[19] or 0),
+            metal_capacity=int(row[20] or 0),
+            spirit_capacity=int(row[21] or 0),
+            steel_capacity=int(row[22] or 0),
+            time_capacity=int(row[23] or 0),
+            lif_capacity=int(row[24] or 0),
         )
         for row in rows
     ]

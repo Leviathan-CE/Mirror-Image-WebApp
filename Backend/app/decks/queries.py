@@ -20,7 +20,7 @@ from app.deck_community import community_fields
 from app.deck_defaults import (
     DEFAULT_DECK_CATEGORIES,
 )
-from app.decks.schemas import DeckCardEntry, DeckCategoryOut, DeckSummary
+from app.decks.schemas import CardSummary, DeckCardEntry, DeckCategoryOut, DeckSummary
 from app.media_urls import signed_media_path
 from app.profanity import reject_if_profane
 
@@ -160,6 +160,10 @@ def fetch_deck_cards(
             c.time_capacity,
             c.lif_capacity,
             c.threat_level,
+            c.super_types,
+            c.sub_types,
+            c.is_pilot,
+            c.is_augment,
             pc.published
         FROM deck_has_cards dhc
         JOIN cards c ON c.id = dhc.card_id
@@ -176,13 +180,9 @@ def fetch_deck_cards(
     cur.execute(sql, params)
     entries: list[DeckCardEntry] = []
     for row in cur.fetchall():
-        entry = DeckCardEntry(
-            card_id=row[0],
+        card = CardSummary(
+            id=int(row[0]),
             card_name=row[1],
-            quantity=int(row[2]),
-            category_id=int(row[3]),
-            category_name=row[4],
-            sort_order=int(row[5]),
             card_art_path=signed_media_path(row[6]),
             invoke_cost=int(row[7] or 0),
             types_line=row[8] or "",
@@ -197,17 +197,33 @@ def fetch_deck_cards(
             time_capacity=int(row[17] or 0),
             lif_capacity=int(row[18] or 0),
             threat_level=str(row[19] if row[19] is not None else "0"),
+            super_types=list(row[20] or []),
+            sub_types=list(row[21] or []),
+            is_pilot=bool(row[22]),
+            is_augment=bool(row[23]),
+        )
+        entry = DeckCardEntry(
+            quantity=int(row[2]),
+            category_id=int(row[3]),
+            category_name=row[4],
+            sort_order=int(row[5]),
+            card=card,
             is_classified=False,
             classification=None,
         )
         kind = deck_card_classification(
-            row[20],
+            row[24],
             bypass=bypass,
             include_preview=include_preview,
         )
         if kind is not None:
+            overrides = classified_deck_card_overrides(kind)
+            card_overrides = overrides.pop("card")
             entry = entry.model_copy(
-                update=classified_deck_card_overrides(kind)
+                update={
+                    **overrides,
+                    "card": entry.card.model_copy(update=card_overrides),
+                }
             )
         entries.append(entry)
     return entries
@@ -231,7 +247,7 @@ def fetch_one_deck_card(
             bypass=bypass,
             include_preview=include_preview,
         )
-        if entry.card_id == card_id
+        if entry.card.id == card_id
     ]
     if not cards:
         raise HTTPException(status_code=404, detail="deck_card_not_found")

@@ -287,7 +287,7 @@ def test_add_reorder_update_remove_cards(
     )
     assert added.status_code == 201, added.text
     entry = added.json()
-    assert entry["card_id"] == sample_card_id
+    assert entry["card"]["id"] == sample_card_id
     assert entry["quantity"] == 2
     assert entry["category_id"] == entity_id
     assert entry["category_name"] == "Entity"
