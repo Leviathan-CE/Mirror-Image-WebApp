@@ -26,6 +26,7 @@ import {
   fetchCardLibrary,
   type CardLibraryFacets,
   type CardLibraryItem,
+  type CardLibrarySortMode,
 } from "@/lib/api/cards"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
@@ -34,6 +35,34 @@ const PAGE_SIZE_OPTIONS = [50, 100, 150, 200] as const
 type PageSizeOption = (typeof PAGE_SIZE_OPTIONS)[number]
 const PAGE_SIZE_DEFAULT: PageSizeOption = 50
 const PAGE_SIZE_STORAGE_KEY = "mi-library-page-size"
+const SORT_STORAGE_KEY = "mi-library-sort-mode"
+
+const LIBRARY_SORT_OPTIONS: { id: CardLibrarySortMode; label: string }[] = [
+  { id: "name", label: "A–Z" },
+  { id: "name_desc", label: "Z–A" },
+  { id: "invoke", label: "Invoke cost ↑" },
+  { id: "invoke_desc", label: "Invoke cost ↓" },
+  { id: "relevance", label: "Best match" },
+]
+
+function isLibrarySortMode(value: string): value is CardLibrarySortMode {
+  return (
+    value === "name" ||
+    value === "name_desc" ||
+    value === "invoke" ||
+    value === "invoke_desc" ||
+    value === "relevance"
+  )
+}
+
+function readStoredSortMode(): CardLibrarySortMode {
+  try {
+    const raw = window.localStorage.getItem(SORT_STORAGE_KEY)
+    return raw != null && isLibrarySortMode(raw) ? raw : "name"
+  } catch {
+    return "name"
+  }
+}
 
 /** Grid card minimum width (px) — drives `auto-fill` column size. */
 const PREVIEW_CARD_MIN_PX = 72
@@ -140,6 +169,9 @@ export function CardLibraryBrowser({
   const [pageSize, setPageSize] = useState<PageSizeOption>(() =>
     typeof window === "undefined" ? PAGE_SIZE_DEFAULT : readStoredPageSize()
   )
+  const [sortMode, setSortMode] = useState<CardLibrarySortMode>(() =>
+    typeof window === "undefined" ? "name" : readStoredSortMode()
+  )
   const [previewCardMinPx, setPreviewCardMinPx] = useState(() =>
     typeof window === "undefined"
       ? PREVIEW_CARD_DEFAULT_PX
@@ -153,6 +185,14 @@ export function CardLibraryBrowser({
       /* private mode / quota */
     }
   }, [pageSize])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SORT_STORAGE_KEY, sortMode)
+    } catch {
+      /* private mode / quota */
+    }
+  }, [sortMode])
 
   useEffect(() => {
     try {
@@ -204,6 +244,7 @@ export function CardLibraryBrowser({
     superType,
     subType,
     pageSize,
+    sortMode,
   ])
 
   useEffect(() => {
@@ -226,6 +267,7 @@ export function CardLibraryBrowser({
         typesLine: typesLine || undefined,
         superType: superType || undefined,
         subType: subType || undefined,
+        sort: sortMode,
         limit: pageSize,
         offset,
       },
@@ -261,6 +303,7 @@ export function CardLibraryBrowser({
     typesLine,
     superType,
     subType,
+    sortMode,
     offset,
     token,
     pageSize,
@@ -378,6 +421,31 @@ export function CardLibraryBrowser({
       </span>
       <label className="flex shrink-0 items-center gap-2 border-l border-cyan-500/25 pl-3">
         <span className="font-buahs93 text-xs tracking-wide text-cyan-100">
+          SORT
+        </span>
+        <select
+          value={sortMode}
+          aria-label="Sort library results"
+          onChange={(event) => {
+            const next = event.target.value
+            if (!isLibrarySortMode(next)) return
+            setSortMode(next)
+            setOffset(0)
+          }}
+          className={cn(
+            "h-8 rounded-none border border-cyan-500/35 bg-black/80 px-2",
+            "font-mono text-xs text-cyan-50 outline-none focus-visible:border-cyan-300"
+          )}
+        >
+          {LIBRARY_SORT_OPTIONS.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex shrink-0 items-center gap-2 border-l border-cyan-500/25 pl-3">
+        <span className="font-buahs93 text-xs tracking-wide text-cyan-100">
           SHOW
         </span>
         <select
@@ -405,10 +473,8 @@ export function CardLibraryBrowser({
   )
 
   const colorCostFilters = (
-    <div>
-      <p className="mb-2 font-buahs93 text-xs text-cyan-200/70">COLOR COST</p>
-      <div className="grid w-fit grid-cols-3 gap-2">
-        {facets.colors.map((color) => {
+    <div className="grid w-fit grid-cols-6 gap-2">
+      {facets.colors.map((color) => {
           const on = colors.includes(color)
           const icon = costTokenToIcon(color)
           return (
@@ -441,16 +507,6 @@ export function CardLibraryBrowser({
             </Button>
           )
         })}
-      </div>
-      <GlitchFx
-        type="button"
-        label="CLEAR FILTERS"
-        className={cn(
-          secondaryActionClassName,
-          compact ? "mt-3 w-full px-2 text-xs" : "mt-4"
-        )}
-        onClick={clearFilters}
-      />
     </div>
   )
 
@@ -488,12 +544,23 @@ export function CardLibraryBrowser({
   const filterFields = (
     <>
       <div className="space-y-3">
-        <CardSearchBar
-          label="NAME"
-          value={nameQuery}
-          onChange={setNameQuery}
-          placeholder="Closest name match…"
-        />
+        <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+          <div className="min-w-0 flex-1 basis-48">
+            <CardSearchBar
+              label=""
+              value={nameQuery}
+              onChange={setNameQuery}
+              placeholder="Closest name match…"
+            />
+          </div>
+          <div className="shrink-0">{colorCostFilters}</div>
+          <GlitchFx
+            type="button"
+            label="CLEAR FILTERS"
+            className={cn(secondaryActionClassName, "shrink-0 px-2 text-xs")}
+            onClick={clearFilters}
+          />
+        </div>
 
         <div>
           <button
@@ -574,24 +641,6 @@ export function CardLibraryBrowser({
 
               <label className="block">
                 <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-                  TYPE LINE
-                </span>
-                <select
-                  value={typesLine}
-                  onChange={(e) => setTypesLine(e.target.value)}
-                  className={filterSelectClassName}
-                >
-                  <option value="">Any</option>
-                  {facets.types_lines.map((line) => (
-                    <option key={line} value={line}>
-                      {line}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
                   SUPER TYPE
                 </span>
                 <select
@@ -634,13 +683,17 @@ export function CardLibraryBrowser({
 
   const filters = compact ? (
     <div className="mb-2 shrink-0 space-y-3 border border-cyan-500/25 bg-black/55 p-3">
-      <CardSearchBar
-        label="NAME"
-        value={nameQuery}
-        onChange={setNameQuery}
-        placeholder="Closest name match…"
-      />
-      {colorCostFilters}
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="min-w-0 flex-1 basis-32">
+          <CardSearchBar
+            label=""
+            value={nameQuery}
+            onChange={setNameQuery}
+            placeholder="Closest name match…"
+          />
+        </div>
+        {colorCostFilters}
+      </div>
       {previewSizeControl}
       <div>
         <button
@@ -768,7 +821,7 @@ export function CardLibraryBrowser({
   ) : (
     <div className="mb-6 grid gap-4 border border-cyan-500/25 bg-black/55 p-4 lg:grid-cols-[minmax(0,1fr)_14rem]">
       {filterFields}
-      {colorCostFilters}
+      
     </div>
   )
 

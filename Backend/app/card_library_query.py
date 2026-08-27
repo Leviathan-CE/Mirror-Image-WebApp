@@ -172,8 +172,56 @@ def apply_catalogue_filters(
     return bool(needle)
 
 
-def catalogue_order_sql(has_name_query: bool, alias: str = "cards") -> str:
-    if has_name_query:
+# Library browse sort modes (query param `sort`).
+CATALOGUE_SORT_NAME = "name"
+CATALOGUE_SORT_NAME_DESC = "name_desc"
+CATALOGUE_SORT_INVOKE = "invoke"
+CATALOGUE_SORT_INVOKE_DESC = "invoke_desc"
+CATALOGUE_SORT_RELEVANCE = "relevance"
+CATALOGUE_SORT_MODES = frozenset(
+    {
+        CATALOGUE_SORT_NAME,
+        CATALOGUE_SORT_NAME_DESC,
+        CATALOGUE_SORT_INVOKE,
+        CATALOGUE_SORT_INVOKE_DESC,
+        CATALOGUE_SORT_RELEVANCE,
+    }
+)
+
+
+def catalogue_order_sql(
+    has_name_query: bool,
+    alias: str = "cards",
+    sort: str = CATALOGUE_SORT_NAME,
+) -> str:
+    """
+    ORDER BY clause for catalogue browse.
+
+    - name / name_desc: A–Z / Z–A
+    - invoke / invoke_desc: invoke cost ↑ / ↓, then A–Z
+    - relevance: prefix-first name ranking (only meaningful with a name query;
+      falls back to A–Z when there is no `q`)
+    """
+    mode = sort if sort in CATALOGUE_SORT_MODES else CATALOGUE_SORT_NAME
+
+    if mode == CATALOGUE_SORT_INVOKE:
+        return (
+            f"{alias}.invoke_cost ASC, "
+            f"lower({alias}.card_name) ASC, "
+            f"{alias}.card_name ASC"
+        )
+
+    if mode == CATALOGUE_SORT_INVOKE_DESC:
+        return (
+            f"{alias}.invoke_cost DESC, "
+            f"lower({alias}.card_name) ASC, "
+            f"{alias}.card_name ASC"
+        )
+
+    if mode == CATALOGUE_SORT_NAME_DESC:
+        return f"lower({alias}.card_name) DESC, {alias}.card_name DESC"
+
+    if mode == CATALOGUE_SORT_RELEVANCE and has_name_query:
         return f"""
             CASE
               WHEN {alias}.card_name ILIKE %(name_prefix)s ESCAPE '\\' THEN 0
@@ -182,4 +230,5 @@ def catalogue_order_sql(has_name_query: bool, alias: str = "cards") -> str:
             LENGTH({alias}.card_name) ASC,
             {alias}.card_name ASC
         """
-    return f"{alias}.card_name ASC"
+
+    return f"lower({alias}.card_name) ASC, {alias}.card_name ASC"

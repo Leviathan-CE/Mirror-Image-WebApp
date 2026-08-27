@@ -79,6 +79,7 @@ export async function fetchAdminCardLibrary(
   if (query.published) {
     url.searchParams.set("published", query.published)
   }
+  if (query.sort) url.searchParams.set("sort", query.sort)
   url.searchParams.set("limit", String(query.limit ?? 48))
   url.searchParams.set("offset", String(query.offset ?? 0))
 

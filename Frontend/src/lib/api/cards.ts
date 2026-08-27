@@ -57,6 +57,13 @@ export type CardLibraryFacets = {
   invoke_cost_max: number
 }
 
+export type CardLibrarySortMode =
+  | "name"
+  | "name_desc"
+  | "invoke"
+  | "invoke_desc"
+  | "relevance"
+
 export type CardLibraryQuery = {
   q?: string
   description?: string
@@ -66,6 +73,8 @@ export type CardLibraryQuery = {
   typesLine?: string
   superType?: string
   subType?: string
+  /** Result order: A–Z, Z–A, invoke ↑/↓, or name-search relevance. */
+  sort?: CardLibrarySortMode
   limit?: number
   offset?: number
 }
@@ -112,6 +121,7 @@ export async function fetchCardLibrary(
   if (superType) url.searchParams.set("super_type", superType)
   const subType = query.subType?.trim()
   if (subType) url.searchParams.set("sub_type", subType)
+  if (query.sort) url.searchParams.set("sort", query.sort)
   url.searchParams.set("limit", String(query.limit ?? 48))
   url.searchParams.set("offset", String(query.offset ?? 0))
 

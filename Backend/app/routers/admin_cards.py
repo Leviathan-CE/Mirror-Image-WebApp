@@ -102,6 +102,10 @@ def admin_browse_cards(
     ),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    sort: str = Query(
+        default="name",
+        description="Result order: name | name_desc | invoke | invoke_desc | relevance",
+    ),
     _admin_id: int = Depends(get_current_admin_user_id),
 ):
     """
@@ -139,7 +143,7 @@ def admin_browse_cards(
         params["published"] = published
 
     where_sql = " AND ".join(where)
-    order_sql = catalogue_order_sql(has_name_query, alias="c")
+    order_sql = catalogue_order_sql(has_name_query, alias="c", sort=sort)
 
     try:
         with get_connection() as conn:

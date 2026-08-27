@@ -518,14 +518,18 @@ def browse_card_library(
     sub_type: str | None = Query(default=None, max_length=60),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    sort: str = Query(
+        default="name",
+        description="Result order: name | name_desc | invoke | invoke_desc | relevance",
+    ),
     is_admin: bool = Depends(get_optional_is_admin),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """
     Browse / filter the card catalogue.
 
-    Name search (`q`) uses the same closest-match ranking as `/cards/search`
-    (prefix first, then substring, shorter names preferred).
+    `sort=name` (default) is A–Z; `sort=invoke` is invoke cost then name;
+    `sort=relevance` uses prefix-first ranking when `q` is set.
     Non-subscribers only see published cards; subscribers also see preview;
     admins see the full catalogue.
     """
@@ -551,7 +555,7 @@ def browse_card_library(
     )
 
     where_sql = " AND ".join(where)
-    order_sql = catalogue_order_sql(has_name_query)
+    order_sql = catalogue_order_sql(has_name_query, sort=sort)
 
     try:
         with get_connection() as conn:

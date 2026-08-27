@@ -8,13 +8,13 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useAuth } from "@/app/providers/AuthProvider"
 import { sharedImages } from "@/assets/shared"
 import { GlitchFx } from "@/components/effects/GlitchFx"
-import { AccumulatePipChooser } from "@/components/Playtester/AccumulatePipChooser"
+import { AccumulatePipChooser } from "@/components/Playtester/session/AccumulatePipChooser"
 import { genIconForCount } from "@/components/Playtester/constants"
 import {
   generatedResourceHome,
   placeInPlayForView,
   displayToWorld,
-} from "@/components/Playtester/augmentRow.logic"
+} from "@/components/Playtester/board/augmentRow.logic"
 import {
   autoResolveColors,
   buildResourceTokenMap,
@@ -22,14 +22,14 @@ import {
   extractGainablePips,
   type GainablePip,
   type ResourceColor,
-} from "@/components/Playtester/accumulateResources.logic"
-import { CardBottomSlideAnimation } from "@/components/Playtester/CardBottomSlideAnimation"
-import { CardAccumulatePeerAnimation } from "@/components/Playtester/CardAccumulatePeerAnimation"
-import { CardTuckUnderAnimation } from "@/components/Playtester/CardTuckUnderAnimation"
-import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
+} from "@/components/Playtester/session/accumulateResources.logic"
+import { CardBottomSlideAnimation } from "@/components/Playtester/anim/CardBottomSlideAnimation"
+import { CardAccumulatePeerAnimation } from "@/components/Playtester/anim/CardAccumulatePeerAnimation"
+import { CardTuckUnderAnimation } from "@/components/Playtester/anim/CardTuckUnderAnimation"
+import { CardEnlargeOverlay } from "@/components/Playtester/board/CardLargeOverlay"
 import {
   CardFlipFlyAnimation,
-} from "@/components/Playtester/CardFlipFlyAnimation"
+} from "@/components/Playtester/anim/CardFlipFlyAnimation"
 import {
   PLAY_ZONE,
   HAND_CARD_SIZE,
@@ -47,42 +47,42 @@ import {
   playFloatLogicalSize,
   clientToLogicalField,
   type FieldSize,
-} from "@/components/Playtester/playFieldScale.logic"
-import { viewFor } from "@/components/Playtester/fogView.logic"
-import { intentAllowed, type PlayFx } from "@/components/Playtester/playNet.logic"
-import { usePlayNet } from "@/components/Playtester/usePlayNet"
-import type { SessionAction } from "@/components/Playtester/sessionActions.logic"
-import { useCardDragDrop } from "@/components/Playtester/useCardDragDrop"
-import { useDrawAnimations } from "@/components/Playtester/useDrawAnimations"
+} from "@/components/Playtester/board/playFieldScale.logic"
+import { viewFor } from "@/components/Playtester/session/fogView.logic"
+import { intentAllowed, type PlayFx } from "@/components/Playtester/net/playNet.logic"
+import { usePlayNet } from "@/components/Playtester/net/usePlayNet"
+import type { SessionAction } from "@/components/Playtester/session/sessionActions.logic"
+import { useCardDragDrop } from "@/components/Playtester/drag/useCardDragDrop"
+import { useDrawAnimations } from "@/components/Playtester/anim/useDrawAnimations"
 import {
   usePlaySession,
   type PlaySessionEffects,
-} from "@/components/Playtester/usePlaySession"
+} from "@/components/Playtester/session/usePlaySession"
 import {
   usePlayContextMenu,
   type CtxMenuState,
   type DeckActionCounts,
   type DeckCountKey,
-} from "@/components/Playtester/usePlayContextMenu"
-import { DeckPile } from "@/components/Playtester/DeckPile"
-import { DeckPeekOverlay, type DeckPeekCloseResult } from "@/components/Playtester/DeckPeekOverlay"
-import { DeckShuffleAnimation } from "@/components/Playtester/DeckShuffleAnimation"
-import { DeckSearchModal } from "@/components/Playtester/DeckSearchModal"
+} from "@/components/Playtester/board/usePlayContextMenu"
+import { DeckPile } from "@/components/Playtester/board/DeckPile"
+import { DeckPeekOverlay, type DeckPeekCloseResult } from "@/components/Playtester/search/DeckPeekOverlay"
+import { DeckShuffleAnimation } from "@/components/Playtester/anim/DeckShuffleAnimation"
+import { DeckSearchModal } from "@/components/Playtester/search/DeckSearchModal"
 import {
   clampDeckCount,
   lookAtTopCommitOrder,
   peekTopLibrary,
-} from "@/components/Playtester/deckActions.logic"
+} from "@/components/Playtester/search/deckActions.logic"
 import {
   FreeFloatSurface,
   type FloatSurfaceActions,
-} from "@/components/Playtester/FreeFloatSurface"
-import { LifeCounter } from "@/components/Playtester/LifeCounter"
-import { DockedHandStrip } from "@/components/Playtester/DockedHandStrip"
-import { PlayerHand } from "@/components/Playtester/PlayerHand"
-import { TrashyardPile } from "@/components/Playtester/TrashyardPile"
+} from "@/components/Playtester/board/FreeFloatSurface"
+import { LifeCounter } from "@/components/Playtester/board/LifeCounter"
+import { DockedHandStrip } from "@/components/Playtester/board/DockedHandStrip"
+import { PlayerHand } from "@/components/Playtester/board/PlayerHand"
+import { TrashyardPile } from "@/components/Playtester/board/TrashyardPile"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
-import { selectableActionTargets } from "@/components/Playtester/playCard.logic"
+import { selectableActionTargets } from "@/components/Playtester/session/playCard.logic"
 import { ContextMenu } from "@/components/ui/ContextMenu"
 import {
   DropdownMenu,
@@ -443,6 +443,7 @@ export function PlayTesterPage() {
     sessionCardsRef,
     dispatch,
     localSeat,
+    fieldSize: floatLogical,
     zoneRefs,
     clientToSurfaceLocal,
     mulliganOpen,

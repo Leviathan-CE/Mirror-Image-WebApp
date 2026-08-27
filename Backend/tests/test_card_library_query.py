@@ -66,3 +66,46 @@ def test_sql_stl_paired_excludes_pure_numbered_gen_branch():
     # Old “no chromatic ⇒ STL” branch must stay gone.
     assert "MULTI" not in paired
     assert "LIF|MET|POW|RAM|TIM" not in paired
+
+
+def test_catalogue_order_name_is_alphabetical():
+    from app.card_library_query import catalogue_order_sql
+
+    sql = catalogue_order_sql(has_name_query=True, sort="name")
+    assert "lower(cards.card_name) ASC" in sql
+    assert "invoke_cost" not in sql
+    assert "name_prefix" not in sql
+
+
+def test_catalogue_order_invoke_then_name():
+    from app.card_library_query import catalogue_order_sql
+
+    sql = catalogue_order_sql(has_name_query=False, sort="invoke")
+    assert "cards.invoke_cost ASC" in sql
+    assert "lower(cards.card_name) ASC" in sql
+
+
+def test_catalogue_order_name_desc_is_za():
+    from app.card_library_query import catalogue_order_sql
+
+    sql = catalogue_order_sql(has_name_query=False, sort="name_desc")
+    assert "lower(cards.card_name) DESC" in sql
+    assert "invoke_cost" not in sql
+
+
+def test_catalogue_order_invoke_desc():
+    from app.card_library_query import catalogue_order_sql
+
+    sql = catalogue_order_sql(has_name_query=False, sort="invoke_desc")
+    assert "cards.invoke_cost DESC" in sql
+    assert "lower(cards.card_name) ASC" in sql
+
+
+def test_catalogue_order_relevance_only_with_name_query():
+    from app.card_library_query import catalogue_order_sql
+
+    with_q = catalogue_order_sql(has_name_query=True, sort="relevance")
+    assert "name_prefix" in with_q
+    without_q = catalogue_order_sql(has_name_query=False, sort="relevance")
+    assert "lower(cards.card_name) ASC" in without_q
+    assert "name_prefix" not in without_q

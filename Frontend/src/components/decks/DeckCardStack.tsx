@@ -13,7 +13,7 @@ import {
 } from "@/components/decks/ClassifiedCardFace"
 import { DeckCardListRow } from "@/components/decks/DeckCardListRow"
 import type { DeckCardViewMode } from "@/components/decks/DeckCardViewControls"
-import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
+import { CardEnlargeOverlay } from "@/components/Playtester/board/CardLargeOverlay"
 import { cardArtUrl, type DeckCardEntry } from "@/lib/api/decks"
 
 import "./DeckCardStack.css"

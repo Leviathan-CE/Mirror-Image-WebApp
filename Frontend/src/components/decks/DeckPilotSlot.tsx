@@ -14,7 +14,7 @@ import {
   parseDeckCardDrag,
   type DeckCardDragPayload,
 } from "@/components/decks/deckCardDrag"
-import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
+import { CardEnlargeOverlay } from "@/components/Playtester/board/CardLargeOverlay"
 import "@/components/decks/DeckCardStack.css"
 import { cardArtUrl, type DeckCardEntry } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"

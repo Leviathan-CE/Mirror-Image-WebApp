@@ -5,7 +5,7 @@
  */
 
 import type { GameIconName } from "@/components/common/GameIcon"
-import type { ResourceColor } from "@/components/Playtester/accumulateResources.logic"
+import type { ResourceColor } from "@/components/Playtester/session/accumulateResources.logic"
 
 /** Two seats at a shared table. Solo play is always p1. */
 export const PLAYER_SLOT = {

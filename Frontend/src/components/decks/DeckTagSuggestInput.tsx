@@ -182,7 +182,7 @@ export function DeckTagSuggestInput({
               <button
                 type="button"
                 className={cn(
-                  "flex w-full items-center justify-between gap-2 px-3 py-2 text-left font-mono text-xs",
+                  "flex w-full px-3 py-2 text-left font-mono text-xs",
                   index === activeIndex
                     ? "bg-cyan-500/20 text-cyan-50"
                     : "text-cyan-100/90 hover:bg-cyan-500/10"
@@ -190,10 +190,7 @@ export function DeckTagSuggestInput({
                 onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => choose(hit.tag)}
               >
-                <span>{hit.tag}</span>
-                <span className="shrink-0 text-[10px] text-white/40">
-                  {hit.uses}×
-                </span>
+                {hit.tag}
               </button>
             </li>
           ))}

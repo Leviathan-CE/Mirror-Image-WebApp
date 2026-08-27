@@ -114,7 +114,7 @@ export function DeckCardSearch({
     >
       <CardSearchBar
         id={inputId}
-        label="ADD CARD"
+        label=""
         value={query}
         onChange={setQuery}
         placeholder="Search cards…"

@@ -7,6 +7,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { GlitchFx } from "@/components/effects/GlitchFx"
+import { SafeMarkdown } from "@/components/common/SafeMarkdown"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import { DropdownMenu } from "@/components/ui/DropdownMenu"
 import {
@@ -141,7 +142,7 @@ export function DeckListCard({
           <PublicTextArea
             value={description}
             onChange={setDescription}
-            placeholder="description"
+            placeholder="description (markdown supported)"
             disabled={saving || locked}
             rows={3}
           />
@@ -211,9 +212,10 @@ export function DeckListCard({
           </p>
         ) : null}
         {deck.description ? (
-          <p className="mt-2 line-clamp-3 text-sm leading-snug text-white/55">
-            {deck.description}
-          </p>
+          <SafeMarkdown
+            text={deck.description}
+            className="mt-2 line-clamp-3 leading-snug text-white/55"
+          />
         ) : null}
         {(deck.tags?.length ?? 0) > 0 ? (
           <p className="mt-2 flex flex-wrap gap-1">
