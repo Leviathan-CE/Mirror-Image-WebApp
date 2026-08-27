@@ -499,6 +499,48 @@ def test_public_decks_accepts_new_sorts_and_color_mode(
         client.delete(f"/decks/{deck_id}", headers=auth_headers)
 
 
+def test_public_decks_filters_by_multiple_tags_and(
+    client: TestClient, auth_headers: dict[str, str]
+):
+    created = client.post(
+        "/decks",
+        headers=auth_headers,
+        json={"name": "Tag AND Filter Deck", "is_public": True},
+    )
+    assert created.status_code == 201
+    deck_id = created.json()["id"]
+
+    try:
+        for tag in ("Aggro", "Midrange"):
+            res = client.post(
+                f"/decks/{deck_id}/tags",
+                headers=auth_headers,
+                json={"tag": tag},
+            )
+            assert res.status_code == 200, res.text
+
+        both = client.get(
+            "/decks/public",
+            params=[("tag", "Aggro"), ("tag", "Midrange")],
+        )
+        assert both.status_code == 200, both.text
+        ids = {item["id"] for item in both.json()["items"]}
+        assert deck_id in ids
+
+        one = client.get("/decks/public", params={"tag": "Aggro"})
+        assert one.status_code == 200
+        assert deck_id in {item["id"] for item in one.json()["items"]}
+
+        missing = client.get(
+            "/decks/public",
+            params=[("tag", "Aggro"), ("tag", "Control")],
+        )
+        assert missing.status_code == 200
+        assert deck_id not in {item["id"] for item in missing.json()["items"]}
+    finally:
+        client.delete(f"/decks/{deck_id}", headers=auth_headers)
+
+
 def test_public_decks_rejects_bad_color_mode(client: TestClient):
     bad = client.get("/decks/public", params={"color_mode": "xor"})
     assert bad.status_code == 422

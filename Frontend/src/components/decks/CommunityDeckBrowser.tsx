@@ -10,6 +10,7 @@ import { CardSearchBar } from "@/components/cards/CardSearchBar"
 import { SearchPaginationBar } from "@/components/cards/SearchPaginationBar"
 import { GameIcon } from "@/components/common/GameIcon"
 import { DeckListCard } from "@/components/decks/DeckListCard"
+import { DeckTagSuggestInput } from "@/components/decks/DeckTagSuggestInput"
 import { DECK_RESOURCE_COLORS } from "@/components/decks/deckCardColors"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { Button } from "@/components/ui/button"
@@ -59,13 +60,17 @@ export function CommunityDeckBrowser({
   const [total, setTotal] = useState(0)
   const [offset, setOffset] = useState(0)
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading")
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   const [nameQuery, setNameQuery] = useState("")
   const [debouncedQ, setDebouncedQ] = useState("")
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [author, setAuthor] = useState("")
-  const [tag, setTag] = useState("")
+  const [debouncedAuthor, setDebouncedAuthor] = useState("")
+  const [tags, setTags] = useState<string[]>([])
+  const [tagDraft, setTagDraft] = useState("")
   const [card, setCard] = useState("")
+  const [debouncedCard, setDebouncedCard] = useState("")
   const [colors, setColors] = useState<string[]>([])
   const [colorMode, setColorMode] = useState<PublicDeckColorMode>("or")
   const [sort, setSort] = useState<PublicDeckSort>("newest")
@@ -73,24 +78,39 @@ export function CommunityDeckBrowser({
   useEffect(() => {
     const handle = window.setTimeout(() => {
       setDebouncedQ(nameQuery.trim())
-      setOffset(0)
     }, 300)
     return () => window.clearTimeout(handle)
   }, [nameQuery])
 
   useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setDebouncedAuthor(author.trim())
+    }, 300)
+    return () => window.clearTimeout(handle)
+  }, [author])
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setDebouncedCard(card.trim())
+    }, 300)
+    return () => window.clearTimeout(handle)
+  }, [card])
+
+  useEffect(() => {
     setOffset(0)
-  }, [author, tag, card, colors, colorMode, sort])
+  }, [debouncedQ, debouncedAuthor, debouncedCard, tags, colors, colorMode, sort])
 
   useEffect(() => {
     let cancelled = false
-    setStatus("loading")
+    const hasExistingResults = decks.length > 0
+    if (hasExistingResults) setIsRefreshing(true)
+    else setStatus("loading")
 
     void fetchPublicDecks({
       q: debouncedQ || undefined,
-      author: author.trim() || undefined,
-      tag: tag.trim() || undefined,
-      card: card.trim() || undefined,
+      author: debouncedAuthor || undefined,
+      tags: tags.length > 0 ? tags : undefined,
+      card: debouncedCard || undefined,
       colors: colors.length > 0 ? colors : undefined,
       colorMode: colors.length > 0 ? colorMode : undefined,
       sort,
@@ -102,13 +122,17 @@ export function CommunityDeckBrowser({
         if (cancelled) return
         setDecks(page.items)
         setTotal(page.total)
+        setIsRefreshing(false)
         setStatus("ready")
       })
       .catch(() => {
         if (cancelled) return
+        setIsRefreshing(false)
         setStatus("error")
-        setDecks([])
-        setTotal(0)
+        if (!hasExistingResults) {
+          setDecks([])
+          setTotal(0)
+        }
       })
 
     return () => {
@@ -116,9 +140,9 @@ export function CommunityDeckBrowser({
     }
   }, [
     debouncedQ,
-    author,
-    tag,
-    card,
+    debouncedAuthor,
+    debouncedCard,
+    tags,
     colors,
     colorMode,
     sort,
@@ -128,7 +152,7 @@ export function CommunityDeckBrowser({
 
   const advancedActive =
     author.trim() !== "" ||
-    tag.trim() !== "" ||
+    tags.length > 0 ||
     card.trim() !== "" ||
     colors.length > 0 ||
     colorMode !== "or" ||
@@ -141,6 +165,17 @@ export function CommunityDeckBrowser({
   const canPrev = offset > 0
   const canNext = offset + PAGE_SIZE < total
 
+  function addFilterTag(raw: string) {
+    const next = raw.trim()
+    if (!next) return
+    setTags((prev) => (prev.includes(next) ? prev : [...prev, next]))
+    setTagDraft("")
+  }
+
+  function removeFilterTag(tag: string) {
+    setTags((prev) => prev.filter((t) => t !== tag))
+  }
+
   function toggleColor(color: string) {
     setColors((prev) =>
       prev.includes(color) ? prev.filter((c) => c !== color) : [...prev, color]
@@ -151,8 +186,11 @@ export function CommunityDeckBrowser({
     setNameQuery("")
     setDebouncedQ("")
     setAuthor("")
-    setTag("")
+    setDebouncedAuthor("")
+    setTags([])
+    setTagDraft("")
     setCard("")
+    setDebouncedCard("")
     setColors([])
     setColorMode("or")
     setSort("newest")
@@ -295,20 +333,41 @@ export function CommunityDeckBrowser({
                 />
               </label>
 
-              <label className="block">
+              <div className="block">
                 <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-                  TAG
+                  TAGS
                 </span>
-                <EditBox
-                  value={tag}
-                  onChange={(e) => setTag(e.target.value)}
-                  placeholder="Exact tag…"
-                  size="sm"
-                  autoComplete="off"
+                {tags.length > 0 ? (
+                  <p className="mb-2 flex flex-wrap gap-1">
+                    {tags.map((t) => (
+                      <span
+                        key={t}
+                        className="inline-flex items-center gap-1 border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-mono text-[11px] text-cyan-100"
+                      >
+                        {t}
+                        <button
+                          type="button"
+                          className="text-cyan-300/70 hover:text-red-300"
+                          aria-label={`Remove tag filter ${t}`}
+                          onClick={() => removeFilterTag(t)}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </p>
+                ) : null}
+                <DeckTagSuggestInput
+                  value={tagDraft}
+                  onChange={setTagDraft}
+                  exclude={tags}
+                  placeholder="Add tag filter…"
+                  className="w-full"
+                  onPick={addFilterTag}
                 />
-              </label>
+              </div>
 
-              <label className="block sm:col-span-2">
+              <label className="block">
                 <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
                   CONTAINS CARD
                 </span>
@@ -321,7 +380,7 @@ export function CommunityDeckBrowser({
                 />
               </label>
 
-              <label className="block sm:col-span-2">
+              <label className="block">
                 <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
                   SORT
                 </span>
@@ -345,13 +404,15 @@ export function CommunityDeckBrowser({
       <SearchPaginationBar
         className="mt-4"
         summary={
-          status === "loading"
+          status === "loading" && decks.length === 0
             ? "Scanning archive…"
-            : `${pageStart}–${pageEnd} of ${total}`
+            : isRefreshing
+              ? "Updating results…"
+              : `${pageStart}–${pageEnd} of ${total}`
         }
         canPrev={canPrev}
         canNext={canNext}
-        disabled={status === "loading"}
+        disabled={status === "loading" && decks.length === 0}
         onPrev={() => setOffset((prev) => Math.max(0, prev - PAGE_SIZE))}
         onNext={() => setOffset((prev) => prev + PAGE_SIZE)}
       />
@@ -361,11 +422,20 @@ export function CommunityDeckBrowser({
           Could not load community decks.
         </p>
       ) : null}
+      {status === "loading" && decks.length === 0 ? (
+        <p className="mt-6 text-white/50">Scanning archive…</p>
+      ) : null}
       {status === "ready" && decks.length === 0 ? (
         <p className="mt-6 text-white/50">NO PUBLIC DECKS MATCH</p>
       ) : null}
-      {status === "ready" && decks.length > 0 ? (
-        <ul className="mt-6 grid auto-rows-fr gap-4 sm:grid-cols-2">
+      {decks.length > 0 ? (
+        <ul
+          className={cn(
+            "mt-6 grid auto-rows-fr gap-4 transition-opacity duration-200 sm:grid-cols-2",
+            isRefreshing && "pointer-events-none opacity-50"
+          )}
+          aria-busy={isRefreshing}
+        >
           {decks.map((deck) => (
             <li key={deck.id} className="h-full">
               <DeckListCard deck={deck} showAuthor />

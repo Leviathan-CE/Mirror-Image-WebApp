@@ -157,7 +157,11 @@ def list_deck_tag_suggestions(
 def list_public_decks(
     q: str | None = Query(default=None, max_length=120),
     author: str | None = Query(default=None, max_length=64),
-    tag: str | None = Query(default=None, max_length=32),
+    tag: list[str] | None = Query(
+        default=None,
+        max_length=32,
+        description="Repeat for AND: deck must have every listed tag.",
+    ),
     card: str | None = Query(
         default=None,
         max_length=120,
@@ -187,7 +191,7 @@ def list_public_decks(
     Filters (AND across filter types):
     - q: deck name / description (closest-name ranking when set)
     - author: username contains
-    - tag: exact tag (case-insensitive)
+    - tag: exact tag match; repeat param for AND (deck must have all tags)
     - card / card_id: deck contains that card
     - color + color_mode: colour identity of cards in the deck
     """
@@ -212,18 +216,19 @@ def list_public_decks(
         where.append("u.user_name ILIKE %(author)s")
         params["author"] = f"%{author_trim}%"
 
-    tag_trim = (tag or "").strip()
-    if tag_trim:
+    tag_values = [t.strip() for t in (tag or []) if t and t.strip()]
+    for index, tag_value in enumerate(tag_values):
+        key = f"tag_{index}"
         where.append(
-            """
+            f"""
             EXISTS (
-                SELECT 1 FROM deck_tags dt
-                 WHERE dt.deck_id = d.id
-                   AND lower(trim(dt.tag)) = lower(%(tag)s)
+                SELECT 1 FROM deck_tags dt_{index}
+                 WHERE dt_{index}.deck_id = d.id
+                   AND lower(trim(dt_{index}.tag)) = lower(%({key})s)
             )
             """
         )
-        params["tag"] = tag_trim
+        params[key] = tag_value
 
     if card_id is not None:
         where.append(

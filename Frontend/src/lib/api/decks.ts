@@ -47,6 +47,8 @@ export type PublicDeckQuery = {
   q?: string
   author?: string
   tag?: string
+  /** Repeat in query string for AND — deck must have every tag. */
+  tags?: string[]
   card?: string
   cardId?: number
   colors?: string[]
@@ -131,6 +133,10 @@ export async function fetchPublicDecks(
   if (query.q?.trim()) url.searchParams.set("q", query.q.trim())
   if (query.author?.trim()) url.searchParams.set("author", query.author.trim())
   if (query.tag?.trim()) url.searchParams.set("tag", query.tag.trim())
+  for (const tag of query.tags ?? []) {
+    const value = tag.trim()
+    if (value) url.searchParams.append("tag", value)
+  }
   if (query.card?.trim()) url.searchParams.set("card", query.card.trim())
   if (query.cardId != null) url.searchParams.set("card_id", String(query.cardId))
   for (const color of query.colors ?? []) {
