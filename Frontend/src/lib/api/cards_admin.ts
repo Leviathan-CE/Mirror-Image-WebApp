@@ -47,6 +47,10 @@ export type AdminCardBulkUpdate = {
   lagality?: string
 }
 
+export type AdminCardDeleteRequest = {
+  card_ids: number[]
+}
+
 /** Admin catalogue browse — same filters as user card library + publish status. */
 export type AdminCardLibraryQuery = CardLibraryQuery & {
   published?: PublishStatus
@@ -125,5 +129,24 @@ export async function bulkUpdateAdminCards(
   return readJsonOrThrow<{ updated: number }>(
     response,
     "admin_bulk_update_failed"
+  )
+}
+
+/** Permanently delete selected catalogue cards. */
+export async function deleteAdminCards(
+  token: string,
+  body: AdminCardDeleteRequest
+): Promise<{ deleted: number; skipped: number }> {
+  const response = await fetch(`${apiBaseUrl()}/cards/admin/delete`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(token),
+    },
+    body: JSON.stringify(body),
+  })
+  return readJsonOrThrow<{ deleted: number; skipped: number }>(
+    response,
+    "admin_card_delete_failed"
   )
 }

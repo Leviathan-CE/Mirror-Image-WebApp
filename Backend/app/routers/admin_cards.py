@@ -88,6 +88,30 @@ class AdminCardBulkResult(BaseModel):
     updated: int
 
 
+class AdminCardDeleteRequest(BaseModel):
+    """Permanently remove catalogue cards (and deck references via CASCADE)."""
+
+    card_ids: list[int] = Field(min_length=1, max_length=500)
+
+    @field_validator("card_ids")
+    @classmethod
+    def _unique_positive_ids(cls, value: list[int]) -> list[int]:
+        seen: set[int] = set()
+        out: list[int] = []
+        for card_id in value:
+            if card_id <= 0:
+                raise ValueError("invalid_card_id")
+            if card_id not in seen:
+                seen.add(card_id)
+                out.append(card_id)
+        return out
+
+
+class AdminCardDeleteResult(BaseModel):
+    deleted: int
+    skipped: int = 0
+
+
 @router.get("/library", response_model=AdminCardLibraryResponse)
 def admin_browse_cards(
     q: str | None = Query(default=None, max_length=80),
@@ -359,3 +383,44 @@ def admin_bulk_update_cards(
         raise HTTPException(status_code=500, detail="admin_bulk_update_failed") from e
 
     return AdminCardBulkResult(updated=updated)
+
+
+@router.post("/delete", response_model=AdminCardDeleteResult)
+def admin_delete_cards(
+    body: AdminCardDeleteRequest,
+    _admin_id: int = Depends(get_current_admin_user_id),
+):
+    """Permanently delete selected catalogue cards (skips ids that no longer exist)."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id
+                      FROM cards
+                     WHERE id = ANY(%(ids)s)
+                    """,
+                    {"ids": body.card_ids},
+                )
+                existing_ids = [int(row[0]) for row in cur.fetchall()]
+                skipped = len(body.card_ids) - len(existing_ids)
+
+                deleted = 0
+                if existing_ids:
+                    cur.execute(
+                        """
+                        DELETE FROM cards
+                         WHERE id = ANY(%(ids)s)
+                        """,
+                        {"ids": existing_ids},
+                    )
+                    deleted = int(cur.rowcount or 0)
+            conn.commit()
+    except OperationalError as e:
+        logger.warning("db error on admin card delete: %s", e)
+        raise HTTPException(status_code=503, detail="database_unavailable") from e
+    except Exception as e:
+        logger.exception("unexpected error on admin card delete: %s", e)
+        raise HTTPException(status_code=500, detail="admin_card_delete_failed") from e
+
+    return AdminCardDeleteResult(deleted=deleted, skipped=skipped)

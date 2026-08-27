@@ -12,6 +12,7 @@ import { SearchPaginationBar } from "@/components/cards/SearchPaginationBar"
 import { GameIcon } from "@/components/common/GameIcon"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { Button } from "@/components/ui/button"
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import { EditBox } from "@/components/ui/EditBox"
 import { ApiError } from "@/lib/api/client"
 import {
@@ -22,6 +23,7 @@ import {
   LAGALITY_OPTIONS,
   PUBLISH_STATUSES,
   bulkUpdateAdminCards,
+  deleteAdminCards,
   fetchAdminCardDetail,
   fetchAdminCardLibrary,
   type AdminCardDetail,
@@ -48,6 +50,9 @@ const primaryActionClassName =
 
 const secondaryActionClassName =
   "font-buahs93 h-9 rounded-none border border-cyan-500/35 bg-black/70 px-3 text-sm text-cyan-100 hover:border-cyan-400/60 hover:bg-cyan-500/10 hover:text-white disabled:opacity-60"
+
+const dangerActionClassName =
+  "font-buahs93 h-9 rounded-none border border-red-500/45 bg-red-950/50 px-3 text-sm text-red-100 hover:border-red-400/70 hover:bg-red-950/80 disabled:opacity-60"
 
 const selectClassName =
   "h-9 rounded-none border border-cyan-500/35 bg-black/80 px-2.5 font-mono text-xs text-cyan-50 outline-none focus-visible:border-cyan-300"
@@ -90,6 +95,7 @@ export function AdminCardsPage() {
   const [detail, setDetail] = useState<AdminCardDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedName(nameQuery.trim()), 200)
@@ -219,6 +225,10 @@ export function AdminCardsPage() {
   const allPageSelected =
     pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id))
   const selectedCount = selectedIds.size
+  const selectedItems = useMemo(
+    () => items.filter((item) => selectedIds.has(item.id)),
+    [items, selectedIds]
+  )
 
   function toggleOne(id: number) {
     setSelectedIds((prev) => {
@@ -303,6 +313,53 @@ export function AdminCardsPage() {
       setBusy(false)
     }
   }
+
+  async function performDelete() {
+    if (!token || selectedCount === 0) return
+
+    setBusy(true)
+    setActionMessage("")
+    try {
+      const ids = [...selectedIds]
+      const result = await deleteAdminCards(token, { card_ids: ids })
+      setItems((prev) => prev.filter((item) => !selectedIds.has(item.id)))
+      setTotal((prev) => Math.max(0, prev - result.deleted))
+      if (detail && selectedIds.has(detail.id)) setDetail(null)
+      setDeleteOpen(false)
+      clearSelection()
+      if (result.deleted === 0 && result.skipped > 0) {
+        setActionMessage(
+          `${result.skipped} selected card(s) were already removed from the catalogue.`
+        )
+      } else if (result.skipped > 0) {
+        setActionMessage(
+          `Deleted ${result.deleted} card(s). Skipped ${result.skipped} that were already removed.`
+        )
+      } else {
+        setActionMessage(`Deleted ${result.deleted} card(s).`)
+      }
+    } catch (error: unknown) {
+      setActionMessage(
+        error instanceof ApiError
+          ? "Could not delete the selected cards."
+          : "Could not reach the server."
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const deletePreviewNames = selectedItems.slice(0, 5).map((item) => item.card_name)
+  const deleteDescription =
+    selectedCount === 1
+      ? `Delete “${deletePreviewNames[0] ?? "this card"}”? It will be removed from the catalogue and every deck that contains it. This cannot be undone.`
+      : `Delete ${selectedCount} cards? They will be removed from the catalogue and every deck that contains them. This cannot be undone.${
+          deletePreviewNames.length > 0
+            ? ` Includes: ${deletePreviewNames.join(", ")}${
+                selectedCount > deletePreviewNames.length ? ", …" : ""
+              }.`
+            : ""
+        }`
 
   const pageStart = total === 0 ? 0 : offset + 1
   const pageEnd = Math.min(offset + items.length, total)
@@ -588,6 +645,15 @@ export function AdminCardsPage() {
           >
             APPLY TO {selectedCount || 0}
           </Button>
+
+          <Button
+            type="button"
+            className={dangerActionClassName}
+            disabled={busy || selectedCount === 0}
+            onClick={() => setDeleteOpen(true)}
+          >
+            DELETE {selectedCount || 0}
+          </Button>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -769,6 +835,26 @@ export function AdminCardsPage() {
             : null
         }
         onClose={() => setDetail(null)}
+      />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title={
+          selectedCount === 1
+            ? "Delete this card?"
+            : `Delete ${selectedCount} cards?`
+        }
+        description={deleteDescription}
+        confirmLabel={selectedCount === 1 ? "Delete card" : "Delete cards"}
+        cancelLabel="Keep cards"
+        tone="danger"
+        busy={busy}
+        onCancel={() => {
+          if (!busy) setDeleteOpen(false)
+        }}
+        onConfirm={() => {
+          void performDelete()
+        }}
       />
     </AdminPageShell>
   )
