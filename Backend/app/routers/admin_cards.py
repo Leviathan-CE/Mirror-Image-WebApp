@@ -170,7 +170,7 @@ def admin_browse_cards(
                         c.lagality,
                         COALESCE(p.published, 'not published'),
                         c.is_deprecated,
-                        c.card_art_path,
+                        c.illustration_thumbnail_path,
                         EXTRACT(EPOCH FROM c.updated_at)::bigint
                       FROM cards c
                       LEFT JOIN publish_cards p ON p.card_id = c.id
@@ -243,7 +243,7 @@ def admin_get_card(
                         c.keywords,
                         c.show_help_text,
                         c.threat_level,
-                        c.card_art_path,
+                        c.illustration_thumbnail_path,
                         EXTRACT(EPOCH FROM c.updated_at)::bigint,
                         c.is_pilot,
                         c.is_augment,

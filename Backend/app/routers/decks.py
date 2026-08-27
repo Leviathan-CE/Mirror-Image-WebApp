@@ -32,11 +32,13 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from psycopg2 import OperationalError
 from psycopg2.errors import ForeignKeyViolation, UniqueViolation
 
+from app.card_library_query import apply_deck_color_filters, escape_like
 from app.card_publish import (
     catalogue_visibility_sql,
     get_optional_include_preview,
@@ -55,6 +57,7 @@ from app.deck_defaults import DEFAULT_DECK_CATEGORY_NAMES, category_in_deck_defa
 from app.decks.access import require_owned_deck, require_readable_deck
 from app.decks.copy import copy_deck_for_user
 from app.decks.queries import (
+    PILOT_ART_SELECT,
     card_count,
     category_out,
     default_category_id,
@@ -161,9 +164,18 @@ def list_public_decks(
         description="Deck must contain a card whose name matches (ILIKE).",
     ),
     card_id: int | None = Query(default=None, gt=0),
+    color: list[str] | None = Query(
+        default=None,
+        description="Filter by colour identity of cards in the deck.",
+    ),
+    color_mode: str = Query(
+        default="or",
+        pattern="^(or|and|not)$",
+        description="How multiple colours combine: or | and | not.",
+    ),
     sort: str = Query(
         default="newest",
-        pattern="^(newest|likes|views|name)$",
+        pattern="^(newest|likes|likes_asc|views|views_asc|name)$",
     ),
     limit: int = Query(default=24, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
@@ -172,11 +184,12 @@ def list_public_decks(
     """
     Browse public decks with optional search filters.
 
-    Filters (AND):
-    - q: deck name / description
+    Filters (AND across filter types):
+    - q: deck name / description (closest-name ranking when set)
     - author: username contains
     - tag: exact tag (case-insensitive)
     - card / card_id: deck contains that card
+    - color + color_mode: colour identity of cards in the deck
     """
     where = ["uhd.is_public = TRUE"]
     params: dict[str, Any] = {
@@ -187,10 +200,12 @@ def list_public_decks(
 
     q_trim = (q or "").strip()
     if q_trim:
+        escaped = escape_like(q_trim)
         where.append(
-            "(d.name ILIKE %(q)s OR COALESCE(d.description, '') ILIKE %(q)s)"
+            "(d.name ILIKE %(q)s ESCAPE '\\' OR COALESCE(d.description, '') ILIKE %(q)s ESCAPE '\\')"
         )
-        params["q"] = f"%{q_trim}%"
+        params["q"] = f"%{escaped}%"
+        params["q_prefix"] = f"{escaped}%"
 
     author_trim = (author or "").strip()
     if author_trim:
@@ -237,13 +252,38 @@ def list_public_decks(
             )
             params["card"] = f"%{card_trim}%"
 
+    apply_deck_color_filters(
+        where,
+        params,
+        colors=color,
+        color_mode=color_mode,
+        deck_id_expr="d.id",
+    )
+
     where_sql = " AND ".join(where)
-    order_sql = {
+
+    sort_orders = {
         "newest": "d.id DESC",
         "likes": "like_count DESC, d.id DESC",
+        "likes_asc": "like_count ASC, d.id DESC",
         "views": "view_count DESC, d.id DESC",
+        "views_asc": "view_count ASC, d.id DESC",
         "name": "lower(COALESCE(d.name, '')) ASC, d.id DESC",
-    }[sort]
+    }
+    base_order = sort_orders.get(sort, sort_orders["newest"])
+    if q_trim:
+        # Closest-name: prefix matches first, then shorter names.
+        order_sql = f"""
+            CASE
+              WHEN d.name ILIKE %(q_prefix)s ESCAPE '\\' THEN 0
+              ELSE 1
+            END,
+            LENGTH(COALESCE(d.name, '')),
+            lower(COALESCE(d.name, '')),
+            {base_order}
+        """
+    else:
+        order_sql = base_order
 
     sql = f"""
         SELECT
@@ -279,6 +319,7 @@ def list_public_decks(
                        AND dl2.user_id = %(viewer_id)s
                 )
             ) AS liked_by_me,
+            {PILOT_ART_SELECT},
             COUNT(*) OVER() AS total_count
         FROM user_has_decks uhd
         JOIN decks d ON d.id = uhd.deck_id
@@ -296,7 +337,7 @@ def list_public_decks(
     except OperationalError as e:
         raise _db_unavailable(e) from e
 
-    total = int(rows[0][11]) if rows else 0
+    total = int(rows[0][13]) if rows else 0
     items = [
         DeckSummary(
             id=row[0],
@@ -310,6 +351,8 @@ def list_public_decks(
             view_count=int(row[8] or 0),
             tags=list(row[9] or []),
             liked_by_me=bool(row[10]) if user_id is not None else False,
+            card_art_path=signed_media_path(row[11]),
+            card_art_version=int(row[12]) if row[12] is not None else None,
         )
         for row in rows
     ]
@@ -319,7 +362,7 @@ def list_public_decks(
 @router.get("/me", response_model=list[DeckSummary])
 def list_my_decks(user_id: int = Depends(get_current_user_id)):
     """Return decks owned by the current user."""
-    sql = """
+    sql = f"""
         SELECT
             d.id,
             d.name,
@@ -334,7 +377,8 @@ def list_my_decks(user_id: int = Depends(get_current_user_id)):
                     WHERE dhc.deck_id = d.id
                 ),
                 0
-            ) AS card_count
+            ) AS card_count,
+            {PILOT_ART_SELECT}
         FROM user_has_decks uhd
         JOIN decks d ON d.id = uhd.deck_id
         JOIN users u ON u.id = uhd.user_id
@@ -358,6 +402,8 @@ def list_my_decks(user_id: int = Depends(get_current_user_id)):
             is_public=bool(row[4]),
             author_name=row[5],
             card_count=int(row[6] or 0),
+            card_art_path=signed_media_path(row[7]),
+            card_art_version=int(row[8]) if row[8] is not None else None,
         )
         for row in rows
     ]

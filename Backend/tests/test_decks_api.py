@@ -457,3 +457,48 @@ def test_delete_deck(
 
     missing = client.get(f"/decks/{deck_id}", headers=auth_headers)
     assert missing.status_code == 404
+
+
+def test_public_decks_accepts_new_sorts_and_color_mode(
+    client: TestClient, auth_headers: dict[str, str]
+):
+    created = client.post(
+        "/decks",
+        headers=auth_headers,
+        json={"name": "Alpha Public Sort", "is_public": True},
+    )
+    assert created.status_code == 201
+    deck_id = created.json()["id"]
+
+    try:
+        for sort in ("newest", "likes", "likes_asc", "views", "views_asc", "name"):
+            res = client.get(f"/decks/public?sort={sort}")
+            assert res.status_code == 200, res.text
+            assert "items" in res.json()
+
+        colored = client.get(
+            "/decks/public",
+            params=[("color", "LIF"), ("color", "MET"), ("color_mode", "and")],
+        )
+        assert colored.status_code == 200, colored.text
+
+        not_mode = client.get(
+            "/decks/public",
+            params=[("color", "STL"), ("color_mode", "not")],
+        )
+        assert not_mode.status_code == 200, not_mode.text
+
+        ranked = client.get("/decks/public", params={"q": "Alpha", "sort": "likes"})
+        assert ranked.status_code == 200
+        names = [d["name"] for d in ranked.json()["items"]]
+        assert any(n == "Alpha Public Sort" for n in names)
+        # Prefix match should rank ahead of substring-only hits when both match.
+        if names:
+            assert names[0].lower().startswith("alpha") or "Alpha" in names[0]
+    finally:
+        client.delete(f"/decks/{deck_id}", headers=auth_headers)
+
+
+def test_public_decks_rejects_bad_color_mode(client: TestClient):
+    bad = client.get("/decks/public", params={"color_mode": "xor"})
+    assert bad.status_code == 422

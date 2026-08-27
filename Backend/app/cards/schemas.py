@@ -19,6 +19,7 @@ class CardSummary(BaseModel):
     card_name: str
     card_art_path: str | None = None
     # Epoch seconds from cards.updated_at — bust browser image cache.
+    # Stored in DB as illustration_thumbnail_path.
     card_art_version: int | None = None
     invoke_cost: int = 0
     # Invoke-cost icon list (LIF, MET, GEN2, …) — used by playtester Accumulate.

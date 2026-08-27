@@ -146,7 +146,7 @@ def fetch_deck_cards(
             dhc.category_id,
             dc.name,
             dhc.sort_order,
-            c.card_art_path,
+            c.illustration_thumbnail_path,
             c.invoke_cost,
             c.types_line,
             EXTRACT(EPOCH FROM c.updated_at)::bigint,
@@ -279,6 +279,53 @@ def next_category_sort_order(cur, deck_id: int) -> int:
     return int(cur.fetchone()[0])
 
 
+# Correlated subselects for list endpoints (alias the decks table as `d`).
+PILOT_ART_SELECT = """
+            (
+                SELECT c.illustration_thumbnail_path
+                  FROM deck_has_cards dhc
+                  JOIN deck_categories dc ON dc.id = dhc.category_id
+                  JOIN cards c ON c.id = dhc.card_id
+                 WHERE dhc.deck_id = d.id
+                   AND lower(btrim(dc.name)) = 'pilot'
+                 ORDER BY dhc.sort_order ASC NULLS LAST, dhc.card_id ASC
+                 LIMIT 1
+            ) AS card_art_path,
+            (
+                SELECT EXTRACT(EPOCH FROM c.updated_at)::bigint
+                  FROM deck_has_cards dhc
+                  JOIN deck_categories dc ON dc.id = dhc.category_id
+                  JOIN cards c ON c.id = dhc.card_id
+                 WHERE dhc.deck_id = d.id
+                   AND lower(btrim(dc.name)) = 'pilot'
+                 ORDER BY dhc.sort_order ASC NULLS LAST, dhc.card_id ASC
+                 LIMIT 1
+            ) AS card_art_version
+"""
+
+
+def fetch_pilot_card_art(cur, deck_id: int) -> tuple[str | None, int | None]:
+    """Pilot illustration for list cards (illustration_thumbnail_path)."""
+    cur.execute(
+        """
+        SELECT c.illustration_thumbnail_path, EXTRACT(EPOCH FROM c.updated_at)::bigint
+          FROM deck_has_cards dhc
+          JOIN deck_categories dc ON dc.id = dhc.category_id
+          JOIN cards c ON c.id = dhc.card_id
+         WHERE dhc.deck_id = %(deck_id)s
+           AND lower(btrim(dc.name)) = 'pilot'
+         ORDER BY dhc.sort_order ASC NULLS LAST, dhc.card_id ASC
+         LIMIT 1
+        """,
+        {"deck_id": deck_id},
+    )
+    art = cur.fetchone()
+    if not art:
+        return None, None
+    version = int(art[1]) if art[1] is not None else None
+    return signed_media_path(art[0]), version
+
+
 def summary_from_owner_row(
     row: tuple,
     card_count_value: int,
@@ -287,6 +334,8 @@ def summary_from_owner_row(
     view_count: int = 0,
     tags: list[str] | None = None,
     liked_by_me: bool = False,
+    card_art_path: str | None = None,
+    card_art_version: int | None = None,
 ) -> DeckSummary:
     return DeckSummary(
         id=row[0],
@@ -300,6 +349,8 @@ def summary_from_owner_row(
         view_count=view_count,
         tags=list(tags or []),
         liked_by_me=liked_by_me,
+        card_art_path=card_art_path,
+        card_art_version=card_art_version,
     )
 
 
@@ -311,4 +362,11 @@ def summary_with_community(
     viewer_id: int | None = None,
 ) -> DeckSummary:
     stats = community_fields(cur, int(row[0]), viewer_id=viewer_id)
-    return summary_from_owner_row(row, card_count_value, **stats)
+    art_path, art_version = fetch_pilot_card_art(cur, int(row[0]))
+    return summary_from_owner_row(
+        row,
+        card_count_value,
+        card_art_path=art_path,
+        card_art_version=art_version,
+        **stats,
+    )

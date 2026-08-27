@@ -106,11 +106,19 @@ class CardCreated(BaseModel):
 
 
 class CardThumbnailUploaded(BaseModel):
-    """Response returned after a thumbnail is stored and linked."""
+    """Response returned after a full-card thumbnail is stored on disk."""
 
     id: int
     thumbnail_path: str
     thumbnail_size_bytes: int
+
+
+class CardArtUploaded(BaseModel):
+    """Response returned after thumb-art is stored and linked on the card row."""
+
+    id: int
+    card_art_path: str
+    card_art_size_bytes: int
     card_art_version: int | None = None
 
 
@@ -161,7 +169,7 @@ _CARD_SELECT_SQL = """
            legal_info, card_printing, is_summon, is_pilot, is_augment,
            threat_level, ram_capacity, power_capacity, metal_capacity,
            spirit_capacity, steel_capacity, time_capacity, lif_capacity,
-           hand_size, lagality, card_art_path, card_art_mime_type
+           hand_size, lagality, illustration_thumbnail_path, illustration_thumbnail_mime_type
       FROM cards
 """
 
@@ -342,7 +350,7 @@ def search_cards(
                         c.card_name,
                         c.card_set_name,
                         c.rarity,
-                        c.card_art_path,
+                        c.illustration_thumbnail_path,
                         EXTRACT(EPOCH FROM c.updated_at)::bigint
                       FROM cards c
                      WHERE c.is_deprecated = false
@@ -563,7 +571,7 @@ def browse_card_library(
                         keywords,
                         show_help_text,
                         threat_level,
-                        card_art_path,
+                        illustration_thumbnail_path,
                         EXTRACT(EPOCH FROM updated_at)::bigint,
                         is_pilot,
                         is_augment,
@@ -696,18 +704,74 @@ async def upload_card_thumbnail(
     file: UploadFile = File(...),
     _admin_id: int = Depends(get_current_admin_user_id),
 ):
-    """Upload a card thumbnail, persist it on disk, and store its path. Admin only."""
+    """
+    Upload a full-card PNG from Unity ``Assets/!thumbnail``.
 
+    Updates ``card_thumbnail_path`` / ``card_thumbnail_mime_type``.
+    """
+
+    relative_path, size_bytes, _version = await _store_card_image_file(
+        card_id,
+        file,
+        kind="thumbnail",
+        file_suffix="thumbnail",
+        path_column="card_thumbnail_path",
+        mime_column="card_thumbnail_mime_type",
+    )
+    return CardThumbnailUploaded(
+        id=card_id,
+        thumbnail_path=signed_media_path(relative_path) or relative_path,
+        thumbnail_size_bytes=size_bytes,
+    )
+
+
+@router.post("/{card_id}/art", response_model=CardArtUploaded)
+async def upload_card_art(
+    card_id: int,
+    file: UploadFile = File(...),
+    _admin_id: int = Depends(get_current_admin_user_id),
+):
+    """
+    Upload illustration-only art from Unity ``Assets/!thumb_art``.
+
+    Updates ``illustration_thumbnail_path`` (API JSON: ``card_art_path``).
+    """
+
+    relative_path, size_bytes, version = await _store_card_image_file(
+        card_id,
+        file,
+        kind="art",
+        file_suffix="thumb_art",
+        path_column="illustration_thumbnail_path",
+        mime_column="illustration_thumbnail_mime_type",
+    )
+    return CardArtUploaded(
+        id=card_id,
+        card_art_path=signed_media_path(relative_path) or relative_path,
+        card_art_size_bytes=size_bytes,
+        card_art_version=version,
+    )
+
+
+async def _store_card_image_file(
+    card_id: int,
+    file: UploadFile,
+    *,
+    kind: str,
+    file_suffix: str,
+    path_column: str,
+    mime_column: str,
+) -> tuple[str, int, int | None]:
     if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="thumbnail_must_be_image")
+        raise HTTPException(status_code=400, detail=f"{kind}_must_be_image")
 
     data = await file.read()
     if not data:
-        raise HTTPException(status_code=400, detail="empty_thumbnail_file")
+        raise HTTPException(status_code=400, detail=f"empty_{kind}_file")
 
-    max_size = 8 * 1024 * 1024  # card art can exceed 2MB (e.g. full lore PNGs)
+    max_size = 8 * 1024 * 1024
     if len(data) > max_size:
-        raise HTTPException(status_code=413, detail="thumbnail_too_large")
+        raise HTTPException(status_code=413, detail=f"{kind}_too_large")
 
     ext_map = {
         "image/png": ".png",
@@ -716,17 +780,24 @@ async def upload_card_thumbnail(
     }
     extension = ext_map.get(file.content_type)
     if extension is None:
-        raise HTTPException(status_code=400, detail="unsupported_thumbnail_type")
+        raise HTTPException(status_code=400, detail=f"unsupported_{kind}_type")
+
+    allowed = {
+        ("card_thumbnail_path", "card_thumbnail_mime_type"),
+        ("illustration_thumbnail_path", "illustration_thumbnail_mime_type"),
+    }
+    if (path_column, mime_column) not in allowed:
+        raise HTTPException(status_code=500, detail="invalid_image_column")
 
     select_sql = """
         SELECT id, card_set_name, card_name
         FROM cards
         WHERE id = %(card_id)s
     """
-    update_sql = """
+    update_sql = f"""
         UPDATE cards
-           SET card_art_path = %(card_art_path)s,
-               card_art_mime_type = %(mime_type)s,
+           SET {path_column} = %(stored_path)s,
+               {mime_column} = %(mime_type)s,
                updated_at = NOW()
          WHERE id = %(card_id)s
     """
@@ -747,14 +818,11 @@ async def upload_card_thumbnail(
                 set_dir = base_dir / set_slug
                 set_dir.mkdir(parents=True, exist_ok=True)
 
-                # One stable path per card in the DB. The frontend appends
-                # ?v=<updated_at> so browsers fetch again after a re-upload.
-                file_name = f"{card_slug}_thumbnail{extension}"
+                file_name = f"{card_slug}_{file_suffix}{extension}"
                 file_path = set_dir / file_name
                 file_path.write_bytes(data)
 
-                # Clean leftover hashed names from an older upload scheme.
-                for old in set_dir.glob(f"{card_slug}_thumbnail_*"):
+                for old in set_dir.glob(f"{card_slug}_{file_suffix}_*"):
                     try:
                         old.unlink()
                     except OSError:
@@ -764,7 +832,7 @@ async def upload_card_thumbnail(
                 cur.execute(
                     update_sql,
                     {
-                        "card_art_path": relative_path,
+                        "stored_path": relative_path,
                         "mime_type": file.content_type,
                         "card_id": card_id,
                     },
@@ -780,15 +848,11 @@ async def upload_card_thumbnail(
                 version_row = cur.fetchone()
             conn.commit()
     except OperationalError as e:
-        logger.warning("db error on thumbnail upload: %s", e)
+        logger.warning("db error on %s upload: %s", kind, e)
         raise HTTPException(status_code=503, detail="database_unavailable") from e
     except OSError as e:
-        logger.warning("thumbnail file write error: %s", e)
-        raise HTTPException(status_code=500, detail="thumbnail_write_failed") from e
+        logger.warning("%s file write error: %s", kind, e)
+        raise HTTPException(status_code=500, detail=f"{kind}_write_failed") from e
 
-    return CardThumbnailUploaded(
-        id=card_id,
-        thumbnail_path=signed_media_path(relative_path) or relative_path,
-        thumbnail_size_bytes=len(data),
-        card_art_version=int(version_row[0]) if version_row and version_row[0] is not None else None,
-    )
+    version = int(version_row[0]) if version_row and version_row[0] is not None else None
+    return relative_path, len(data), version

@@ -1,6 +1,7 @@
 """Catalogue colour-filter helpers."""
 
 from app.card_library_query import (
+    apply_deck_color_filters,
     cost_has_stl_identity,
     cost_is_pure_numbered_gen,
     sql_card_matches_stl,
@@ -109,3 +110,43 @@ def test_catalogue_order_relevance_only_with_name_query():
     without_q = catalogue_order_sql(has_name_query=False, sort="relevance")
     assert "lower(cards.card_name) ASC" in without_q
     assert "name_prefix" not in without_q
+
+
+def test_apply_deck_color_filters_or_and_not():
+    where_or: list[str] = []
+    params_or: dict = {}
+    apply_deck_color_filters(
+        where_or, params_or, colors=["LIF", "MET"], color_mode="or"
+    )
+    assert len(where_or) == 1
+    assert " OR " in where_or[0]
+    assert where_or[0].strip().startswith("EXISTS")
+    assert params_or["deck_color_0"] == "LIF"
+    assert params_or["deck_color_1"] == "MET"
+
+    where_and: list[str] = []
+    params_and: dict = {}
+    apply_deck_color_filters(
+        where_and, params_and, colors=["LIF", "POW"], color_mode="and"
+    )
+    assert len(where_and) == 2
+    assert all("EXISTS" in clause for clause in where_and)
+
+    where_not: list[str] = []
+    params_not: dict = {}
+    apply_deck_color_filters(
+        where_not, params_not, colors=["STL"], color_mode="not"
+    )
+    assert len(where_not) == 1
+    assert where_not[0].strip().startswith("NOT EXISTS")
+    # STL-only uses sql_card_matches_stl (no deck_color_N param).
+    assert params_not == {}
+
+
+def test_apply_deck_color_filters_ignores_empty():
+    where: list[str] = ["uhd.is_public = TRUE"]
+    params: dict = {}
+    apply_deck_color_filters(where, params, colors=[], color_mode="and")
+    apply_deck_color_filters(where, params, colors=None, color_mode="or")
+    assert where == ["uhd.is_public = TRUE"]
+    assert params == {}

@@ -19,6 +19,9 @@ class DeckSummary(BaseModel):
     view_count: int = 0
     tags: list[str] = Field(default_factory=list)
     liked_by_me: bool = False
+    # Pilot slot illustration (DB: illustration_thumbnail_path; same JSON as CardSummary).
+    card_art_path: str | None = None
+    card_art_version: int | None = None
 
 
 class DeckListPage(BaseModel):

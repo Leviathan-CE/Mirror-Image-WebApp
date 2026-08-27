@@ -18,6 +18,7 @@ import { ApiError } from "@/lib/api/client"
 import {
   deleteDeck,
   updateDeck,
+  cardArtUrl,
   type DeckSummary,
 } from "@/lib/api/decks"
 import {
@@ -182,58 +183,84 @@ export function DeckListCard({
     )
   }
 
+  const artSrc = cardArtUrl(deck.card_art_path, deck.card_art_version)
+
   return (
-    <div className="relative border border-cyan-500/25 bg-black/50 transition-colors hover:border-cyan-400/50">
+    <div className="relative flex h-full min-h-[11.5rem] border border-cyan-500/25 bg-black/50 transition-colors hover:border-cyan-400/50">
       <button
         type="button"
         className={cn(
-          "h-full w-full p-5 text-left",
-          canManage && "pr-12"
+          "flex h-full min-h-[11.5rem] w-full text-left",
+          canManage && "pr-10"
         )}
         disabled={locked || saving}
         onClick={() => navigate(ROUTES.deck(deck.id))}
       >
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-buahs93 text-lg text-cyan-100">
-            {deck.name ?? `Deck #${deck.id}`}
-          </h3>
-          <span
-            className={cn(
-              "shrink-0 text-[10px] tracking-wide",
-              deck.is_public ? "text-emerald-400/90" : "text-white/40"
-            )}
-          >
-            {deck.is_public ? "PUBLIC" : "PRIVATE"}
-          </span>
+        <div className="relative h-full w-[5.5rem] shrink-0 self-stretch overflow-hidden border-r border-cyan-500/20 bg-black/70 sm:w-28">
+          {artSrc ? (
+            <img
+              src={artSrc}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover object-top"
+            />
+          ) : (
+            <div
+              className="absolute inset-0 bg-[linear-gradient(145deg,rgba(34,211,238,0.12),transparent_55%),repeating-linear-gradient(-45deg,transparent,transparent_6px,rgba(34,211,238,0.06)_6px,rgba(34,211,238,0.06)_7px)]"
+              aria-hidden
+            />
+          )}
         </div>
-        {showAuthor ? (
-          <p className="mt-1 font-buahs93 text-xs text-cyan-200/60">
-            by {deck.author_name}
-          </p>
-        ) : null}
-        {deck.description ? (
-          <SafeMarkdown
-            text={deck.description}
-            className="mt-2 line-clamp-3 leading-snug text-white/55"
-          />
-        ) : null}
-        {(deck.tags?.length ?? 0) > 0 ? (
-          <p className="mt-2 flex flex-wrap gap-1">
-            {deck.tags!.slice(0, 6).map((tag) => (
-              <span
-                key={tag}
-                className="border border-cyan-500/25 bg-cyan-500/10 px-1.5 py-0.5 font-mono text-[10px] text-cyan-100/80"
-              >
-                {tag}
-              </span>
-            ))}
-          </p>
-        ) : null}
-        <p className="mt-4 font-mono text-xs text-cyan-300/60">
-          {deck.card_count} cards
-          {typeof deck.like_count === "number" ? ` · ${deck.like_count} likes` : ""}
-          {typeof deck.view_count === "number" ? ` · ${deck.view_count} views` : ""}
-        </p>
+        <div className="flex min-w-0 flex-1 flex-col p-4">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="line-clamp-1 font-buahs93 text-lg text-cyan-100">
+              {deck.name ?? `Deck #${deck.id}`}
+            </h3>
+            <span
+              className={cn(
+                "shrink-0 text-[10px] tracking-wide",
+                deck.is_public ? "text-emerald-400/90" : "text-white/40"
+              )}
+            >
+              {deck.is_public ? "PUBLIC" : "PRIVATE"}
+            </span>
+          </div>
+          {showAuthor ? (
+            <p className="mt-1 line-clamp-1 font-buahs93 text-xs text-cyan-200/60">
+              by {deck.author_name}
+            </p>
+          ) : null}
+          {deck.description ? (
+            <SafeMarkdown
+              text={deck.description}
+              className="mt-2 line-clamp-2 min-h-[2.5rem] leading-snug text-white/55"
+            />
+          ) : (
+            <p className="mt-2 min-h-[2.5rem] text-sm text-white/25">—</p>
+          )}
+          <div className="mt-auto pt-2">
+            {(deck.tags?.length ?? 0) > 0 ? (
+              <p className="mb-2 flex flex-wrap gap-1 overflow-hidden">
+                {deck.tags!.slice(0, 4).map((tag) => (
+                  <span
+                    key={tag}
+                    className="border border-cyan-500/25 bg-cyan-500/10 px-1.5 py-0.5 font-mono text-[10px] text-cyan-100/80"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </p>
+            ) : null}
+            <p className="font-mono text-xs text-cyan-300/60">
+              {deck.card_count} cards
+              {typeof deck.like_count === "number"
+                ? ` · ${deck.like_count} likes`
+                : ""}
+              {typeof deck.view_count === "number"
+                ? ` · ${deck.view_count} views`
+                : ""}
+            </p>
+          </div>
+        </div>
       </button>
 
       {canManage ? (

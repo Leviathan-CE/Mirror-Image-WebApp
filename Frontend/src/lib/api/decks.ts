@@ -22,6 +22,8 @@ export type DeckSummary = {
   view_count?: number
   tags?: string[]
   liked_by_me?: boolean
+  card_art_path?: string | null
+  card_art_version?: number | null
 }
 
 export type DeckListPage = {
@@ -31,13 +33,25 @@ export type DeckListPage = {
   offset: number
 }
 
+export type PublicDeckSort =
+  | "newest"
+  | "likes"
+  | "likes_asc"
+  | "views"
+  | "views_asc"
+  | "name"
+
+export type PublicDeckColorMode = "or" | "and" | "not"
+
 export type PublicDeckQuery = {
   q?: string
   author?: string
   tag?: string
   card?: string
   cardId?: number
-  sort?: "newest" | "likes" | "views" | "name"
+  colors?: string[]
+  colorMode?: PublicDeckColorMode
+  sort?: PublicDeckSort
   limit?: number
   offset?: number
   token?: string | null
@@ -119,6 +133,13 @@ export async function fetchPublicDecks(
   if (query.tag?.trim()) url.searchParams.set("tag", query.tag.trim())
   if (query.card?.trim()) url.searchParams.set("card", query.card.trim())
   if (query.cardId != null) url.searchParams.set("card_id", String(query.cardId))
+  for (const color of query.colors ?? []) {
+    const token = color.trim()
+    if (token) url.searchParams.append("color", token)
+  }
+  if (query.colorMode && query.colorMode !== "or") {
+    url.searchParams.set("color_mode", query.colorMode)
+  }
   if (query.sort) url.searchParams.set("sort", query.sort)
   url.searchParams.set("limit", String(query.limit ?? 24))
   url.searchParams.set("offset", String(query.offset ?? 0))
