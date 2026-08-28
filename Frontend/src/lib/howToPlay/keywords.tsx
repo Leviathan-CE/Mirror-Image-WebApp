@@ -55,7 +55,7 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
   },
   {
     name: "INSATIABLE HUNGER",
-    text: "Whenever a unit with this keyword attacks, if the defending player controls a unit, that attack must target a unit that player controls.",
+    text: "Attacks must target a unit the defender controls if they control one.",
   },
   {
     name: "INVULNERABLE",

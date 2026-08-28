@@ -242,6 +242,17 @@ export function HowToPlayPage() {
 
                 <div className="flex flex-wrap justify-center gap-4">
                     <GlitchFx
+                        label="DOWNLOAD COMPREHENSIVE RULES"
+                        size="lg"
+                        className="font-buahs93 w-auto h-auto min-h-8 shrink whitespace-normal rounded-none bg-amber-700 px-10 hover:bg-amber-900 active:bg-amber-500"
+                        render={
+                            <a
+                                href="/docs/Rules.pdf"
+                                download="Mirror-Image-Comprehensive-Rules.pdf"
+                            />
+                        }
+                    />
+                    <GlitchFx
                         label="DOWNLOAD SAMPLE DECK [SPECAIL OPERATIONS]"
                         size="lg"
                         className="font-buahs93 w-auto h-auto min-h-8 shrink whitespace-normal rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
@@ -254,6 +265,30 @@ export function HowToPlayPage() {
                         render={<a href="/docs/deck_samples/Demo_Starter_Hunter_Killer.pdf" download />}
                     />
                 </div>
+
+                <Note className="max-w-4xl text-center">
+                    This page is an introduction to Mirror Image. For rules questions, timing
+                    disputes, or anything not covered here, use the{" "}
+                    <strong>Comprehensive Rules</strong>{" "}
+                    (
+                    <a
+                        href="/docs/Rules.pdf"
+                        download="Mirror-Image-Comprehensive-Rules.pdf"
+                        className="text-cyan-300 underline hover:text-cyan-200 not-italic"
+                    >
+                        PDF
+                    </a>
+                    {" / "}
+                    <a
+                        href="/docs/Rules.md"
+                        download="Mirror-Image-Comprehensive-Rules.md"
+                        className="text-cyan-300 underline hover:text-cyan-200 not-italic"
+                    >
+                        source
+                    </a>
+                    ). If this page and the Comprehensive Rules disagree, follow the Comprehensive
+                    Rules unless a card says otherwise.
+                </Note>
 
                 <div className="grid w-full gap-8 lg:grid-cols-[260px_1fr] lg:gap-12 2xl:grid-cols-[320px_1fr] 2xl:gap-16">
                     <aside>
@@ -437,9 +472,11 @@ export function HowToPlayPage() {
 
                             <Important>
                                 <Term>! Important !</Term> If there is a conflict between a card's
-                                text and this rulebook, follow the text on the card. Cards often
-                                have abilities that get around the rules to make things exciting,
-                                weird, or interesting.
+                                text and the Comprehensive Rules, follow the text on the card. Cards
+                                often have abilities that get around the rules to make things
+                                exciting, weird, or interesting. For any other rules question, use
+                                the Comprehensive Rules (download at the top of this page), not this
+                                guide alone.
                             </Important>
 
                             <div className="mx-auto flex w-full max-w justify-center">
@@ -494,6 +531,14 @@ export function HowToPlayPage() {
                             </p>
 
                             <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Super Types</h3>
+                            <Important>
+                                <Term>Multiple types:</Term> A card may have more than one supertype or
+                                subtype. When type rules conflict, the more permissive rule applies unless
+                                card text says otherwise. If the card has the Unit supertype or Weapon
+                                subtype, it may attack even if another type says it cannot. If any
+                                type allows blocking, the card may block using any method available to its
+                                types.
+                            </Important>
                             <p>
                                 <Term>PILOT [ Entity ]:</Term> Your pilot is the center of
                                 attention, commanding drones, mechs, hacks, spells, and other
@@ -503,18 +548,16 @@ export function HowToPlayPage() {
                                 played from that zone by paying its invoke cost. Whenever your pilot
                                 moves zones you may instead of moving the pilot to that zone back to the pilot
                                 zone instead increasing the pilots cost for the rest of the game by {" "} <GameIcon name="gen2" />. Lastly, your pilot's invoke cost&mdash;combined with your
-                                augments&mdash;determines the colors and total invoke cost of cards you can put into your
-                                deck. (See Deck Building for more details.)
+                                augments&mdash;determines your deck's color combination (see Deck Building for more details).
                             </p>
                             <p>
                                 <Term>UNIT [ Entity ]:</Term> Units are call-ins that back up your
                                 pilot, ranging from drones, turrets, and tanks to spacecraft,
                                 helping you eliminate your opponent tactfully or with overwhelming
-                                force. All Units have a <GameIcon name="threat_lvl" /> number this is both thier health and damage value. To play a unit, pay its invoke cost and place it into the lock
-                                to see whether your opponent overwrites it with a Quick Hack. If they
-                                don't, it goes directly to the battlefield&mdash;provided you chose
-                                not to use time as part of its cost (see Time Counters for how the
-                                time resource works). Units can attack the turn they enter the battlefield.
+                                force. All Units have a <GameIcon name="threat_lvl" /> number this is both thier health and damage value. To play a unit, pay its invoke cost (see{" "}
+                                <SectionLink href="#how-to-play-actions">How to Play a Card</SectionLink>
+                                ). If it resolves, it goes to the battlefield&mdash;provided you chose
+                                not to use time as part of its cost (see Time Counters). Units can attack the turn they enter the battlefield.
                             </p>
                             <p>
                                 <Term>PROGRAM [ Entity ]:</Term> A type of card that tends to be
@@ -536,7 +579,10 @@ export function HowToPlayPage() {
                                 enhancements your pilot uses in battle to augment your game plan and
                                 strategy. They start the game on the battlefield and are limited
                                 based on the number of cards in your deck. You cannot have two
-                                augments with the same name in your deck.
+                                augments with the same name in your deck. Augments have a{" "}
+                                <GameIcon name="threat_lvl" /> rating. They cannot attack. You may
+                                block by expending an augment (see{" "}
+                                <SectionLink href="#how-to-block">How to Block</SectionLink>).
                             </p>
                             <p>
                                 <Term>PROTOTYPE [ ANY ]:</Term> Prototype weapons, spells, and
@@ -552,11 +598,15 @@ export function HowToPlayPage() {
                                 does.
                             </p>
                             <p>
-                                <Term>TOKEN [ Entity ]:</Term> Usually created by an effect; tokens
-                                do not go to the discard pile when defeated or trashed. You may use
-                                your own objects as tokens, so long as it is clear which token they
-                                represent and whether they are expended. You cannot use non-token MIRRORIMAGE
-                                cards as tokens.
+                                <Term>TOKEN [ Entity ]:</Term> Usually created by an effect, not played
+                                from hand or other zones; tokens do not go to the discard pile when
+                                defeated or trashed. You may use your own objects as tokens, so long as
+                                it is clear which token they represent and whether they are expended.
+                                You cannot use non-token MIRROR IMAGE cards as tokens. When an effect
+                                creates a token, that creation may enter the lock if it is empty, or its
+                                controller's queue if the lock is full. The token is not created until
+                                the creating effect resolves: resource tokens enter the stockpile
+                                readied; other tokens enter the battlefield readied.
                             </p>
 
                             <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Sub Types</h3>
@@ -579,6 +629,11 @@ export function HowToPlayPage() {
                                 protect yourself. Quick Hacks have a <GameIcon name="threat_lvl" />{" "}
                                 rating. They cannot attack. You may use that rating only to block
                                 (see <SectionLink href="#how-to-block">How to Block</SectionLink>).
+                            </p>
+                            <p>
+                                <Term>WEAPON:</Term> A subtype on entity cards. A card with this subtype
+                                may make attacks (see{" "}
+                                <SectionLink href="#how-to-attack">How to Attack</SectionLink>).
                             </p>
                         </Section>
 
@@ -642,7 +697,7 @@ export function HowToPlayPage() {
                                 This ability can be used any time you can play a cyberspell process, and only once per turn, on your turn.
                                 Each resource allocated to a unit gives it a +1<GameIcon name="threat_lvl" /> rating for
                                 each resource allocated. To allocate a resource, expend it "<GameIcon name="expend" />" and choose
-                                a target. This ability does not use the lock and thus happens immediately. An
+                                a unit you control. This ability does not use the lock and thus happens immediately. An
                                 Example of what a unit looks like with a resource allocated to it found below:
 
                             </p>
@@ -707,8 +762,12 @@ export function HowToPlayPage() {
                             <p>
                                 Once you have paid the cost by removing the resources in your resource pool equal to the invoke cost&mdash;and if the card says to target, you
                                 must have legal targets before you play the card, or you cannot play
-                                it; then reveal the card you intend to play. It goes to the lock; declare its legal targets, then trigger any{" "}
-                                <GameIcon name="invoke" /> tags printed on the card and resolve those tags immediately.
+                                it; then reveal the card you intend to play. Put it in the lock if the
+                                lock is empty, or overwrite the lock occupant if the lock is full (only
+                                effects go to a queue when the lock is full&mdash;see{" "}
+                                <SectionLink href="#lock">The Lock</SectionLink>). Declare its legal
+                                targets, then trigger any{" "}
+                                <GameIcon name="invoke" /> tags printed on the card and resolve those tags immediately. The card remains the lock occupant until it resolves or is overwritten.
                             </p>
 
 
@@ -723,11 +782,14 @@ export function HowToPlayPage() {
 
 
                             <p>
-                                If it is not overwritten by an opponent's Quick Hack while it's
-                                in the lock, the card resolves: first, put the card in its respective
-                                zone (the battlefield for entities, the discard pile for
-                                cyberspells), then resolve its effects in order as written on the card (<GameIcon name="effect" /> see
-                                this tag for details), then resolve any other triggers such as the{" "}
+                                While a card is the lock occupant, the active player may overwrite it
+                                with a Quick Hack or take other actions allowed while the lock is full
+                                (see <SectionLink href="#lock">The Lock</SectionLink>). If the lock
+                                occupant is not overwritten, it resolves when the lock process allows:
+                                first, put the card in its respective zone (the battlefield for
+                                entities, the discard pile for cyberspells), then resolve its effects in
+                                order as written on the card (<GameIcon name="effect" /> see this tag for
+                                details), then resolve any other triggers such as the{" "}
                                 <GameIcon name="entersPlay" /> tag. The card has now finished being
                                 played. If your card's invoke cost has colorless symbols, you can use
                                 any color of resource in your pool to pay for 1 of the cost it requires,
@@ -805,8 +867,10 @@ export function HowToPlayPage() {
                                     When attacking with multiple units, the group is considered a
                                     single attack and must share the same target, but each attacker
                                     is treated separately when blocking or assigning damage.
-                                    Only Units and Weapons can make Attacks. all other cards with a
-                                     <GameIcon name="threat_lvl" /> rating can be used to block incoming damage.
+                                    A card may attack if it has the Unit supertype or Weapon subtype, including
+                                    when it also has a type that otherwise cannot attack (see Card
+                                    Types). All other cards with a{" "}
+                                    <GameIcon name="threat_lvl" /> rating can be used to block incoming damage.
                                 </li>
                                 <li>Expend the chosen unit(s), declare an attack target
                                     (another unit or an opponent), and trigger the
@@ -920,8 +984,7 @@ export function HowToPlayPage() {
                                 <li>
                                     <strong className="text-cyan-100">Full lock — card:</strong> a
                                     card you play overwrites the lock occupant and becomes the new
-                                    occupant. It does not go to a queue (see the overwrite result
-                                    under Exception below).
+                                    occupant. It does not go to a queue (see Overwrite result below).
                                 </li>
                                 <li>
                                     <strong className="text-cyan-100">Full lock — effect:</strong> that
@@ -929,19 +992,25 @@ export function HowToPlayPage() {
                                     the lock.
                                 </li>
                                 <li>
-                                    <strong className="text-cyan-100">Exception:</strong> the active
-                                    player may play a Quick Hack. That card goes to the lock and
-                                    replaces the occupant (card or effect). The old occupant is
-                                    instead put into that players stockpile with 2 time counters on it. if that player already 
-                                    has the maximuim number of cards with time counters in there stockpile then the card is instead dicarded to
-                                    the discard pile, and do not resolve. if the occupant was an effect it does nothing.
-                                     Recalculate who is active: the
-                                    Quick Hack's controller is non-active; their opponent is active.
-                                    Restart from “while the lock is full.”
+                                    <strong className="text-cyan-100">Overwrite result:</strong> when
+                                    any played card overwrites the lock occupant, the replaced card goes
+                                    to its controller's stockpile with 2 time counters on it. If that
+                                    player already has the maximum number of cards with time counters in
+                                    their stockpile (3), the replaced card is discarded instead and does
+                                    not resolve. If the replaced occupant was an effect, it does nothing.
+                                    Recalculate who is active; restart from &ldquo;while the lock is full.&rdquo;
+                                </li>
+                                <li>
+                                    <strong className="text-cyan-100">Quick Hack overwrite:</strong> during
+                                    Scenario 2 (see below), only the active player may play a Quick Hack to
+                                    overwrite the lock occupant. Apply the overwrite result above, then
+                                    restart from &ldquo;while the lock is full.&rdquo;
                                 </li>
                             </ul>
                             <p>
-                                Queued effects never overwrite the lock. Only a Quick Hack can.
+                                Queued effects never overwrite the lock. Only played cards can overwrite
+                                the lock occupant; Quick Hack overwrites during Scenario 2 are limited to
+                                the active player.
                             </p>
 
                             <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
@@ -1002,7 +1071,7 @@ export function HowToPlayPage() {
                             </p>
                             <ol className="list-decimal space-y-1 pl-6">
                                 <li>Pay costs and use resource abilities (those abilities do not use the lock).</li>
-                                <li>Allocate a resource to a unit you control. You can only do so if you control no units that already have expended resources allocated to them. Each resource allocated to a unit gives it a +1 <GameIcon name="threat_lvl" /> rating. To allocate a resource, expend it and choose a target. This ability does not use the lock and happens immediately.</li>
+                                <li>Allocate a resource to a unit you control (once per turn on your turn, when you could play a Process). Each resource allocated to a unit gives it a +1 <GameIcon name="threat_lvl" /> rating. To allocate a resource, expend it and choose a unit. This ability does not use the lock and happens immediately.</li>
                                 <li>Activate an activated ability that uses the lock: it goes to your queue, not the lock.</li>
                                 <li>Block incoming damage directed at you (see <SectionLink href="#how-to-block">How to Block</SectionLink>).</li>
                             </ol>
@@ -1019,19 +1088,40 @@ export function HowToPlayPage() {
                                 you do, instead of putting the card into the lock, you ignore the lock
                                 entirely&mdash;protecting your asset&mdash;and place it in your
                                 stockpile revealed with the number of time counters you used to reduce its
-                                cost. However, you do not get any of the card's effects right away,
-                                since cards with time counters on them have no abilities. At the start
-                                of each of your turns, you may remove 1 counter from each card you
-                                have in play with time counters on it. When the last time counter is
-                                removed from a card in your stockpile, you may resolve any effects without using the lock and
-                                in an order of your choosing;
-                                then move the card to the battlefield if it's an entity, or
-                                to the discard pile if it's a cyberspell. You may have up to 3 cards
-                                with time counters on them in your stockpile at any given time. 
+                                cost. However, you do not get any of the card's effects right away:
+                                while the card has one or more time counters on it, it has no abilities
+                                (except abilities with the <GameIcon name="atomic" /> tag). At the start
+                                of each of your turns, remove 1 counter from each card you have in play
+                                with time counters on it. When the last time counter is removed from a
+                                card in your stockpile, resolve its effects without using the lock and
+                                in an order of your choosing; then move the card to the battlefield if
+                                it's an entity, or to the discard pile if it's a cyberspell. You may have
+                                up to 3 cards with time counters on them in your stockpile at any given
+                                time.
                             </p>
                         </Section>
 
                         <Section id="timing" title="Timing, Triggers & Keywords">
+                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
+                                Targeting
+                            </h3>
+                            <p>
+                                Some effects use the word &ldquo;target.&rdquo; A target is legal only if
+                                it meets <strong>every</strong> restriction on that effect (type,
+                                controller, zone, and so on). If an effect names a type (for example,
+                                &ldquo;Technology&rdquo;), the target must have that type. If an effect
+                                uses an exclusion (for example, &ldquo;non-Augment&rdquo;), the target is
+                                illegal if it has the excluded type, even if it also has a required type.
+                                You cannot choose an illegal target.
+                            </p>
+                            <p>
+                                If a card or activated ability requires targets, you must have at least
+                                one legal target before you play or activate it. Declare targets when the
+                                effect enters the lock or a queue. If every target is illegal when the
+                                effect resolves, it does nothing to those targets. Keywords such as
+                                Invulnerable and Stealth may further restrict targeting (see Keyword
+                                Abilities).
+                            </p>
                             <p>
                                 Some cards include highlighted words or keyword abilities. All
                                 abilities except the EFFECT tag and ACTIVATED abilities are displayed
@@ -1102,12 +1192,12 @@ export function HowToPlayPage() {
                             <p>
                                 Activated abilities are formatted (ignoring the brackets) as [cost 1,
                                 cost 2, etc.]: [effect]. Unless they say otherwise, they can be
-                                activated any time you can play a Quick Hack. To activate one, pay
-                                the cost written on the card. If the lock is empty, the effect goes
-                                to the lock. If the lock is full, the effect goes to your queue
-                                instead (see The Lock). You must choose legal targets when the
-                                effect would enter the lock or queue; if no legal target is found,
-                                the ability does nothing.
+                                activated any time you can play a Quick Hack. If an activated ability
+                                targets, it cannot be activated unless at least one legal target exists
+                                (see Targeting above). To activate one, pay the cost written on the
+                                card. If the lock is empty, the effect goes to the lock. If the lock is
+                                full, the effect goes to your queue instead (see The Lock). Declare
+                                legal targets when the effect enters the lock or queue.
                             </p>
                             <p>
                                 Example: the activated ability "<GameIcon name="expend" />, <GameIcon name="power" /> <GameIcon name="gen1" /> : Draw a
@@ -1211,7 +1301,7 @@ export function HowToPlayPage() {
                             <p>Once you've chosen a R.I.G class, keep a few rules in mind when building a deck:</p>
                             <ol className="list-decimal space-y-2 pl-6">
                                 <li>Pilots cannot be part of the deck's capacity, and you are limited to a single pilot card.</li>
-                                <li>Any non-pilot card may have up to three copies with the same name as part of your deck's capacity.</li>
+                                <li>Any non-pilot card may have up to three copies with the same name as part of your deck's capacity (heavy-weight decks: max two copies per name).</li>
                                 <li>You cannot equip two augments with the same name and do not count toward your deck's capacity.</li>
                                 <li>Any card with the Prototype supertype is limited to a single copy in your deck's capacity.</li>
                                 <li>You cannot put cards in your deck that are not supported by your pilot's and augments' color combination.</li>
@@ -1228,19 +1318,16 @@ export function HowToPlayPage() {
                             </p>
                             <ol className="list-decimal space-y-2 pl-6">
                                 <li>Each card's invoke cost must have the same number of colored symbols or fewer than the combined colored symbols of your pilot's invoke cost and your augments' augment color.</li>
-                              
+                                <li>A card whose invoke cost contains only grey numbered-value symbols (and no colored symbols) may be included in any deck.</li>
                             </ol>
                             <Note>
-                                Note: grey numbered-value symbols are disregarded for colored
-                                <GameIcon name="ram" /><GameIcon name="power" /><GameIcon name="metal" />
-                                <GameIcon name="time" /><GameIcon name="life" /> total invoke costs.
+                                Note: grey numbered-value symbols are ignored when checking color
+                                combination legality. They do not count as colored symbols and do not
+                                count as steel.
                             </Note>
                             <p>
-                                For this starter deck, your total color combination of: <GameIcon name="ram" /><GameIcon name="ram" /><GameIcon name="ram" /><GameIcon name="power" /><GameIcon name="power" /><GameIcon name="power" /><GameIcon name="steel" /> allows you to play
-                                any card with up to 3 blue, 3 yellow, and total access to colourless steel cards;
-                               <Note>
-                                if your pilot has a colurless numbered symbol or the steel symbol, it can play any coloulress.
-                               </Note>
+                                For this starter deck, your color combination of: <GameIcon name="ram" /><GameIcon name="ram" /><GameIcon name="ram" /><GameIcon name="power" /><GameIcon name="power" /><GameIcon name="power" /><GameIcon name="steel" /> allows you to include
+                                any card with up to 3 blue, 3 yellow, and access to colourless steel cards.
                             </p>
                             <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                 <img
