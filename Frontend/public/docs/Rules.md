@@ -20,7 +20,7 @@
 
 > 100.6.1. If two type rules conflict, the more permissive rule applies unless card text says otherwise (see rule 100.1).
 >
-> 100.6.2. **Attack.** If the card has the Unit supertype or Weapon subtype, it may attack even if another of its types says it cannot attack.
+> 100.6.2. **Attack.** If the card has the Unit supertype, it may attack even if another of its types says it cannot attack. If the card has the Weapon subtype, it may use its innate attack ability (see rule 603.10) even if another of its types says it cannot attack.
 >
 > 100.6.3. **Block.** If any supertype or subtype on the card allows blocking, the card may block using any blocking method available to any of its types.
 
@@ -60,7 +60,7 @@
 
 200.6. **Discard pile (Trashyard)** — Where defeated units, resolved cyberspells, and trashed cards go.
 
-200.7. **Dismantled zone** — Removed-from-game pile. When you would gain a resource token, you may take one from dismantled instead.
+200.7. **Dismantled zone** — Removed-from-game pile. Cards in the dismantled zone are always face up. When you would gain a resource token, you may take one from dismantled instead.
 
 200.8. **Resource pool** — Imaginary zone where expended resources go until end of turn; spend pool resources to pay invoke costs.
 
@@ -120,7 +120,7 @@
 >
 > 300.3.2. **Quick Hack [Cyberspell]** — Playable whenever a Process can be played, plus at end of turn, during an attack, while the lock holds a card, or when an opponent's effect empties the lock. Has `[TLV]`; cannot attack; may block (see rule 601).
 >
-> 300.3.3. **Weapon** — May make attacks (see rule 603).
+> 300.3.3. **Weapon** — Entity subtype with an innate ability to attack (see rule 603.10). Using a weapon's innate attack ability is not an activated ability.
 
 ---
 
@@ -128,7 +128,7 @@
 
 350.1. A card's **invoke cost** is the row of symbols in its upper-left corner. Each symbol in an invoke cost is a **resource pip** (or **pip**).
 
-350.2. To play a card, pay every pip in its invoke cost from your resource pool unless an effect says otherwise (see section 500). A card with no invoke cost in the upper-left corner cannot be played from hand unless an effect allows it.
+350.2. To play a card, pay every pip in its invoke cost from your resource pool unless an effect says otherwise (see section 500). A card with no invoke cost in the upper-left corner cannot be played unless an effect allows it. By default, cards are played from hand (see rule 500.2.1).
 
 ### 350.3. Colored pips
 
@@ -200,6 +200,8 @@
 
 500.2. To play a card, have the required resources in your resource pool, pay the cost, reveal the card, and put it in the lock. If the lock is empty, the card becomes the lock occupant. If the lock is full, the played card overwrites the lock occupant (see rules 700.2.3 and 700.2.4). Only effects go to a queue when the lock is full (see rule 700.2.2).
 
+> 500.2.1. **Where you may play from.** By default, you play cards from your hand. You may play a card from another zone only if a card ability or effect explicitly allows it — for example, from your pilot zone, trashyard, or dismantled zone. Such a play still follows rules 500.3–500.5 and 700.4 unless the ability says otherwise.
+
 500.3. If the card targets, you must have legal targets before playing it (see section 100.7).
 
 500.4. When the card enters the lock, declare targets and resolve `[INVOKE]` tags immediately. The card remains the lock occupant until it resolves or is overwritten by another played card.
@@ -235,6 +237,8 @@
 > 601.4.2. Expend any number of augments you control; for each, choose a damage source, reduce damage by that augment's `[TLV]`, and add a depletion counter to it.
 >
 > 601.4.3. Expend any number of non-unit entities you control (programs, technologies, etc.); for each, choose a damage source, reduce damage by that entity's `[TLV]`, then trash the expended entity.
+>
+> 601.4.4. A card with one or more time counters on it cannot be used to block (see rule 700.4.2.1).
 
 601.5. Unblocked damage directed at you becomes loss of life.
 
@@ -254,15 +258,19 @@
 
 603.1. Attacking is a primary way to deal damage and pressure opponent resources. Damage marked on units persists until healed.
 
-603.2. **Declare attackers** — Choose unit(s), or activate an augment that makes an attack. Multiple attackers are one attack sharing one target; each attacker is treated separately for blocking and damage assignment. A card may attack if it has the Unit supertype or Weapon subtype, including when it also has a type that otherwise cannot attack (see rules 100.6 and 100.6.2).
+603.2. **Declare attackers** — Choose unit(s) on the battlefield, weapon(s) using their innate attack ability (see rule 603.10), and/or activate an augment that makes an attack. Multiple attackers are one attack sharing one target; each attacker is treated separately for blocking and damage assignment. A unit may attack if it has the Unit supertype, including when it also has a type that otherwise cannot attack (see rules 100.6 and 100.6.2).
 
-603.3. **Declare target** — Expend attackers, choose target unit or opponent, and trigger on-attack abilities. You must target a readied unit the defender controls if able; if none, you cannot attack.
+> 603.2.1. A card with one or more time counters on it cannot attack (see rule 700.4.2.1). When the last counter is removed from a stockpile card, it moves to the battlefield before it can attack (see rules 700.4.4 and 300.2.2).
+
+603.3. **Declare target** — Expend unit attackers. Pay each weapon attacker's innate cost (see rule 603.10.2). Choose the defending player or a unit on the battlefield as the attack target, and trigger on-attack abilities. You must target a readied unit on the battlefield the defender controls if able; if none, you cannot attack.
+
+> 603.3.1. Cards in other zones — including the stockpile, trashyard, pilot zone, and R.I.G. — cannot be chosen as attack targets unless an effect says otherwise.
 
 603.4. **Attack step** — Attackers are now attacking. Pay additional costs such as Stealth if required.
 
 603.5. **Response window** — Players play Quick Hacks or activate abilities, active player first, until both pass.
 
-> 603.5.1. If a unit would become readied, an illegal player target redirects to a readied unit the attacker chooses.
+> 603.5.1. If a unit on the battlefield would become readied, an illegal player target redirects to a readied unit on the battlefield the attacker chooses.
 
 603.6. **Block window** — Before player damage becomes loss of life, the defending player may block (see rule 601).
 
@@ -275,6 +283,20 @@
 > 603.8.2. After damage, a unit is defeated if marked damage ≥ its `[TLV]` (or `[TLV]` + X with Durable X). Trigger on-defeat abilities; put defeated units in the discard pile.
 
 603.9. **Player damage** — Unblocked damage directed at a player becomes loss of life. The attack ends.
+
+### 603.10. Weapon attacks
+
+603.10.1. A weapon you control has an **innate ability** to attack. Using it is not an activated ability and does not use the lock.
+
+603.10.2. To attack with a weapon, `[EXPEND]` that weapon and `[DISMANTLE]` a resource of your choice you control.
+
+603.10.3. Choose targets following the same rules as attacking with units (see rules 603.3 and 603.5.1).
+
+603.10.4. A weapon may join the same attack as one or more units (see rule 603.2).
+
+603.10.5. If a weapon deals damage to a readied unit, put a depletion counter on that weapon.
+
+603.10.6. Otherwise, a weapon in an attack follows rules 603.4–603.9 like other attackers.
 
 ### 604. Allocate a resource to a unit
 
@@ -334,7 +356,7 @@
 
 700.4.2. If you used time counters when playing the card, skip the lock entirely: put the card revealed in your stockpile with those time counters on it.
 
-> 700.4.2.1. While the card has one or more time counters on it, it has no abilities (except abilities with the `[ATOMIC]` tag; see rule 800.1.2).
+> 700.4.2.1. While the card has one or more time counters on it, it has no abilities (except abilities with the `[ATOMIC]` tag; see rule 800.1.2). It cannot attack or block, regardless of zone or ready state.
 
 700.4.3. At the start of each of your turns, remove one counter from each of your time-counter cards.
 
@@ -372,7 +394,9 @@
 >
 > 800.1.7. `[INVOKE]` — When the card goes to the lock; resolves immediately.
 >
-> 800.1.8. `[IF]` — `[condition], [effect]`.
+> 800.1.8. `[IF]` — `[condition], [effect]`. Triggers when the printed condition is met while this card is in play.
+>
+> 800.1.8.1. If the condition refers to **playing** a card, the condition is met when that play is complete under rule 500.2 (the card enters or overwrites the lock occupant) or rule 700.4.2 (time counters replace the lock step). This includes plays from zones other than hand when an ability allows (see rule 500.2.1), such as Recursive from the trashyard. The triggered effect then enters the lock or its controller's queue like other triggered abilities (see section 700).
 >
 > 800.1.9. `[STATIC]` — Always active in play.
 >
@@ -394,9 +418,9 @@
 >
 > 800.2.6. **Trash `[TRASH]`** — From battlefield; put printed card in discard pile as cost.
 >
-> 800.2.7. **Dismantle `[DISMANTLE]`** — From play; put printed card in dismantled zone as cost.
-
-### 800.3. Keyword abilities
+> 800.2.7. **Dismantle `[DISMANTLE]`** — From play; put the printed card face up in the dismantled zone as a cost (see rule 200.7).
+>
+> 800.2.8. **Innate abilities** — Abilities on a card that are neither activated abilities nor tags. They follow their rules and do not use the lock unless those rules say otherwise (see rule 603.10 for weapon attacks).
 
 > 800.3.1. Keywords are static unless noted. Duplicate keywords on one entity do not stack except numerical values, which add.
 >
@@ -426,7 +450,7 @@
 >
 > 800.3.14. **Pierce** — Excess damage to a unit's controller is redirected to that player.
 >
-> 800.3.15. **Recursive** — May invoke from trashyard; allocate top R.I.G. card face down; next trash dismantles both.
+> 800.3.15. **Recursive** — You may play this card from the trashyard by paying its invoke cost (see rules 500.2 and 500.2.1). Allocate the top R.I.G. card face down to the played card; the next time this asset would go to the discard pile, dismantle it and the face-down card instead.
 >
 > 800.3.16. **Refurbished** — Dismantle cards from trashyard to pay `[GEN]` costs on this card.
 >

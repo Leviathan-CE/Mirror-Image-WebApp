@@ -348,11 +348,12 @@ export function HowToPlayPage() {
                             <p>
                                 <Term>Dismantled:</Term> Not shown on the mat&mdash;the dismantled
                                 zone holds cards removed from the game; they stay there, unusable,
-                                until the game ends. It functions like a separate discard pile,
-                                placed wherever you choose so long as it is not part of the main
-                                areas above. Whenever you gain a resource card into your stockpile,
-                                you may instead take one from the dismantled zone&mdash;the same
-                                applies when creating tokens (which resources are).
+                                until the game ends. Cards in the dismantled zone are always face up.
+                                It functions like a separate discard pile, placed wherever you choose
+                                so long as it is not part of the main areas above. Whenever you gain
+                                a resource card into your stockpile, you may instead take one from the
+                                dismantled zone&mdash;the same applies when creating tokens (which
+                                resources are).
                             </p>
                         </Section>
 
@@ -534,10 +535,12 @@ export function HowToPlayPage() {
                             <Important>
                                 <Term>Multiple types:</Term> A card may have more than one supertype or
                                 subtype. When type rules conflict, the more permissive rule applies unless
-                                card text says otherwise. If the card has the Unit supertype or Weapon
-                                subtype, it may attack even if another type says it cannot. If any
-                                type allows blocking, the card may block using any method available to its
-                                types.
+                                card text says otherwise. If the card has the Unit supertype, it may
+                                attack even if another type says it cannot. If the card has the Weapon
+                                subtype, it may use its innate attack ability (see{" "}
+                                <SectionLink href="#how-to-attack">How to Attack</SectionLink>)
+                                even if another type says it cannot. If any type allows blocking, the
+                                card may block using any method available to its types.
                             </Important>
                             <p>
                                 <Term>PILOT [ Entity ]:</Term> Your pilot is the center of
@@ -631,9 +634,15 @@ export function HowToPlayPage() {
                                 (see <SectionLink href="#how-to-block">How to Block</SectionLink>).
                             </p>
                             <p>
-                                <Term>WEAPON:</Term> A subtype on entity cards. A card with this subtype
-                                may make attacks (see{" "}
-                                <SectionLink href="#how-to-attack">How to Attack</SectionLink>).
+                                <Term>WEAPON:</Term> A subtype on entity cards. A weapon has an{" "}
+                                <strong>innate ability</strong> to attack&mdash;this is not an activated
+                                ability. To attack with a weapon,{" "}
+                                <GameIcon name="expend" /> the weapon and{" "}
+                                <GameIcon name="dismantle" /> a resource of your choice you control,
+                                then choose targets using the same rules as attacking with units. A
+                                weapon may join the same attack as your units. If a weapon deals
+                                damage to a readied unit, put a depletion counter on that weapon. See{" "}
+                                <SectionLink href="#how-to-attack">How to Attack</SectionLink>.
                             </p>
                         </Section>
 
@@ -713,9 +722,11 @@ export function HowToPlayPage() {
                             </h3>
                             <p>
                                 Each card has an invoke cost printed on it; pay that cost to play the card. A card
-                                without an invoke cost in the upper-left corner cannot be played. To
-                                pay the cost, you must have the required resources in your resource
-                                pool&mdash;an imaginary area where resources go when a card says to
+                                without an invoke cost in the upper-left corner cannot be played unless an effect
+                                allows it. You normally play from your hand; you may play from another zone
+                                (pilot zone, trashyard, dismantled zone, and so on) only when a card ability or
+                                effect says you can. To pay the cost, you must have the required resources in your
+                                resource pool&mdash;an imaginary area where resources go when a card says to
                                 "add" a resource of the color you need; they stay there until the end
                                 of the turn.
 
@@ -843,6 +854,11 @@ export function HowToPlayPage() {
                                     entity(s) you expended.
                                 </li>
                             </ul>
+                            <Note>
+                                Cards with one or more time counters on them cannot be used to block
+                                (see <SectionLink href="#lock">Time Counters</SectionLink> under The
+                                Lock).
+                            </Note>
                             <p>
                                 Any damage directed at you that was not blocked is dealt as loss of
                                 life. During an attack, blocking happens before player damage from
@@ -863,23 +879,35 @@ export function HowToPlayPage() {
                                     with cards and effect that say to heal it. </Important>
                             </p>
                             <ol className="list-decimal space-y-1 pl-6">
-                                <li>Choose unit(s), or activate an augment that says it makes an attack.
-                                    When attacking with multiple units, the group is considered a
-                                    single attack and must share the same target, but each attacker
-                                    is treated separately when blocking or assigning damage.
-                                    A card may attack if it has the Unit supertype or Weapon subtype, including
-                                    when it also has a type that otherwise cannot attack (see Card
-                                    Types). All other cards with a{" "}
-                                    <GameIcon name="threat_lvl" /> rating can be used to block incoming damage.
+                                <li>
+                                    Choose unit(s), weapon(s) using their innate attack ability, and/or
+                                    activate an augment that says it makes an attack. When attacking
+                                    with multiple attackers, the group is considered a single attack
+                                    and must share the same target, but each attacker is treated
+                                    separately when blocking or assigning damage. A unit may attack if
+                                    it has the Unit supertype, including when it also has a type that
+                                    otherwise cannot attack (see Card Types). To attack with a weapon,
+                                    pay its innate cost: <GameIcon name="expend" /> the weapon and{" "}
+                                    <GameIcon name="dismantle" /> a resource of your choice you
+                                    control. All other cards with a{" "}
+                                    <GameIcon name="threat_lvl" /> rating can be used to block incoming
+                                    damage.
                                 </li>
-                                <li>Expend the chosen unit(s), declare an attack target
-                                    (another unit or an opponent), and trigger the
-                                    <GameIcon name="attack" /> abilities of the attacking units. When
-                                    declaring the target of your attack you must target a readied unit
-                                    the defending player controls if able. (Every readied unit has
-                                    this requirement built in.)
-                                    <Note>If you cannot target the a readied unit a defending player controls, you cannot make the attack. If they control more than one readied unit, you choose which to target.</Note></li>
-                                <li> The unit(s), cyberspell, or weapon is now considered attacking. In this step you must choose whether to pay additional costs for cards with them such as stealth.</li>
+                                <li>
+                                    Expend chosen unit(s). Declare an attack target — the defending
+                                    player or a unit on the battlefield (not the stockpile or other
+                                    zones unless an effect says otherwise) — and trigger the{" "}
+                                    <GameIcon name="attack" /> abilities of the attacking units and
+                                    weapons. When declaring the target of your attack you must target
+                                    a readied unit on the battlefield the defending player controls if
+                                    able. (Every readied unit has this requirement built in.)
+                                    <Note>If you cannot target a readied unit on the battlefield that a defending player controls, you cannot make the attack. If they control more than one, you choose which to target.</Note>
+                                </li>
+                                <li>
+                                    The unit(s) and/or weapon(s) are now considered attacking. In this
+                                    step you must choose whether to pay additional costs for cards with
+                                    them such as stealth.
+                                </li>
                                 <li>Players may play Quick Hacks or activate abilities,
                                     starting with the active player, until no one wants to adds more effects.
                                 <li>If a Unit would become readied, the attacking target becomes illegal and is redirected to the readied unit instead.
@@ -918,7 +946,8 @@ export function HowToPlayPage() {
                                     If there are
                                     multiple attackers, the defending player divides
                                     this damage among them as they choose.
-                                    Damage dealt this way is simultaneous.
+                                    Damage dealt this way is simultaneous. If a weapon dealt damage to
+                                    a readied unit, put a depletion counter on that weapon.
                                 </li>
                                 <li>
                                     After damage is dealt, check each unit that took damage. A unit
@@ -1090,7 +1119,8 @@ export function HowToPlayPage() {
                                 stockpile revealed with the number of time counters you used to reduce its
                                 cost. However, you do not get any of the card's effects right away:
                                 while the card has one or more time counters on it, it has no abilities
-                                (except abilities with the <GameIcon name="atomic" /> tag). At the start
+                                (except abilities with the <GameIcon name="atomic" /> tag) and cannot
+                                attack or block&mdash;regardless of zone or ready state. At the start
                                 of each of your turns, remove 1 counter from each card you have in play
                                 with time counters on it. When the last time counter is removed from a
                                 card in your stockpile, resolve its effects without using the lock and
@@ -1170,7 +1200,17 @@ export function HowToPlayPage() {
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="conditional" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when a condition is met, formatted (ignoring the brackets) as [condition], [effect].</span>
+                                    <span>
+                                        Triggers when a condition is met, formatted (ignoring the
+                                        brackets) as [condition], [effect]. If the condition refers to
+                                        playing a card (for example, &ldquo;whenever you play a
+                                        cyberspell&rdquo;), the condition is met as soon as that play
+                                        finishes entering the lock or, if you used time counters,
+                                        going to your stockpile&mdash;not when the played card&apos;s{" "}
+                                        <GameIcon name="effect" className="inline align-text-bottom" />{" "}
+                                        resolves. The triggered effect then uses the lock or a queue
+                                        like other triggers.
+                                    </span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="static" className="mt-0.5 shrink-0" />
