@@ -1,346 +1,461 @@
-# MIRRORIMAGE
+# MIRROR IMAGE — Comprehensive Rules
 
-> **Editor's note:** Symbols that appear as icons in the original rulebook could not be extracted as text. They are shown here as bracketed placeholders — for example `[EXPEND]`, `[DAMAGE]`, `[POWER]`, `[TIME]`, `[COST]` — and should be replaced with the corresponding game icons in the final layout.
-
-On the planet Aerathea, its people find themselves in the middle of a war to end all wars. Two factions wage combat with might, magic, technology, space, nuclear, chemical, and biological warfare across a world already ravaged by thousands of years of conflict. The Empire of Vrag, ruled by a rogue AI shadow government, seeks total control and dominance over the entire world. Opposing it, the United Democratic Countries (UDC) — an alliance of men, elves, and the remnants of many other factions broken in the old wars — fight to resist this oppressive threat to freedom and liberty.
-
-You are among the elite of the cybernetic enhancement program known as the Pilot Program, joining the ranks of the 3rd-generation pilots: cybernetically enhanced soldiers armed to the teeth and aided by a Human Augmented Intelligence (HAI). You can fight for freedom, serve tyranny, or sell your skills to the highest bidder. The choice is yours.
+> **Editor's note:** Symbols that appear as icons in the rulebook are shown here as bracketed placeholders — for example `[EXPEND]`, `[TLV]`, `[GEN1]`, `[RAM]`. Replace them with the corresponding game icons in layout.
 
 ---
 
-## THE OBJECTIVE
+## 100. General
 
-In this game you fight against both the clock and your opponent — racing to secure victory and survive on the battlefield with limited resources. The goal is to defeat your opponent before you run out of resources: either by reducing your opponent's life to 0, or by outlasting them until they run out of resources in their stockpile at the start of their turn.
+100.1. These rules govern play of *Mirror Image*. If a card's text conflicts with these rules, follow the card.
 
-To pursue victory, you build a deck of cards consisting of your pilot, augments, entities, and cyberspells. These let you deal damage, perform drastic maneuvers to stay alive, and generate the resources you need to play the cards in your hand.
+100.2. Each non-resource card is an **Asset** with base type **Entity** or **Cyberspell**. If a card does not list Cyberspell as a supertype, its base type is Entity.
 
-## HOW TO WIN
+100.3. Whenever card text uses the word "this," it refers to the card that printed that text.
 
-- **Reduce your opponent's life to 0.** The most straightforward path to victory. Deal damage by attacking with units (a type of entity), strikes (a type of cyberspell), or weapons (a type of entity).
-- **Deck out your opponent.** Running your opponent out of cards doesn't end the game immediately, but each card they try to draw from an empty deck causes them to lose 1 life (or concede).
-- **Starve your opponent of resources.** You also win if your opponent begins their turn with 0 resources in their stockpile zone.
+100.4. A player wins by reducing an opponent's life to 0, decking them out (each draw from an empty deck costs 1 life), or if an opponent begins their turn with 0 resources in their stockpile.
 
----
+100.5. The most direct path to victory is reducing life to 0 by attacking with units or weapons.
 
-## PLAYMAT AREA
+100.6. A card may have multiple supertypes and subtypes. It has all applicable rules from each type printed on it.
 
-**BATTLEFIELD:** The battlefield zone is where all your entities go when they are played from anywhere. The only exception is when you use time counters to pay for part of a card's casting cost: in that case you place that many time counters on the card and it goes into the stockpile. Once all the time counters are removed, the card moves to the battlefield.
+100.6.1. If two type rules conflict, the more permissive rule applies unless card text says otherwise (see rule 100.1).
 
-**STOCKPILE:** The stockpile zone is where your resources are stored for use. To use a resource, turn it 90 degrees from vertical to horizontal — this is called **expending** and is represented by the `[EXPEND]` symbol. Expending a resource this way adds its color, which you use to pay the costs of cards and abilities. Cards you play using time counters also go in the stockpile zone.
+100.6.2. **Attack.** If any supertype on the card allows attacking (Unit or Weapon), the card may attack even if another of its types says it cannot attack.
 
-**IN PLAY:** A reference to both the battlefield and the stockpile. Anything that affects "in play" affects both of these zones.
+100.6.3. **Block.** If any supertype or subtype on the card allows blocking, the card may block using any blocking method available to any of its types.
 
----
+100.7. **Targeting**
 
-## READING YOUR CARDS
+100.7.1. Some effects use the word "target." Those effects require one or more legal targets to be chosen.
 
-**PILOT:** The pilot zone is where you put your pilot card. You may play your pilot from this zone by paying its cost. Whenever your pilot is defeated or moves from one zone to another, you may instead return it to your pilot zone and increase its cost.
+100.7.2. A target is legal only if it meets **every** restriction printed on that effect (type, controller, zone, game state, and so on).
 
-**RIG:** The RIG zone is where you place your deck, face down and shuffled, before the game starts. Your deck is called your RIG — **R**egressive **I**ntegrated **G**ear — and is filled with the entity and cyberspell cards you assemble into your deck.
+100.7.3. If an effect names a supertype or subtype (for example, "Technology"), the target must have that type. A card with multiple types has all of them (see rule 100.6).
 
-**TRASHYARD:** The trashyard zone (a.k.a. the discard pile) is where cards go when they leave play through various effects or abilities — for example, when a unit is defeated or when you finish resolving a cyberspell.
+100.7.4. If an effect uses an exclusion (for example, "non-Augment"), the target is illegal if it has the excluded supertype or subtype, even if it also satisfies a required type.
 
-**DISMANTLED:** The dismantled zone holds cards that are removed from the game; they stay there, unusable, until the game ends. It functions like a separate discard pile, placed wherever you choose so long as it is not part of the main areas listed above. Whenever you gain a resource card into your stockpile, you may instead take one from the dismantled zone — the same applies when creating tokens (which resources are).
+100.7.5. You cannot choose an illegal target. If a card or ability requires targets and no legal targets exist, you cannot play that card or activate that ability.
 
-> **! Important !** If there is a conflict between a card's text and this rulebook, follow the text on the card. Cards often have abilities that bend the rules to make things exciting, weird, or interesting.
+100.7.6. Declare targets when the effect enters the lock or a queue (see rules 500.4 and 800.2.3).
 
----
+100.7.7. If every target of a targeted effect is illegal when that effect resolves, the effect does nothing to those targets.
 
-## CARD TYPES
+100.7.8. Keywords and other rules may further restrict or modify targeting and what can happen to a chosen target (see section 800.3).
 
-Each non-resource card is called an **Asset** and has a base type of either **Entity** or **Cyberspell**, along with an assortment of supertypes and subtypes. If a card does not list the base type "Cyberspell" in its supertype text, it has the base type Entity — even if that isn't written on the card.
-
-A card's type is shown in the Types box at the center of the card. The supertypes below determine what a card does, with its corresponding base type shown in `[ ]`. Many cards also have subtypes, which can affect what the card does as well.
-
-> **! Important !** Whenever an ability, effect, or text uses the word "this," it always refers to the card it is printed on, regardless of context.
-
-### Base Types
-
-**CYBERSPELL:** When you play a card with this type, it goes to the discard pile after its effect resolves or is overwritten.
-
-**ENTITY:** When you play a card with this type, it goes to the battlefield if time counters are *not* used to play it (it goes to the stockpile if time counters *are* used) after its effects resolve. If it is overwritten, it goes to the discard pile.
-
-### Super Types
-
-**PILOT [ Entity ]:** Your pilot is the center of attention — commanding drones, mechs, hacks, spells, and other effects from your deck in the pilot zone. You can also send your pilot into the heat of battle to show off why you chose them.
-
-The pilot is a unit that starts in your pilot zone and can be played from that zone by paying its invoke cost. In addition to paying that cost, your pilot's invoke cost — combined with your augments — determines the color of cards you can put into your deck. (See **Deck Building** for details.)
-
-**UNIT [ Entity ]:** Units are call-ins that back up your pilot, ranging from drones, turrets, and tanks to spacecraft, helping you eliminate your opponent tactfully or with overwhelming force.
-
-To play a unit, pay its invoke cost and place it into the lock to see whether your opponent overwrites it with a Quick Hack. If they don't, it goes directly to the battlefield — provided you chose not to use time as part of its cost (see **Time Counters** for how the time resource works). Units cannot attack the turn they are played.
-
-**PROGRAM [ Entity ]:** Programs tend to be synergistic, stay in play once played, and have a variety of effects and abilities.
-
-**TECHNOLOGY [ Entity ]:** Technology cards tend to be counter-play pieces or supportive in nature. They stay in play once played and have a variety of effects and abilities.
-
-**AUGMENT [ Entity ]:** Augments are pieces of equipment or cybernetic enhancements your pilot uses in battle to augment your game plan and strategy. They start the game on the battlefield and are limited based on the number of cards in your deck. You cannot have two augments with the same name in your deck.
-
-**PROTOTYPE [ ANY ]:** Prototypes are experimental weapons, spells, and equipment, often rare in the lore. A card with this type is restricted to a single copy in your deck (RIG).
-
-**RESOURCE [ Entity ]:** Resources are tokens you use to play (invoke) cards (assets) from different zones of play. Whenever a card tells you to "gain" a resource, create a token of the specified color and put it into your stockpile readied (vertical). You can use resources as soon as they enter play — no need to wait as a unit does.
-
-**TOKEN [ Entity ]:** Tokens are usually created by an effect and do not go to the discard pile when defeated or trashed. You may use your own objects as tokens, so long as it is clear which token they represent and whether they are expended.
-
-### Sub Types
-
-**PROCESS [ Cyberspell ]:** This cyberspell can be played any time during your main phase. Processes represent a combination of magic and technology — complex programs or scripts that take significant time to invoke in battle.
-
-**STRIKE [ Cyberspell ]:** This cyberspell can be played any time during your main phase and counts as making an attack. When you play this card, choose a target for its `[DAMAGE]`. Any additional effects it has also target the same target, unless the card says otherwise. Strikes tend to be special moves, magic, or other attacks and feats of prowess your pilot can pull off in the spur of the moment.
-
-**QUICK HACK [ Cyberspell ]:** This cyberspell can be played any time you can play a Process. You may also play it at these specific times: at the end of each turn; during an attack; when there is a card in the lock; or when an effect not controlled by you resolves and the lock becomes empty. (See **Using the Lock** for details.) Quick Hacks represent the fastest scripts you can invoke, letting you disrupt your opponent or protect yourself.
+100.7.9. Attack targeting is handled by combat rules in addition to these rules (see section 603).
 
 ---
 
-## TIMING, TRIGGERS & KEYWORDS
+## 200. Zones
 
-Some cards include highlighted words or keyword abilities. All abilities except the EFFECT tag and ACTIVATED abilities are displayed as tags on a card; special keyword text is highlighted in black. There are two types of tags: **STATIC** and **TRIGGERED**. A STATIC tag means the ability is always in effect while the card is in play; a TRIGGERED ability triggers when a particular condition is met. When two triggers are side by side, both are in effect in an "and" relationship.
+200.1. **Pilot zone** — Holds your pilot. You may play your pilot from here by paying its invoke cost. When your pilot is defeated or would change zones, you may return it here and increase its cost by `[GEN2]` for the rest of the game.
 
-Some tag conditions may be altered. When they are, the condition is always printed first, followed by a comma and then the effect — formatted (ignoring the brackets) as: `[condition], [effect]`.
+200.2. **R.I.G. (deck zone)** — Your face-down shuffled deck of entity and cyberspell cards.
 
-### Tag Reference
+200.3. **Battlefield** — Where played entities go unless time counters were used (see rule 700.4).
 
-- Abilities with this tag trigger and/or remain active even while there are time counters on the card.
-- **Enters play:** Triggers when the card enters play for the first time, whether the battlefield or the stockpile. This ability always has the enters-play tag.
-- **Enters the battlefield:** Triggers when the card enters the battlefield for the first time.
-- **Enters the stockpile:** Triggers when the card enters the stockpile for the first time.
-- **On attack:** Triggers when you make an attack with that card.
-- **End of turn:** Triggers on the card at the end of your turn.
-- **Start of turn:** Triggers on the card at the start of your turn.
-- **On play:** Triggers when you play the card this tag is printed on, but *before* the card goes to the lock; it always resolves as soon as it is triggered.
-- **Conditional:** Triggers when a condition is met, formatted (ignoring the brackets) as `[condition], [effect]`.
-- **Static:** Always active while the card is in play.
-- **Effect:** Triggers when the played card resolves. Non-activatable abilities without any tag automatically have this one. (Note: "effects" also refers to what an ability does.)
-- **On defeat:** Triggers when the unit it is printed on is defeated — that is, put into the trashyard from play.
+200.4. **Stockpile** — Where readied resources are stored and where time-counter cards wait. **Expend** a resource (turn it 90° horizontal) to add its color to your resource pool.
 
-### Activated Abilities
+200.5. **In play** — Battlefield and stockpile together. Effects on "in play" affect both unless specified.
 
-Activated abilities are formatted (ignoring the brackets) as `[cost 1, cost 2, etc.]: [effect]`. Unless stated otherwise, they can be activated any time you can play a Quick Hack. If you activate one, add it to your queue of effects when the lock is full; you must choose legal targets only when you put the effect into the lock. If no legal target is found, the ability does nothing. To activate an activated ability, pay the cost written on the card; its effect then goes to the lock and resolves.
+200.6. **Discard pile (Trashyard)** — Where defeated units, resolved cyberspells, and trashed cards go.
 
-**Example:** The activated ability `[EXPEND], [COST]: Draw a card.` means to expend the card the ability is printed on, then pay 1 yellow unit of power and 1 of any color of your choice, to add the "draw a card" effect to the lock — after which it resolves.
+200.7. **Dismantled zone** — Removed-from-game pile. When you would gain a resource token, you may take one from dismantled instead.
 
-**`[EXPEND]` — Expend:** Turn a card in play 90 degrees from vertical to horizontal. (Note: to *ready* an entity is the opposite of expending; a readied entity is vertical.)
+200.8. **Resource pool** — Imaginary zone where expended resources go until end of turn; spend pool resources to pay invoke costs.
 
-**`[RECYCLE]` — Recycle:** Discard this card from hand to gain an effect, at any time you can play a Quick Hack, except when the lock is full.
+200.9. **Lock** — Holds at most one card or effect before it resolves (see section 700).
 
-**`[TRASH]` — Trash:** Can only be activated while the card it is printed on is on the battlefield. As part of a cost, put the card it is printed on into the discard pile (trashyard).
-
-**`[DISMANTLE]` — Dismantle:** Can be activated while in play. As part of a cost, put the card it is printed on into the dismantled zone.
-
-### Keyword Abilities
-
-Keyword abilities are STATIC abilities found on many cards. Almost always the ability text is displayed on the card; if not, here is the full list.
-
-> **! Important !** Multiple instances of the same keyword on one entity do not stack, unless the keyword has a numerical value — in that case, they add together. Any keyword with X has a numerical value.
-
-- **AIRBORNE** — Only assets with Airborne or Long Range can attack this entity.
-- **BLOCK X** — When you block with a unit, augment, program, technology, process, or quick hack to reduce the damage an asset would deal, reduce it by an additional X.
-- **CORROSIVE BILE** — Whenever this entity deals damage to a unit, destroy that unit.
-- **DEGRADE X** — The affected player puts the top X cards of their RIG into their trashyard. When you are the affected player, put the top X cards of your RIG into your trashyard. When card text says a player degrades X, that player is the affected player; if no player is stated, that player is you.
-- **DURABLE X** — This entity can take X damage more than its `[POWER]` rating before being defeated.
-- **PREEMPTIVE STRIKE** — When this entity deals damage in a fight, it deals damage first, unless the opposing entity also has Preemptive Strike.
-- **HARDENED X** — Whenever this entity takes damage, reduce that damage by X.
-- **HARD POINT** — You may have a second copy of this card equipped as an augment for your RIG.
-- **INSATIABLE HUNGER** — Whenever a unit with this keyword attacks, if the defending player controls a unit, that attack must target a unit that player controls.
-- **INVULNERABLE** — This entity cannot be dismantled, trashed, or destroyed by effects that say to trash, dismantle, or destroy. Players cannot choose it as a valid target for those effects or costs.
-- **LETHAL X** — Whenever this unit, cyberspell, or augment deals damage, it deals X additional damage.
-- **LONG RANGE** — This asset can attack units with Airborne.
-- **PEER X** — Look at the top X cards of your RIG. You may choose any of them to put into your trashyard, then put the rest back on top of your RIG in any order.
-- **PIERCE** — Any excess damage this asset deals to its target is redirected to the target's controller.
-- **RADAR** *(Deprecated)* — Whenever a unit an opponent controls attacks, if it is the first attack in the main phase, you may redirect that attack to target a unit you control instead.
-- **RECURSIVE** — You may invoke this asset from your trashyard by paying its invoke cost. If you do, allocate the top card of your RIG face down to the invoked card; the next time this asset would go to the trashyard, dismantle it and the face-down card instead of putting it back into the trashyard.
-- **REFURBISHED** — Dismantle any number of cards from your trashyard; for each card dismantled this way, pay for `[COST]` of this card's costs.
-- **SPIRIT LINK** — Damage this asset deals is gained as life by its controller.
-- **STALWART** — When this entity attacks, it does not expend as part of the attack.
-- **STATIONARY** — This entity cannot attack.
-- **STEALTH X** — As an additional cost to target or attack this entity with cyberspells or abilities, the acting player must pay X for each cyberspell, ability, or attack, where X is the printed cost shown on the card. If they do not pay the additional cost for targeting this entity, the attack, ability, or cyberspell does nothing.
-- **STURDY** — This entity cannot be destroyed by effects that say "destroy."
-- **SURGE** — This card can be invoked any time a Quick Hack can be played.
-- **WEAKENED X** — Whenever this asset deals damage, it deals X less damage.
+200.10. **Queue** — Holds overflow effects while the lock is full (see rule 700.3).
 
 ---
 
-## THE LOCK & TIME COUNTERS
+## 300. Card Types
 
-### The Lock
+### 300.1. Base types
 
-The lock is a special zone that can hold only one effect or card at a time. Every time you play (invoke) a card *without* using time counters, or activate or trigger an ability, it goes to the lock before resolving.
+300.1.1. **Cyberspell** — After resolving (or being overwritten), goes to the discard pile.
 
-The lock does four things:
+300.1.2. **Entity** — After resolving, goes to the battlefield unless played with time counters (then stockpile). If overwritten, goes to the discard pile.
 
-1. Determines timing.
-2. Determines who is the active and non-active player.
-3. Determines who can overwrite an asset with a Quick Hack.
-4. Determines when an ability or asset resolves its effect.
+300.1.3. Playing any entity or cyberspell card puts it in the lock unless time counters replace that step (see rules 500 and 700.4). Tokens are not played this way (see rule 300.2.8).
 
-All effects, abilities, and cards use the lock. It works like an imaginary staging zone before effects resolve, and can only ever hold one effect at a time. Whoever controls the active effect in the lock determines who is the active and non-active player.
+300.1.4. A card may list more than one supertype or subtype. When type rules overlap or conflict, apply rule 100.6.
 
-The active player at the start of each turn is always whoever's turn it is. The active player may take game actions until an ability or asset is added to the lock. At that point, whoever controls that asset or ability becomes the non-active player, and the opponent becomes the active player. (If two abilities trigger at the same time, the active player chooses which of their own to add first.)
+### 300.2. Supertypes
 
-There are two scenarios, depending on whether the effect in the lock is an **asset** (a physical card) or an **ability** generated by a card in play, in hand, or in another zone.
+300.2.1. **Pilot [Entity]** — Starts in the pilot zone; a unit you may play from there. Pilot invoke cost plus augments define deck colors (see rule 900).
 
-> **Note:** Only the active player can take actions.
+300.2.2. **Unit [Entity]** — Call-in combatants. Have `[TLV]` (health and damage). After resolving, enter the battlefield unless time was used (see rule 700.4). Units can attack the turn they enter the battlefield.
 
-**Scenario 1 — Assets and Quick Hacks**
+300.2.3. **Program [Entity]** — Stays in play; has `[TLV]`; cannot attack; may block (see rule 601).
 
-When the active player adds an asset or effect to the lock, they become the non-active player, and each player adds their ability triggers to their queue of effects while the lock is full. The now-active player may choose to invoke (play) their own Quick Hack and overwrite the asset in the lock, preventing it from resolving and sending it to the discard pile (trashyard).
+300.2.4. **Technology [Entity]** — Support or counter-play; has `[TLV]`; cannot attack; may block (see rule 601).
 
-The non-active player is the one who controls the asset or effect in the lock; the active player is the one who does not. The active player may play a Quick Hack of their own or let the asset in the lock resolve. If they respond, control of the active role passes back and forth, recalculating who has an asset or effect in the lock. If they choose not to respond, the asset in the lock resolves, handing the opponent a free lock and active-player status. If that now-active player also declines to act, the active player reverts to whoever's turn it is, and the turn continues as normal.
+300.2.5. **Augment [Entity]** — Equipment starting on the battlefield; limited by deck size; no duplicate names in a deck. Has `[TLV]`; cannot attack; may block by expending (see rule 601.4.2).
 
-If the lock is empty but players still have abilities in their queues, move to Scenario 2.
+300.2.6. **Prototype [Any]** — Limited to one copy per deck capacity.
 
-**Scenario 2 — Ability Effects and the Queue**
+300.2.7. **Resource [Entity]** — Tokens gained readied into stockpile; usable immediately.
 
-This follows the same rules as Scenario 1, with two differences. First, the turn does not continue (whoever's turn it is becomes the active player) until all players' queues are empty. Second, effects cannot be overwritten — only physical cards that are played (invoked) can be overwritten.
+300.2.8. **Token [Entity]** — Usually created by an effect, not played from hand or other zones.
 
-While an effect is in the lock, there are four things you can do:
+300.2.8.1. Tokens do not go to the discard pile when defeated or trashed.
 
-1. **Pay costs** using resource abilities. (These do not use the lock, but they still have the timing restriction of a Quick Hack, so you must be the active player.)
-2. **Allocate a resource to a unit you control.** This is also Quick Hack speed, but you can only do so if you control no units that already have expended resources allocated to them. Each resource allocated to a unit gives it a +1 `[POWER]` rating. To allocate a resource, expend it and choose a target. This ability does not use the lock and happens immediately.
-3. **Activate an activated ability** and add it to your queue.
-4. **Block an attack.**
+300.2.8.2. You may use your own objects as tokens if it is clear which token they represent and whether they are expended.
 
-### Time Counters
+300.2.8.3. You cannot use non-token MIRROR IMAGE cards as tokens.
 
-Time counters shape how you interact with the lock: you can reduce a card's invoke cost by `[COST]` for each counter you place on it after you play it. You can only reduce grey numbered-value costs this way. When you do, instead of putting the card into the lock, you ignore the lock entirely — protecting your asset — and place it in your stockpile with the number of time counters you used to reduce its cost.
+300.2.8.4. When an effect creates a token, that creation may enter the lock if it is empty, or its controller's queue if the lock is full (see section 700).
 
-However, you do not get any of the card's effects right away; cards with time counters on them have no abilities. At the start of each of your turns, you may remove 1 counter from each of your cards in play that have time counters on them. When the last time counter is removed from a card in your stockpile, you may resolve any effects it has by adding those effects to the lock/queue (but not the card itself); then move the card to the battlefield if it's an entity, or to the discard pile if it's a cyberspell.
+300.2.8.5. The token is not created until the creating effect resolves.
 
-You may have up to 3 cards with time counters on them in your stockpile at any given time. Cards with time counters on them in your stockpile cannot be the target of cyberspells or abilities.
+300.2.8.6. When a resource token is created, put it into the stockpile readied (see rule 300.2.7).
 
----
+300.2.8.7. When any other token is created, put it onto the battlefield readied.
 
-## HOW TO PLAY
+300.2.9. **Weapon [Entity]** — May make attacks (see rule 603).
 
-### Setting Up
+### 300.3. Subtypes
 
-For your first time, we recommend using a premade starter deck — it has everything you need to play:
+300.3.1. **Process [Cyberspell]** — Playable during your main phase. Has `[TLV]`; cannot attack; may block (see rule 601).
 
-- A pilot
-- 2 augments
-- A medium-weight RIG (deck) of 40 cards, with no more than 3 copies of a named card
-- A D20 health tracker
-- 5 red damage dice
-- 5 green time-counter dice
-- Resource tokens
-
-First, place your pilot in the pilot zone. Then shuffle your deck and place it in the RIG zone. Next, place your augments on the battlefield, readied. Finally, grab the starting resource tokens listed on your pilot and place them in your stockpile readied (vertical). Set your life total and draw a starting hand of cards in the same fashion.
-
-Once all players have done this, randomly determine who goes first; the winner decides whether they want the first turn. (A setup demo using the blue/yellow starter is shown below.)
-
-Once players know who is going first, they may look at their hand. Each player has one chance to mulligan unwanted cards from their opening hand — this happens only once. The player going first mulligans first. To mulligan, choose any number of cards from your hand, put them on the bottom of your deck (RIG), and draw that many cards from the top of your deck (RIG). Once all players have decided whether to mulligan, the player going first begins the game. Once the game starts, there is no maximum hand size.
-
-### Turn Phases
-
-There are three phases: the **maintenance phase** (start of turn), the **main phase**, and the **end-of-turn phase**. Take them in order on your turn. For a more challenging game mode, include the steps marked with the **[Hardcore]** tag.
-
-**MAINTENANCE PHASE**
-
-1. Ready all entities you control.
-2. Remove a time counter from each card you control in play, and resolve any effect triggered when the last time counter is removed from a card in your stockpile.
-3. **[Hardcore]** Dismantle a resource you control.
-4. Draw a card — except the player going first, on the first turn of the game.
-5. **[Hardcore]** Draw an additional card.
-
-**MAIN PHASE**
-
-You may play (invoke) cards, activate abilities, make attacks, allocate a resource to a unit you control, or accumulate resources, in any order.
-
-To make an attack:
-
-1. Choose unit(s), play a cyberspell strike card, or activate an augment that says it makes an attack. When attacking with multiple units, the group is considered a single attack and must share the same attack target, but each attacker is treated separately for blocking purposes. Programs, technologies, processes, and quick hacks cannot attack, even if they have a threat level rating.
-2. Expend the chosen unit(s), declare an attack target (another unit or an opponent), and trigger the on-attack abilities of the attacking units. You must target a readied unit the defending player controls if able; if they control more than one, you choose which. If you cannot target a readied unit they control, you cannot make the attack.
-3. The defender may block incoming damage, in any order:
-   - Expend unit(s) and redirect an attacker to the expended unit instead. You can do this even if the unit entered play this turn. When multiple units are part of a single attack, you may only redirect one of them. (Attacks redirected this way do not trigger effects like Stealth.)
-   - Discard any number of cards in hand that have a `[DAMAGE]` rating; add them together and reduce the damage from an attacker of your choice by that total.
-   - Expend any number of augments you control, choose an attacker for each, reduce the incoming damage by that augment's `[POWER]` rating, and add a depletion counter to that augment.
-4. Before damage is dealt, players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.
-5. Deal Preemptive Strike damage equal to your `[POWER]` + modifiers.
-6. If you did not already deal Preemptive Strike damage, deal damage equal to your `[POWER]` + modifiers to the target of your attack. Then the defending unit deals damage back:
-   - If it is **readied**, it deals damage equal to its `[POWER]` including all modifiers (such as Lethal).
-   - If it is **expended**, it deals damage equal to half its `[POWER]`, rounded down. For this damage, ignore modifiers that add damage when the unit deals damage (such as Lethal), but still apply modifiers that change its `[POWER]` directly. If there are multiple attackers, the defending player divides this damage among them as they choose.
-   Damage dealt this way is simultaneous.
-
-   After damage is dealt, check each unit that took damage. A unit is defeated if its marked damage is at least its `[POWER]` — unless it has Durable X, in which case it survives until marked damage is at least its `[POWER]` + X. When a unit is defeated this way, trigger its on-defeat tag (if any) and any other on-defeat abilities, then put it into the trashyard (discard pile).
-
-   Example: `[POWER]` 3 with Durable 2 is defeated at 5 damage, not 3.
-
-7. Any damage directed at a player that was not blocked or redirected is dealt as loss of life to that player. Then the attack ends.
-
-**END-OF-TURN PHASE**
-
-1. Players may invoke Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.
-2. Lose any unspent resources in your resource pool (not your stockpile).
-
-### Accumulate Resources
-
-You may accumulate resources only once per turn, and only on your turn. To do so, choose a card in hand, reveal it, then "gain" (grab) up to three resource tokens from its listed invoke cost — ignoring the grey numbered costs — and add them to your stockpile readied. Then put the revealed card on the bottom of your deck (RIG). This action does not use the lock.
-
-**Example:** "Gain" . . . . . `[RESOURCE]` , `[RESOURCE]`
-
-### How to Allocate a Resource to a Unit
-
-This ability can be used any time a Quick Hack can be played, including `[EXPEND]` while the lock is full — but only if you control no units that already have an expended resource allocated to them. Each resource allocated to a unit gives it a +1 `[POWER]` rating. To allocate a resource, expend it and choose a target. This ability does not use the lock and happens immediately.
-
-### How to Play (Invoke) a Card
-
-Each card has an invoke cost, which is what lets it be played; a card without an invoke cost in the upper-left corner cannot be played. To pay the cost, you must have the required resources in your resource pool — an imaginary area where resources go when a card tells you to "add" a resource of a color; they stay there until the end of the turn. Most resource tokens have two abilities that "add" 1 or 2 resources of their color to your pool, which you then spend on the cost to play a card.
-
-Let's look at an example. Say I want to play the Flame Kin Elementalist. I need one RAM (blue) and one Spirit Power (red) in my pool to invoke the card. I already have a RAM and a Spirit Power readied in my stockpile, and each has abilities: the first adds a resource of its respective color to my pool when I expend the resource card as a cost; the second makes me lose 1 life and dismantle the resource, then adds 2 of its respective color.
-
-Because I have what I need, I expend both the RAM and Spirit Power resources, which adds `[RESOURCE]` of the respective color when expended (see the image below).
-
-Once you have paid the cost — and if the card says to target, you must have legal targets before you invoke it, or you cannot play it — reveal the card you intend to play. It goes to the lock; declare its legal targets, then trigger any on-play tags printed on the card and resolve them right away. If it is not overwritten by an opponent's Quick Hack while it's in the lock, the card resolves: first, put the card in its respective zone (the battlefield for entities, the trashyard/discard pile for cyberspells), then resolve its effects (see the EFFECT tag for details), then resolve any other triggers such as the enters-play tag. The card has now finished being played.
-
-If your card's invoke cost has `[COST]`… etc., you can use any color of resource in your pool to pay for 1 of the cost it requires, and/or reduce that cost by `[TIME]` for each time counter. See **The Lock & Time Counters** for details.
-
-You now have everything you need to play — so let's finish up by talking about building your own RIG.
+300.3.2. **Quick Hack [Cyberspell]** — Playable whenever a Process can be played, plus at end of turn, during an attack, while the lock holds a card, or when an opponent's effect empties the lock. Has `[TLV]`; cannot attack; may block (see rule 601).
 
 ---
 
-## DECK BUILDING
+## 400. Setup and Turns
 
-Your R.I.G. is your deck of cards for all intents and purposes, but it also includes your pilot and augments. There are three RIG classes: **light-weight**, **medium-weight**, and **heavy-weight**. Your RIG choice determines the minimum number of cards in your deck and the number of augments you can equip.
+### 400.1. Setup
 
-| R.I.G. (deck) | Capacity (# cards) | Equip slots (# augments) |
-| --- | --- | --- |
-| Light weight | 30–39 | 1 |
-| Medium weight | 40–59 | 2 |
-| Heavy weight | 60–70 | 3 |
+400.1.1. Each player needs a pilot, augments, a deck, life tracking, damage dice, time-counter dice, and resource tokens.
 
-Once you've chosen a class, keep these rules in mind when building a deck:
+400.1.2. Place pilot in the pilot zone; shuffle deck into the R.I.G. zone; place augments readied on the battlefield; place pilot's starting resources readied in stockpile; set life and draw a starting hand per pilot values.
 
-1. Pilots do not count toward the deck's capacity, and you are limited to a single pilot card.
-2. Any non-pilot card may have up to three copies with the same name as part of your deck's capacity.
-3. You cannot equip two augments with the same name.
-4. Any card with the Prototype supertype is limited to a single copy in your deck's capacity.
-5. You cannot include cards that are not supported by your pilot's and augments' color combination.
+400.1.3. Determine first player randomly; that player chooses whether to go first.
 
-### Your Deck's Color Combination
+400.1.4. Each player may mulligan once (first player mulligans first): put any number of hand cards on the bottom of the deck, then draw that many. There is no maximum hand size after the game begins.
 
-Your pilot's invoke cost plus your chosen augments' augment color determine your deck's color combination (see **Reading Your Cards** for an image). There are two requirements a card must meet to be included in your deck:
+### 400.2. Turn structure
 
-1. Each card's invoke cost must have the same number of colored symbols as — or fewer than — the combined colored symbols of your pilot's invoke cost and your augments' augment color.
-2. The total invoke cost of the card must be less than or equal to the total invoke cost provided by the colored symbols across your augments and pilot, where each colored symbol on your pilot and augments counts as 2 toward the total invoke cost.
+400.2.1. Each turn has three phases in order: start of turn, main, end-of-turn.
 
-> **Note:** Grey numbered-value symbols are disregarded for color requirements but still count as 2 toward colorless and steel `[COST]` total invoke costs.
+400.2.2. **Start of turn**
 
-For this starter deck, your total color combination allows you to play any card costing up to 3 blue, 3 yellow, and 1 steel or colorless — with a total invoke-cost budget of 2 for colorless and steel costs, 6 for blue, 6 for yellow, and 12 for blue and yellow combined.
+400.2.2.1. Ready all entities you control.
 
-In the examples below, you can see how the system works:
+400.2.2.2. Trigger all abilities with the start-of-turn tag.
 
-- Grey colorless symbols do not count as steel when other colors are involved; they only count toward the total invoke cost. That's why our HMIV MK IV unit is legal: we can afford up to 12 total invoke cost and also meet its required 2 blue and 3 yellow symbols (grey numbered symbols only count toward the total invoke cost).
-- We have up to 2 invoke cost available for steel and colorless cards. For our second example, the Heavy Duty RIG card has a total invoke cost of 3 and no color, so we would need one more steel symbol in our suite — or our pilot would need a grey numbered symbol. That's why the Heavy Duty RIG card cannot be part of the deck's capacity.
-- Finally, the Flame Kin Elementalist requires blue (which we have) and red (which we lack). Even though our 3 blue provides a total invoke cost of 6 — enough for the card's total invoke cost of 2 — we cannot include it, because we lack the red symbol.
+400.2.2.3. Remove one time counter from each card you control in play; resolve effects when the last counter is removed from a stockpile card.
 
-That concludes deck building.
+400.2.2.4. If you control no resources in your stockpile, you lose the game.
 
-A few guidelines for building a functional deck:
+400.2.3. **Main phase**
 
-- The number of cards of a given color determines how likely you are to draw that color — especially important if you plan to build outside your pilot's starting resources, since you'll likely need to accumulate a card of that color before you can play others in it. Be careful.
-- Lighter-weight RIGs have less variance, but they also limit either the variety of assets you can include or the total power of your cards, since many higher-cost cards are quite powerful.
-- There is no sideboard in this game. Whatever you decide to put into your deck must include your potential sideboard as part of building the deck.
+400.2.3.1. You may play cards, activate abilities, make attacks, allocate a resource to a unit, accumulate resources, or block incoming damage directed at you, in any order where timing allows.
 
-May you find thorough enjoyment in the game — whether it's crafting the perfect RIG, the heat of battle, or self-expression through your resources, pilot, and augments. Good luck and have fun!
+400.2.3.2. See sections 600–603 for default game actions.
 
-> *"He forgot to mention HAIs, man. I'm kind of a big deal — being attached to a pilot and all… yeah… oh, right, for the next batch… got it. Well then, log complete for the new pilot, I guess. Until we meet again on the field of battle, signing off…"* — Svn
+400.2.4. **End-of-turn phase**
+
+400.2.4.1. Players may play Quick Hacks or activate abilities, active player first, until both pass.
+
+400.2.4.2. Trigger end-of-turn abilities.
+
+400.2.4.3. Lose unspent resources in your resource pool (not stockpile).
+
+400.2.4.4. Draw until your hand equals your pilot's `[HAND SIZE]` minus 2; for each card you cannot draw, lose 1 life.
+
+---
+
+## 500. Playing Cards
+
+500.1. Each playable card has an invoke cost in the upper-left corner.
+
+500.2. To play a card, have the required resources in your resource pool, pay the cost, reveal the card, and put it in the lock. If the lock is empty, the card becomes the lock occupant. If the lock is full, the played card overwrites the lock occupant (see rules 700.2.3 and 700.2.4). Only effects go to a queue when the lock is full (see rule 700.2.2).
+
+500.3. If the card targets, you must have legal targets before playing it (see section 100.7).
+
+500.4. When the card enters the lock, declare targets and resolve invoke tags immediately. The card remains the lock occupant until it resolves or is overwritten by another played card.
+
+500.4.1. While it is the lock occupant, the active player may overwrite it with a Quick Hack or take other actions allowed while the lock is full (see section 700).
+
+500.5. If the lock occupant is not overwritten, it resolves when the lock process allows: put the card in its zone (battlefield for entities, discard pile for cyberspells), resolve its effect tag, then other triggers such as enters-play.
+
+500.6. Colorless numbered costs may be paid with any one pool resource each; time counters may reduce grey numbered costs (see rule 700.4).
+
+500.7. Resource tokens usually have `[EXPEND]` abilities that add one or two resources of their color to your pool.
+
+500.7.1. Using a resource's `[EXPEND]` ability does not use the lock; expend the resource and add its color to your resource pool immediately.
+
+500.7.2. You may use resource abilities while the lock is full (see rule 700.5.1).
+
+---
+
+## 600. Default Game Actions
+
+### 601. Block
+
+601.1. Blocking is a default game action.
+
+601.2. Whenever damage is directed at you as a player — from an attack, cyberspell, card effect, or any other source — you may block before that damage becomes loss of life.
+
+601.3. You may block whenever you could take other default game actions while the lock is full (see rule 700.5).
+
+601.4. You may block in any order:
+
+601.4.1. Discard any number of hand cards with a `[TLV]` rating (including processes and quick hacks). Each card contributes up to 4 `[TLV]` toward block (Block keyword raises this). Reduce incoming damage from a damage source of your choice by the total.
+
+601.4.2. Expend any number of augments you control; for each, choose a damage source, reduce damage by that augment's `[TLV]`, and add a depletion counter to it.
+
+601.4.3. Expend any number of non-unit entities you control (programs, technologies, etc.); for each, choose a damage source, reduce damage by that entity's `[TLV]`, then trash the expended entity.
+
+601.5. Unblocked damage directed at you becomes loss of life.
+
+601.6. During an attack, blocking happens before player damage from that attack is applied (see rule 603.8).
+
+### 602. Accumulate resources
+
+602.1. Once per turn during your main phase, reveal a card from hand and gain up to three resource tokens from its colored invoke cost (ignore grey numbered costs).
+
+602.2. Put gained resources readied into stockpile; put the revealed card on the bottom of your deck.
+
+602.3. This action does not use the lock.
+
+602.4. Resource tokens created this way are created immediately in the stockpile; they do not use the lock-and-resolve flow in rule 300.2.8.
+
+### 603. Attack
+
+603.1. Attacking is a primary way to deal damage and pressure opponent resources. Damage marked on units persists until healed.
+
+603.2. **Declare attackers** — Choose unit(s), or activate an augment that makes an attack. Multiple attackers are one attack sharing one target; each attacker is treated separately for blocking and damage assignment. A card may attack if it has the Unit or Weapon supertype, including when it also has a type that otherwise cannot attack (see rules 100.6 and 100.6.2).
+
+603.3. **Declare target** — Expend attackers, choose target unit or opponent, and trigger on-attack abilities. You must target a readied unit the defender controls if able; if none, you cannot attack.
+
+603.4. **Attack step** — Attackers are now attacking. Pay additional costs such as Stealth if required.
+
+603.5. **Response window** — Players play Quick Hacks or activate abilities, active player first, until both pass.
+
+603.5.1. If a unit would become readied, an illegal player target redirects to a readied unit the attacker chooses.
+
+603.6. **Block window** — Before player damage becomes loss of life, the defending player may block (see rule 601).
+
+603.7. **Preemptive Strike damage** — Attackers with Preemptive Strike deal `[TLV]` damage (including modifiers).
+
+603.8. **Combat damage** — If Preemptive Strike damage was not dealt, attackers deal `[TLV]` to the attack target. A readied defending unit deals `[TLV]` back; an expended defending unit deals 0. Damage is simultaneous.
+
+603.8.1. If there are multiple attackers, the defending player divides the defending unit's damage among them as they choose.
+
+603.8.2. After damage, a unit is defeated if marked damage ≥ its `[TLV]` (or `[TLV]` + X with Durable X). Trigger on-defeat abilities; put defeated units in the discard pile.
+
+603.9. **Player damage** — Unblocked damage directed at a player becomes loss of life. The attack ends.
+
+### 604. Allocate a resource to a unit
+
+604.1. Once per turn on your turn, when you could play a Process, you may allocate a resource to a unit you control.
+
+604.2. Expend the resource `[EXPEND]` and choose the unit. Each allocated resource gives +1 `[TLV]` to that unit.
+
+604.3. This does not use the lock and resolves immediately.
+
+---
+
+## 700. The Lock and Time Counters
+
+### 700.1. Lock overview
+
+700.1.1. The lock holds at most one card or effect and determines timing, active player, Quick Hack overwrite rights, and when effects resolve.
+
+700.1.2. At the start of a turn, the turn player is the active player.
+
+700.1.3. When a card or effect enters the lock, its controller becomes the non-active player; their opponent becomes active.
+
+700.1.4. If multiple effects would enter an empty lock simultaneously, the active player puts one of theirs in first; others go to queues.
+
+700.1.5. Only the active player may play a Quick Hack to overwrite the lock during Scenario 2 (see rule 700.3.6).
+
+700.1.6. Paying costs, using resource abilities, activating into your queue, and blocking may be done by whoever is currently adding effects (including the non-active player during Alternate); Quick Hack overwrite remains active-player only.
+
+### 700.2. Scenario 1 — Lock occupant, cards, and Quick Hacks
+
+700.2.1. **Empty lock** — A played card or lock-using effect enters the lock.
+
+700.2.2. **Full lock — effects** — A lock-using effect goes to its controller's queue instead. It does not enter the lock.
+
+700.2.3. **Full lock — cards** — A played card overwrites the lock occupant and becomes the new occupant. It does not go to a queue.
+
+700.2.4. **Overwrite result** — When a card overwrites the lock occupant, the replaced card goes to its controller's stockpile with two time counters (or is discarded if stockpile already has three time-counter cards). A replaced effect does nothing. Recalculate active player; restart "while lock is full."
+
+700.2.5. Queued effects never overwrite the lock.
+
+### 700.3. Scenario 2 — Queues
+
+700.3.1. While the lock is full, overflow effects go to queues. The turn does not return to free play until lock and all queues are empty.
+
+700.3.2. **Active batch** — Active player adds legal overflow to their queue, then resolves their entire queue in chosen order.
+
+700.3.3. **Non-active batch** — Non-active player does the same.
+
+700.3.4. **Alternate** — Starting with the active player, each player either adds one queue effect and resolves it, or passes; when both pass in succession, stop.
+
+700.3.5. **Lock occupant resolves** — If lock is still full and any queue is non-empty, repeat 700.3.2–700.3.4. When lock is empty, queues must also be empty before normal play resumes.
+
+700.3.6. A Quick Hack during batches overwrites per Scenario 1; only the active player may do so.
+
+### 700.4. Time counters
+
+700.4.1. When playing a card, you may place time counters on it to reduce grey numbered invoke costs by `[GEN1]` each.
+
+700.4.2. If you used time counters when playing the card, skip the lock entirely: put the card revealed in your stockpile with those time counters on it.
+
+700.4.2.1. While the card has one or more time counters on it, it has no abilities (except abilities with the Atomic tag; see rule 800.1.2).
+
+700.4.3. At the start of each of your turns, remove one counter from each of your time-counter cards.
+
+700.4.4. When the last counter is removed from a stockpile card, resolve its effects without using the lock, then move it to the battlefield (entity) or discard pile (cyberspell).
+
+700.4.5. You may have at most three time-counter cards in stockpile.
+
+### 700.5. Actions while lock is full
+
+700.5.1. Pay costs and use resource abilities (do not use the lock).
+
+700.5.2. Allocate a resource to a unit (see rule 604).
+
+700.5.3. Activate an ability that uses the lock — it goes to your queue.
+
+700.5.4. Block incoming damage directed at you (see rule 601).
+
+---
+
+## 800. Timing, Triggers, and Keywords
+
+### 800.1. Tags
+
+800.1.1. Abilities appear as tags (STATIC or TRIGGERED) except EFFECT and activated abilities.
+
+800.1.2. **Atomic** — Active even with time counters on the card.
+
+800.1.3. **Enters play** — First time entering battlefield or stockpile; always atomic.
+
+800.1.4. **Enters battlefield / stockpile** — First entry to that zone.
+
+800.1.5. **On attack** — When you make an attack with that card.
+
+800.1.6. **Start / end of turn** — At start or end of your turn.
+
+800.1.7. **Invoke (on play)** — When the card goes to the lock; resolves immediately.
+
+800.1.8. **Conditional** — `[condition], [effect]`.
+
+800.1.9. **Static** — Always active in play.
+
+800.1.10. **Effect** — When the played card resolves; default for untagged non-activated abilities.
+
+800.1.11. **On defeat** — When the unit is put into the discard pile from play.
+
+### 800.2. Activated abilities
+
+800.2.1. Format: `[cost]: [effect]`. Playable whenever a Quick Hack can be played unless stated otherwise.
+
+800.2.2. If an activated ability targets, it cannot be activated unless at least one legal target exists (see section 100.7).
+
+800.2.3. To activate, pay costs; if the lock is empty the effect enters the lock, otherwise your queue. Declare legal targets when the effect enters the lock or queue.
+
+800.2.4. **Expend `[EXPEND]`** — Turn a card 90° from vertical (readied = vertical).
+
+800.2.5. **Recycle `[RECYCLE]`** — Discard from hand at Quick Hack timing.
+
+800.2.6. **Trash `[TRASH]`** — From battlefield; put printed card in discard pile as cost.
+
+800.2.7. **Dismantle `[DISMANTLE]`** — From play; put printed card in dismantled zone as cost.
+
+### 800.3. Keyword abilities
+
+800.3.1. Keywords are static unless noted. Duplicate keywords on one entity do not stack except numerical values, which add.
+
+800.3.2. **Airborne** — Only Airborne or Long Range can attack this entity.
+
+800.3.3. **Block X** — When blocking, reduce damage by an additional X.
+
+800.3.4. **Corrosive Bile** — Whenever this entity deals damage to a unit, destroy that unit.
+
+800.3.5. **Degrade X** — Affected player mills X from their R.I.G.
+
+800.3.6. **Durable X** — Defeated at `[TLV]` + X damage instead of `[TLV]`.
+
+800.3.7. **Preemptive Strike** — Deals damage first in a fight unless the opponent also has Preemptive Strike.
+
+800.3.8. **Hardened X** — Reduce damage taken by X.
+
+800.3.9. **Hard Point** — May equip a second copy of this card as an augment.
+
+800.3.10. **Insatiable Hunger** — Attacks must target a unit the defender controls if they control one.
+
+800.3.11. **Invulnerable** — Cannot be trashed, dismantled, or destroyed by those effects; cannot be chosen as target for them.
+
+800.3.12. **Lethal X** — Deals X additional damage when it deals damage.
+
+800.3.13. **Long Range** — Can attack Airborne units.
+
+800.3.14. **Pierce** — Excess damage to a unit's controller is redirected to that player.
+
+800.3.15. **Recursive** — May invoke from trashyard; allocate top R.I.G. card face down; next trash dismantles both.
+
+800.3.16. **Refurbished** — Dismantle cards from trashyard to pay `[GEN]` costs on this card.
+
+800.3.17. **Spirit Link** — Damage this asset deals is gained as life by its controller.
+
+800.3.18. **Stalwart** — Does not expend when attacking.
+
+800.3.19. **Stationary** — Cannot attack.
+
+800.3.20. **Stealth X** — Additional cost to target or attack with cyberspells/abilities/attacks.
+
+800.3.21. **Sturdy** — Cannot be destroyed by "destroy" effects.
+
+800.3.22. **Surge** — Invokable whenever a Quick Hack can be played.
+
+800.3.23. **Weakened X** — Deals X less damage.
+
+---
+
+## 900. Deck Building
+
+900.1. Your R.I.G. is your deck plus pilot and augments (pilot and augments do not count toward capacity).
+
+900.2. **Deck sizes**
+
+| Class | Capacity | Augments | Modifier |
+| --- | --- | --- | --- |
+| Heavy weight | 30 | 3 | Max 2 copies per name |
+| Medium weight | 40–50 | 2 | — |
+| Light weight | 60–70 | 1 | Pilot colored symbols count double for color combination |
+
+900.3. **Deck rules**
+
+900.3.1. One pilot only.
+
+900.3.2. Up to three copies per non-pilot name (two on heavy weight).
+
+900.3.3. No duplicate augment names; augments do not count toward capacity.
+
+900.3.4. Prototype limited to one copy in capacity.
+
+900.3.5. Every card must be legal for your pilot + augment color combination.
+
+900.4. **Color combination**
+
+900.4.1. Combined colored symbols on pilot invoke cost plus augment colors define your palette.
+
+900.4.2. A card is legal if its colored invoke symbols are fewer than or equal to your combined colored symbols.
+
+900.4.3. Grey numbered-value symbols are ignored when determining color combination legality. They do not count as colored symbols and do not count as steel.
+
+900.4.4. A card whose invoke cost contains only grey numbered-value symbols (and no colored symbols) may be included in any deck.
+
+900.4.5. There is no sideboard; include sideboard cards in deck capacity when building.
+
+---
+
+*Rules version aligned with the How to Play page. "He forgot to mention HAIs, man..." — Svn*

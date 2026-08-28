@@ -271,7 +271,7 @@ export function selectableActionTargets(
  * ready (un-expend) every battlefield + stockpile + pilot card, and remove 1
  * time counter from each that still has at least one.
  *
- * The maintenance phase readies *before* removing counters, so a card still
+ * The start of turn readies *before* removing counters, so a card still
  * holding a counter at that moment keeps its expended state and only readies
  * on the following turn, once the counter is gone.
  */

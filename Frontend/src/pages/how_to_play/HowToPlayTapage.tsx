@@ -294,8 +294,7 @@ export function HowToPlayPage() {
                             <p>
                                 The most straightforward way to victory is to reduce your
                                 opponent's life points to 0 by attacking with units (a type of
-                                entity), strikes (a type of cyberspell), or weapons (a type of
-                                entity).
+                                entity) or weapons (a type of entity).
                             </p>
                             <p>
                                 Another way to win is to run your opponent out of cards in their
@@ -380,13 +379,13 @@ export function HowToPlayPage() {
 
                             <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Turn Phases</h3>
                             <p>
-                                There are three phases: the maintenance phase (start of turn), the
+                                There are three phases: start of turn, the
                                 main phase, and the end-of-turn phase. Take them in order on your
                                 turn.
                             </p>
                             <div className="space-y-1">
                                 <p className="flex items-center gap-2 font-semibold text-cyan-200">
-                                    Maintenance Phase
+                                    Start of Turn
                                 </p>
                                 <div className="border-l-2 border-cyan-500/0 pl-4">
                                     <ol className="list-decimal space-y-1 pl-6">                                        
@@ -402,18 +401,19 @@ export function HowToPlayPage() {
                                 <div className="space-y-1 border-l-2 border-cyan-500/0 pl-4">
                                     <p>
                                         You may play cards, activate abilities, make attacks,
-                                        allocate a resource to a unit you control, or accumulate resources,
-                                        in any order.
+                                        allocate a resource to a unit you control, accumulate resources,
+                                        or block incoming damage directed at you, in any order where
+                                        timing allows.
                                     </p>
                                     <p>To make an attack, in brief:</p>
                                     <ol className="list-decimal space-y-1 pl-6">
                                         <li>Choose and expend your attacker(s), then declare a target. Then trigger any units attacking with a <GameIcon name="attack" /> tag.</li>
                                         <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
-                                        <li>The defender may block to reduce the incoming damage.</li>
-                                        <li>Deal damage (Preemptive Strike first, then simultaneous). Defeated units go to the discard pile; unblocked damage to a player becomes loss of life.</li>
+                                        <li>Deal damage (Preemptive Strike first, then simultaneous). Defeated units go to the discard pile. Before loss of life is dealt to a player, they may block using the default Block action.</li>
                                     </ol>
                                     <p>
-                                        See <SectionLink href="#how-to-attack">How to Attack</SectionLink>{" "}
+                                        See <SectionLink href="#how-to-block">How to Block</SectionLink>{" "}
+                                        and <SectionLink href="#how-to-attack">How to Attack</SectionLink>{" "}
                                         under Core Actions for the full step-by-step.
                                     </p>
                                 </div>
@@ -520,15 +520,16 @@ export function HowToPlayPage() {
                                 <Term>PROGRAM [ Entity ]:</Term> A type of card that tends to be
                                 synergistic, stays in play once played, and has a variety of effects
                                 and abilities. Programs have a <GameIcon name="threat_lvl" /> rating.
-                                They cannot attack. You may use that rating only to block (see How to
-                                Attack).
+                                They cannot attack. You may use that rating only to block (see{" "}
+                                <SectionLink href="#how-to-block">How to Block</SectionLink>).
                             </p>
                             <p>
                                 <Term>TECHNOLOGY [ Entity ]:</Term> A type of card that tends to be a
                                 counter-play or support piece, stays in play once played, and has a
                                 variety of effects and abilities. Technologies have a{" "}
                                 <GameIcon name="threat_lvl" /> rating. They cannot attack. You may
-                                use that rating only to block (see How to Attack).
+                                use that rating only to block (see{" "}
+                                <SectionLink href="#how-to-block">How to Block</SectionLink>).
                             </p>
                             <p>
                                 <Term>AUGMENT [ Entity ]:</Term> Pieces of equipment or cybernetic
@@ -565,15 +566,8 @@ export function HowToPlayPage() {
                                 magic and technology&mdash;complex programs or scripts that take
                                 significant time to play in battle. Processes have a{" "}
                                 <GameIcon name="threat_lvl" /> rating. They cannot attack. You may
-                                use that rating only to block (see How to Attack).
-                            </p>
-                            <p>
-                                <Term>STRIKE [ Cyberspell ]:</Term> This cyberspell can be played any
-                                time during your main phase and counts as making an attack. When you
-                                play this card, choose a target for its <GameIcon name="threat_lvl" />{" "}
-                                damage. Strikes tend to be special moves,
-                                magic, or other attacks and feats of prowess your pilot can pull off
-                                in the spur of the moment.
+                                use that rating only to block (see{" "}
+                                <SectionLink href="#how-to-block">How to Block</SectionLink>).
                             </p>
                             <p>
                                 <Term>QUICK HACK [ Cyberspell ]:</Term> This cyberspell can be played
@@ -584,7 +578,7 @@ export function HowToPlayPage() {
                                 fastest scripts you can play, letting you disrupt your opponent or
                                 protect yourself. Quick Hacks have a <GameIcon name="threat_lvl" />{" "}
                                 rating. They cannot attack. You may use that rating only to block
-                                (see How to Attack).
+                                (see <SectionLink href="#how-to-block">How to Block</SectionLink>).
                             </p>
                         </Section>
 
@@ -749,6 +743,53 @@ export function HowToPlayPage() {
                             </div>
 
                             <h3
+                                id="how-to-block"
+                                className="font-glitch scroll-mt-24 pt-2 text-xl text-cyan-200 lg:text-2xl"
+                            >
+                                How to Block
+                            </h3>
+                            <p>
+                                You can block incoming damage whenever damage is directed at
+                                you as a player — from an attack, a cyberspell, a card effect, or any
+                                other source — you may block to reduce that damage before it becomes
+                                loss of life. You may block any time you could take other
+                                game actions while the lock is full (see{" "}
+                                <SectionLink href="#lock">The Lock</SectionLink>).
+                            </p>
+                            <p>You may, in any order:</p>
+                            <ul className="list-disc space-y-1 pl-6">
+                                <li>
+                                    Discard any number of cards in hand with a{" "}
+                                    <GameIcon name="threat_lvl" /> rating (including processes and
+                                    quick hacks). The maximum a card can block using its{" "}
+                                    <GameIcon name="threat_lvl" /> is 4; the Block keyword can
+                                    increase this limit. Add the discarded cards together and reduce
+                                    the incoming damage from a damage source of your choice by that
+                                    total.
+                                </li>
+                                <li>
+                                    Expend any number of augments you control, choose a damage
+                                    source for each, reduce the incoming damage by that augment's{" "}
+                                    <GameIcon name="threat_lvl" /> rating, and add a depletion
+                                    counter to that augment.
+                                </li>
+                                <li>
+                                    Expend any number of non-unit entities you control (including
+                                    programs and technologies), choose a damage source for each,
+                                    reduce the incoming damage by that entity's{" "}
+                                    <GameIcon name="threat_lvl" /> rating, and then trash the
+                                    entity(s) you expended.
+                                </li>
+                            </ul>
+                            <p>
+                                Any damage directed at you that was not blocked is dealt as loss of
+                                life. During an attack, blocking happens before player damage from
+                                that attack is applied; see{" "}
+                                <SectionLink href="#how-to-attack">How to Attack</SectionLink> for
+                                the full combat sequence.
+                            </p>
+
+                            <h3
                                 id="how-to-attack"
                                 className="font-glitch scroll-mt-24 pt-2 text-xl text-cyan-200 lg:text-2xl"
                             >
@@ -760,12 +801,12 @@ export function HowToPlayPage() {
                                     with cards and effect that say to heal it. </Important>
                             </p>
                             <ol className="list-decimal space-y-1 pl-6">
-                                <li>Choose unit(s), play a cyberspell strike card, or activate an augment that says it makes an attack.
+                                <li>Choose unit(s), or activate an augment that says it makes an attack.
                                     When attacking with multiple units, the group is considered a
                                     single attack and must share the same target, but each attacker
-                                    is treated separately for blocking purposes.
-                                    Programs, technologies, processes, and quick hacks cannot attack,
-                                    even if they have a <GameIcon name="threat_lvl" /> rating.
+                                    is treated separately when blocking or assigning damage.
+                                    Only Units and Weapons can make Attacks. all other cards with a
+                                     <GameIcon name="threat_lvl" /> rating can be used to block incoming damage.
                                 </li>
                                 <li>Expend the chosen unit(s), declare an attack target
                                     (another unit or an opponent), and trigger the
@@ -777,31 +818,16 @@ export function HowToPlayPage() {
                                 <li> The unit(s), cyberspell, or weapon is now considered attacking. In this step you must choose whether to pay additional costs for cards with them such as stealth.</li>
                                 <li>Players may play Quick Hacks or activate abilities,
                                     starting with the active player, until no one wants to adds more effects.
+                                <li>If a Unit would become readied, the attacking target becomes illegal and is redirected to the readied unit instead.
+                                    If there ar multiple readied units then the attacker my choose which one to redirect the attack to.
+                                </li>
                                     <Note>The Active player is usually the one attacking see the lock for details.</Note>
                                     
                                 </li>
-                                    
                                 <li>
-                                    Block incoming damage. you can do so only for attacks
-                                    that target you directly. You may, in any order:
-                                    <ul className="list-disc space-y-1 pl-6 pt-1">
-                                        <li>Discard any number of cards in hand with a
-                                        {" "}<GameIcon name="threat_lvl" /> rating (including
-                                            processes and quick hacks). The maximuim a
-                                            card can block using its <GameIcon name="threat_lvl" />{" "}
-                                            is 4, however the block keyword can increase this limit.
-                                            add the discarded cards together, and reduce the damage
-                                            from an attacker of your choice by that total.</li>
-                                        <li>Expend any number of augments you control, choose an
-                                            attacker for each, reduce the incoming damage by that
-                                            augment's <GameIcon name="threat_lvl" /> rating, and
-                                            add a depletion counter to that augment.</li>
-                                        <li>Expend any number of non-unit entities you control
-                                            (including programs and technologies), choose an
-                                            attacker for each, reduce the incoming damage by that
-                                            entity's <GameIcon name="threat_lvl" /> rating, and
-                                            then trash the entity(s) you expended.</li>
-                                    </ul>
+                                    Before damage directed at a player would become loss of life,
+                                    that player may block using the Block action (see{" "}
+                                    <SectionLink href="#how-to-block">How to Block</SectionLink>).
                                 </li>
                                 <li>
                                     The attacker(s) deal Preemptive Strike damage equal to their{" "}
@@ -844,16 +870,17 @@ export function HowToPlayPage() {
                                         damage, not 3.
                                     </Note>
                                 </li>
-                                <li>Any damage directed at a player that was not blocked or redirected is dealt as loss of life to that player. Then the attack ends.</li>
+                                <li>Any damage directed at a player that was not blocked is dealt as loss of life to that player. Then the attack ends.</li>
                             </ol>
                         </Section>
 
                         <Section id="lock" title="The Lock & Time Counters">
                             <p>
                                 The lock is a special zone that holds at most one card or effect.
-                                Playing a card without time counters, or generating an effect that
-                                uses the lock, goes to the lock if it is empty, or to that
-                                controller's queue if the lock is already full (see Scenario 2).
+                                Playing a card without time counters goes to the lock and overwrites
+                                the occupant if the lock is already full. An effect that uses the
+                                lock goes to the lock if it is empty, or to that controller's queue
+                                if the lock is already full (see Scenario 2).
                             </p>
                             <p className="font-semibold text-cyan-200">The lock does 4 things:</p>
                             <ol className="list-decimal space-y-1 pl-6">
@@ -872,10 +899,10 @@ export function HowToPlayPage() {
                                 player puts one of theirs into the lock first; the rest go to queues.
                             </p>
                             <Note>
-                                Note: only the active player may Quick Hack overwrite the lock. Paying
+                                Note: only the active player may play a Quick Hack to overwrite the lock. Paying
                                 costs, using resource abilities, and activating into your queue are
                                 allowed for whoever is currently adding effects (active batch,
-                                non-active batch, or your turn in Alternate)&mdash;even if you are
+                                non-active batch, or your turn in Alternate); even if you are
                                 the non-active player.
                             </Note>
 
@@ -891,7 +918,13 @@ export function HowToPlayPage() {
                                     you play, or an effect that uses the lock, goes to the lock.
                                 </li>
                                 <li>
-                                    <strong className="text-cyan-100">Full lock:</strong> that same
+                                    <strong className="text-cyan-100">Full lock — card:</strong> a
+                                    card you play overwrites the lock occupant and becomes the new
+                                    occupant. It does not go to a queue (see the overwrite result
+                                    under Exception below).
+                                </li>
+                                <li>
+                                    <strong className="text-cyan-100">Full lock — effect:</strong> that
                                     effect goes to its controller's queue instead. It does not enter
                                     the lock.
                                 </li>
@@ -899,7 +932,10 @@ export function HowToPlayPage() {
                                     <strong className="text-cyan-100">Exception:</strong> the active
                                     player may play a Quick Hack. That card goes to the lock and
                                     replaces the occupant (card or effect). The old occupant is
-                                    discarded and does not resolve. Recalculate who is active: the
+                                    instead put into that players stockpile with 2 time counters on it. if that player already 
+                                    has the maximuim number of cards with time counters in there stockpile then the card is instead dicarded to
+                                    the discard pile, and do not resolve. if the occupant was an effect it does nothing.
+                                     Recalculate who is active: the
                                     Quick Hack's controller is non-active; their opponent is active.
                                     Restart from “while the lock is full.”
                                 </li>
@@ -968,7 +1004,7 @@ export function HowToPlayPage() {
                                 <li>Pay costs and use resource abilities (those abilities do not use the lock).</li>
                                 <li>Allocate a resource to a unit you control. You can only do so if you control no units that already have expended resources allocated to them. Each resource allocated to a unit gives it a +1 <GameIcon name="threat_lvl" /> rating. To allocate a resource, expend it and choose a target. This ability does not use the lock and happens immediately.</li>
                                 <li>Activate an activated ability that uses the lock: it goes to your queue, not the lock.</li>
-                                <li>Block an attack.</li>
+                                <li>Block incoming damage directed at you (see <SectionLink href="#how-to-block">How to Block</SectionLink>).</li>
                             </ol>
                             <p>
                                 Overwriting the lock with a Quick Hack is only legal for the active

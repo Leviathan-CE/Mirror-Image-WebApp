@@ -89,10 +89,10 @@ const ICON_SOURCES = {
     label: "Start of turn",
     shape: "tag",
   },
-  /** Legacy maintenance-phase art (kept for docs that want the old banner). */
+  /** Legacy start-of-turn banner art (filename retains old spelling). */
   maintenance: {
     src: "/images/icons/keywords/miantinace phase.png",
-    label: "Maintenance phase",
+    label: "Start of turn",
     shape: "tag",
   },
   defeated: {
