@@ -43,6 +43,8 @@
 > 100.7.8. Keywords and other rules may further restrict or modify targeting and what can happen to a chosen target (see section 800.3).
 >
 > 100.7.9. Attack targeting is handled by combat rules in addition to these rules (see section 603).
+>
+> 100.7.10. If an effect does not specify a zone, only cards and objects on the battlefield may be chosen (see rule 200.3). To target a card in the stockpile, hand, trashyard, dismantled zone, pilot zone, or another zone, the effect must say so.
 
 ---
 

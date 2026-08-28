@@ -121,7 +121,7 @@ const PLAYMAT_ZONES: PlaymatZone[] = [
         id: "in-play",
         label: "In Play",
         description:
-            "A reference to both the Battlefield and the Stockpile. Anything that affects “in play” affects both zones. If a card does not specify a zone it defaults to both.",
+            "A reference to both the Battlefield and the Stockpile. Anything that affects “in play” affects both zones.",
         top: "41%",
         left: "14.5%",
         width: "3.5%",
@@ -1142,7 +1142,8 @@ export function HowToPlayPage() {
                                 &ldquo;Technology&rdquo;), the target must have that type. If an effect
                                 uses an exclusion (for example, &ldquo;non-Augment&rdquo;), the target is
                                 illegal if it has the excluded type, even if it also has a required type.
-                                You cannot choose an illegal target.
+                                If an effect does not name a zone, you may only choose targets on the
+                                battlefield. You cannot choose an illegal target.
                             </p>
                             <p>
                                 If a card or activated ability requires targets, you must have at least
