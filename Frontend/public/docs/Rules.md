@@ -290,7 +290,7 @@
 
 603.10.1. A weapon you control has an **innate ability** to attack. Using it is not an activated ability and does not use the lock.
 
-603.10.2. To attack with a weapon, `[EXPEND]` that weapon and `[DISMANTLE]` a resource of your choice you control.
+603.10.2. To attack with a weapon, `[EXPEND]` that weapon and `[DISMANTLE]` a resource of your choice you control. If you control your pilot on the battlefield, you do not need to pay the dismantle cost.
 
 603.10.3. Choose targets following the same rules as attacking with units (see rules 603.3 and 603.5.1).
 

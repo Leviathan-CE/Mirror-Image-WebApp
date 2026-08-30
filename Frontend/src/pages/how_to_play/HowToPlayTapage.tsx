@@ -638,8 +638,10 @@ export function HowToPlayPage() {
                                 <strong>innate ability</strong> to attack&mdash;this is not an activated
                                 ability. To attack with a weapon,{" "}
                                 <GameIcon name="expend" /> the weapon and{" "}
-                                <GameIcon name="dismantle" /> a resource of your choice you control,
-                                then choose targets using the same rules as attacking with units. A
+                                <GameIcon name="dismantle" /> a resource of your choice you control
+                                (you do not need to dismantle a resource if you control your pilot on
+                                the battlefield), then choose targets using the same rules as attacking
+                                with units. A
                                 weapon may join the same attack as your units. If a weapon deals
                                 damage to a readied unit, put a depletion counter on that weapon. See{" "}
                                 <SectionLink href="#how-to-attack">How to Attack</SectionLink>.
@@ -889,7 +891,8 @@ export function HowToPlayPage() {
                                     otherwise cannot attack (see Card Types). To attack with a weapon,
                                     pay its innate cost: <GameIcon name="expend" /> the weapon and{" "}
                                     <GameIcon name="dismantle" /> a resource of your choice you
-                                    control. All other cards with a{" "}
+                                    control (you do not need to dismantle a resource if you control
+                                    your pilot on the battlefield). All other cards with a{" "}
                                     <GameIcon name="threat_lvl" /> rating can be used to block incoming
                                     damage.
                                 </li>
