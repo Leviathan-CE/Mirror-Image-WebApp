@@ -1,5 +1,5 @@
 /**
- * Presentational deck board: pilot + augment + category sections + new-section zone.
+ * Presentational deck board: pilot + category sections + new-section zone.
  * Pages own mutations; this component only renders and forwards events.
  */
 
@@ -12,13 +12,8 @@ import {
   isLibraryDragPayload,
   type DeckCardDragPayload,
 } from "@/components/decks/deckCardDrag"
-import {
-  augmentCards,
-  augmentCategory,
-  cardsByCategory,
-  pilotCard,
-} from "@/components/decks/deck.logic"
-import { AUGMENT_SECTION_NAME, type DeckCardEntry, type DeckDetail } from "@/lib/api/decks"
+import { cardsByCategory, pilotCard } from "@/components/decks/deck.logic"
+import type { DeckCardEntry, DeckDetail } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
 export type DeckBoardProps = {
@@ -45,10 +40,6 @@ export type DeckBoardProps = {
     fromCategoryId: number | null
   ) => void | Promise<void>
   onClearPilot?: () => void
-  onAddAugment: (
-    cardId: number,
-    fromCategoryId: number | null
-  ) => void | Promise<void>
   onCreateSectionFromDrop?: (payload: DeckCardDragPayload) => void | Promise<void>
 }
 
@@ -69,11 +60,8 @@ export function DeckBoard({
   onQuantityDelta,
   onAssignPilot,
   onClearPilot,
-  onAddAugment,
   onCreateSectionFromDrop,
 }: DeckBoardProps) {
-  const augment = augmentCategory(deck.categories)
-
   return (
     <div
       className={cn(
@@ -98,53 +86,6 @@ export function DeckBoard({
           }
           onClear={canEdit ? onClearPilot : undefined}
         />
-        {augment ? (
-          <DeckCategorySection
-            category={augment}
-            cards={augmentCards(deck.cards, deck.categories, sortMode)}
-            canEdit={canEdit}
-            disabled={disabled}
-            viewMode={viewMode}
-            reserved
-            selectedKeys={selectedKeys}
-            onSelectCard={onSelectCard}
-            onClearSelect={onClearSelect}
-            onRename={async () => undefined}
-            onDelete={async () => undefined}
-            onCardDrop={(payload) =>
-              void onAddAugment(
-                payload.cardId,
-                isLibraryDragPayload(payload) ? null : payload.fromCategoryId
-              )
-            }
-            onQuantityDelta={onQuantityDelta}
-          />
-        ) : canEdit ? (
-          <DeckCategorySection
-            category={{
-              id: -1,
-              name: AUGMENT_SECTION_NAME,
-              sort_order: -2,
-              in_deck: false,
-            }}
-            cards={[]}
-            canEdit={canEdit}
-            disabled={disabled}
-            viewMode={viewMode}
-            reserved
-            selectedKeys={selectedKeys}
-            onSelectCard={onSelectCard}
-            onClearSelect={onClearSelect}
-            onRename={async () => undefined}
-            onDelete={async () => undefined}
-            onCardDrop={(payload) =>
-              void onAddAugment(
-                payload.cardId,
-                isLibraryDragPayload(payload) ? null : payload.fromCategoryId
-              )
-            }
-          />
-        ) : null}
       </div>
 
       {cardsByCategory(deck.cards, deck.categories, sortMode).map(

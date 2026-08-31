@@ -182,17 +182,16 @@ export function PlayTesterPage() {
     key: string
     tokens: CardLibraryItem[]
   } | null>(null)
+  // Resource catalogue fetch is optional-auth — solo playtest must work logged out.
   const resourceCacheKey =
-    status === "ready" && token ? `ready:${token}` : "idle"
+    status === "ready" ? `ready:${token ?? "anon"}` : "idle"
   const resourceTokens = useMemo(
     () =>
       resourceCache?.key === resourceCacheKey ? resourceCache.tokens : [],
     [resourceCache, resourceCacheKey]
   )
   const resourcesReady =
-    status === "ready" &&
-    !!token &&
-    resourceCache?.key === resourceCacheKey
+    status === "ready" && resourceCache?.key === resourceCacheKey
   const [playNotice, setPlayNotice] = useState<string | null>(null)
   /**
    * Board canvas + CSS fit-scale.
@@ -276,7 +275,6 @@ export function PlayTesterPage() {
     changeFloatSelection: onFloatSelectionChange,
     changeHandSelection: onHandSelectionChange,
     startTurn,
-    endTurn,
     deleteCards: deleteSessionCards,
     adjustCounters: adjustCardCounters,
     spawnResourceColor: spawnResourceColorCore,
@@ -638,9 +636,9 @@ export function PlayTesterPage() {
   }, [status, twoSeat, netActive])
 
   useEffect(() => {
-    if (status !== "ready" || !token) return
+    if (status !== "ready") return
     let cancelled = false
-    const key = `ready:${token}`
+    const key = `ready:${token ?? "anon"}`
 
     // Resource tokens: identify by super type Resource + invoke-cost colour.
     void Promise.all([
@@ -725,11 +723,9 @@ export function PlayTesterPage() {
   ])
 
   function onStartTurn() {
-    startTurn(Boolean(mulliganOpen || bottomAnim))
-  }
-
-  function onEndTurn() {
-    endTurn(Boolean(mulliganOpen || bottomAnim || hasPendingDrawTimers()))
+    startTurn(
+      Boolean(mulliganOpen || bottomAnim || hasPendingDrawTimers())
+    )
   }
 
   function cardScreenRect(instanceId: string): {
@@ -1547,28 +1543,17 @@ export function PlayTesterPage() {
                 disabled={
                   mulliganOpen ||
                   Boolean(bottomAnim) ||
-                  (netActive && turnSeat !== localSeat)
+                  hasPendingDrawTimers()
                 }
                 className="font-buahs93 h-7 rounded-none bg-cyan-700 px-3 text-xs hover:bg-cyan-900 disabled:opacity-40"
                 onClick={onStartTurn}
-              />
-              <GlitchFx
-                type="button"
-                label="END TURN"
-                disabled={
-                  mulliganOpen ||
-                  Boolean(bottomAnim) ||
-                  (netActive && turnSeat !== localSeat)
-                }
-                className="font-buahs93 h-7 rounded-none bg-cyan-700 px-3 text-xs hover:bg-cyan-900 disabled:opacity-40"
-                onClick={onEndTurn}
               />
               <span
                 className="ml-auto font-buahs93 text-sm tracking-wide text-cyan-100/90"
                 aria-live="polite"
               >
                 Turn {turn}
-                {twoSeat ? ` · ${turnSeat}` : ""}
+                {twoSeat && !netActive ? ` · ${turnSeat}` : ""}
               </span>
             </div>
           </div>

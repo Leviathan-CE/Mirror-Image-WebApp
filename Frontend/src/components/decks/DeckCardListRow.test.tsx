@@ -15,6 +15,7 @@ function card(overrides: Parameters<typeof deckEntry>[0] = {}): DeckCardEntry {
     invoke_cost: 3,
     cost: ["LIF", "RAM"],
     threat_level: "4",
+    is_summon: true,
     ...overrides,
   })
 }
@@ -33,11 +34,22 @@ describe("DeckCardListRow", () => {
   it("hides TLV when it is zero", () => {
     render(
       <DeckCardListRow
-        card={card({ threat_level: "0" })}
+        card={card({ threat_level: "0", is_summon: true })}
         classified={null}
       />
     )
     expect(screen.queryByTitle("Threat level")).not.toBeInTheDocument()
+  })
+
+  it("hides TLV on non-summon cards even when threat_level is set", () => {
+    render(
+      <DeckCardListRow
+        card={card({ threat_level: "4", is_summon: false })}
+        classified={null}
+      />
+    )
+    expect(screen.queryByTitle("Threat level")).not.toBeInTheDocument()
+    expect(screen.queryByText("4")).not.toBeInTheDocument()
   })
 
   it("redacts cost and TLV for classified cards", () => {

@@ -31,7 +31,11 @@ const SECTIONS: TocEntry[] = [
             { id: "turn-phases", label: "Turn Phases" },
         ],
     },
-    { id: "reading-cards", label: "Reading Your Cards" },
+    {
+        id: "reading-cards",
+        label: "Reading Your Cards",
+        children: [{ id: "threat-level", label: "Threat Level" }],
+    },
     {
         id: "card-types",
         label: "Card Types",
@@ -70,11 +74,7 @@ const SECTIONS: TocEntry[] = [
         ],
     },
     { id: "keywords", label: "Keyword Abilities" },
-    {
-        id: "deck-building",
-        label: "Deck Building",
-        children: [{ id: "deck-color-combination", label: "Deck Color Combination" }],
-    },
+    { id: "deck-building", label: "Deck Building" },
 ]
 
 const KEYWORDS = KEYWORD_ABILITIES
@@ -410,8 +410,7 @@ export function HowToPlayPage() {
                             </p>
                             <ul className="list-disc space-y-1 pl-6">
                                 <li>A pilot</li>
-                                <li>2 augments</li>
-                                <li>A medium-weight deck of 40 cards, with no more than 3 copies of a named card</li>
+                                <li>A deck of at least 40 cards, with no more than 3 copies of a named card</li>
                                 <li>A 20-sided dice health tracker or other way to track life totals</li>
                                 <li>5  or more red damage 6-sided dice</li>
                                 <li>5 or more green time-counter 6-sided dice</li>
@@ -421,8 +420,7 @@ export function HowToPlayPage() {
 
                             <p>
                                 First, place your pilot in the pilot zone. Then shuffle your deck and
-                                place it in the deck zone (labeled R.I.G. on the mat). Next, place your augments on the
-                                battlefield, readied. Finally, grab the starting resource tokens
+                                place it in the deck zone (labeled R.I.G. on the mat). Grab the starting resource tokens
                                 noted on your pilot and place them in your stockpile readied (vertical,
                                 90 degrees). Set your life total and draw a hand of cards based on your pilots starting values in the same
                                 fashion.
@@ -476,6 +474,7 @@ export function HowToPlayPage() {
                                         <li> Trigger all Abilities with the <GameIcon name="start" /> tag.</li>
                                         <li>Remove a time counter from each card you control in play, and resolve any effect triggered when the last time counter is removed from a card in your stockpile.</li>
                                         <li>If you control no resoruces in your stockpile, you loose the game.</li>
+                                        <li>if you are not the player going first on the first turn of the game, Draw a card.</li>
                                     </ol>
                                 </div>
                             </div>
@@ -485,14 +484,13 @@ export function HowToPlayPage() {
                                     <p>
                                         You may play cards, activate abilities, make attacks,
                                         allocate a resource to a unit you control, accumulate resources,
-                                        or block incoming damage directed at you, in any order where
-                                        timing allows.
+                                        in any order where timing allows.
                                     </p>
                                     <p>To make an attack, in brief:</p>
                                     <ol className="list-decimal space-y-1 pl-6">
                                         <li>Choose and expend your attacker(s), then declare a target. Then trigger any units attacking with a <GameIcon name="attack" /> tag.</li>
                                         <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
-                                        <li>Deal damage (Preemptive Strike first, then simultaneous). Defeated units go to the discard pile. Before loss of life is dealt to a player, they may block using the default Block action.</li>
+                                        <li>Deal damage (Preemptive Strike first, then simultaneous). Defeated units go to the discard pile. If the attack target is the defending player, that damage becomes loss of life.</li>
                                     </ol>
                                     <p>
                                         See <SectionLink href="#how-to-block">How to Block</SectionLink>{" "}
@@ -510,7 +508,7 @@ export function HowToPlayPage() {
                                         <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
                                         <li>Trigger any ability with the <GameIcon name="endTurn" /> tag.</li>
                                         <li>Players Lose any unspent resources in your resource pool (not your stockpile).</li>
-                                        <li>You draw cards until you have cards in hand equal to your pilots <GameIcon name="hand_size" />-2. if you have no cards left in deck instead loose 1 life for each card you would have drawn to get to your pilots <GameIcon name="hand_size" />-2</li>
+                                        
                                     </ol>
                                 </div>
                             </div>
@@ -536,13 +534,26 @@ export function HowToPlayPage() {
                                 />
                             </div>
 
-                            <div className="mx-auto flex w-full max-w justify-center">
-                                <img
-                                    src={howToPlayImages.CARD_AUGMENT}
-                                    alt="Example pilot card"
-                                    className="w-full"
-                                />
-                            </div>
+                            <Subsection id="threat-level" title="Threat Level">
+                            <p>
+                                Only units have a <GameIcon name="threat_lvl" />{" "}
+                                <Term>Threat Level</Term> (<Term>TLV</Term>) on the card. It tells you
+                                how hard the unit hits and how much damage it can take before it is
+                                defeated.
+                            </p>
+                            <p>
+                                <Term>Split format <code>[dmg|hp]</code>:</Term> Two numbers separated
+                                by a vertical bar. The first number is damage; the second is health.
+                                Example: <strong>3|2</strong> deals 3 damage in combat and is defeated
+                                at 2 marked damage.
+                            </p>
+                            <p>
+                                <Term>Combined format <code>[dmg+hp]</code>:</Term> A single number
+                                used for both values. Example: <strong>3</strong> deals 3 damage and
+                                is defeated at 3 marked damage.
+                            </p>
+                            </Subsection>
+
                         </Section>
 
                         <Section id="card-types" title="Card Types">
@@ -588,8 +599,9 @@ export function HowToPlayPage() {
                                 attack even if another type says it cannot. If the card has the Weapon
                                 subtype, it may use its innate attack ability (see{" "}
                                 <SectionLink href="#how-to-attack">How to Attack</SectionLink>)
-                                even if another type says it cannot. If any type allows blocking, the
-                                card may block using any method available to its types.
+                                even if another type says it cannot. Readied units you control force
+                                opponents to attack them first (see{" "}
+                                <SectionLink href="#how-to-block">How to Block</SectionLink>).
                             </Important>
                             <p>
                                 <Term>PILOT [ Entity ]:</Term> Your pilot is the center of
@@ -599,42 +611,31 @@ export function HowToPlayPage() {
                                 pilot. The pilot is a unit that starts in your pilot zone and can be
                                 played from that zone by paying its invoke cost. Whenever your pilot
                                 moves zones you may instead of moving the pilot to that zone back to the pilot
-                                zone instead increasing the pilots cost for the rest of the game by {" "} <GameIcon name="gen2" />. Lastly, your pilot's invoke cost&mdash;combined with your
-                                augments&mdash;determines your deck's color combination (see Deck Building for more details).
+                                zone instead increasing the pilots cost for the rest of the game by {" "} <GameIcon name="gen2" />.
                             </p>
                             <p>
                                 <Term>UNIT [ Entity ]:</Term> Units are call-ins that back up your
                                 pilot, ranging from drones, turrets, and tanks to spacecraft,
                                 helping you eliminate your opponent tactfully or with overwhelming
-                                force. All Units have a <GameIcon name="threat_lvl" /> number this is both thier health and damage value. To play a unit, pay its invoke cost (see{" "}
+                                force. Units have a Threat Level (see{" "}
+                                <SectionLink href="#threat-level">Threat Level</SectionLink>
+                                ). To play a unit, pay its invoke cost (see{" "}
                                 <SectionLink href="#how-to-play-card">How to Play a Card</SectionLink>
                                 ). If it resolves, it goes to the battlefield&mdash;provided you chose
-                                not to use time as part of its cost (see Time Counters). Units can attack the turn they enter the battlefield.
+                                not to use time as part of its cost (see Time Counters). When it
+                                enters, you choose whether it is readied or expended. A unit cannot
+                                attack during the turn it entered the battlefield unless it has
+                                Blitz (see Keyword Abilities).
                             </p>
                             <p>
                                 <Term>PROGRAM [ Entity ]:</Term> A type of card that tends to be
                                 synergistic, stays in play once played, and has a variety of effects
-                                and abilities. Programs have a <GameIcon name="threat_lvl" /> rating.
-                                They cannot attack. You may use that rating only to block (see{" "}
-                                <SectionLink href="#how-to-block">How to Block</SectionLink>).
+                                and abilities. They cannot attack.
                             </p>
                             <p>
                                 <Term>TECHNOLOGY [ Entity ]:</Term> A type of card that tends to be a
                                 counter-play or support piece, stays in play once played, and has a
-                                variety of effects and abilities. Technologies have a{" "}
-                                <GameIcon name="threat_lvl" /> rating. They cannot attack. You may
-                                use that rating only to block (see{" "}
-                                <SectionLink href="#how-to-block">How to Block</SectionLink>).
-                            </p>
-                            <p>
-                                <Term>AUGMENT [ Entity ]:</Term> Pieces of equipment or cybernetic
-                                enhancements your pilot uses in battle to augment your game plan and
-                                strategy. They start the game on the battlefield and are limited
-                                based on the number of cards in your deck. You cannot have two
-                                augments with the same name in your deck. Augments have a{" "}
-                                <GameIcon name="threat_lvl" /> rating. They cannot attack. You may
-                                block by expending an augment (see{" "}
-                                <SectionLink href="#how-to-block">How to Block</SectionLink>).
+                                variety of effects and abilities. They cannot attack.
                             </p>
                             <p>
                                 <Term>PROTOTYPE [ ANY ]:</Term> Prototype weapons, spells, and
@@ -658,7 +659,8 @@ export function HowToPlayPage() {
                                 creates a token, that creation may enter the lock if it is empty, or its
                                 controller's queue if the lock is full. The token is not created until
                                 the creating effect resolves: resource tokens enter the stockpile
-                                readied; other tokens enter the battlefield readied.
+                                readied; unit tokens enter the battlefield readied or expended at their
+                                controller's choice; other tokens enter the battlefield readied.
                             </p>
 
                             </Subsection>
@@ -668,10 +670,7 @@ export function HowToPlayPage() {
                                 <Term>PROCESS [ Cyberspell ]:</Term> This cyberspell can be played
                                 any time during your main phase. Processes represent a combination of
                                 magic and technology&mdash;complex programs or scripts that take
-                                significant time to play in battle. Processes have a{" "}
-                                <GameIcon name="threat_lvl" /> rating. They cannot attack. You may
-                                use that rating only to block (see{" "}
-                                <SectionLink href="#how-to-block">How to Block</SectionLink>).
+                                significant time to play in battle. They cannot attack.
                             </p>
                             <p>
                                 <Term>QUICK HACK [ Cyberspell ]:</Term> This cyberspell can be played
@@ -680,9 +679,7 @@ export function HowToPlayPage() {
                                 when an effect not controlled by you resolves and the lock becomes
                                 empty. (See Using the Lock for details.) Quick Hacks represent the
                                 fastest scripts you can play, letting you disrupt your opponent or
-                                protect yourself. Quick Hacks have a <GameIcon name="threat_lvl" />{" "}
-                                rating. They cannot attack. You may use that rating only to block
-                                (see <SectionLink href="#how-to-block">How to Block</SectionLink>).
+                                protect yourself. They cannot attack.
                             </p>
                             <p>
                                 <Term>WEAPON:</Term> A subtype on entity cards. A weapon has an{" "}
@@ -757,7 +754,7 @@ export function HowToPlayPage() {
                             <p>
                                 You may use it once per turn on your turn, any time you could play a
                                 Process (not while the lock is full). Each resource allocated to
-                                a unit gives it a +1<GameIcon name="threat_lvl" /> rating. To allocate a
+                                a unit gives it +1 damage and +1 health on its Threat Level. To allocate a
                                 resource, expend it <GameIcon name="expend" /> and choose a unit you
                                 control. This action does not use the lock and resolves immediately.
                                 An example of what a unit looks like with a resource allocated to it is
@@ -872,49 +869,26 @@ export function HowToPlayPage() {
 
                             <Subsection id="how-to-block" title="How to Block">
                             <p>
-                                You can block incoming damage whenever damage is directed at
-                                you as a player — from an attack, a cyberspell, a card effect, or any
-                                other source — you may block to reduce that damage before it becomes
-                                loss of life. You may block any time you could take other
-                                game actions while the lock is full (see{" "}
-                                <SectionLink href="#lock">The Lock</SectionLink>).
+                                You block with <strong>units</strong> on the battlefield only. You
+                                cannot block by discarding from hand or expending programs,
+                                technologies, or cyberspells.
                             </p>
-                            <p>You may, in any order:</p>
-                            <ul className="list-disc space-y-1 pl-6">
-                                <li>
-                                    Discard any number of cards in hand with a{" "}
-                                    <GameIcon name="threat_lvl" /> rating (including processes and
-                                    quick hacks). The maximum a card can block using its{" "}
-                                    <GameIcon name="threat_lvl" /> is 4; the Block keyword can
-                                    increase this limit. Add the discarded cards together and reduce
-                                    the incoming damage from a damage source of your choice by that
-                                    total.
-                                </li>
-                                <li>
-                                    Expend any number of augments you control, choose a damage
-                                    source for each, reduce the incoming damage by that augment's{" "}
-                                    <GameIcon name="threat_lvl" /> rating, and add a depletion
-                                    counter to that augment.
-                                </li>
-                                <li>
-                                    Expend any number of non-unit entities you control (including
-                                    programs and technologies), choose a damage source for each,
-                                    reduce the incoming damage by that entity's{" "}
-                                    <GameIcon name="threat_lvl" /> rating, and then trash the
-                                    entity(s) you expended.
-                                </li>
-                            </ul>
-                            <Note>
-                                Cards with one or more time counters on them cannot be used to block
-                                (see <SectionLink href="#lock">Time Counters</SectionLink> under The
-                                Lock).
-                            </Note>
                             <p>
-                                Any damage directed at you that was not blocked is dealt as loss of
-                                life. During an attack, blocking happens before player damage from
-                                that attack is applied; see{" "}
-                                <SectionLink href="#how-to-attack">How to Attack</SectionLink> for
-                                the full combat sequence.
+                                While you control a readied unit on the battlefield, an opponent
+                                declaring an attack must choose a readied unit you control as the
+                                attack target if able. That is how readied units protect you&mdash;they
+                                force attackers to fight them first.
+                            </p>
+                            <p>
+                                When your unit is the attack target and is readied when combat
+                                damage is dealt, it deals damage back (see{" "}
+                                <SectionLink href="#how-to-attack">How to Attack</SectionLink>). An
+                                expended unit deals 0 damage back even if it is attacked.
+                            </p>
+                            <p>
+                                Damage directed at you as a player that is not from an attack
+                                resolved against you becomes loss of life. You cannot block that
+                                damage with units.
                             </p>
 
                             </Subsection>
@@ -928,18 +902,17 @@ export function HowToPlayPage() {
                             <ol className="list-decimal space-y-1 pl-6">
                                 <li>
                                     Choose unit(s), weapon(s) using their innate attack ability, and/or
-                                    activate an augment that says it makes an attack. When attacking
+                                    other legal attackers. When attacking
                                     with multiple attackers, the group is considered a single attack
                                     and must share the same target, but each attacker is treated
-                                    separately when blocking or assigning damage. A unit may attack if
-                                    it has the Unit supertype, including when it also has a type that
+                                    separately when assigning damage. A unit may attack if
+                                    it has the Unit supertype and did not enter the battlefield this
+                                    turn (unless it has Blitz), including when it also has a type that
                                     otherwise cannot attack (see Card Types). To attack with a weapon,
                                     pay its innate cost: <GameIcon name="expend" /> the weapon and{" "}
                                     <GameIcon name="dismantle" /> a resource of your choice you
                                     control (you do not need to dismantle a resource if you control
-                                    your pilot on the battlefield). All other cards with a{" "}
-                                    <GameIcon name="threat_lvl" /> rating can be used to block incoming
-                                    damage.
+                                    your pilot on the battlefield).
                                 </li>
                                 <li>
                                     Expend chosen unit(s). Declare an attack target — the defending
@@ -965,25 +938,18 @@ export function HowToPlayPage() {
                                     
                                 </li>
                                 <li>
-                                    Before damage directed at a player would become loss of life,
-                                    that player may block using the Block action (see{" "}
-                                    <SectionLink href="#how-to-block">How to Block</SectionLink>).
-                                </li>
-                                <li>
-                                    The attacker(s) deal Preemptive Strike damage equal to their{" "}
-                                    <GameIcon name="threat_lvl" /> (including modifiers).
+                                    The attacker(s) deal Preemptive Strike damage equal to their
+                                    damage value (including modifiers).
                                 </li>
                                 <li>
                                     If the attacker(s) did not already deal Preemptive Strike
-                                    damage, they deal damage equal to their{" "}
-                                    <GameIcon name="threat_lvl" /> (including modifiers) to the
-                                    target of the attack. Then the defending unit deals damage
-                                    back:
+                                    damage, they deal damage equal to their damage value
+                                    (including modifiers) to the target of the attack. Then the
+                                    defending unit deals damage back:
                                     <ul className="list-disc space-y-1 pl-6 pt-1">
                                         <li>
                                             If it is <span className="font-semibold text-cyan-200">readied</span>,
-                                            it deals damage equal to its{" "}
-                                            <GameIcon name="threat_lvl" /> including all
+                                            it deals damage equal to its damage value, including all
                                             modifiers (such as Lethal).
                                         </li>
                                         <li>
@@ -999,19 +965,18 @@ export function HowToPlayPage() {
                                 </li>
                                 <li>
                                     After damage is dealt, check each unit that took damage. A unit
-                                    is defeated if its marked damage is at least its{" "}
-                                    <GameIcon name="threat_lvl" /> — unless it has Durable X, in
-                                    which case it survives until marked damage is at least its{" "}
-                                    <GameIcon name="threat_lvl" /> + X. When a unit is defeated
+                                    is defeated if its marked damage is at least its health value
+                                    — unless it has Durable X, in which case it survives until
+                                    marked damage is at least its health value + X. When a unit is defeated
                                     this way, trigger its <GameIcon name="defeated" /> tag (if any)
                                     and any other on-defeat abilities, then put it into the discard
                                     pile.
                                     <Note>
-                                        Example: Threat Level 3 with Durable 2 is defeated at 5
-                                        damage, not 3.
+                                        Example: Threat Level 3|2 with Durable 2 is defeated at 4
+                                        marked damage (health 2 + 2), not 2.
                                     </Note>
                                 </li>
-                                <li>Any damage directed at a player that was not blocked is dealt as loss of life to that player. Then the attack ends.</li>
+                                <li>If the attack target is the defending player, damage directed at that player becomes loss of life. Then the attack ends.</li>
                             </ol>
                             </Subsection>
                         </Section>
@@ -1148,7 +1113,6 @@ export function HowToPlayPage() {
                             <ol className="list-decimal space-y-1 pl-6">
                                 <li>Pay costs and use resource abilities (those abilities do not use the lock).</li>
                                 <li>Activate an activated ability that uses the lock: it goes to your queue, not the lock.</li>
-                                <li>Block incoming damage directed at you (see <SectionLink href="#how-to-block">How to Block</SectionLink>).</li>
                             </ol>
                             <p>
                                 Overwriting the lock with a Quick Hack is only legal for the active
@@ -1168,12 +1132,15 @@ export function HowToPlayPage() {
                                 cost. However, you do not get any of the card's effects right away:
                                 while the card has one or more time counters on it, it has no abilities
                                 (except abilities with the <GameIcon name="atomic" /> tag) and cannot
-                                attack or block&mdash;regardless of zone or ready state. At the start
+                                attack&mdash;regardless of zone or ready state. At the start
                                 of each of your turns, remove 1 counter from each card you have in play
                                 with time counters on it. When the last time counter is removed from a
                                 card in your stockpile, resolve its effects without using the lock and
                                 in an order of your choosing; then move the card to the battlefield if
-                                it's an entity, or to the discard pile if it's a cyberspell. You may have
+                                it's an entity, or to the discard pile if it's a cyberspell. If a unit
+                                moves to the battlefield this way, you choose whether it enters readied
+                                or expended, and it cannot attack during that turn unless it has
+                                Blitz. You may have
                                 up to 3 cards with time counters on them in your stockpile at any given
                                 time.
                             </p>
@@ -1187,7 +1154,7 @@ export function HowToPlayPage() {
                                 it meets <strong>every</strong> restriction on that effect (type,
                                 controller, zone, and so on). If an effect names a type (for example,
                                 &ldquo;Technology&rdquo;), the target must have that type. If an effect
-                                uses an exclusion (for example, &ldquo;non-Augment&rdquo;), the target is
+                                uses an exclusion (for example, &ldquo;non-Unit&rdquo;), the target is
                                 illegal if it has the excluded type, even if it also has a required type.
                                 If an effect does not name a zone, you may only choose targets on the
                                 battlefield. You cannot choose an illegal target.
@@ -1338,136 +1305,38 @@ export function HowToPlayPage() {
 
                         <Section id="deck-building" title="Deck Building">
                             <p>
-                                You now have everything you need to play, so let's finish up by talking
+                                You now have everything you need to play, so let&apos;s finish up by talking
                                 about making your own deck.
                             </p>
                             <p>
                                 Your deck holds the entity and cyberspell cards you bring to battle.
                                 On the playmat it is labeled <Term>R.I.G.</Term> (Regressive Integrated Gear).
-                                Your deck setup also includes your pilot and augments. There are three deck sizes:
-                                light-weight, medium-weight, and heavy-weight. Your deck size
-                                determines the minimum number of cards in your deck, the number of
-                                augments you can equip, and your starting resource allocation. A lightweight
-                                deck lets you gain one resource of your choice at the start of the game; a
-                                medium-weight deck has no change; a heavy-weight deck requires you to
-                                dismantle one resource of your choice at the start.
+                                You also bring one pilot. Your deck must have at
+                                least 40 cards; the pilot does not count toward that minimum.
                             </p>
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse text-base lg:text-lg 2xl:text-xl">
-                                    <thead>
-                                        <tr className="border-b border-cyan-500/30 text-left text-cyan-200">
-                                            <th className="py-2 pr-4">Deck size</th>
-                                            <th className="py-2 pr-4">Capacity (# cards)</th>
-                                            <th className="py-2">Equip slots (# augments)</th>
-                                            <th className="py-2">Modifier</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-white/10">
-                                        <tr>
-                                            <td className="py-2 pr-4">Heavy weight</td>
-                                            <td className="py-2 pr-4">30</td>
-                                            <td className="py-2">3</td>
-                                            <td className="py-2">Max 2 copies instead of three per named card</td>
-
-                                        </tr>
-                                        <tr>
-                                            <td className="py-2 pr-4">Medium weight</td>
-                                            <td className="py-2 pr-4">40&ndash;50</td>
-                                            <td className="py-2">2</td>
-                                            <td className="py-2">NA</td>
-
-                                        </tr>
-                                        <tr>
-                                            <td className="py-2 pr-4">Light weight</td>
-                                            <td className="py-2 pr-4">60&ndash;70</td>
-                                            <td className="py-2">1</td>
-                                            <td className="py-2">Your Pilots coloured invoke cost count as double for determining your colour combination</td>
-
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <p>Once you've chosen a R.I.G class, keep a few rules in mind when building a deck:</p>
+                            <p>When building a deck, keep these rules in mind:</p>
                             <ol className="list-decimal space-y-2 pl-6">
-                                <li>Pilots cannot be part of the deck's capacity, and you are limited to a single pilot card.</li>
-                                <li>Any non-pilot card may have up to three copies with the same name as part of your deck's capacity (heavy-weight decks: max two copies per name).</li>
-                                <li>You cannot equip two augments with the same name and do not count toward your deck's capacity.</li>
-                                <li>Any card with the Prototype supertype is limited to a single copy in your deck's capacity.</li>
-                                <li>You cannot put cards in your deck that are not supported by your pilot's and augments' color combination.</li>
+                                <li>You must include exactly one pilot. The pilot is not part of the 40-card minimum.</li>
+                                <li>Your deck must have at least 40 entity and cyberspell cards.</li>
+                                <li>Any non-pilot card may have up to three copies with the same name in your deck.</li>
+                                <li>Any card with the Prototype supertype is limited to a single copy in your deck.</li>
                             </ol>
-
-                            <Subsection id="deck-color-combination" title={"Your Deck's Color Combination"}>
-                            <p>
-                                Your pilot's invoke cost plus your chosen augments' augment color
-                                determine your deck's color combination (see Reading Your Cards for an
-                                image). There are is one requirement; a card must meet to be included in
-                                your deck:
-                            </p>
-                            <ol className="list-decimal space-y-2 pl-6">
-                                <li>Each card's invoke cost must have the same number of colored symbols or fewer than the combined colored symbols of your pilot's invoke cost and your augments' augment color.</li>
-                                <li>A card whose invoke cost contains only grey numbered-value symbols (and no colored symbols) may be included in any deck.</li>
-                            </ol>
-                            <Note>
-                                Note: grey numbered-value symbols are ignored when checking color
-                                combination legality. They do not count as colored symbols and do not
-                                count as steel.
-                            </Note>
-                            <p>
-                                For this starter deck, your color combination of: <GameIcon name="ram" /><GameIcon name="ram" /><GameIcon name="ram" /><GameIcon name="power" /><GameIcon name="power" /><GameIcon name="power" /><GameIcon name="steel" /> allows you to include
-                                any card with up to 3 blue, 3 yellow, and access to colourless steel cards.
-                            </p>
-                            <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
-                                <img
-                                    src={howToPlayImages.DECKBUILDING_1}
-                                    alt="Mirror Image banner"
-
-                                />
-                            </div>
-                            <p>
-                                In the examples below you can see how the system works. Grey colorless numbered
-                                symbols do not count as steel. That's why our HMIV MK IV unit is
-                                legal.
-                            </p>
-
-
-                            <p>
-                                Finally, the Flame Kin Elementalist requires blue (which we have) and
-                                red (which we lack). We cannot
-                                include it, because we lack the red symbol.
-                            </p>
-
-                            <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
-                                <img
-                                    src={howToPlayImages.DECKBUILDING_2}
-                                    alt="Mirror Image banner"
-
-                                />
-                            </div>
-
-                            </Subsection>
 
                             <p>That concludes deck building.</p>
                             <p>
-                                A few guidelines for building a functional deck: the number of cards of
-                                a given color determines how likely you are to draw that color,
-                                especially if you plan to build outside your pilot's starting
-                                resources&mdash;you will likely need to accumulate a card of that color
-                                before you can play others in it, so be careful.
+                                A few guidelines for building a functional deck: include enough resources
+                                and low-cost cards so you can pay invoke costs consistently. If you rely
+                                on colors outside your pilot&apos;s starting resources, you will likely need
+                                to accumulate a card of that color before you can play others in it.
                             </p>
                             <p>
-                                Secondly, lighter-weight decks have less variance, but they also limit
-                                either the variety of assets you can include or the total power of your
-                                cards, since many higher-cost cards are quite powerful.
-                            </p>
-                            <p>
-                                Lastly, there is no sideboard in this game; whatever you decide to put
-                                into the deck must include your potential sideboard as part of building
-                                it.
+                                There is no sideboard in this game; whatever you decide to put into the
+                                deck must fit within these rules when you build it.
                             </p>
                             <p>
                                 May you find thorough enjoyment in the game, whether it be crafting the
                                 perfect deck, the heat of battle, or creative self-expression with your
-                                resources, pilot, and augments, or collecting cards for themeatic experince.
+                                resources and pilot, or collecting cards for themeatic experince.
                                 Good luck and have fun!
                             </p>
                             <Note>

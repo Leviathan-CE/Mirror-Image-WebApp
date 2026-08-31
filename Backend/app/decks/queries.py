@@ -166,6 +166,7 @@ def fetch_deck_cards(
             c.sub_types,
             c.is_pilot,
             c.is_augment,
+            c.is_summon,
             pc.published
         FROM deck_has_cards dhc
         JOIN cards c ON c.id = dhc.card_id
@@ -204,6 +205,7 @@ def fetch_deck_cards(
             sub_types=list(row[22] or []),
             is_pilot=bool(row[23]),
             is_augment=bool(row[24]),
+            is_summon=bool(row[25]),
         )
         entry = DeckCardEntry(
             quantity=int(row[2]),
@@ -215,7 +217,7 @@ def fetch_deck_cards(
             classification=None,
         )
         kind = deck_card_classification(
-            row[25],
+            row[26],
             bypass=bypass,
             include_preview=include_preview,
         )

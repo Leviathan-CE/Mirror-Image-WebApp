@@ -40,7 +40,7 @@ function deck(
 }
 
 describe("collectDeckPrintoutSlots", () => {
-  it("includes pilot, augments, and in-deck main rows expanded by quantity", () => {
+  it("includes pilot and in-deck main rows expanded by quantity", () => {
     const categories = [
       category(1, "Pilot", -1),
       category(2, "Augments", -2),
@@ -57,12 +57,10 @@ describe("collectDeckPrintoutSlots", () => {
     const slots = collectDeckPrintoutSlots(deck(categories, cards))
     expect(slots.map((s) => s.card_name)).toEqual([
       "My Pilot",
-      "Aug A",
       "Unit",
       "Unit",
     ])
     expect(slots[0]?.section).toBe("pilot")
-    expect(slots[1]?.section).toBe("augment")
-    expect(slots[2]?.section).toBe("deck")
+    expect(slots[1]?.section).toBe("deck")
   })
 })

@@ -10,9 +10,9 @@ DEFAULT_DECK_CATEGORY_NAMES: tuple[str, ...] = tuple(
     name for name, _in_deck in DEFAULT_DECK_CATEGORIES
 )
 
-RESERVED_CATEGORY_NAMES: frozenset[str] = frozenset({"pilot", "augments"})
+RESERVED_CATEGORY_NAMES: frozenset[str] = frozenset({"pilot"})
 
 
 def category_in_deck_default(name: str) -> bool:
-    """Pilot / Augments never count as the playable RIG."""
+    """Pilot never counts as the playable RIG."""
     return name.strip().lower() not in RESERVED_CATEGORY_NAMES

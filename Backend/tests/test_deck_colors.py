@@ -1,4 +1,4 @@
-"""Deck pilot + augment identity cost merging."""
+"""Deck pilot identity cost merging."""
 
 from app.decks.colors import _cost_tokens
 

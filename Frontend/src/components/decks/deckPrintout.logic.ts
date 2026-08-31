@@ -1,11 +1,8 @@
 /**
- * Collect deck rows for a print-and-play PDF (pilot, augments, in-deck sections).
+ * Collect deck rows for a print-and-play PDF (pilot + in-deck sections).
  */
 
-import {
-  augmentCards,
-  pilotCard,
-} from "@/components/decks/deck.logic"
+import { pilotCard } from "@/components/decks/deck.logic"
 import { libraryDeckEntries } from "@/components/Playtester/session/setupOpeningSession.logic"
 import type { DeckCardEntry, DeckDetail } from "@/lib/api/decks"
 
@@ -15,7 +12,7 @@ export type DeckPrintoutSlot = {
   card_art_path: string | null
   card_thumbnail_path?: string | null
   card_art_version?: number | null
-  section: "pilot" | "augment" | "deck"
+  section: "pilot" | "deck"
 }
 
 function expandQuantity(entries: DeckCardEntry[]): DeckPrintoutSlot[] {
@@ -36,7 +33,7 @@ function expandQuantity(entries: DeckCardEntry[]): DeckPrintoutSlot[] {
   return out
 }
 
-/** Ordered print list: pilot, augments, then shuffled RIG sections (by category order). */
+/** Ordered print list: pilot, then shuffled RIG sections (by category order). */
 export function collectDeckPrintoutSlots(deck: DeckDetail): DeckPrintoutSlot[] {
   const slots: DeckPrintoutSlot[] = []
 
@@ -50,20 +47,6 @@ export function collectDeckPrintoutSlots(deck: DeckDetail): DeckPrintoutSlot[] {
       card_art_version: pilot.card.card_art_version,
       section: "pilot",
     })
-  }
-
-  for (const entry of augmentCards(deck.cards, deck.categories, "name")) {
-    const copies = Math.max(0, Math.floor(entry.quantity))
-    for (let i = 0; i < copies; i++) {
-      slots.push({
-        card_id: entry.card.id,
-        card_name: entry.card.card_name,
-        card_art_path: entry.card.card_art_path,
-        card_thumbnail_path: entry.card.card_thumbnail_path,
-        card_art_version: entry.card.card_art_version,
-        section: "augment",
-      })
-    }
   }
 
   const main = libraryDeckEntries(deck).sort((a, b) => {

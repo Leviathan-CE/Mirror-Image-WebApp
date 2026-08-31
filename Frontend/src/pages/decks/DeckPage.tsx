@@ -32,7 +32,6 @@ import {
 import { CardLibraryBrowser } from "@/components/cards/CardLibraryBrowser"
 import "@/components/decks/DeckCardStack.css"
 import {
-  augmentCategory,
   canAddCopyToDeck,
   clampQuantityToMax,
   deckCardCount,
@@ -67,7 +66,6 @@ import { fetchCardById, type CardSearchHit } from "@/lib/api/cards"
 import {
   addDeckCard,
   addDeckTag,
-  AUGMENT_SECTION_NAME,
   copyDeck,
   createDeckCategory,
   deleteDeck,
@@ -983,10 +981,6 @@ export function DeckPage() {
         await assignPilot(hit.id, null)
         return
       }
-      if (detail.is_augment) {
-        await addAugment(hit.id, null)
-        return
-      }
 
       const categoryId = mainCategoryId(deck.categories)
       if (categoryId == null) {
@@ -1030,97 +1024,6 @@ export function DeckPage() {
       setDeck((prev) => (prev ? withCardEntry(prev, entry) : prev))
     } catch {
       setErrorText("Could not add that card.")
-    }
-  }
-
-  async function ensureAugmentCategoryId(): Promise<number | null> {
-    if (!token || !deck) return null
-    const existing = augmentCategory(deck.categories)
-    if (existing) return existing.id
-
-    const created = await createDeckCategory(
-      deck.id,
-      token,
-      AUGMENT_SECTION_NAME,
-      { in_deck: false }
-    )
-    setDeck((prev) =>
-      prev
-        ? {
-          ...prev,
-          categories: [...prev.categories, created],
-        }
-        : prev
-    )
-    return created.id
-  }
-
-  async function addAugment(
-    cardId: number,
-    fromCategoryId: number | null
-  ) {
-    if (!token || !deck || !canEdit) return
-
-    const detail = await fetchCardById(cardId, token)
-    if (!detail.is_augment) {
-      setErrorText("Only augment cards can go in Augments.")
-      return
-    }
-
-    const augmentCatId = await ensureAugmentCategoryId()
-    if (augmentCatId == null) {
-      setErrorText("Could not open the Augments section.")
-      return
-    }
-
-    const already = deck.cards.find(
-      (card) => card.card.id === cardId && card.category_id === augmentCatId
-    )
-    if (already) {
-      setErrorText("That augment is already in the list.")
-      return
-    }
-
-    setSaving(true)
-    setErrorText("")
-    try {
-      let entry: DeckCardEntry
-      if (fromCategoryId != null && fromCategoryId !== augmentCatId) {
-        entry = await updateDeckCard(deck.id, cardId, fromCategoryId, token, {
-          category_id: augmentCatId,
-          quantity: 1,
-        })
-      } else {
-        entry = await addDeckCard(deck.id, token, {
-          card_id: cardId,
-          category_id: augmentCatId,
-          quantity: 1,
-        })
-      }
-
-      setDeck((prev) => {
-        if (!prev) return prev
-        const withoutSource =
-          fromCategoryId != null
-            ? prev.cards.filter(
-              (card) =>
-                !(
-                  card.card.id === cardId &&
-                  card.category_id === fromCategoryId
-                )
-            )
-            : prev.cards
-        return withCardEntry(
-          { ...prev, cards: withoutSource },
-          { ...entry, quantity: 1 }
-        )
-      })
-      clearCardSelection()
-    } catch {
-      setErrorText("Could not add that augment.")
-      await loadDeck()
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -1595,7 +1498,6 @@ export function DeckPage() {
                   onQuantityDelta={onQuantityDelta}
                   onAssignPilot={assignPilot}
                   onClearPilot={canEdit ? onClearPilot : undefined}
-                  onAddAugment={addAugment}
                   onCreateSectionFromDrop={onCreateSectionFromDrop}
                 />
               </div>

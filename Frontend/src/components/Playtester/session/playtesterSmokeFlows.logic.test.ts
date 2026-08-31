@@ -1,6 +1,6 @@
 /**
  * Smoke-style flows: multi-step sequences that mirror playtester actions
- * (create copy, zone moves, start/end turn, mulligan, accumulate).
+ * (create copy, zone moves, start turn, mulligan, accumulate).
  * Pure logic only — no React / DOM.
  */
 
@@ -73,19 +73,16 @@ function resourceTemplate(
 }
 
 /**
- * End-turn draw plan (same rules as usePlaySession.endTurn):
- * target hand = max(0, pilotHandSize − 2); draw what you can; rest costs life.
+ * Start-of-turn draw plan (same rules as usePlaySession.startTurn):
+ * draw 1 from library when possible; otherwise lose 1 life.
  */
-function planEndTurnDraw(
-  cards: PlayingCardInstance[],
-  pilotHandSize: number
-): { drawCount: number; lifeLoss: number } {
-  const targetHand = Math.max(0, pilotHandSize - 2)
-  const handCount = cardsInZone(cards, PLAY_ZONE.hand).length
-  const need = Math.max(0, targetHand - handCount)
+function planStartTurnDraw(cards: PlayingCardInstance[]): {
+  drawCount: number
+  lifeLoss: number
+} {
   const libraryCount = cardsInZone(cards, PLAY_ZONE.library).length
-  const drawCount = Math.min(need, libraryCount)
-  return { drawCount, lifeLoss: need - drawCount }
+  if (libraryCount > 0) return { drawCount: 1, lifeLoss: 0 }
+  return { drawCount: 0, lifeLoss: 1 }
 }
 
 function drawTopToHand(
@@ -239,27 +236,22 @@ describe("smoke: start turn ready + stockpile time launch", () => {
   })
 })
 
-describe("smoke: end turn draw / life loss", () => {
-  it("draws up to pilotHandSize − 2 and charges life for shortfalls", () => {
+describe("smoke: start turn draw / life loss", () => {
+  it("draws one card at start of turn when the library has cards", () => {
     const deck = [
       card({ instanceId: "h1", zone: PLAY_ZONE.hand }),
       card({ instanceId: "l1", zone: PLAY_ZONE.library }),
-      card({ instanceId: "l2", zone: PLAY_ZONE.library }),
     ]
-    // pilotHandSize 5 → target 3; hand has 1 → need 2; library has 2 → draw 2, life 0
-    expect(planEndTurnDraw(deck, 5)).toEqual({ drawCount: 2, lifeLoss: 0 })
+    expect(planStartTurnDraw(deck)).toEqual({ drawCount: 1, lifeLoss: 0 })
 
-    const afterDraw = drawTopToHand(deck, 2)
-    expect(cardsInZone(afterDraw, PLAY_ZONE.hand)).toHaveLength(3)
+    const afterDraw = drawTopToHand(deck, 1)
+    expect(cardsInZone(afterDraw, PLAY_ZONE.hand)).toHaveLength(2)
     expect(cardsInZone(afterDraw, PLAY_ZONE.library)).toHaveLength(0)
+  })
 
-    // Empty library shortfall costs life.
-    const thin = [
-      card({ instanceId: "h1", zone: PLAY_ZONE.hand }),
-      card({ instanceId: "l1", zone: PLAY_ZONE.library }),
-    ]
-    // target 4, hand 1 → need 3; library 1 → draw 1, lifeLoss 2
-    expect(planEndTurnDraw(thin, 6)).toEqual({ drawCount: 1, lifeLoss: 2 })
+  it("costs 1 life when the library is empty", () => {
+    const empty = [card({ instanceId: "h1", zone: PLAY_ZONE.hand })]
+    expect(planStartTurnDraw(empty)).toEqual({ drawCount: 0, lifeLoss: 1 })
   })
 })
 

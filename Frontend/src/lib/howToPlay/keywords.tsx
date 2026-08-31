@@ -17,8 +17,8 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
     text: "Only assets with Airborne or Long Range can attack this entity.",
   },
   {
-    name: "BLOCK X",
-    text: "When you block with a unit, augment, program, technology, process, or quick hack to reduce the damage an asset would deal, reduce it by an additional X.",
+    name: "BLITZ",
+    text: "This unit may attack during the turn it entered the battlefield.",
   },
   {
     name: "CORROSIVE BILE",
@@ -32,39 +32,38 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
     name: "Desperate Maneuver X",
     text: "When you draw this card you may reveal it, if you do dismantle X, and play it immediately as though it had surge without paying its invoke cost. Otherwise you may put it into your hand."
   },
-  {
-    name: "DURABLE X",
-    text: (
-      <>
-        This entity can take X damage more than its{" "}
-        <GameIcon name="threat_lvl" /> rating before being defeated.
-      </>
-    ),
-  },
+  // {
+  //   name: "DURABLE X",
+  //   text: (
+  //     <>
+  //       This unit can take X more marked damage than its health value before being defeated.
+  //     </>
+  //   ),
+  // },
   {
     name: "PREEMPTIVE STRIKE",
     text: "When this entity deals damage in a fight, it deals damage first, unless the opposing entity also has Preemptive Strike.",
   },
-  {
-    name: "HARDENED X",
-    text: "Whenever this entity takes damage, reduce that damage by X.",
-  },
-  {
-    name: "HARD POINT",
-    text: "You may have a second copy of this card equipped as an augment for your deck.",
-  },
+  // {
+  //   name: "HARDENED X",
+  //   text: "Whenever this entity takes damage, reduce that damage by X.",
+  // },
+  // {
+  //   name: "HARD POINT",
+  //   text: "You may include a second copy of this card in your deck (in addition to the normal copy limit).",
+  // },
   {
     name: "INSATIABLE HUNGER",
     text: "Attacks must target a unit the defender controls if they control one.",
   },
-  {
-    name: "INVULNERABLE",
-    text: "This entity cannot be dismantled, trashed, or destroyed by effects that say to trash, dismantle, or destroy. Players cannot choose it as a valid target for those effects or costs.",
-  },
-  {
-    name: "LETHAL X",
-    text: "Whenever this unit, cyberspell, or augment deals damage, it deals X additional damage.",
-  },
+  // {
+  //   name: "INVULNERABLE",
+  //   text: "This entity cannot be dismantled, trashed, or destroyed by effects that say to trash, dismantle, or destroy. Players cannot choose it as a valid target for those effects or costs.",
+  // },
+  // {
+  //   name: "LETHAL X",
+  //   text: "Whenever this unit or cyberspell deals damage, it deals X additional damage.",
+  // },
   {
     name: "LONG RANGE",
     text: "This asset can attack units with Airborne.",
@@ -115,10 +114,10 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
     name: "SURGE",
     text: "This card can be invoked any time a Quick Hack can be played.",
   },
-  {
-    name: "WEAKENED X",
-    text: "Whenever this asset deals damage, it deals X less damage.",
-  },
+  // {
+  //   name: "WEAKENED X",
+  //   text: "Whenever this asset deals damage, it deals X less damage.",
+  // },
 
 ]
 

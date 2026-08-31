@@ -28,12 +28,13 @@ export function isAugmentCategory(category: DeckCategoryOut): boolean {
 }
 
 export function isReservedCategory(category: DeckCategoryOut): boolean {
-  return isPilotCategory(category) || isAugmentCategory(category)
+  return isPilotCategory(category)
 }
 
-/** Playable RIG section — reserved slots and list-only piles are excluded. */
+/** Playable RIG section — reserved slots, augments, and list-only piles are excluded. */
 export function categoryCountsInDeck(category: DeckCategoryOut): boolean {
   if (isReservedCategory(category)) return false
+  if (isAugmentCategory(category)) return false
   return category.in_deck !== false
 }
 
@@ -65,6 +66,7 @@ export function cardsByCategory(
 ): { category: DeckCategoryOut; cards: DeckCardEntry[] }[] {
   return categories
     .filter((category) => !isReservedCategory(category))
+    .filter((category) => !isAugmentCategory(category))
     .map((category) => ({
       category,
       cards: sortDeckCards(
@@ -75,7 +77,9 @@ export function cardsByCategory(
 }
 
 export function mainCategoryId(categories: DeckCategoryOut[]): number | null {
-  const playable = categories.filter((c) => !isReservedCategory(c))
+  const playable = categories.filter(
+    (c) => !isReservedCategory(c) && !isAugmentCategory(c)
+  )
   const inDeck = playable.filter(categoryCountsInDeck)
   const pool = inDeck.length > 0 ? inDeck : playable
   const preferred = pool.find((c) => {
@@ -127,12 +131,9 @@ export function selectableCardsInOrder(
   categories: DeckCategoryOut[],
   sortMode: DeckCardSortMode
 ): DeckCardEntry[] {
-  return [
-    ...augmentCards(cards, categories, sortMode),
-    ...cardsByCategory(cards, categories, sortMode).flatMap(
-      (group) => group.cards
-    ),
-  ]
+  return cardsByCategory(cards, categories, sortMode).flatMap(
+    (group) => group.cards
+  )
 }
 
 export function withCardEntry(
@@ -223,7 +224,6 @@ export function cardHasSuperType(
 
 /**
  * Per-stack copy cap:
- * - Augment section → 1
  * - Token super-type → 99
  * - else → 3
  */
@@ -231,7 +231,6 @@ export function maxCopiesForDeckCard(
   category: DeckCategoryOut,
   cardOrEntry?: SuperTypesSource
 ): number {
-  if (isAugmentCategory(category)) return 1
   if (cardHasSuperType(cardOrEntry, "Token")) {
     return DECK_CARD_MAX_COPIES_UNLIMITED
   }

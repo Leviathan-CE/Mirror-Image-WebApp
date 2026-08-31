@@ -48,7 +48,11 @@ export function hoverThumbPoint(clientX: number, clientY: number) {
 
 export function DeckCardListRow({ card, classified }: DeckCardListRowProps) {
   const threat = (card.card.threat_level ?? "0").trim()
-  const showThreat = classified == null && threat !== "" && threat !== "0"
+  const showThreat =
+    classified == null &&
+    card.card.is_summon === true &&
+    threat !== "" &&
+    threat !== "0"
   const style = classified ? undefined : deckCardRowStyle(card.card.cost)
   const art =
     classified == null

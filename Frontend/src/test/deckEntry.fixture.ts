@@ -22,6 +22,7 @@ export type DeckEntryFixtureOverrides = Partial<
   sub_types?: string[]
   is_pilot?: boolean
   is_augment?: boolean
+  is_summon?: boolean
   hand_size?: number
   ram_capacity?: number
   power_capacity?: number
@@ -49,6 +50,7 @@ export function deckEntry(
     sub_types,
     is_pilot,
     is_augment,
+    is_summon,
     hand_size,
     ram_capacity,
     power_capacity,
@@ -80,6 +82,7 @@ export function deckEntry(
     sub_types: cardPartial?.sub_types ?? sub_types,
     is_pilot: cardPartial?.is_pilot ?? is_pilot,
     is_augment: cardPartial?.is_augment ?? is_augment,
+    is_summon: cardPartial?.is_summon ?? is_summon,
     hand_size: cardPartial?.hand_size ?? hand_size,
     ram_capacity: cardPartial?.ram_capacity ?? ram_capacity,
     power_capacity: cardPartial?.power_capacity ?? power_capacity,

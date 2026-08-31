@@ -47,6 +47,8 @@ export type CardSummary = {
   sub_types?: string[]
   is_pilot?: boolean
   is_augment?: boolean
+  /** Unit / summon cards — only these show TLV in deck list view. */
+  is_summon?: boolean
   /** Pilot opening hand size (0 on non-pilots). */
   hand_size?: number
   /** Starting stockpile resource counts printed on the pilot. */

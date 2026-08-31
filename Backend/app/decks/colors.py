@@ -1,18 +1,17 @@
-"""Deck colour identity from pilot + augment invoke-cost pips."""
+"""Deck colour identity from pilot invoke-cost pips."""
 
 from __future__ import annotations
 
 from typing import Any
 
-_IDENTITY_CATEGORY_NAMES = ("pilot", "augments")
+_IDENTITY_CATEGORY_NAMES = ("pilot",)
 
 
 def fetch_deck_identity_costs(
     cur, deck_ids: list[int]
 ) -> dict[int, list[str]]:
     """
-    Combined invoke-cost pips for each deck: pilot first, then augments
-    (category sort_order, card sort_order).
+    Invoke-cost pips for each deck's pilot (category sort_order, card sort_order).
     """
     if not deck_ids:
         return {}

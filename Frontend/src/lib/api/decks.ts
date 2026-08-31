@@ -24,7 +24,7 @@ export type DeckSummary = {
   liked_by_me?: boolean
   card_art_path?: string | null
   card_art_version?: number | null
-  /** Pilot + augment invoke-cost pips (deck colour identity). */
+  /** Pilot invoke-cost pips (deck colour identity). */
   identity_cost?: string[]
 }
 
@@ -67,8 +67,9 @@ export const DEFAULT_DECK_CATEGORY_NAMES = [
   "Cyberspell",
 ] as const
 
-/** Visual reserved section names (created on the client when needed). */
+/** Visual reserved section name (created on the client when needed). */
 export const PILOT_SECTION_NAME = "Pilot"
+/** Legacy section name — no longer used in deck building. */
 export const AUGMENT_SECTION_NAME = "Augments"
 
 export type DeckCategoryOut = {

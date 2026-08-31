@@ -32,6 +32,7 @@ class CardSummary(BaseModel):
     sub_types: list[Any] = Field(default_factory=list)
     is_pilot: bool = False
     is_augment: bool = False
+    is_summon: bool = False
     # Pilot starting values (also present on other cards; usually 0).
     hand_size: int = 0
     ram_capacity: int = 0

@@ -46,11 +46,12 @@ function cat(
 const card = deckEntry
 
 describe("reserved categories", () => {
-  it("detects pilot and augment by name (case-insensitive)", () => {
+  it("detects pilot and augment names; only pilot is reserved", () => {
     expect(isPilotCategory(cat(1, "Pilot"))).toBe(true)
     expect(isPilotCategory(cat(1, " pilot "))).toBe(true)
     expect(isAugmentCategory(cat(2, "Augments"))).toBe(true)
     expect(isReservedCategory(cat(1, "Pilot"))).toBe(true)
+    expect(isReservedCategory(cat(2, "Augments"))).toBe(false)
     expect(isReservedCategory(cat(3, "Main"))).toBe(false)
   })
 })
@@ -102,7 +103,7 @@ describe("sortDeckCards", () => {
 })
 
 describe("cardsByCategory", () => {
-  it("omits reserved sections and groups remaining cards", () => {
+  it("omits reserved and augment sections and groups remaining cards", () => {
     const categories = [
       cat(1, "Pilot", -2),
       cat(2, "Augments", -1),
@@ -150,7 +151,7 @@ describe("mainCategoryId", () => {
     ).toBe(4)
   })
 
-  it("returns null when only reserved categories exist", () => {
+  it("returns null when only pilot and legacy augment categories exist", () => {
     expect(mainCategoryId([cat(1, "Pilot"), cat(2, "Augments")])).toBeNull()
   })
 })
@@ -272,13 +273,9 @@ describe("categoryCountsInDeck", () => {
 describe("quantity rules", () => {
   it("allows up to 3 copies in normal sections", () => {
     expect(maxCopiesForCategory(cat(1, "Main"))).toBe(DECK_CARD_MAX_COPIES)
+    expect(maxCopiesForCategory(cat(2, "Augments"))).toBe(DECK_CARD_MAX_COPIES)
     expect(nextCardQuantity(2, 1, DECK_CARD_MAX_COPIES)).toBe(3)
     expect(nextCardQuantity(3, 1, DECK_CARD_MAX_COPIES)).toBeNull()
-  })
-
-  it("limits augments to 1 copy", () => {
-    expect(maxCopiesForCategory(cat(2, "Augments"))).toBe(1)
-    expect(nextCardQuantity(1, 1, 1)).toBeNull()
   })
 
   it("allows unlimited copies for Token super-type", () => {
@@ -294,8 +291,6 @@ describe("quantity rules", () => {
     expect(
       maxCopiesForDeckCard(cat(1, "Main"), { super_types: ["Token"] })
     ).toBe(DECK_CARD_MAX_COPIES_UNLIMITED)
-    // Augment section still wins over Token.
-    expect(maxCopiesForDeckCard(cat(2, "Augments"), token)).toBe(1)
   })
 
   it("returns 0 when decrementing the last copy", () => {
@@ -373,7 +368,7 @@ describe("selection helpers", () => {
     expect(selectionRangeKeys(["a", "b"], null, "b")).toEqual(["b"])
   })
 
-  it("orders selection keys as augments then playable sections", () => {
+  it("orders selection keys across playable sections only", () => {
     const categories = [
       cat(1, "Pilot", -2),
       cat(2, "Augments", -1),
@@ -386,7 +381,6 @@ describe("selection helpers", () => {
       card({ card_id: 5, category_id: 1, card_name: "Pilot" }),
     ]
     expect(orderedSelectionKeys(cards, categories, "name")).toEqual([
-      "2:9",
       "3:1",
       "3:2",
     ])

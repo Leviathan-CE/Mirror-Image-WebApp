@@ -459,6 +459,7 @@ export function usePlaySession({
 
   function startTurn(blocked: boolean) {
     if (blocked) return
+
     const before = sessionCardsRef.current
     const after = dispatch({ t: "rdy", seat: localSeat })
     const launching = after.cards.filter((c) => {
@@ -469,35 +470,19 @@ export function usePlaySession({
       )
     })
     effectsRef.current.queueStockpileTimeCompletions?.(launching)
-  }
 
-  function endTurn(blocked: boolean) {
-    if (blocked) return
-    const targetHand = Math.max(0, pilotHandSize - 2)
-    const handCount = cardsInZone(
+    const libCount = cardsInZone(
       sessionCardsRef.current,
-      PLAY_ZONE.hand,
+      PLAY_ZONE.library,
       localSeat
     ).length
-    const need = Math.max(0, targetHand - handCount)
-
-    if (need > 0) {
-      const libCount = cardsInZone(
-        sessionCardsRef.current,
-        PLAY_ZONE.library,
-        localSeat
-      ).length
-      const drawCount = Math.min(need, libCount)
-      const lifeLoss = need - drawCount
-      if (lifeLoss > 0) {
-        dispatch({ t: "lf", seat: localSeat, d: -lifeLoss })
-      }
-      if (drawCount > 0) {
-        effectsRef.current.queueDrawsToHand?.(drawCount)
-      }
+    if (libCount > 0) {
+      effectsRef.current.queueDrawsToHand?.(1)
+    } else {
+      dispatch({ t: "lf", seat: localSeat, d: -1 })
     }
 
-    dispatch({ t: "ts", seat: oppSeat })
+    dispatch({ t: "ts", seat: localSeat })
   }
 
   function deleteCards(instanceIds: string[]) {
@@ -671,7 +656,6 @@ export function usePlaySession({
     changeFloatSelection,
     changeHandSelection,
     startTurn,
-    endTurn,
     deleteCards,
     adjustCounters,
     spawnResourceColor,
