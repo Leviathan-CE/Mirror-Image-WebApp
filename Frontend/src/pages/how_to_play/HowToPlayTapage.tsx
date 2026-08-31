@@ -7,6 +7,7 @@ import {
     Note,
     Section,
     SectionLink,
+    Subsection,
     TableOfContents,
     Term,
     type TocEntry,
@@ -22,14 +23,58 @@ const SECTIONS: TocEntry[] = [
     { id: "story", label: "The Story" },
     { id: "how-to-win", label: "How to Win" },
     { id: "playmat", label: "Playmat Area" },
-    { id: "how-to-play-basics", label: "Setup & Turns" },
+    {
+        id: "how-to-play-basics",
+        label: "Setup & Turns",
+        children: [
+            { id: "setting-up", label: "Setting Up" },
+            { id: "turn-phases", label: "Turn Phases" },
+        ],
+    },
     { id: "reading-cards", label: "Reading Your Cards" },
-    { id: "card-types", label: "Card Types" },
-    { id: "how-to-play-actions", label: "Core Actions" },
-    { id: "lock", label: "The Lock & Time Counters" },
-    { id: "timing", label: "Timing, Triggers & Keywords" },
+    {
+        id: "card-types",
+        label: "Card Types",
+        children: [
+            { id: "base-types", label: "Base Types" },
+            { id: "super-types", label: "Super Types" },
+            { id: "sub-types", label: "Sub Types" },
+        ],
+    },
+    {
+        id: "how-to-play-actions",
+        label: "Core Actions",
+        children: [
+            { id: "accumulate-resources", label: "Accumulate Resources" },
+            { id: "how-to-allocate", label: "Allocate a Resource" },
+            { id: "how-to-play-card", label: "How to Play a Card" },
+            { id: "how-to-block", label: "How to Block" },
+            { id: "how-to-attack", label: "How to Attack" },
+        ],
+    },
+    {
+        id: "lock",
+        label: "The Lock & Time Counters",
+        children: [
+            { id: "lock-scenario-1", label: "Scenario 1 — Quick Hacks" },
+            { id: "lock-scenario-2", label: "Scenario 2 — The Queue" },
+            { id: "time-counters", label: "Time Counters" },
+        ],
+    },
+    {
+        id: "timing",
+        label: "Timing, Triggers & Keywords",
+        children: [
+            { id: "targeting", label: "Targeting" },
+            { id: "activated-abilities", label: "Activated Abilities" },
+        ],
+    },
     { id: "keywords", label: "Keyword Abilities" },
-    { id: "deck-building", label: "Deck Building" },
+    {
+        id: "deck-building",
+        label: "Deck Building",
+        children: [{ id: "deck-color-combination", label: "Deck Color Combination" }],
+    },
 ]
 
 const KEYWORDS = KEYWORD_ABILITIES
@@ -358,7 +403,7 @@ export function HowToPlayPage() {
                         </Section>
 
                         <Section id="how-to-play-basics" title="Setup & Turns">
-                            <h3 className="font-glitch text-xl text-cyan-200 lg:text-2xl">Setting Up</h3>
+                            <Subsection id="setting-up" title="Setting Up">
                             <p>
                                 For your first time, we recommend using a premade starter deck; it has
                                 everything you need to play:
@@ -413,7 +458,9 @@ export function HowToPlayPage() {
                                 hand size.
                             </p>
 
-                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Turn Phases</h3>
+                            </Subsection>
+
+                            <Subsection id="turn-phases" title="Turn Phases">
                             <p>
                                 There are three phases: start of turn, the
                                 main phase, and the end-of-turn phase. Take them in order on your
@@ -467,6 +514,7 @@ export function HowToPlayPage() {
                                     </ol>
                                 </div>
                             </div>
+                            </Subsection>
                         </Section>
 
                         <Section id="reading-cards" title="Reading Your Cards">
@@ -518,7 +566,7 @@ export function HowToPlayPage() {
                             </Important>
 
 
-                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Base Types</h3>
+                            <Subsection id="base-types" title="Base Types">
                             <p>
                                 <Term>Cyberspell:</Term> When you play a card with this type, it
                                 goes to the discard pile after its effect resolves or is
@@ -530,8 +578,9 @@ export function HowToPlayPage() {
                                 stockpile if time counters are used) after its effects resolve. If
                                 it is overwritten, it goes to the discard pile.
                             </p>
+                            </Subsection>
 
-                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Super Types</h3>
+                            <Subsection id="super-types" title="Super Types">
                             <Important>
                                 <Term>Multiple types:</Term> A card may have more than one supertype or
                                 subtype. When type rules conflict, the more permissive rule applies unless
@@ -558,7 +607,7 @@ export function HowToPlayPage() {
                                 pilot, ranging from drones, turrets, and tanks to spacecraft,
                                 helping you eliminate your opponent tactfully or with overwhelming
                                 force. All Units have a <GameIcon name="threat_lvl" /> number this is both thier health and damage value. To play a unit, pay its invoke cost (see{" "}
-                                <SectionLink href="#how-to-play-actions">How to Play a Card</SectionLink>
+                                <SectionLink href="#how-to-play-card">How to Play a Card</SectionLink>
                                 ). If it resolves, it goes to the battlefield&mdash;provided you chose
                                 not to use time as part of its cost (see Time Counters). Units can attack the turn they enter the battlefield.
                             </p>
@@ -612,7 +661,9 @@ export function HowToPlayPage() {
                                 readied; other tokens enter the battlefield readied.
                             </p>
 
-                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Sub Types</h3>
+                            </Subsection>
+
+                            <Subsection id="sub-types" title="Sub Types">
                             <p>
                                 <Term>PROCESS [ Cyberspell ]:</Term> This cyberspell can be played
                                 any time during your main phase. Processes represent a combination of
@@ -646,12 +697,11 @@ export function HowToPlayPage() {
                                 damage to a readied unit, put a depletion counter on that weapon. See{" "}
                                 <SectionLink href="#how-to-attack">How to Attack</SectionLink>.
                             </p>
+                            </Subsection>
                         </Section>
 
                         <Section id="how-to-play-actions" title="Core Actions">
-                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
-                                Accumulate Resources
-                            </h3>
+                            <Subsection id="accumulate-resources" title="Accumulate Resources">
                             <p>
                                 You may accumulate resources only once on your turn in your main phase, To do so, choose a card in hand, reveal it, and then "gain"
                                 (grab) up to three resource tokens from its listed invoke cost
@@ -701,16 +751,17 @@ export function HowToPlayPage() {
 
 
 
-                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
-                                How to Allocate a Resource to a Unit
-                            </h3>
-                            <p>
-                                This ability can be used any time you can play a cyberspell process, and only once per turn, on your turn.
-                                Each resource allocated to a unit gives it a +1<GameIcon name="threat_lvl" /> rating for
-                                each resource allocated. To allocate a resource, expend it "<GameIcon name="expend" />" and choose
-                                a unit you control. This ability does not use the lock and thus happens immediately. An
-                                Example of what a unit looks like with a resource allocated to it found below:
+                            </Subsection>
 
+                            <Subsection id="how-to-allocate" title="How to Allocate a Resource to a Unit">
+                            <p>
+                                You may use it once per turn on your turn, any time you could play a
+                                Process (not while the lock is full). Each resource allocated to
+                                a unit gives it a +1<GameIcon name="threat_lvl" /> rating. To allocate a
+                                resource, expend it <GameIcon name="expend" /> and choose a unit you
+                                control. This action does not use the lock and resolves immediately.
+                                An example of what a unit looks like with a resource allocated to it is
+                                found below:
                             </p>
                             <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                 <img
@@ -719,9 +770,9 @@ export function HowToPlayPage() {
 
                                 />
                             </div>
-                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
-                                How to Play a Card
-                            </h3>
+                            </Subsection>
+
+                            <Subsection id="how-to-play-card" title="How to Play a Card">
                             <p>
                                 Each card has an invoke cost printed on it; pay that cost to play the card. A card
                                 without an invoke cost in the upper-left corner cannot be played unless an effect
@@ -817,12 +868,9 @@ export function HowToPlayPage() {
                                 />
                             </div>
 
-                            <h3
-                                id="how-to-block"
-                                className="font-glitch scroll-mt-24 pt-2 text-xl text-cyan-200 lg:text-2xl"
-                            >
-                                How to Block
-                            </h3>
+                            </Subsection>
+
+                            <Subsection id="how-to-block" title="How to Block">
                             <p>
                                 You can block incoming damage whenever damage is directed at
                                 you as a player — from an attack, a cyberspell, a card effect, or any
@@ -869,12 +917,9 @@ export function HowToPlayPage() {
                                 the full combat sequence.
                             </p>
 
-                            <h3
-                                id="how-to-attack"
-                                className="font-glitch scroll-mt-24 pt-2 text-xl text-cyan-200 lg:text-2xl"
-                            >
-                                How to Attack
-                            </h3>
+                            </Subsection>
+
+                            <Subsection id="how-to-attack" title="How to Attack">
                             <p>
                                 Attakcing is the primary way to get damage in along with potentailly reducing you opponents resources
                                 on there turn to mount a counter attack. <Important> NOTE: Damage stays marked on a unit turn after turn. you can heal the damage
@@ -968,6 +1013,7 @@ export function HowToPlayPage() {
                                 </li>
                                 <li>Any damage directed at a player that was not blocked is dealt as loss of life to that player. Then the attack ends.</li>
                             </ol>
+                            </Subsection>
                         </Section>
 
                         <Section id="lock" title="The Lock & Time Counters">
@@ -1002,9 +1048,7 @@ export function HowToPlayPage() {
                                 the non-active player.
                             </Note>
 
-                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
-                                Scenario 1 &mdash; The lock occupant and Quick Hacks
-                            </h3>
+                            <Subsection id="lock-scenario-1" title="Scenario 1 — The lock occupant and Quick Hacks">
                             <p>
                                 The lock holds at most one card or effect.
                             </p>
@@ -1045,9 +1089,9 @@ export function HowToPlayPage() {
                                 the active player.
                             </p>
 
-                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
-                                Scenario 2 &mdash; The queue (lock is full)
-                            </h3>
+                            </Subsection>
+
+                            <Subsection id="lock-scenario-2" title="Scenario 2 — The queue (lock is full)">
                             <p>
                                 Whenever an ability or effect would be added to the lock but the lock
                                 already holds a card or effect, it is not added to the lock. Put it
@@ -1103,7 +1147,6 @@ export function HowToPlayPage() {
                             </p>
                             <ol className="list-decimal space-y-1 pl-6">
                                 <li>Pay costs and use resource abilities (those abilities do not use the lock).</li>
-                                <li>Allocate a resource to a unit you control (once per turn on your turn, when you could play a Process). Each resource allocated to a unit gives it a +1 <GameIcon name="threat_lvl" /> rating. To allocate a resource, expend it and choose a unit. This ability does not use the lock and happens immediately.</li>
                                 <li>Activate an activated ability that uses the lock: it goes to your queue, not the lock.</li>
                                 <li>Block incoming damage directed at you (see <SectionLink href="#how-to-block">How to Block</SectionLink>).</li>
                             </ol>
@@ -1112,7 +1155,9 @@ export function HowToPlayPage() {
                                 player.
                             </p>
 
-                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">Time Counters</h3>
+                            </Subsection>
+
+                            <Subsection id="time-counters" title="Time Counters">
                             <p>
                                 Time counters shape how you interact with the lock: you can reduce a
                                 card's invoke cost by <GameIcon name="gen1" /> for each time counter you place on it after you
@@ -1132,12 +1177,11 @@ export function HowToPlayPage() {
                                 up to 3 cards with time counters on them in your stockpile at any given
                                 time.
                             </p>
+                            </Subsection>
                         </Section>
 
                         <Section id="timing" title="Timing, Triggers & Keywords">
-                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
-                                Targeting
-                            </h3>
+                            <Subsection id="targeting" title="Targeting">
                             <p>
                                 Some effects use the word &ldquo;target.&rdquo; A target is legal only if
                                 it meets <strong>every</strong> restriction on that effect (type,
@@ -1230,9 +1274,9 @@ export function HowToPlayPage() {
                                 </li>
                             </ul>
 
-                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
-                                Activated Abilities
-                            </h3>
+                            </Subsection>
+
+                            <Subsection id="activated-abilities" title="Activated Abilities">
                             <p>
                                 Activated abilities are formatted (ignoring the brackets) as [cost 1,
                                 cost 2, etc.]: [effect]. Unless they say otherwise, they can be
@@ -1267,6 +1311,7 @@ export function HowToPlayPage() {
                                     <span>The Dismantle ability and symbol. It can be activated while in play; as part of a cost, put the card it is printed on into the dismantled zone.</span>
                                 </li>
                             </ul>
+                            </Subsection>
                         </Section>
 
                         <Section id="keywords" title="Keyword Abilities">
@@ -1351,9 +1396,7 @@ export function HowToPlayPage() {
                                 <li>You cannot put cards in your deck that are not supported by your pilot's and augments' color combination.</li>
                             </ol>
 
-                            <h3 className="font-glitch pt-2 text-xl text-cyan-200 lg:text-2xl">
-                                Your Deck's Color Combination
-                            </h3>
+                            <Subsection id="deck-color-combination" title={"Your Deck's Color Combination"}>
                             <p>
                                 Your pilot's invoke cost plus your chosen augments' augment color
                                 determine your deck's color combination (see Reading Your Cards for an
@@ -1400,6 +1443,8 @@ export function HowToPlayPage() {
 
                                 />
                             </div>
+
+                            </Subsection>
 
                             <p>That concludes deck building.</p>
                             <p>

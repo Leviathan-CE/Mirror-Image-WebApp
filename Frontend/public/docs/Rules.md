@@ -118,9 +118,9 @@
 
 ### 300.3. Subtypes
 
-> 300.3.1. **Process [Cyberspell]** — Playable during your main phase. Has `[TLV]`; cannot attack; may block (see rule 601).
+> 300.3.1. **Process [Cyberspell]** — Playable during your main phase while the lock is empty. Has `[TLV]`; cannot attack; may block (see rule 601). See rule 500.8 for full timing.
 >
-> 300.3.2. **Quick Hack [Cyberspell]** — Playable whenever a Process can be played, plus at end of turn, during an attack, while the lock holds a card, or when an opponent's effect empties the lock. Has `[TLV]`; cannot attack; may block (see rule 601).
+> 300.3.2. **Quick Hack [Cyberspell]** — Playable whenever a Process can be played, plus at end of turn, during an attack, while the lock holds a card, or when an opponent's effect empties the lock. Has `[TLV]`; cannot attack; may block (see rule 601). See rule 500.8 for full timing.
 >
 > 300.3.3. **Weapon** — Entity subtype with an innate ability to attack (see rule 603.10). Using a weapon's innate attack ability is not an activated ability.
 
@@ -182,7 +182,7 @@
 
 > 400.2.3.1. You may play cards, activate abilities, make attacks, allocate a resource to a unit, accumulate resources, or block incoming damage directed at you, in any order where timing allows.
 >
-> 400.2.3.2. See sections 600–603 for default game actions.
+> 400.2.3.2. See sections 600–605 for default game actions.
 
 #### 400.2.4. End-of-turn phase
 
@@ -200,7 +200,7 @@
 
 500.1. Each playable card has an invoke cost made of resource pips (see section 350) in the upper-left corner.
 
-500.2. To play a card, have the required resources in your resource pool, pay the cost, reveal the card, and put it in the lock. If the lock is empty, the card becomes the lock occupant. If the lock is full, the played card overwrites the lock occupant (see rules 700.2.3 and 700.2.4). Only effects go to a queue when the lock is full (see rule 700.2.2).
+500.2. To play a card, have the required resources in your resource pool, pay the cost, reveal the card, and put it in the lock. If the lock is empty, the card becomes the lock occupant. If the lock is full, only a Quick Hack played by the active player may enter the lock; it overwrites the lock occupant (see rules 500.8.3, 700.2.3, and 700.2.4). Only effects go to a queue when the lock is full (see rule 700.2.2).
 
 > 500.2.1. **Where you may play from.** By default, you play cards from your hand. You may play a card from another zone only if a card ability or effect explicitly allows it — for example, from your pilot zone, trashyard, or dismantled zone. Such a play still follows rules 500.3–500.5 and 700.4 unless the ability says otherwise.
 
@@ -219,6 +219,24 @@
 > 500.7.1. Using a resource's `[EXPEND]` ability does not use the lock; expend the resource and add its color to your resource pool immediately.
 >
 > 500.7.2. You may use resource abilities while the lock is full (see rule 700.5.1).
+
+### 500.8. When you may play cards
+
+500.8.1. **Process speed** — You may play a Process cyberspell during your main phase on your turn while the lock is empty (see rule 300.3.1). You may play an entity from your hand during your main phase on your turn while the lock is empty unless an effect gives another timing. Playing your pilot from the pilot zone follows rule 200.1.
+
+500.8.2. **Quick Hack speed** — A Quick Hack cyberspell may be played whenever you could play a Process, and also (see rule 300.3.2):
+
+> 500.8.2.1. During the end-of-turn phase (see rule 400.2.4.1).
+>
+> 500.8.2.2. During an attack response window (see rule 603.5).
+>
+> 500.8.2.3. While the lock holds a card — only the active player, and only by overwriting the lock occupant (see rules 700.2.3 and 700.3.6).
+>
+> 500.8.2.4. When an opponent's effect empties the lock.
+
+500.8.3. **While the lock is full** — You cannot play a Process or entity while the lock is full. The only card you may play while the lock is full is a Quick Hack, and only if you are the active player and you overwrite the lock occupant (see section 700).
+
+500.8.4. **Quick Hack timing elsewhere** — Activated abilities, Recycle, Surge, and other effects that use Quick Hack timing follow the windows in rule 500.8.2 unless stated otherwise (see rules 800.2.1, 800.2.5, and 800.3.22).
 
 ---
 
@@ -302,11 +320,23 @@
 
 ### 604. Allocate a resource to a unit
 
-604.1. Once per turn on your turn, when you could play a Process, you may allocate a resource to a unit you control.
+604.1. Allocating a resource to a unit is a default game action.
 
-604.2. Expend the resource `[EXPEND]` and choose the unit. Each allocated resource gives +1 `[TLV]` to that unit.
+604.2. Once per turn on your turn, when you could play a Process, you may allocate a resource to a unit you control.
 
-604.3. This does not use the lock and resolves immediately.
+604.3. Expend the resource `[EXPEND]` and choose the unit. Each allocated resource gives +1 `[TLV]` to that unit.
+
+604.4. This does not use the lock and resolves immediately.
+
+604.5. You cannot allocate while the lock is full.
+
+### 605. Play a card
+
+605.1. Playing a card is a default game action.
+
+605.2. Which cards you may play, and when, depend on card type, phase, and lock state (see rule 500.8).
+
+605.3. See section 500 for invoke costs, zones you may play from, targeting, and lock interaction.
 
 ---
 
@@ -370,11 +400,9 @@
 
 > 700.5.1. Pay costs and use resource abilities (do not use the lock).
 >
-> 700.5.2. Allocate a resource to a unit (see rule 604).
+> 700.5.2. Activate an ability that uses the lock — it goes to your queue.
 >
-> 700.5.3. Activate an ability that uses the lock — it goes to your queue.
->
-> 700.5.4. Block incoming damage directed at you (see rule 601).
+> 700.5.3. Block incoming damage directed at you (see rule 601).
 
 ---
 
