@@ -358,7 +358,7 @@
 >
 > 700.2.3. **Full lock — cards** — A played card overwrites the lock occupant and becomes the new occupant. It does not go to a queue.
 >
-> 700.2.4. **Overwrite result** — When a card overwrites the lock occupant, the replaced card goes to its controller's stockpile with two time counters (or is discarded if stockpile already has three time-counter cards). A replaced effect does nothing. Recalculate active player; restart "while lock is full."
+> 700.2.4. **Overwrite result** — When a card overwrites the lock occupant, the replaced card goes to its controller's stockpile with two time counters (or is discarded if stockpile already has two time-counter cards). A replaced effect does nothing. Recalculate active player; restart "while lock is full."
 >
 > 700.2.5. Queued effects never overwrite the lock.
 
@@ -388,7 +388,7 @@
 
 700.4.4. When the last counter is removed from a stockpile card, resolve its effects without using the lock, then move it to the battlefield (entity) or discard pile (cyberspell). If an entity unit moves to the battlefield this way, apply rule 300.2.2.
 
-700.4.5. You may have at most three time-counter cards in stockpile.
+700.4.5. You may have at most two time-counter cards in stockpile.
 
 ### 700.5. Actions while lock is full
 

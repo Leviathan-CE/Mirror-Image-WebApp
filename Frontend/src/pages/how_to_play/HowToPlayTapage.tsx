@@ -1037,7 +1037,7 @@ export function HowToPlayPage() {
                                     any played card overwrites the lock occupant, the replaced card goes
                                     to its controller's stockpile with 2 time counters on it. If that
                                     player already has the maximum number of cards with time counters in
-                                    their stockpile (3), the replaced card is discarded instead and does
+                                    their stockpile (2), the replaced card is discarded instead and does
                                     not resolve. If the replaced occupant was an effect, it does nothing.
                                     Recalculate who is active; restart from &ldquo;while the lock is full.&rdquo;
                                 </li>
@@ -1141,7 +1141,7 @@ export function HowToPlayPage() {
                                 moves to the battlefield this way, you choose whether it enters readied
                                 or expended, and it cannot attack during that turn unless it has
                                 Blitz. You may have
-                                up to 3 cards with time counters on them in your stockpile at any given
+                                up to 2 cards with time counters on them in your stockpile at any given
                                 time.
                             </p>
                             </Subsection>
