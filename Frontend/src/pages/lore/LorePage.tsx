@@ -175,6 +175,13 @@ export function LorePage() {
                                     and tears open wormholes to watch
                                     comets burn through PyAi&apos;s armies from the void.
                                 </p>
+
+                                <GlitchFx
+                                    label="DOWNLOAD ORIGIN STORY"
+                                    size="lg"
+                                    className="font-buahs93 h-8 rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
+                                    render={<a href="/docs/lore/Refiners_Fire.pdf" download />}
+                                />
                             </Subsection>
 
                         </Section>

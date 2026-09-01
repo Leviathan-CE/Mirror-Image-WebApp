@@ -228,7 +228,7 @@ export function cardHasSuperType(
  * - else → 3
  */
 export function maxCopiesForDeckCard(
-  category: DeckCategoryOut,
+  _category: DeckCategoryOut,
   cardOrEntry?: SuperTypesSource
 ): number {
   if (cardHasSuperType(cardOrEntry, "Token")) {

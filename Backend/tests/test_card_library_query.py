@@ -1,6 +1,7 @@
 """Catalogue colour-filter helpers."""
 
 from app.card_library_query import (
+    apply_catalogue_filters,
     apply_deck_color_filters,
     cost_has_stl_identity,
     cost_is_pure_numbered_gen,
@@ -150,3 +151,31 @@ def test_apply_deck_color_filters_ignores_empty():
     apply_deck_color_filters(where, params, colors=None, color_mode="or")
     assert where == ["uhd.is_public = TRUE"]
     assert params == {}
+
+
+def test_sub_type_matches_declared_or_types_line():
+    where: list[str] = []
+    params: dict = {}
+    state = apply_catalogue_filters(where, params, sub_type="Soldier")
+    assert state.has_sub_type_query is True
+    assert state.has_name_query is False
+    assert len(where) == 1
+    clause = where[0]
+    assert "sub_types @>" in clause
+    assert "types_line ILIKE" in clause
+    assert params["sub_type_json"].adapted == ["Soldier"]
+    assert params["sub_type_types_line_pattern"] == "%Soldier%"
+    assert params["sub_type_types_line_prefix"] == "Soldier%"
+
+
+def test_catalogue_order_sub_type_prefix_rank():
+    from app.card_library_query import catalogue_order_sql
+
+    sql = catalogue_order_sql(
+        has_name_query=False,
+        sort="name",
+        has_sub_type_query=True,
+    )
+    assert "sub_type_types_line_prefix" in sql
+    assert "LENGTH(cards.types_line) ASC" in sql
+    assert "lower(cards.card_name) ASC" in sql

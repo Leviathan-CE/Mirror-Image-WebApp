@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, NamedTuple
 
 from psycopg2.extras import Json
+
+
+class CatalogueFilterState(NamedTuple):
+    has_name_query: bool
+    has_sub_type_query: bool
 
 
 def escape_like(value: str) -> str:
@@ -103,8 +108,8 @@ def apply_catalogue_filters(
     types_line: str | None = None,
     super_type: str | None = None,
     sub_type: str | None = None,
-) -> bool:
-    """Append library filter clauses. Returns True when a name query is active."""
+) -> CatalogueFilterState:
+    """Append library filter clauses."""
     needle = (q or "").strip()
     if needle:
         escaped = escape_like(needle)
@@ -166,10 +171,18 @@ def apply_catalogue_filters(
 
     sub_val = (sub_type or "").strip()
     if sub_val:
-        where.append(f"{alias}.sub_types @> %(sub_type_json)s::jsonb")
+        escaped_sub = escape_like(sub_val)
+        where.append(
+            f"""(
+            {alias}.sub_types @> %(sub_type_json)s::jsonb
+            OR {alias}.types_line ILIKE %(sub_type_types_line_pattern)s ESCAPE '\\'
+        )"""
+        )
         params["sub_type_json"] = Json([sub_val])
+        params["sub_type_types_line_pattern"] = f"%{escaped_sub}%"
+        params["sub_type_types_line_prefix"] = f"{escaped_sub}%"
 
-    return bool(needle)
+    return CatalogueFilterState(bool(needle), bool(sub_val))
 
 
 def normalize_color_tokens(color: list[str] | None) -> list[str]:
@@ -285,6 +298,8 @@ def catalogue_order_sql(
     has_name_query: bool,
     alias: str = "cards",
     sort: str = CATALOGUE_SORT_NAME,
+    *,
+    has_sub_type_query: bool = False,
 ) -> str:
     """
     ORDER BY clause for catalogue browse.
@@ -296,8 +311,19 @@ def catalogue_order_sql(
     """
     mode = sort if sort in CATALOGUE_SORT_MODES else CATALOGUE_SORT_NAME
 
+    sub_type_rank = ""
+    if has_sub_type_query:
+        sub_type_rank = f"""
+            CASE
+              WHEN {alias}.types_line ILIKE %(sub_type_types_line_prefix)s ESCAPE '\\' THEN 0
+              ELSE 1
+            END,
+            LENGTH({alias}.types_line) ASC,
+        """
+
     if mode == CATALOGUE_SORT_INVOKE:
         return (
+            f"{sub_type_rank}"
             f"{alias}.invoke_cost ASC, "
             f"lower({alias}.card_name) ASC, "
             f"{alias}.card_name ASC"
@@ -305,16 +331,22 @@ def catalogue_order_sql(
 
     if mode == CATALOGUE_SORT_INVOKE_DESC:
         return (
+            f"{sub_type_rank}"
             f"{alias}.invoke_cost DESC, "
             f"lower({alias}.card_name) ASC, "
             f"{alias}.card_name ASC"
         )
 
     if mode == CATALOGUE_SORT_NAME_DESC:
-        return f"lower({alias}.card_name) DESC, {alias}.card_name DESC"
+        return (
+            f"{sub_type_rank}"
+            f"lower({alias}.card_name) DESC, "
+            f"{alias}.card_name DESC"
+        )
 
     if mode == CATALOGUE_SORT_RELEVANCE and has_name_query:
         return f"""
+            {sub_type_rank}
             CASE
               WHEN {alias}.card_name ILIKE %(name_prefix)s ESCAPE '\\' THEN 0
               ELSE 1
@@ -323,4 +355,8 @@ def catalogue_order_sql(
             {alias}.card_name ASC
         """
 
-    return f"lower({alias}.card_name) ASC, {alias}.card_name ASC"
+    return (
+        f"{sub_type_rank}"
+        f"lower({alias}.card_name) ASC, "
+        f"{alias}.card_name ASC"
+    )

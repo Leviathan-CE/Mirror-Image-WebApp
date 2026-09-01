@@ -533,7 +533,7 @@ def browse_card_library(
     ]
     params: dict[str, Any] = {"limit": limit, "offset": offset}
 
-    has_name_query = apply_catalogue_filters(
+    filter_state = apply_catalogue_filters(
         where,
         params,
         q=q,
@@ -547,7 +547,11 @@ def browse_card_library(
     )
 
     where_sql = " AND ".join(where)
-    order_sql = catalogue_order_sql(has_name_query, sort=sort)
+    order_sql = catalogue_order_sql(
+        filter_state.has_name_query,
+        sort=sort,
+        has_sub_type_query=filter_state.has_sub_type_query,
+    )
 
     try:
         with get_connection() as conn:
