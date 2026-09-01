@@ -701,7 +701,7 @@ export function HowToPlayPage() {
                             <Subsection id="accumulate-resources" title="Accumulate Resources">
                             <p>
                                 You may accumulate resources only once on your turn in your main phase, To do so, choose a card in hand, reveal it, and then "gain"
-                                (grab) up to three resource tokens from its listed invoke cost
+                                (grab) up to two resource tokens from its listed invoke cost
                                 (ignoring the grey numbered costs) and add them to your stockpile
                                 readied. Then put the revealed card on the bottom of your deck.
                                 This action does not use the lock.

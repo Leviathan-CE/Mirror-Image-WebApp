@@ -260,7 +260,7 @@
 
 ### 602. Accumulate resources
 
-602.1. Once per turn during your main phase, reveal a card from hand and gain up to three resource tokens from its colored pips (ignore generic pips; see section 350).
+602.1. Once per turn during your main phase, reveal a card from hand and gain up to two resource tokens from its colored pips (ignore generic pips; see section 350).
 
 602.2. Put gained resources readied into stockpile; put the revealed card on the bottom of your deck.
 

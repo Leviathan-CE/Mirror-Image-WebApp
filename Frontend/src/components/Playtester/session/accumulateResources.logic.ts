@@ -24,6 +24,9 @@ export const RESOURCE_COLORS = [
 
 export type ResourceColor = (typeof RESOURCE_COLORS)[number]
 
+/** Max coloured invoke-cost pips gainable from one Accumulate action (rule 602.1). */
+export const ACCUMULATE_MAX_PIPS = 2
+
 export type GainablePip =
   | { kind: "solid"; token: string; color: ResourceColor }
   | { kind: "hybrid"; token: string; colors: [ResourceColor, ResourceColor] }
@@ -122,11 +125,11 @@ export function extractGainablePips(
   return out
 }
 
-/** True when every pip is solid and count ≤ 3 — no chooser needed. */
+/** True when every pip is solid and count ≤ ACCUMULATE_MAX_PIPS — no chooser needed. */
 export function canAutoResolvePips(pips: GainablePip[]): boolean {
   return (
     pips.length > 0 &&
-    pips.length <= 3 &&
+    pips.length <= ACCUMULATE_MAX_PIPS &&
     pips.every((p) => p.kind === "solid")
   )
 }
@@ -137,7 +140,7 @@ export function autoResolveColors(pips: GainablePip[]): ResourceColor[] {
       (p): p is Extract<GainablePip, { kind: "solid" }> => p.kind === "solid"
     )
     .map((p) => p.color)
-    .slice(0, 3)
+    .slice(0, ACCUMULATE_MAX_PIPS)
 }
 
 /**

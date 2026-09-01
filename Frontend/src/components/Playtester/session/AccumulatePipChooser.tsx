@@ -1,5 +1,5 @@
 /**
- * Pick up to 3 gainable invoke-cost pips (and resolve hybrid / MULTI colours).
+ * Pick up to ACCUMULATE_MAX_PIPS gainable invoke-cost pips (hybrid / MULTI colours).
  */
 
 import { useMemo, useState } from "react"
@@ -9,6 +9,7 @@ import { costTokenToIcon } from "@/components/cards/constants"
 import { cn } from "@/lib/utils"
 
 import {
+  ACCUMULATE_MAX_PIPS,
   RESOURCE_COLORS,
   type GainablePip,
   type ResourceColor,
@@ -33,7 +34,7 @@ export function AccumulatePipChooser({
   cardName,
   pips,
   availableColors,
-  maxSelect = 3,
+  maxSelect = ACCUMULATE_MAX_PIPS,
   onConfirm,
   onCancel,
 }: AccumulatePipChooserProps) {

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  ACCUMULATE_MAX_PIPS,
   buildResourceTokenMap,
+  autoResolveColors,
+  canAutoResolvePips,
   classifyCostToken,
   extractGainablePips,
   findResourceTokenByCost,
@@ -128,5 +131,20 @@ describe("classifyCostToken / extractGainablePips (GEN → STL)", () => {
       { kind: "solid", token: "TIM", color: "TIM" },
       { kind: "solid", token: "LIF", color: "LIF" },
     ])
+  })
+})
+
+describe("accumulate pip cap", () => {
+  it("auto-resolves at most ACCUMULATE_MAX_PIPS solid pips", () => {
+    expect(ACCUMULATE_MAX_PIPS).toBe(2)
+    const pips = extractGainablePips(["LIF", "MET", "POW"])
+    expect(canAutoResolvePips(pips)).toBe(false)
+    expect(autoResolveColors(pips)).toEqual(["LIF", "MET"])
+  })
+
+  it("auto-resolves two or fewer solid pips without a chooser", () => {
+    const pips = extractGainablePips(["RAM", "STL"])
+    expect(canAutoResolvePips(pips)).toBe(true)
+    expect(autoResolveColors(pips)).toEqual(["RAM", "STL"])
   })
 })
