@@ -17,8 +17,10 @@ CREATE TABLE IF NOT EXISTS cards (
     sub_types    JSONB NOT NULL DEFAULT '[]'::jsonb,
     types_line   TEXT NOT NULL DEFAULT '',
 
-    card_art_path TEXT DEFAULT NULL,
-    card_art_mime_type TEXT DEFAULT NULL,
+    card_thumbnail_path TEXT DEFAULT NULL,
+    card_thumbnail_mime_type TEXT DEFAULT NULL,
+    illustration_thumbnail_path TEXT DEFAULT NULL,
+    illustration_thumbnail_mime_type TEXT DEFAULT NULL,
 
     keywords     JSONB NOT NULL DEFAULT '[]'::jsonb,
 
@@ -71,8 +73,10 @@ CREATE INDEX IF NOT EXISTS idx_cards_card_number ON cards (card_number);
 
 
 COMMENT ON TABLE cards IS 'CardData ScriptableObject — lists as JSONB.';
-COMMENT ON COLUMN cards.card_art_path IS 'Relative filesystem path for stored card image/thumbnail.';
-COMMENT ON COLUMN cards.card_art_mime_type IS 'Content-Type for card image (e.g. image/png).';
+COMMENT ON COLUMN cards.card_thumbnail_path IS 'Full-card PNG from Unity Assets/!thumbnail (POST /cards/{id}/thumbnail).';
+COMMENT ON COLUMN cards.card_thumbnail_mime_type IS 'Content-Type for full-card thumbnail (e.g. image/png).';
+COMMENT ON COLUMN cards.illustration_thumbnail_path IS 'Art-only PNG from Unity Assets/!thumb_art (POST /cards/{id}/art); exposed as card_art_path in API JSON.';
+COMMENT ON COLUMN cards.illustration_thumbnail_mime_type IS 'Content-Type for illustration thumb art (e.g. image/png).';
 COMMENT ON COLUMN cards.cost IS 'List<Costs> as JSON array';
 COMMENT ON COLUMN cards.super_types IS 'List<SuperType> as JSON array';
 COMMENT ON COLUMN cards.sub_types IS 'List<SubTpye> as JSON array';

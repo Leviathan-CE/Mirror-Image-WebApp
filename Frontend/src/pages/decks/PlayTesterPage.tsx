@@ -8,13 +8,13 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { useAuth } from "@/app/providers/AuthProvider"
 import { sharedImages } from "@/assets/shared"
 import { GlitchFx } from "@/components/effects/GlitchFx"
-import { AccumulatePipChooser } from "@/components/Playtester/AccumulatePipChooser"
+import { AccumulatePipChooser } from "@/components/Playtester/session/AccumulatePipChooser"
 import { genIconForCount } from "@/components/Playtester/constants"
 import {
   generatedResourceHome,
   placeInPlayForView,
   displayToWorld,
-} from "@/components/Playtester/augmentRow.logic"
+} from "@/components/Playtester/board/augmentRow.logic"
 import {
   autoResolveColors,
   buildResourceTokenMap,
@@ -22,14 +22,14 @@ import {
   extractGainablePips,
   type GainablePip,
   type ResourceColor,
-} from "@/components/Playtester/accumulateResources.logic"
-import { CardBottomSlideAnimation } from "@/components/Playtester/CardBottomSlideAnimation"
-import { CardAccumulatePeerAnimation } from "@/components/Playtester/CardAccumulatePeerAnimation"
-import { CardTuckUnderAnimation } from "@/components/Playtester/CardTuckUnderAnimation"
-import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
+} from "@/components/Playtester/session/accumulateResources.logic"
+import { CardBottomSlideAnimation } from "@/components/Playtester/anim/CardBottomSlideAnimation"
+import { CardAccumulatePeerAnimation } from "@/components/Playtester/anim/CardAccumulatePeerAnimation"
+import { CardTuckUnderAnimation } from "@/components/Playtester/anim/CardTuckUnderAnimation"
+import { CardEnlargeOverlay } from "@/components/Playtester/board/CardLargeOverlay"
 import {
   CardFlipFlyAnimation,
-} from "@/components/Playtester/CardFlipFlyAnimation"
+} from "@/components/Playtester/anim/CardFlipFlyAnimation"
 import {
   PLAY_ZONE,
   HAND_CARD_SIZE,
@@ -47,40 +47,42 @@ import {
   playFloatLogicalSize,
   clientToLogicalField,
   type FieldSize,
-} from "@/components/Playtester/playFieldScale.logic"
-import { viewFor } from "@/components/Playtester/fogView.logic"
-import { intentAllowed, type PlayFx } from "@/components/Playtester/playNet.logic"
-import { usePlayNet } from "@/components/Playtester/usePlayNet"
-import type { SessionAction } from "@/components/Playtester/sessionActions.logic"
-import { useCardDragDrop } from "@/components/Playtester/useCardDragDrop"
-import { useDrawAnimations } from "@/components/Playtester/useDrawAnimations"
+} from "@/components/Playtester/board/playFieldScale.logic"
+import { viewFor } from "@/components/Playtester/session/fogView.logic"
+import { intentAllowed, type PlayFx } from "@/components/Playtester/net/playNet.logic"
+import { usePlayNet } from "@/components/Playtester/net/usePlayNet"
+import type { SessionAction } from "@/components/Playtester/session/sessionActions.logic"
+import { useCardDragDrop } from "@/components/Playtester/drag/useCardDragDrop"
+import { useDrawAnimations } from "@/components/Playtester/anim/useDrawAnimations"
 import {
   usePlaySession,
   type PlaySessionEffects,
-} from "@/components/Playtester/usePlaySession"
+} from "@/components/Playtester/session/usePlaySession"
 import {
   usePlayContextMenu,
   type CtxMenuState,
   type DeckActionCounts,
   type DeckCountKey,
-} from "@/components/Playtester/usePlayContextMenu"
-import { DeckPile } from "@/components/Playtester/DeckPile"
-import { DeckPeekOverlay } from "@/components/Playtester/DeckPeekOverlay"
-import { DeckShuffleAnimation } from "@/components/Playtester/DeckShuffleAnimation"
-import { DeckSearchModal } from "@/components/Playtester/DeckSearchModal"
+} from "@/components/Playtester/board/usePlayContextMenu"
+import { DeckPile } from "@/components/Playtester/board/DeckPile"
+import { DeckPeekOverlay, type DeckPeekCloseResult } from "@/components/Playtester/search/DeckPeekOverlay"
+import { DeckShuffleAnimation } from "@/components/Playtester/anim/DeckShuffleAnimation"
+import { DeckSearchModal } from "@/components/Playtester/search/DeckSearchModal"
 import {
   clampDeckCount,
+  lookAtTopCommitOrder,
   peekTopLibrary,
-} from "@/components/Playtester/deckActions.logic"
+} from "@/components/Playtester/search/deckActions.logic"
 import {
   FreeFloatSurface,
   type FloatSurfaceActions,
-} from "@/components/Playtester/FreeFloatSurface"
-import { LifeCounter } from "@/components/Playtester/LifeCounter"
-import { DockedHandStrip } from "@/components/Playtester/DockedHandStrip"
-import { PlayerHand } from "@/components/Playtester/PlayerHand"
-import { TrashyardPile } from "@/components/Playtester/TrashyardPile"
+} from "@/components/Playtester/board/FreeFloatSurface"
+import { LifeCounter } from "@/components/Playtester/board/LifeCounter"
+import { DockedHandStrip } from "@/components/Playtester/board/DockedHandStrip"
+import { PlayerHand } from "@/components/Playtester/board/PlayerHand"
+import { TrashyardPile } from "@/components/Playtester/board/TrashyardPile"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
+import { selectableActionTargets } from "@/components/Playtester/session/playCard.logic"
 import { ContextMenu } from "@/components/ui/ContextMenu"
 import {
   DropdownMenu,
@@ -173,22 +175,23 @@ export function PlayTesterPage() {
   })
   const [deckPeek, setDeckPeek] = useState<DeckPeekState | null>(null)
   const [deckSearchOpen, setDeckSearchOpen] = useState(false)
+  const [pileBrowser, setPileBrowser] = useState<
+    null | "trashyard" | "dismantled" | "oppTrash" | "oppDismantled"
+  >(null)
   const [resourceCache, setResourceCache] = useState<{
     key: string
     tokens: CardLibraryItem[]
   } | null>(null)
+  // Resource catalogue fetch is optional-auth — solo playtest must work logged out.
   const resourceCacheKey =
-    status === "ready" && token ? `ready:${token}` : "idle"
+    status === "ready" ? `ready:${token ?? "anon"}` : "idle"
   const resourceTokens = useMemo(
     () =>
       resourceCache?.key === resourceCacheKey ? resourceCache.tokens : [],
     [resourceCache, resourceCacheKey]
   )
   const resourcesReady =
-    status === "ready" &&
-    !!token &&
-    resourceCache?.key === resourceCacheKey
-  const [vsDraft, setVsDraft] = useState("")
+    status === "ready" && resourceCache?.key === resourceCacheKey
   const [playNotice, setPlayNotice] = useState<string | null>(null)
   /**
    * Board canvas + CSS fit-scale.
@@ -228,6 +231,7 @@ export function PlayTesterPage() {
   const handRef = useRef<HTMLDivElement>(null)
   const deckRef = useRef<HTMLDivElement>(null)
   const trashRef = useRef<HTMLDivElement>(null)
+  const searchPanelRef = useRef<HTMLDivElement>(null)
   const dismantledRef = useRef<HTMLDivElement>(null)
   const oppHandRef = useRef<HTMLDivElement>(null)
   const oppDeckRef = useRef<HTMLDivElement>(null)
@@ -271,7 +275,6 @@ export function PlayTesterPage() {
     changeFloatSelection: onFloatSelectionChange,
     changeHandSelection: onHandSelectionChange,
     startTurn,
-    endTurn,
     deleteCards: deleteSessionCards,
     adjustCounters: adjustCardCounters,
     spawnResourceColor: spawnResourceColorCore,
@@ -437,6 +440,7 @@ export function PlayTesterPage() {
     sessionCardsRef,
     dispatch,
     localSeat,
+    fieldSize: floatLogical,
     zoneRefs,
     clientToSurfaceLocal,
     mulliganOpen,
@@ -503,6 +507,15 @@ export function PlayTesterPage() {
     }
   })
 
+  const searchDropZone =
+    deckSearchOpen
+      ? PLAY_ZONE.library
+      : pileBrowser === "trashyard"
+        ? PLAY_ZONE.trashyard
+        : pileBrowser === "dismantled"
+          ? PLAY_ZONE.dismantled
+          : null
+
   const {
     onHandRelease,
     onBattlefieldRelease,
@@ -516,6 +529,9 @@ export function PlayTesterPage() {
     fieldSize: floatLogical,
     hideFlying,
     zoneRefs,
+    searchDrop: searchDropZone
+      ? { zone: searchDropZone, panelRef: searchPanelRef }
+      : null,
     clientToSurfaceLocal,
     clientToStockpileLocal,
     isFlipFlying,
@@ -620,9 +636,9 @@ export function PlayTesterPage() {
   }, [status, twoSeat, netActive])
 
   useEffect(() => {
-    if (status !== "ready" || !token) return
+    if (status !== "ready") return
     let cancelled = false
-    const key = `ready:${token}`
+    const key = `ready:${token ?? "anon"}`
 
     // Resource tokens: identify by super type Resource + invoke-cost colour.
     void Promise.all([
@@ -707,11 +723,9 @@ export function PlayTesterPage() {
   ])
 
   function onStartTurn() {
-    startTurn(Boolean(mulliganOpen || bottomAnim))
-  }
-
-  function onEndTurn() {
-    endTurn(Boolean(mulliganOpen || bottomAnim || hasPendingDrawTimers()))
+    startTurn(
+      Boolean(mulliganOpen || bottomAnim || hasPendingDrawTimers())
+    )
   }
 
   function cardScreenRect(instanceId: string): {
@@ -788,7 +802,7 @@ export function PlayTesterPage() {
       return
     }
 
-    // Hybrids / MULTI / more than 3 pips — let the player choose.
+    // Hybrids / MULTI / mixed colours over the pip cap — let the player choose.
     setAccumulateChooser({ card, pips, from })
   }
 
@@ -824,7 +838,14 @@ export function PlayTesterPage() {
     kind: Parameters<typeof adjustCardCounters>[1],
     delta: number
   ) {
-    adjustCardCounters([instanceId], kind, delta)
+    // Same bulk rule as the context menu: if the clicked card is selected,
+    // adjust that counter kind on every selected card in a free-float zone.
+    // −1 floors at 0, so cards without that counter are left alone.
+    const focus = sessionCards.find((c) => c.instanceId === instanceId)
+    const targets = focus
+      ? selectableActionTargets(sessionCards, focus)
+      : [instanceId]
+    adjustCardCounters(targets, kind, delta)
   }
 
   function spawnResourceColor(color: ResourceColor) {
@@ -908,16 +929,46 @@ export function PlayTesterPage() {
     setPlayNotice(next ? "Top card revealed." : "Top card hidden.")
   }
 
-  function onDeckPeekDone(orderedCards: PlayingCardInstance[]) {
+  function onDeckPeekDone(result: DeckPeekCloseResult) {
     const peek = deckPeek
     setDeckPeek(null)
-    if (!peek?.allowReorder || orderedCards.length === 0) return
-    reorderTop(orderedCards.map((c) => c.instanceId))
+    if (!peek?.allowReorder) return
+
+    const discardIds = result.discarded.map((c) => c.instanceId)
+    const remainingIds = result.remaining.map((c) => c.instanceId)
+    const commitOrder = lookAtTopCommitOrder(
+      remainingIds,
+      discardIds,
+      peek.cards
+    )
+    if (!commitOrder || commitOrder.length === 0) return
+
+    // Discarded cards sit on top so degrade mills them with the usual
+    // deck → trash flip-fly; keepers become the new top afterward.
+    reorderTop(commitOrder)
+    if (discardIds.length > 0) {
+      if (hasPendingDrawTimers() || isFlipFlying()) {
+        setPlayNotice("Wait for animations to finish, then mill again.")
+        return
+      }
+      queueDegradeToTrashyard(discardIds.length)
+      setPlayNotice(
+        discardIds.length === 1
+          ? "Milled 1 card from the look."
+          : `Milled ${discardIds.length} cards from the look.`
+      )
+    }
   }
 
   function openDeckSearch() {
     if (libraryCount <= 0) return
     setDeckSearchOpen(true)
+  }
+
+  function openFaceUpPileSearch(
+    zone: typeof PLAY_ZONE.trashyard | typeof PLAY_ZONE.dismantled
+  ) {
+    setPileBrowser(zone)
   }
 
   /** Searching the deck means shuffling it afterwards, however you close it. */
@@ -981,13 +1032,15 @@ export function PlayTesterPage() {
     navigate(ROUTES.MAIN)
   }
 
-  function startHotseatVs() {
-    const id = Number(vsDraft)
-    if (!Number.isFinite(id) || id <= 0) {
-      setPlayNotice("Enter a numeric deck id to play hotseat.")
-      return
+  async function copyRoomCode() {
+    const code = playNet.code
+    if (!code) return
+    try {
+      await navigator.clipboard.writeText(code)
+      setPlayNotice(`Room ${code} copied.`)
+    } catch {
+      setPlayNotice("Could not copy room code.")
     }
-    navigate(ROUTES.playTesterVs(deckId, id))
   }
 
   const playMenuItems: DropdownMenuItem[] = [
@@ -1004,18 +1057,6 @@ export function PlayTesterPage() {
       label: `Swap seat · now ${localSeat}`,
       onSelect: () => setHotseatSeat((s) => (s === "p1" ? "p2" : "p1")),
     })
-  } else if (!twoSeat) {
-    playMenuItems.push({
-      id: "playtester-hotseat",
-      label: "Hotseat vs",
-      onSelect: startHotseatVs,
-      textInput: {
-        value: vsDraft,
-        onChange: setVsDraft,
-        placeholder: "deck id",
-        ariaLabel: "Opponent deck id",
-      },
-    })
   }
 
   if (netActive) {
@@ -1024,8 +1065,7 @@ export function PlayTesterPage() {
       label: "Copy room code",
       disabled: !playNet.code,
       onSelect: () => {
-        void navigator.clipboard.writeText(playNet.code ?? "")
-        setPlayNotice(`Room ${playNet.code} copied.`)
+        void copyRoomCode()
       },
     })
     if (playNet.status === "disconnected") {
@@ -1070,9 +1110,8 @@ export function PlayTesterPage() {
     )
   }
 
-  const roomStatusText = netActive
+  const roomStatusMeta = netActive
     ? [
-        playNet.code ?? "ROOM",
         playNet.status === "waiting"
           ? "waiting"
           : playNet.transport === "p2p"
@@ -1114,6 +1153,7 @@ export function PlayTesterPage() {
       shuffleDeck,
       toggleDeckTopRevealed,
       openDeckSearch,
+      openFaceUpPileSearch,
       moveAllFromZone: moveAll,
       moveInPlayToZone: (instanceIds, zone) => {
         instanceIds.forEach((id) => {
@@ -1153,8 +1193,8 @@ export function PlayTesterPage() {
               cards={visOppTrash}
               label="Opp trash"
               size="lg"
-              fanDirection="down"
-              onReleaseCard={() => undefined}
+              onReleaseCards={() => undefined}
+              onBrowse={() => setPileBrowser("oppTrash")}
             />
             <DeckPile
               ref={oppDeckRef}
@@ -1169,8 +1209,8 @@ export function PlayTesterPage() {
               cards={visOppDismantled}
               label="Opp dismantled"
               size="lg"
-              fanDirection="down"
-              onReleaseCard={() => undefined}
+              onReleaseCards={() => undefined}
+              onBrowse={() => setPileBrowser("oppDismantled")}
             />
           </div>
         ) : null}
@@ -1197,7 +1237,7 @@ export function PlayTesterPage() {
                     cards={visOppPilot}
                     label="Opp pilot"
                     size="lg"
-                    onReleaseCard={() => undefined}
+                    onReleaseCards={() => undefined}
                   />
                   <LifeCounter
                     life={oppLife}
@@ -1305,7 +1345,7 @@ export function PlayTesterPage() {
                   cards={visPilot}
                   label="Pilot"
                   size="lg"
-                  onReleaseCard={onFaceUpPileRelease}
+                  onReleaseCards={onFaceUpPileRelease}
                   onCardContextMenu={onFloatCardContextMenu}
                   onToggleExpended={(instanceId) =>
                     onToggleExpended([instanceId])
@@ -1326,7 +1366,8 @@ export function PlayTesterPage() {
             cards={visDismantled}
             label="Dismantled"
             size="lg"
-            onReleaseCard={onFaceUpPileRelease}
+            onReleaseCards={onFaceUpPileRelease}
+            onBrowse={() => setPileBrowser("dismantled")}
             onCardContextMenu={onFloatCardContextMenu}
             onPileContextMenu={(x, y) =>
               onFaceUpPileContextMenu(PLAY_ZONE.dismantled, x, y)
@@ -1356,7 +1397,8 @@ export function PlayTesterPage() {
             cards={visTrash}
             label="Trashyard"
             size="lg"
-            onReleaseCard={onFaceUpPileRelease}
+            onReleaseCards={onFaceUpPileRelease}
+            onBrowse={() => setPileBrowser("trashyard")}
             onCardContextMenu={onFloatCardContextMenu}
             onPileContextMenu={(x, y) =>
               onFaceUpPileContextMenu(PLAY_ZONE.trashyard, x, y)
@@ -1386,10 +1428,21 @@ export function PlayTesterPage() {
           />
         </div>
 
-        <div className="flex max-w-[55%] flex-col items-end gap-0.5 text-right">
-          {roomStatusText ? (
+        <div className="pointer-events-auto flex max-w-[55%] flex-col items-end gap-0.5 text-right">
+          {netActive && playNet.code ? (
             <span className="font-mono text-[10px] text-cyan-100/80">
-              {roomStatusText}
+              <button
+                type="button"
+                className="underline decoration-cyan-400/50 underline-offset-2 hover:text-cyan-50 hover:decoration-cyan-200"
+                title="Copy room code"
+                aria-label={`Copy room code ${playNet.code}`}
+                onClick={() => {
+                  void copyRoomCode()
+                }}
+              >
+                {playNet.code}
+              </button>
+              {roomStatusMeta ? ` · ${roomStatusMeta}` : null}
             </span>
           ) : null}
           {playNotice ? (
@@ -1412,8 +1465,22 @@ export function PlayTesterPage() {
           </p>
         ) : null}
         {netActive && playNet.status === "waiting" ? (
-          <p className="font-mono text-xs text-cyan-100/80" role="status">
-            Waiting for opponent — share code {playNet.code}
+          <p
+            className="pl-12 font-mono text-xs text-cyan-100/80"
+            role="status"
+          >
+            Waiting for opponent — share code{" "}
+            <button
+              type="button"
+              className="underline decoration-cyan-400/60 underline-offset-2 hover:text-cyan-50 hover:decoration-cyan-200"
+              title="Copy room code"
+              aria-label={`Copy room code ${playNet.code ?? ""}`}
+              onClick={() => {
+                void copyRoomCode()
+              }}
+            >
+              {playNet.code}
+            </button>
           </p>
         ) : null}
         {playNet.status === "disconnected" ? (
@@ -1476,28 +1543,17 @@ export function PlayTesterPage() {
                 disabled={
                   mulliganOpen ||
                   Boolean(bottomAnim) ||
-                  (netActive && turnSeat !== localSeat)
+                  hasPendingDrawTimers()
                 }
                 className="font-buahs93 h-7 rounded-none bg-cyan-700 px-3 text-xs hover:bg-cyan-900 disabled:opacity-40"
                 onClick={onStartTurn}
-              />
-              <GlitchFx
-                type="button"
-                label="END TURN"
-                disabled={
-                  mulliganOpen ||
-                  Boolean(bottomAnim) ||
-                  (netActive && turnSeat !== localSeat)
-                }
-                className="font-buahs93 h-7 rounded-none bg-cyan-700 px-3 text-xs hover:bg-cyan-900 disabled:opacity-40"
-                onClick={onEndTurn}
               />
               <span
                 className="ml-auto font-buahs93 text-sm tracking-wide text-cyan-100/90"
                 aria-live="polite"
               >
                 Turn {turn}
-                {twoSeat ? ` · ${turnSeat}` : ""}
+                {twoSeat && !netActive ? ` · ${turnSeat}` : ""}
               </span>
             </div>
           </div>
@@ -1599,10 +1655,53 @@ export function PlayTesterPage() {
 
       <DeckSearchModal
         open={deckSearchOpen}
+        mode="library"
         sessionCards={sessionCards}
         owner={localSeat}
+        panelRef={searchPanelRef}
         onCancel={closeDeckSearch}
-        onCardRelease={onLibraryCardRelease}
+        onCardRelease={(ids, x, y) => {
+          const id = ids[0]
+          if (id) onLibraryCardRelease(id, x, y)
+        }}
+        onCardContextMenu={onFloatCardContextMenu}
+      />
+
+      <DeckSearchModal
+        open={pileBrowser != null}
+        mode="pile"
+        panelRef={
+          pileBrowser === "trashyard" || pileBrowser === "dismantled"
+            ? searchPanelRef
+            : undefined
+        }
+        title={
+          pileBrowser === "trashyard"
+            ? "Trashyard"
+            : pileBrowser === "dismantled"
+              ? "Dismantled"
+              : pileBrowser === "oppTrash"
+                ? "Opp trash"
+                : pileBrowser === "oppDismantled"
+                  ? "Opp dismantled"
+                  : "Pile"
+        }
+        cards={
+          pileBrowser === "trashyard"
+            ? visTrash
+            : pileBrowser === "dismantled"
+              ? visDismantled
+              : pileBrowser === "oppTrash"
+                ? visOppTrash
+                : pileBrowser === "oppDismantled"
+                  ? visOppDismantled
+                  : []
+        }
+        canDragOut={
+          pileBrowser === "trashyard" || pileBrowser === "dismantled"
+        }
+        onCancel={() => setPileBrowser(null)}
+        onCardRelease={onFaceUpPileRelease}
         onCardContextMenu={onFloatCardContextMenu}
       />
     </section>

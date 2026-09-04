@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { DECK_CARD_MAX_COPIES } from "./deckCardDrag"
+import {
+  DECK_CARD_MAX_COPIES,
+  DECK_CARD_MAX_COPIES_UNLIMITED,
+} from "./deckCardDrag"
 import {
   applyCardMove,
   augmentCards,
@@ -14,6 +17,7 @@ import {
   isReservedCategory,
   mainCategoryId,
   maxCopiesForCategory,
+  maxCopiesForDeckCard,
   maxQuantityForStackEntry,
   nextCardQuantity,
   nextNewSectionName,
@@ -25,8 +29,10 @@ import {
   toggleSelectionKey,
   totalCopiesOfCard,
   withCardEntry,
+  cardHasSuperType,
 } from "./deck.logic"
-import type { DeckCardEntry, DeckCategoryOut, DeckDetail } from "@/lib/api/decks"
+import type { DeckCategoryOut, DeckDetail } from "@/lib/api/decks"
+import { deckEntry } from "@/test/deckEntry.fixture"
 
 function cat(
   id: number,
@@ -37,29 +43,15 @@ function cat(
   return { id, name, sort_order, in_deck }
 }
 
-function card(
-  overrides: Partial<DeckCardEntry> &
-    Pick<DeckCardEntry, "card_id" | "category_id">
-): DeckCardEntry {
-  return {
-    card_name: overrides.card_name ?? `Card ${overrides.card_id}`,
-    quantity: overrides.quantity ?? 1,
-    category_name: overrides.category_name ?? "Main",
-    sort_order: overrides.sort_order ?? 0,
-    card_art_path: overrides.card_art_path ?? null,
-    invoke_cost: overrides.invoke_cost,
-    types_line: overrides.types_line,
-    card_art_version: overrides.card_art_version,
-    ...overrides,
-  }
-}
+const card = deckEntry
 
 describe("reserved categories", () => {
-  it("detects pilot and augment by name (case-insensitive)", () => {
+  it("detects pilot and augment names; only pilot is reserved", () => {
     expect(isPilotCategory(cat(1, "Pilot"))).toBe(true)
     expect(isPilotCategory(cat(1, " pilot "))).toBe(true)
     expect(isAugmentCategory(cat(2, "Augments"))).toBe(true)
     expect(isReservedCategory(cat(1, "Pilot"))).toBe(true)
+    expect(isReservedCategory(cat(2, "Augments"))).toBe(false)
     expect(isReservedCategory(cat(3, "Main"))).toBe(false)
   })
 })
@@ -90,7 +82,7 @@ describe("sortDeckCards", () => {
   ]
 
   it("sorts by name", () => {
-    expect(sortDeckCards(cards, "name").map((c) => c.card_name)).toEqual([
+    expect(sortDeckCards(cards, "name").map((c) => c.card.card_name)).toEqual([
       "Alpha",
       "Beta",
       "Zebra",
@@ -98,20 +90,20 @@ describe("sortDeckCards", () => {
   })
 
   it("sorts by invoke cost then name", () => {
-    expect(sortDeckCards(cards, "invoke").map((c) => c.card_id)).toEqual([
+    expect(sortDeckCards(cards, "invoke").map((c) => c.card.id)).toEqual([
       2, 3, 1,
     ])
   })
 
   it("sorts by type then name", () => {
-    expect(sortDeckCards(cards, "type").map((c) => c.card_id)).toEqual([
+    expect(sortDeckCards(cards, "type").map((c) => c.card.id)).toEqual([
       2, 3, 1,
     ])
   })
 })
 
 describe("cardsByCategory", () => {
-  it("omits reserved sections and groups remaining cards", () => {
+  it("omits reserved and augment sections and groups remaining cards", () => {
     const categories = [
       cat(1, "Pilot", -2),
       cat(2, "Augments", -1),
@@ -126,7 +118,7 @@ describe("cardsByCategory", () => {
     ]
     const groups = cardsByCategory(cards, categories, "name")
     expect(groups.map((g) => g.category.name)).toEqual(["Main", "Side"])
-    expect(groups[0].cards.map((c) => c.card_id)).toEqual([21, 20])
+    expect(groups[0].cards.map((c) => c.card.id)).toEqual([21, 20])
   })
 })
 
@@ -159,7 +151,7 @@ describe("mainCategoryId", () => {
     ).toBe(4)
   })
 
-  it("returns null when only reserved categories exist", () => {
+  it("returns null when only pilot and legacy augment categories exist", () => {
     expect(mainCategoryId([cat(1, "Pilot"), cat(2, "Augments")])).toBeNull()
   })
 })
@@ -178,12 +170,12 @@ describe("pilotCard / augmentCards", () => {
   ]
 
   it("finds the pilot card", () => {
-    expect(pilotCard(cards, categories)?.card_id).toBe(99)
+    expect(pilotCard(cards, categories)?.card.id).toBe(99)
   })
 
   it("returns augment cards only", () => {
     expect(
-      augmentCards(cards, categories, "name").map((c) => c.card_id)
+      augmentCards(cards, categories, "name").map((c) => c.card.id)
     ).toEqual([50])
   })
 })
@@ -239,7 +231,7 @@ describe("withCardEntry / applyCardMove", () => {
     ]
     const updated = card({ card_id: 1, category_id: 20, quantity: 2 })
     const next = applyCardMove(working, 10, updated)
-    expect(next.map((c) => `${c.category_id}:${c.card_id}`)).toEqual([
+    expect(next.map((c) => `${c.category_id}:${c.card.id}`)).toEqual([
       "10:2",
       "20:1",
     ])
@@ -281,13 +273,24 @@ describe("categoryCountsInDeck", () => {
 describe("quantity rules", () => {
   it("allows up to 3 copies in normal sections", () => {
     expect(maxCopiesForCategory(cat(1, "Main"))).toBe(DECK_CARD_MAX_COPIES)
+    expect(maxCopiesForCategory(cat(2, "Augments"))).toBe(DECK_CARD_MAX_COPIES)
     expect(nextCardQuantity(2, 1, DECK_CARD_MAX_COPIES)).toBe(3)
     expect(nextCardQuantity(3, 1, DECK_CARD_MAX_COPIES)).toBeNull()
   })
 
-  it("limits augments to 1 copy", () => {
-    expect(maxCopiesForCategory(cat(2, "Augments"))).toBe(1)
-    expect(nextCardQuantity(1, 1, 1)).toBeNull()
+  it("allows unlimited copies for Token super-type", () => {
+    const token = card({
+      card_id: 9,
+      category_id: 1,
+      super_types: ["Entity", "Token"],
+    })
+    expect(cardHasSuperType(token, "Token")).toBe(true)
+    expect(maxCopiesForDeckCard(cat(1, "Main"), token)).toBe(
+      DECK_CARD_MAX_COPIES_UNLIMITED
+    )
+    expect(
+      maxCopiesForDeckCard(cat(1, "Main"), { super_types: ["Token"] })
+    ).toBe(DECK_CARD_MAX_COPIES_UNLIMITED)
   })
 
   it("returns 0 when decrementing the last copy", () => {
@@ -365,7 +368,7 @@ describe("selection helpers", () => {
     expect(selectionRangeKeys(["a", "b"], null, "b")).toEqual(["b"])
   })
 
-  it("orders selection keys as augments then playable sections", () => {
+  it("orders selection keys across playable sections only", () => {
     const categories = [
       cat(1, "Pilot", -2),
       cat(2, "Augments", -1),
@@ -378,7 +381,6 @@ describe("selection helpers", () => {
       card({ card_id: 5, category_id: 1, card_name: "Pilot" }),
     ]
     expect(orderedSelectionKeys(cards, categories, "name")).toEqual([
-      "2:9",
       "3:1",
       "3:2",
     ])

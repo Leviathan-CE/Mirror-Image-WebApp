@@ -3,7 +3,7 @@
  */
 
 import { apiBaseUrl, authHeaders, readJsonOrThrow } from "@/lib/api/client"
-import type { CardLibraryQuery } from "@/lib/api/cards"
+import type { CardLibraryItem, CardLibraryQuery } from "@/lib/api/cards"
 
 export type PublishStatus = "published" | "preview" | "not published"
 
@@ -30,6 +30,7 @@ export type AdminCardItem = {
   published: PublishStatus | string
   is_deprecated: boolean
   card_art_path: string | null
+  card_thumbnail_path?: string | null
   card_art_version?: number | null
 }
 
@@ -44,6 +45,10 @@ export type AdminCardBulkUpdate = {
   card_ids: number[]
   published?: PublishStatus
   lagality?: string
+}
+
+export type AdminCardDeleteRequest = {
+  card_ids: number[]
 }
 
 /** Admin catalogue browse — same filters as user card library + publish status. */
@@ -79,6 +84,7 @@ export async function fetchAdminCardLibrary(
   if (query.published) {
     url.searchParams.set("published", query.published)
   }
+  if (query.sort) url.searchParams.set("sort", query.sort)
   url.searchParams.set("limit", String(query.limit ?? 48))
   url.searchParams.set("offset", String(query.offset ?? 0))
 
@@ -89,22 +95,8 @@ export async function fetchAdminCardLibrary(
   )
 }
 
-export type AdminCardDetail = {
-  id: number
-  card_name: string
-  card_set_name: string
-  rarity: string
-  invoke_cost: number
-  cost: string[]
-  super_types: string[]
-  sub_types: string[]
-  types_line: string
-  description: string
-  keywords: string[]
-  show_help_text: boolean
-  threat_level: string
-  card_art_path: string | null
-  card_art_version?: number | null
+/** Admin detail = library card row + publish / lagality flags. */
+export type AdminCardDetail = CardLibraryItem & {
   lagality: string
   published: PublishStatus | string
   is_deprecated: boolean
@@ -137,5 +129,24 @@ export async function bulkUpdateAdminCards(
   return readJsonOrThrow<{ updated: number }>(
     response,
     "admin_bulk_update_failed"
+  )
+}
+
+/** Permanently delete selected catalogue cards. */
+export async function deleteAdminCards(
+  token: string,
+  body: AdminCardDeleteRequest
+): Promise<{ deleted: number; skipped: number }> {
+  const response = await fetch(`${apiBaseUrl()}/cards/admin/delete`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(token),
+    },
+    body: JSON.stringify(body),
+  })
+  return readJsonOrThrow<{ deleted: number; skipped: number }>(
+    response,
+    "admin_card_delete_failed"
   )
 }

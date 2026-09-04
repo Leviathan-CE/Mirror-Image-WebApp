@@ -33,6 +33,8 @@ type AuthContextValue = {
   setSession: (token: string, user: AuthUser) => void
   /** Clear JWT + user (logout). */
   clearSession: () => void
+  /** Keep cached /me preferences in sync after a Settings flush. */
+  updateUserPreferences: (preferences: AuthUser["preferences"]) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -64,6 +66,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setToken(null)
     setUser(null)
   }, [])
+
+  const updateUserPreferences = useCallback(
+    (preferences: AuthUser["preferences"]) => {
+      setUser((prev) => {
+        if (!prev) return prev
+        const next = { ...prev, preferences }
+        localStorage.setItem(USER_KEY, JSON.stringify(next))
+        return next
+      })
+    },
+    []
+  )
 
   // Keep role/profile fresh — fixes sessions saved before `role` existed.
   useEffect(() => {
@@ -104,8 +118,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       isAuthenticated: Boolean(token && user),
       setSession,
       clearSession,
+      updateUserPreferences,
     }),
-    [user, token, setSession, clearSession]
+    [user, token, setSession, clearSession, updateUserPreferences]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

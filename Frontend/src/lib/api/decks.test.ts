@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { cardArtUrl, deckCoverUrl, fetchDeckDetail } from "@/lib/api/decks"
+import { cardArtUrl, cardFaceUrl, deckCoverUrl, fetchDeckDetail } from "@/lib/api/decks"
 
 type FetchMock = ReturnType<typeof stubFetch>
 
@@ -95,6 +95,28 @@ describe("cardArtUrl", () => {
   it("passes absolute urls through untouched", () => {
     const external = "https://cdn.example.com/art.png"
     expect(cardArtUrl(external, 7)).toBe(external)
+  })
+})
+
+describe("cardFaceUrl", () => {
+  it("prefers the full-card thumbnail over illustration art", () => {
+    const url = cardFaceUrl({
+      card_thumbnail_path: "media/set/card_thumbnail.png",
+      card_art_path: "media/set/art_only.png",
+      card_art_version: 3,
+    })
+
+    expect(url).toContain("card_thumbnail.png")
+    expect(url).toContain("v=3")
+  })
+
+  it("falls back to illustration when no thumbnail exists", () => {
+    expect(
+      cardFaceUrl({
+        card_art_path: "media/set/art_only.png",
+        card_art_version: 1,
+      })
+    ).toContain("art_only.png")
   })
 })
 

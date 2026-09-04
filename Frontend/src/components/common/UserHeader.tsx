@@ -1,23 +1,16 @@
 import { useNavigate } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
+import { AccountMenu } from "@/components/common/AccountMenu"
 import { HeaderShell } from "@/components/common/HeaderShell"
-import {
-  headerUserNameClassName,
-  navButtonClassName,
-} from "@/components/common/headerStyles"
+import { navButtonClassName } from "@/components/common/headerStyles"
 import { Button } from "@/components/ui/button"
 import { ADMIN_ROLE, ROUTES } from "@/lib/route"
 
 export function Userheader() {
   const navigate = useNavigate()
-  const { user, clearSession } = useAuth()
+  const { user } = useAuth()
   const isAdmin = user?.role === ADMIN_ROLE
-
-  function onLogout() {
-    clearSession()
-    navigate(ROUTES.HOME, { replace: true })
-  }
 
   return (
     <HeaderShell
@@ -48,12 +41,6 @@ export function Userheader() {
           >
             LORE
           </Button>
-          <Button
-            className={navButtonClassName}
-            onClick={() => navigate(ROUTES.SUBSCRIBE)}
-          >
-            SUBSCRIBE
-          </Button>
           {isAdmin ? (
             <Button
               className={navButtonClassName}
@@ -64,16 +51,7 @@ export function Userheader() {
           ) : null}
         </>
       }
-      actions={
-        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-          {user ? (
-            <span className={headerUserNameClassName}>{user.user_name}</span>
-          ) : null}
-          <Button className={navButtonClassName} onClick={onLogout}>
-            LOGOUT
-          </Button>
-        </div>
-      }
+      actions={<AccountMenu />}
     />
   )
 }

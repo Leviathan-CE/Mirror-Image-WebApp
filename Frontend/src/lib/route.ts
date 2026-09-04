@@ -17,8 +17,11 @@ export const ROUTES = {
   DECK_COMUNITY: "/comunity_decks",
   PLAY_TESTER: "/play_tester",
 
-  /** Stripe subscription / billing. */
+  /** Legacy path — redirects to ACCOUNT (keeps Stripe query params). */
   SUBSCRIBE: "/subscribe",
+
+  /** Logged-in account UI prefs. */
+  ACCOUNT: "/account",
 
   /** Admin console (role: admin). */
   ADMIN: "/admin",

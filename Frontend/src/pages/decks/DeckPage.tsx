@@ -5,21 +5,23 @@
  * - Owner can edit name, description, visibility, and categories.
  */
 
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react"
+import { ThumbsUp } from "lucide-react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
+import { useUserPreferences } from "@/app/providers/PreferencesProvider"
 import { sharedImages } from "@/assets"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { DeckBoard } from "@/components/decks/DeckBoard"
 import { DeckCardSearch } from "@/components/decks/DeckCardSearch"
+import { DeckDescription } from "@/components/decks/DeckDescription"
+import { collectDeckPrintoutSlots } from "@/components/decks/deckPrintout.logic"
 import {
   DeckCardSortControls,
-  type DeckCardSortMode,
 } from "@/components/decks/DeckCardSortControls"
 import {
   DeckCardViewControls,
-  type DeckCardViewMode,
 } from "@/components/decks/DeckCardViewControls"
 import {
   cardsFromDragPayload,
@@ -29,12 +31,11 @@ import {
 import { CardLibraryBrowser } from "@/components/cards/CardLibraryBrowser"
 import "@/components/decks/DeckCardStack.css"
 import {
-  augmentCategory,
   canAddCopyToDeck,
   clampQuantityToMax,
   deckCardCount,
   mainCategoryId,
-  maxCopiesForCategory,
+  maxCopiesForDeckCard,
   maxQuantityForStackEntry,
   nextCardQuantity,
   nextNewSectionName,
@@ -49,7 +50,8 @@ import { useCardSelection } from "@/hooks/useCardSelection"
 import { useDeckDetail } from "@/hooks/useDeckDetail"
 import { DeckTagSuggestInput } from "@/components/decks/DeckTagSuggestInput"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
-import { DropdownMenu } from "@/components/ui/DropdownMenu"
+import { ContextMenu } from "@/components/ui/ContextMenu"
+import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/DropdownMenu"
 import {
   PublicTextArea,
   PublicTextField,
@@ -64,12 +66,10 @@ import { fetchCardById, type CardSearchHit } from "@/lib/api/cards"
 import {
   addDeckCard,
   addDeckTag,
-  AUGMENT_SECTION_NAME,
   copyDeck,
   createDeckCategory,
   deleteDeck,
   deleteDeckCategory,
-  deckCoverUrl,
   likeDeck,
   PILOT_SECTION_NAME,
   removeDeckCard,
@@ -80,19 +80,16 @@ import {
   updateDeckCategory,
   type DeckCardEntry,
 } from "@/lib/api/decks"
-import { ROUTES } from "@/lib/route"
+import { ROUTES, ADMIN_ROLE } from "@/lib/route"
 import { cn } from "@/lib/utils"
+import {
+  BROWSE_WIDTH_DEFAULT,
+  BROWSE_WIDTH_MIN,
+  clampBrowseWidth,
+} from "@/lib/userPreferences.logic"
 
-const BROWSE_WIDTH_STORAGE_KEY = "mi-deck-browse-width-px"
-const BROWSE_WIDTH_MIN = 280
 /** Leave this much horizontal room for the deck board while resizing. */
 const BROWSE_WIDTH_DECK_REMAIN_MIN = 280
-const BROWSE_WIDTH_DEFAULT = 352
-
-const CARD_SORT_STORAGE_KEY = "mi-deck-card-sort-mode"
-const CARD_VIEW_STORAGE_KEY = "mi-deck-card-view-mode"
-const CARD_SORT_DEFAULT: DeckCardSortMode = "type"
-const CARD_VIEW_DEFAULT: DeckCardViewMode = "cards"
 
 /** Widest the library panel may grow — viewport minus a thin deck strip. */
 function maxBrowseWidth(): number {
@@ -103,49 +100,8 @@ function maxBrowseWidth(): number {
   )
 }
 
-function clampBrowseWidth(width: number): number {
-  return Math.min(
-    maxBrowseWidth(),
-    Math.max(BROWSE_WIDTH_MIN, Math.round(width))
-  )
-}
-
-function readStoredBrowseWidth(): number {
-  try {
-    const raw = window.localStorage.getItem(BROWSE_WIDTH_STORAGE_KEY)
-    const parsed = raw == null ? NaN : Number(raw)
-    return Number.isFinite(parsed)
-      ? clampBrowseWidth(parsed)
-      : BROWSE_WIDTH_DEFAULT
-  } catch {
-    return BROWSE_WIDTH_DEFAULT
-  }
-}
-
-function isCardSortMode(value: string): value is DeckCardSortMode {
-  return value === "type" || value === "invoke" || value === "name"
-}
-
-function isCardViewMode(value: string): value is DeckCardViewMode {
-  return value === "cards" || value === "list"
-}
-
-function readStoredCardSortMode(): DeckCardSortMode {
-  try {
-    const raw = window.localStorage.getItem(CARD_SORT_STORAGE_KEY)
-    return raw != null && isCardSortMode(raw) ? raw : CARD_SORT_DEFAULT
-  } catch {
-    return CARD_SORT_DEFAULT
-  }
-}
-
-function readStoredCardViewMode(): DeckCardViewMode {
-  try {
-    const raw = window.localStorage.getItem(CARD_VIEW_STORAGE_KEY)
-    return raw != null && isCardViewMode(raw) ? raw : CARD_VIEW_DEFAULT
-  } catch {
-    return CARD_VIEW_DEFAULT
-  }
+function clampDeckBrowseWidth(width: number): number {
+  return clampBrowseWidth(width, maxBrowseWidth())
 }
 
 export function DeckPage() {
@@ -153,6 +109,10 @@ export function DeckPage() {
   const deckId = Number(deckIdParam)
   const navigate = useNavigate()
   const { user, token, isAuthenticated } = useAuth()
+  const { prefs, patchPrefs } = useUserPreferences()
+  const browseWidth = clampDeckBrowseWidth(prefs.deck_browse_width_px)
+  const cardSortMode = prefs.deck_sort
+  const cardViewMode = prefs.deck_view
 
   const {
     deck,
@@ -166,19 +126,16 @@ export function DeckPage() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deckCtxMenu, setDeckCtxMenu] = useState<{ x: number; y: number } | null>(
+    null
+  )
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [isPublic, setIsPublic] = useState(false)
   const [searchMenuOpen, setSearchMenuOpen] = useState(false)
   const [browseOpen, setBrowseOpen] = useState(true)
-  const [browseWidth, setBrowseWidth] = useState(BROWSE_WIDTH_DEFAULT)
-  const [cardSortMode, setCardSortMode] = useState<DeckCardSortMode>(() =>
-    typeof window === "undefined" ? CARD_SORT_DEFAULT : readStoredCardSortMode()
-  )
-  const [cardViewMode, setCardViewMode] = useState<DeckCardViewMode>(() =>
-    typeof window === "undefined" ? CARD_VIEW_DEFAULT : readStoredCardViewMode()
-  )
   const [tagDraft, setTagDraft] = useState("")
+  const [printoutBusy, setPrintoutBusy] = useState(false)
   const browseResizeRef = useRef<{
     pointerId: number
     startX: number
@@ -186,44 +143,23 @@ export function DeckPage() {
   } | null>(null)
 
   useEffect(() => {
-    setBrowseWidth(readStoredBrowseWidth())
-  }, [])
+    const clamped = clampDeckBrowseWidth(prefs.deck_browse_width_px)
+    if (clamped !== prefs.deck_browse_width_px) {
+      patchPrefs({ deck_browse_width_px: clamped })
+    }
+  }, [prefs.deck_browse_width_px, patchPrefs])
 
   // If the window shrinks, pull the panel back so it still leaves room for the board.
   useEffect(() => {
     function onWindowResize() {
-      setBrowseWidth((w) => clampBrowseWidth(w))
+      const clamped = clampDeckBrowseWidth(prefs.deck_browse_width_px)
+      if (clamped !== prefs.deck_browse_width_px) {
+        patchPrefs({ deck_browse_width_px: clamped })
+      }
     }
     window.addEventListener("resize", onWindowResize)
     return () => window.removeEventListener("resize", onWindowResize)
-  }, [])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(
-        BROWSE_WIDTH_STORAGE_KEY,
-        String(browseWidth)
-      )
-    } catch {
-      /* private mode / quota */
-    }
-  }, [browseWidth])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(CARD_SORT_STORAGE_KEY, cardSortMode)
-    } catch {
-      /* private mode / quota */
-    }
-  }, [cardSortMode])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(CARD_VIEW_STORAGE_KEY, cardViewMode)
-    } catch {
-      /* private mode / quota */
-    }
-  }, [cardViewMode])
+  }, [prefs.deck_browse_width_px, patchPrefs])
 
   function onBrowseResizePointerDown(
     event: ReactPointerEvent<HTMLDivElement>
@@ -245,9 +181,11 @@ export function DeckPage() {
     const drag = browseResizeRef.current
     if (!drag || drag.pointerId !== event.pointerId) return
     // Panel is on the right — drag handle leftward = wider.
-    setBrowseWidth(
-      clampBrowseWidth(drag.startWidth - (event.clientX - drag.startX))
-    )
+    patchPrefs({
+      deck_browse_width_px: clampDeckBrowseWidth(
+        drag.startWidth - (event.clientX - drag.startX)
+      ),
+    })
   }
 
   function onBrowseResizePointerUp(event: ReactPointerEvent<HTMLDivElement>) {
@@ -263,6 +201,36 @@ export function DeckPage() {
 
   const canEdit =
     Boolean(deck && user && deck.author_name === user.user_name && token)
+  const isAdmin = user?.role === ADMIN_ROLE
+
+  async function onCreatePrintout() {
+    if (!deck || printoutBusy) return
+    const slots = collectDeckPrintoutSlots(deck)
+    if (slots.length === 0) {
+      setErrorText("No cards marked for the deck to print.")
+      return
+    }
+    setPrintoutBusy(true)
+    setErrorText("")
+    try {
+      const { generateDeckPrintoutPdf } = await import(
+        "@/components/decks/generateDeckPrintoutPdf"
+      )
+      const result = await generateDeckPrintoutPdf({
+        deckName: deck.name ?? `Deck ${deck.id}`,
+        slots,
+      })
+      if (result.missingArt > 0) {
+        setErrorText(
+          `Printout saved — ${result.missingArt} card(s) had no art and used name placeholders.`
+        )
+      }
+    } catch {
+      setErrorText("Could not build the printout PDF.")
+    } finally {
+      setPrintoutBusy(false)
+    }
+  }
 
   async function onCopyDeck() {
     if (!token || !deck || saving) return
@@ -461,6 +429,22 @@ export function DeckPage() {
     }
   }
 
+  function onDeckPageContextMenu(event: ReactMouseEvent<HTMLElement>) {
+    if (!canEdit || saving) return
+    const target = event.target
+    if (!(target instanceof Element)) return
+    // Cards / pilot / form controls keep their own right-click behavior.
+    if (
+      target.closest(
+        "li, input, textarea, select, button, a, [role='menu'], [role='menuitem'], [data-deck-no-page-ctx]"
+      )
+    ) {
+      return
+    }
+    event.preventDefault()
+    setDeckCtxMenu({ x: event.clientX, y: event.clientY })
+  }
+
   async function onCreateSectionFromDrop(payload: DeckCardDragPayload) {
     if (!token || !deck || !canEdit) return
 
@@ -633,7 +617,7 @@ export function DeckPage() {
 
     const source = workingCards.find(
       (card) =>
-        card.card_id === cardId && card.category_id === fromCategoryId
+        card.card.id === cardId && card.category_id === fromCategoryId
     )
     if (!source) return workingCards
 
@@ -642,11 +626,11 @@ export function DeckPage() {
       name: "",
       sort_order: 0,
     }
-    const maxCopies = maxCopiesForCategory(destCategory)
     const existingDest = workingCards.find(
       (card) =>
-        card.card_id === cardId && card.category_id === toCategoryId
+        card.card.id === cardId && card.category_id === toCategoryId
     )
+    const maxCopies = maxCopiesForDeckCard(destCategory, source)
     const destQty = existingDest?.quantity ?? 0
     if (destQty >= maxCopies) {
       throw new Error("max_copies")
@@ -773,10 +757,20 @@ export function DeckPage() {
       return
     }
 
-    const maxCopies = maxCopiesForCategory(category)
     const existing = deck.cards.find(
-      (card) => card.card_id === cardId && card.category_id === toCategoryId
+      (card) => card.card.id === cardId && card.category_id === toCategoryId
     )
+    const known =
+      existing ?? deck.cards.find((card) => card.card.id === cardId)
+    let maxCopies = maxCopiesForDeckCard(category, known)
+    if (!known) {
+      try {
+        const detail = await fetchCardById(cardId, token)
+        maxCopies = maxCopiesForDeckCard(category, detail)
+      } catch {
+        // Default to standard 3 until the card is on the board.
+      }
+    }
 
     if (existing) {
       const stackMax = maxQuantityForStackEntry(
@@ -797,7 +791,7 @@ export function DeckPage() {
       try {
         const updated = await updateDeckCard(
           deck.id,
-          existing.card_id,
+          existing.card.id,
           existing.category_id,
           token,
           { quantity: nextQty }
@@ -833,7 +827,7 @@ export function DeckPage() {
       if (clampedQty < entry.quantity) {
         const clamped = await updateDeckCard(
           deck.id,
-          entry.card_id,
+          entry.card.id,
           entry.category_id,
           token,
           { quantity: clampedQty }
@@ -869,12 +863,12 @@ export function DeckPage() {
       name: "",
       sort_order: 0,
     }
-    const maxCopies = maxCopiesForCategory(category)
+    const maxCopies = maxCopiesForDeckCard(category, card)
     const stackMax =
       delta > 0
         ? maxQuantityForStackEntry(
             deck.cards,
-            card.card_id,
+            card.card.id,
             card.quantity,
             maxCopies
           )
@@ -885,12 +879,12 @@ export function DeckPage() {
     setErrorText("")
     try {
       if (nextQty <= 0) {
-        await removeDeckCard(deck.id, card.card_id, card.category_id, token)
+        await removeDeckCard(deck.id, card.card.id, card.category_id, token)
         setDeck((prev) => {
           if (!prev) return prev
           const cards = removeCardEntry(
             prev.cards,
-            card.card_id,
+            card.card.id,
             card.category_id
           )
           return {
@@ -904,7 +898,7 @@ export function DeckPage() {
 
       const updated = await updateDeckCard(
         deck.id,
-        card.card_id,
+        card.card.id,
         card.category_id,
         token,
         { quantity: nextQty }
@@ -912,7 +906,7 @@ export function DeckPage() {
       setDeck((prev) => {
         if (!prev) return prev
         const cards = prev.cards.map((entry) =>
-          entry.card_id === card.card_id &&
+          entry.card.id === card.card.id &&
             entry.category_id === card.category_id
             ? updated
             : entry
@@ -940,10 +934,6 @@ export function DeckPage() {
         await assignPilot(hit.id, null)
         return
       }
-      if (detail.is_augment) {
-        await addAugment(hit.id, null)
-        return
-      }
 
       const categoryId = mainCategoryId(deck.categories)
       if (categoryId == null) {
@@ -951,7 +941,17 @@ export function DeckPage() {
         return
       }
 
-      const canAdd = canAddCopyToDeck(totalCopiesOfCard(deck.cards, hit.id))
+      const category =
+        deck.categories.find((c) => c.id === categoryId) ?? {
+          id: categoryId,
+          name: "",
+          sort_order: 0,
+        }
+      const maxCopies = maxCopiesForDeckCard(category, detail)
+      const canAdd = canAddCopyToDeck(
+        totalCopiesOfCard(deck.cards, hit.id),
+        maxCopies
+      )
       if (!canAdd.ok) {
         setErrorText(canAdd.message)
         return
@@ -962,11 +962,11 @@ export function DeckPage() {
         category_id: categoryId,
         quantity: 1,
       })
-      const clampedQty = clampQuantityToMax(entry.quantity)
+      const clampedQty = clampQuantityToMax(entry.quantity, maxCopies)
       if (clampedQty < entry.quantity) {
         const clamped = await updateDeckCard(
           deck.id,
-          entry.card_id,
+          entry.card.id,
           entry.category_id,
           token,
           { quantity: clampedQty }
@@ -977,97 +977,6 @@ export function DeckPage() {
       setDeck((prev) => (prev ? withCardEntry(prev, entry) : prev))
     } catch {
       setErrorText("Could not add that card.")
-    }
-  }
-
-  async function ensureAugmentCategoryId(): Promise<number | null> {
-    if (!token || !deck) return null
-    const existing = augmentCategory(deck.categories)
-    if (existing) return existing.id
-
-    const created = await createDeckCategory(
-      deck.id,
-      token,
-      AUGMENT_SECTION_NAME,
-      { in_deck: false }
-    )
-    setDeck((prev) =>
-      prev
-        ? {
-          ...prev,
-          categories: [...prev.categories, created],
-        }
-        : prev
-    )
-    return created.id
-  }
-
-  async function addAugment(
-    cardId: number,
-    fromCategoryId: number | null
-  ) {
-    if (!token || !deck || !canEdit) return
-
-    const detail = await fetchCardById(cardId, token)
-    if (!detail.is_augment) {
-      setErrorText("Only augment cards can go in Augments.")
-      return
-    }
-
-    const augmentCatId = await ensureAugmentCategoryId()
-    if (augmentCatId == null) {
-      setErrorText("Could not open the Augments section.")
-      return
-    }
-
-    const already = deck.cards.find(
-      (card) => card.card_id === cardId && card.category_id === augmentCatId
-    )
-    if (already) {
-      setErrorText("That augment is already in the list.")
-      return
-    }
-
-    setSaving(true)
-    setErrorText("")
-    try {
-      let entry: DeckCardEntry
-      if (fromCategoryId != null && fromCategoryId !== augmentCatId) {
-        entry = await updateDeckCard(deck.id, cardId, fromCategoryId, token, {
-          category_id: augmentCatId,
-          quantity: 1,
-        })
-      } else {
-        entry = await addDeckCard(deck.id, token, {
-          card_id: cardId,
-          category_id: augmentCatId,
-          quantity: 1,
-        })
-      }
-
-      setDeck((prev) => {
-        if (!prev) return prev
-        const withoutSource =
-          fromCategoryId != null
-            ? prev.cards.filter(
-              (card) =>
-                !(
-                  card.card_id === cardId &&
-                  card.category_id === fromCategoryId
-                )
-            )
-            : prev.cards
-        return withCardEntry(
-          { ...prev, cards: withoutSource },
-          { ...entry, quantity: 1 }
-        )
-      })
-      clearCardSelection()
-    } catch {
-      setErrorText("Could not add that augment.")
-      await loadDeck()
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -1112,7 +1021,7 @@ export function DeckPage() {
     }
 
     const current = pilotCard(deck.cards, deck.categories)
-    if (current && current.card_id === cardId && current.category_id === pilotCatId) {
+    if (current && current.card.id === cardId && current.category_id === pilotCatId) {
       return
     }
 
@@ -1122,7 +1031,7 @@ export function DeckPage() {
       if (current) {
         await removeDeckCard(
           deck.id,
-          current.card_id,
+          current.card.id,
           current.category_id,
           token
         )
@@ -1152,7 +1061,7 @@ export function DeckPage() {
             ? withoutOldPilot.filter(
               (card) =>
                 !(
-                  card.card_id === cardId &&
+                  card.card.id === cardId &&
                   card.category_id === fromCategoryId
                 )
             )
@@ -1181,7 +1090,7 @@ export function DeckPage() {
     try {
       await removeDeckCard(
         deck.id,
-        current.card_id,
+        current.card.id,
         current.category_id,
         token
       )
@@ -1190,7 +1099,7 @@ export function DeckPage() {
         const cards = prev.cards.filter(
           (card) =>
             !(
-              card.card_id === current.card_id &&
+              card.card.id === current.card.id &&
               card.category_id === current.category_id
             )
         )
@@ -1207,12 +1116,11 @@ export function DeckPage() {
     }
   }
 
-  const cover = deckCoverUrl(deck?.cover_image_path)
-
   return (
     <section
       className="relative min-h-screen max-w-full overflow-x-clip bg-cover bg-center bg-no-repeat px-4 py-12 sm:px-6 lg:px-8 xl:px-10 2xl:px-12"
       style={{ backgroundImage: `url(${sharedImages.ZONE_BACKGROUND})` }}
+      onContextMenu={onDeckPageContextMenu}
     >
       <div className="absolute inset-0 bg-black/65" aria-hidden />
 
@@ -1260,21 +1168,24 @@ export function DeckPage() {
 
         {status === "ready" && deck ? (
           <>
+            <p className="mb-4 font-mono text-xs text-cyan-300/60">
+              {deck.card_count} cards · {deck.categories.length} sections ·{" "}
+              {deck.like_count ?? 0} likes · {deck.view_count ?? 0} views
+            </p>
+            {!editing && (deck.tags ?? []).length > 0 ? (
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                {(deck.tags ?? []).map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1 border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-mono text-[11px] text-cyan-100"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : null}
             <header className="mb-8 border-b border-cyan-500/20 pb-6">
-              <div className="flex flex-wrap items-start gap-6">
-                {cover ? (
-                  <img
-                    src={cover}
-                    alt=""
-                    className="h-28 w-28 shrink-0 border border-cyan-500/30 object-cover"
-                  />
-                ) : (
-                  <div className="flex h-28 w-28 shrink-0 items-center justify-center border border-dashed border-cyan-500/25 bg-black/40 font-mono text-[10px] text-cyan-500/50">
-                    NO COVER
-                  </div>
-                )}
-
-                <div className="min-w-0 flex-1">
+              <div className="min-w-0">
                   {editing && canEdit ? (
                     <div className="flex flex-col gap-3">
                       <PublicTextField
@@ -1286,7 +1197,7 @@ export function DeckPage() {
                       <PublicTextArea
                         value={description}
                         onChange={setDescription}
-                        placeholder="description"
+                        placeholder="description (markdown supported)"
                         disabled={saving}
                         rows={3}
                       />
@@ -1300,6 +1211,47 @@ export function DeckPage() {
                         />
                         PUBLIC
                       </label>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {(deck.tags ?? []).map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center gap-1 border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-mono text-[11px] text-cyan-100"
+                          >
+                            {tag}
+                            <button
+                              type="button"
+                              className="text-cyan-300/70 hover:text-red-300"
+                              disabled={saving}
+                              aria-label={`Remove tag ${tag}`}
+                              onClick={() => void onRemoveTag(tag)}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex w-full min-w-0 max-w-lg items-center gap-2">
+                        <DeckTagSuggestInput
+                          value={tagDraft}
+                          onChange={setTagDraft}
+                          exclude={deck.tags ?? []}
+                          disabled={saving}
+                          onPick={(tag) => void onAddTag(tag)}
+                        />
+                        <div className="shrink-0">
+                          <GlitchFx
+                            type="button"
+                            label="ADD TAG"
+                            disabled={
+                              saving ||
+                              !tagDraft.trim() ||
+                              !isPublicTextClean(tagDraft)
+                            }
+                            className="font-buahs93 h-8 rounded-none border border-cyan-500/40 bg-black/70 px-4 text-xs text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 disabled:opacity-60"
+                            onClick={() => void onAddTag()}
+                          />
+                        </div>
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         <GlitchFx
                           type="button"
@@ -1320,41 +1272,88 @@ export function DeckPage() {
                             setName(deck.name ?? "")
                             setDescription(deck.description ?? "")
                             setIsPublic(deck.is_public)
+                            setTagDraft("")
                           }}
                         />
                       </div>
                     </div>
                   ) : (
                     <>
-                      <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="flex flex-wrap items-start gap-2">
                         <div className="flex min-w-0 items-center gap-2">
                           <h1 className="font-glitch text-3xl text-cyan-300 sm:text-4xl">
                             {deck.name ?? `Deck #${deck.id}`}
                           </h1>
-                          {canEdit ? (
+                          {isAuthenticated && token ? (
+                            <button
+                              type="button"
+                              disabled={saving}
+                              aria-pressed={deck.liked_by_me}
+                              aria-label={
+                                deck.liked_by_me
+                                  ? `Unlike deck (${deck.like_count ?? 0} likes)`
+                                  : `Like deck (${deck.like_count ?? 0} likes)`
+                              }
+                              title={
+                                deck.liked_by_me
+                                  ? `Liked · ${deck.like_count ?? 0}`
+                                  : `Like · ${deck.like_count ?? 0}`
+                              }
+                              className={cn(
+                                "clip-angled flex h-8 w-8 shrink-0 items-center justify-center rounded-none border-0 disabled:opacity-50",
+                                deck.liked_by_me
+                                  ? "text-cyan-300 hover:bg-cyan-500/10 hover:text-cyan-100"
+                                  : "text-cyan-200/80 hover:bg-cyan-500/10 hover:text-white"
+                              )}
+                              onClick={() => void onToggleLike()}
+                            >
+                              <ThumbsUp
+                                className={cn(
+                                  "h-4 w-4",
+                                  deck.liked_by_me && "fill-current"
+                                )}
+                                aria-hidden
+                              />
+                            </button>
+                          ) : null}
+                          {isAuthenticated && token ? (
                             <DropdownMenu
                               label="Deck options"
                               disabled={saving}
                               className="shrink-0"
                               items={[
                                 {
-                                  id: "edit-details",
-                                  label: "Edit details",
-                                  onSelect: () => setEditing(true),
+                                  id: "copy-deck",
+                                  label: saving ? "Copying…" : "Copy to my decks",
+                                  disabled: saving,
+                                  onSelect: () => void onCopyDeck(),
                                 },
-                                {
-                                  id: "delete-deck",
-                                  label: "Delete deck",
-                                  tone: "danger",
-                                  onSelect: () => setDeleteOpen(true),
-                                },
+                                ...(canEdit
+                                  ? ([
+                                      {
+                                        id: "edit-details",
+                                        label: "Edit details",
+                                        onSelect: () => setEditing(true),
+                                      },
+                                      {
+                                        id: "delete-deck",
+                                        label: "Delete deck",
+                                        tone: "danger" as const,
+                                        onSelect: () => setDeleteOpen(true),
+                                      },
+                                    ] satisfies DropdownMenuItem[])
+                                  : []),
                               ]}
                             />
                           ) : null}
                         </div>
+                      </div>
+                     
+                      <p className="mt-2 flex flex-wrap items-center gap-2 font-buahs93 text-sm text-cyan-200/70">
+                        <span>by {deck.author_name}</span>
                         <span
                           className={cn(
-                            "shrink-0 text-[10px] tracking-wide",
+                            "text-[10px] tracking-wide",
                             deck.is_public
                               ? "text-emerald-400/90"
                               : "text-white/40"
@@ -1362,118 +1361,64 @@ export function DeckPage() {
                         >
                           {deck.is_public ? "PUBLIC" : "PRIVATE"}
                         </span>
-                      </div>
-                     
-                      <p className="mt-2 font-buahs93 text-sm text-cyan-200/70">
-                        by {deck.author_name}
                       </p>
                       {deck.description ? (
-                        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/60">
-                          {deck.description}
-                        </p>
-                      ) : null}
-                      <p className="mt-3 font-mono text-xs text-cyan-300/60">
-                        {deck.card_count} cards · {deck.categories.length}{" "}
-                        sections · {deck.like_count ?? 0} likes ·{" "}
-                        {deck.view_count ?? 0} views
-                      </p>
-
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        {(deck.tags ?? []).map((tag) => (
-                          <span
-                            key={tag}
-                            className="inline-flex items-center gap-1 border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-mono text-[11px] text-cyan-100"
-                          >
-                            {tag}
-                            {canEdit ? (
-                              <button
-                                type="button"
-                                className="text-cyan-300/70 hover:text-red-300"
-                                disabled={saving}
-                                aria-label={`Remove tag ${tag}`}
-                                onClick={() => void onRemoveTag(tag)}
-                              >
-                                ×
-                              </button>
-                            ) : null}
-                          </span>
-                        ))}
-                      </div>
-
-                      {canEdit ? (
-                        <div className="mt-3 flex w-full min-w-0 max-w-lg items-center gap-2">
-                          <DeckTagSuggestInput
-                            value={tagDraft}
-                            onChange={setTagDraft}
-                            exclude={deck.tags ?? []}
-                            disabled={saving}
-                            onPick={(tag) => void onAddTag(tag)}
-                          />
-                          <div className="shrink-0">
-                            <GlitchFx
-                              type="button"
-                              label="ADD TAG"
-                              disabled={
-                                saving ||
-                                !tagDraft.trim() ||
-                                !isPublicTextClean(tagDraft)
-                              }
-                              className="font-buahs93 h-8 rounded-none border border-cyan-500/40 bg-black/70 px-4 text-xs text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 disabled:opacity-60"
-                              onClick={() => void onAddTag()}
-                            />
-                          </div>
-                        </div>
+                        <DeckDescription
+                          className="mt-3"
+                          text={deck.description}
+                        />
                       ) : null}
                     </>
                   )}
 
-                </div>
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-                {isAuthenticated && token ? (
-                  <GlitchFx
-                    type="button"
-                    label={saving ? "COPYING…" : "COPY TO MY DECKS"}
-                    disabled={saving}
-                    className="font-buahs93 h-9 rounded-none border border-cyan-500/40 bg-black/70 px-4 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 disabled:opacity-60"
-                    onClick={() => void onCopyDeck()}
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
+                  {canEdit ? (
+                    <div className="min-w-[12rem] flex-1 basis-48 max-w-xl">
+                      <DeckCardSearch
+                        disabled={saving}
+                        token={token}
+                        onPick={onAddCardFromSearch}
+                        onOpenChange={setSearchMenuOpen}
+                      />
+                    </div>
+                  ) : null}
+                  <DeckCardSortControls
+                    value={cardSortMode}
+                    onChange={(deck_sort) => patchPrefs({ deck_sort })}
                   />
-                ) : null}
-                {isAuthenticated && token ? (
-                  <GlitchFx
-                    type="button"
-                    label={
-                      deck.liked_by_me
-                        ? `LIKED (${deck.like_count ?? 0})`
-                        : `LIKE (${deck.like_count ?? 0})`
-                    }
-                    disabled={saving}
-                    className={cn(
-                      "font-buahs93 h-9 rounded-none px-4",
-                      deck.liked_by_me
-                        ? "bg-cyan-600 hover:bg-cyan-800"
-                        : "border border-cyan-500/40 bg-black/70 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10"
-                    )}
-                    onClick={() => void onToggleLike()}
+                  <DeckCardViewControls
+                    value={cardViewMode}
+                    onChange={(deck_view) => patchPrefs({ deck_view })}
                   />
-                ) : null}
-                {canEdit ? (
-                  <>
+                </div>
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                  {canEdit ? (
                     <GlitchFx
                       type="button"
                       label={browseOpen ? "HIDE BROWSE" : "BROWSE"}
                       className="font-buahs93 h-9 rounded-none border border-cyan-500/40 bg-black/70 px-4 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10"
                       onClick={() => setBrowseOpen((prev) => !prev)}
                     />
-                  </>
-                ) : null}
-                <GlitchFx
-                  type="button"
-                  label="PLAY TEST"
-                  className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900"
-                  onClick={() => navigate(ROUTES.playTester(deckId))}
-                />
+                  ) : null}
+                  {isAdmin ? (
+                    <GlitchFx
+                      type="button"
+                      label={printoutBusy ? "BUILDING PDF…" : "CREATE PRINTOUT"}
+                      disabled={printoutBusy || saving}
+                      className="font-buahs93 h-9 rounded-none bg-orange-600 px-4 text-white hover:bg-orange-800 disabled:opacity-60"
+                      onClick={() => void onCreatePrintout()}
+                    />
+                  ) : null}
+                  <GlitchFx
+                    type="button"
+                    label="PLAY TEST"
+                    className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900"
+                    onClick={() => navigate(ROUTES.playTester(deckId))}
+                  />
+                </div>
               </div>
             </header>
 
@@ -1490,28 +1435,6 @@ export function DeckPage() {
               )}
             >
               <div className="min-w-0 flex-1">
-                {canEdit ? (
-                  <div className="mb-4">
-                    <DeckCardSearch
-                      disabled={saving}
-                      token={token}
-                      onPick={onAddCardFromSearch}
-                      onOpenChange={setSearchMenuOpen}
-                    />
-                  </div>
-                ) : null}
-
-                <div className="mb-6 flex flex-wrap items-center gap-4">
-                  <DeckCardSortControls
-                    value={cardSortMode}
-                    onChange={setCardSortMode}
-                  />
-                  <DeckCardViewControls
-                    value={cardViewMode}
-                    onChange={setCardViewMode}
-                  />
-                </div>
-
                 <DeckBoard
                   deck={deck}
                   sortMode={cardSortMode}
@@ -1529,13 +1452,13 @@ export function DeckPage() {
                   onQuantityDelta={onQuantityDelta}
                   onAssignPilot={assignPilot}
                   onClearPilot={canEdit ? onClearPilot : undefined}
-                  onAddAugment={addAugment}
                   onCreateSectionFromDrop={onCreateSectionFromDrop}
                 />
               </div>
 
               {canEdit && browseOpen ? (
                 <aside
+                  data-deck-no-page-ctx
                   className="relative flex w-full shrink-0 flex-col overflow-visible border border-cyan-500/25 bg-black/55 p-3 xl:w-[var(--browse-w)]"
                   style={{ ["--browse-w" as string]: `${browseWidth}px` }}
                 >
@@ -1566,7 +1489,9 @@ export function DeckPage() {
                     onPointerMove={onBrowseResizePointerMove}
                     onPointerUp={onBrowseResizePointerUp}
                     onPointerCancel={onBrowseResizePointerUp}
-                    onDoubleClick={() => setBrowseWidth(BROWSE_WIDTH_DEFAULT)}
+                    onDoubleClick={() =>
+                      patchPrefs({ deck_browse_width_px: BROWSE_WIDTH_DEFAULT })
+                    }
                   >
                     <span
                       aria-hidden
@@ -1576,6 +1501,23 @@ export function DeckPage() {
                 </aside>
               ) : null}
             </div>
+
+            <ContextMenu
+              open={deckCtxMenu != null && canEdit}
+              x={deckCtxMenu?.x ?? 0}
+              y={deckCtxMenu?.y ?? 0}
+              label="Deck page menu"
+              onClose={() => setDeckCtxMenu(null)}
+              items={[
+                {
+                  id: "delete-deck",
+                  label: "Delete deck",
+                  tone: "danger",
+                  disabled: saving,
+                  onSelect: () => setDeleteOpen(true),
+                },
+              ]}
+            />
 
             <ConfirmDialog
               open={deleteOpen}

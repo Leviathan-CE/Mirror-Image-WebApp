@@ -28,6 +28,10 @@ CREATE TABLE IF NOT EXISTS users (
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Last authenticated API request (throttled). Used for “logged in now”.
+    last_seen_at TIMESTAMPTZ DEFAULT NULL,
+    -- Account UI prefs (deck view/sort, library sort/size). JSON object.
+    preferences JSONB NOT NULL DEFAULT '{}'::jsonb,
 
     CONSTRAINT users_user_name_not_blank CHECK (length(trim(user_name)) > 0),
     CONSTRAINT users_email_not_blank CHECK (length(trim(email)) > 0),

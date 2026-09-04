@@ -3,21 +3,21 @@ import { describe, expect, it } from "vitest"
 
 import { DeckCardListRow } from "./DeckCardListRow"
 import type { DeckCardEntry } from "@/lib/api/decks"
+import { deckEntry } from "@/test/deckEntry.fixture"
 
-function card(overrides: Partial<DeckCardEntry> = {}): DeckCardEntry {
-  return {
+function card(overrides: Parameters<typeof deckEntry>[0] = {}): DeckCardEntry {
+  return deckEntry({
     card_id: 1,
     card_name: "Spirit Wire",
     quantity: 2,
     category_id: 4,
     category_name: "Main",
-    sort_order: 0,
-    card_art_path: null,
     invoke_cost: 3,
     cost: ["LIF", "RAM"],
     threat_level: "4",
+    is_summon: true,
     ...overrides,
-  }
+  })
 }
 
 describe("DeckCardListRow", () => {
@@ -34,11 +34,22 @@ describe("DeckCardListRow", () => {
   it("hides TLV when it is zero", () => {
     render(
       <DeckCardListRow
-        card={card({ threat_level: "0" })}
+        card={card({ threat_level: "0", is_summon: true })}
         classified={null}
       />
     )
     expect(screen.queryByTitle("Threat level")).not.toBeInTheDocument()
+  })
+
+  it("hides TLV on non-summon cards even when threat_level is set", () => {
+    render(
+      <DeckCardListRow
+        card={card({ threat_level: "4", is_summon: false })}
+        classified={null}
+      />
+    )
+    expect(screen.queryByTitle("Threat level")).not.toBeInTheDocument()
+    expect(screen.queryByText("4")).not.toBeInTheDocument()
   })
 
   it("redacts cost and TLV for classified cards", () => {

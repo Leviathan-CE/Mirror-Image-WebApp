@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState, type DragEvent as ReactDragEvent } from "react"
 
+import { useUserPreferences } from "@/app/providers/PreferencesProvider"
 import { CardDetailOverlay } from "@/components/cards/CardDetailOverlay"
 import { costTokenToIcon } from "@/components/cards/constants"
 import { CardSearchBar } from "@/components/cards/CardSearchBar"
@@ -21,60 +22,18 @@ import { GlitchFx } from "@/components/effects/GlitchFx"
 import { Button } from "@/components/ui/button"
 import { EditBox } from "@/components/ui/EditBox"
 import { ApiError } from "@/lib/api/client"
-import {
-  fetchCardFacets,
-  fetchCardLibrary,
-  type CardLibraryFacets,
-  type CardLibraryItem,
-} from "@/lib/api/cards"
-import { cardArtUrl } from "@/lib/api/decks"
+import { fetchCardFacets, fetchCardLibrary, type CardLibraryFacets, type CardLibraryItem } from "@/lib/api/cards"
+import { cardFaceUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
-
-const PAGE_SIZE_OPTIONS = [50, 100, 150, 200] as const
-type PageSizeOption = (typeof PAGE_SIZE_OPTIONS)[number]
-const PAGE_SIZE_DEFAULT: PageSizeOption = 50
-const PAGE_SIZE_STORAGE_KEY = "mi-library-page-size"
-
-/** Grid card minimum width (px) — drives `auto-fill` column size. */
-const PREVIEW_CARD_MIN_PX = 72
-const PREVIEW_CARD_MAX_PX = 200
-const PREVIEW_CARD_DEFAULT_PX = 112
-const PREVIEW_CARD_STORAGE_KEY = "mi-library-preview-card-min-px"
-
-function clampPreviewCardMinPx(value: number): number {
-  return Math.min(
-    PREVIEW_CARD_MAX_PX,
-    Math.max(PREVIEW_CARD_MIN_PX, Math.round(value))
-  )
-}
-
-function readStoredPreviewCardMinPx(): number {
-  try {
-    const raw = window.localStorage.getItem(PREVIEW_CARD_STORAGE_KEY)
-    const parsed = raw == null ? NaN : Number(raw)
-    return Number.isFinite(parsed)
-      ? clampPreviewCardMinPx(parsed)
-      : PREVIEW_CARD_DEFAULT_PX
-  } catch {
-    return PREVIEW_CARD_DEFAULT_PX
-  }
-}
-
-function isPageSizeOption(value: number): value is PageSizeOption {
-  return (PAGE_SIZE_OPTIONS as readonly number[]).includes(value)
-}
-
-function readStoredPageSize(): PageSizeOption {
-  try {
-    const raw = window.localStorage.getItem(PAGE_SIZE_STORAGE_KEY)
-    const parsed = raw == null ? NaN : Number(raw)
-    return Number.isFinite(parsed) && isPageSizeOption(parsed)
-      ? parsed
-      : PAGE_SIZE_DEFAULT
-  } catch {
-    return PAGE_SIZE_DEFAULT
-  }
-}
+import {
+  LIBRARY_PAGE_SIZES,
+  LIBRARY_SORT_OPTIONS,
+  PREVIEW_PX_MAX,
+  PREVIEW_PX_MIN,
+  clampPreviewPx,
+  isLibraryPageSize,
+  isLibrarySortMode,
+} from "@/lib/userPreferences.logic"
 
 const secondaryActionClassName =
   "font-buahs93 h-9 rounded-none border border-cyan-500/35 bg-black/70 px-4 text-sm text-cyan-100 hover:border-cyan-400/60 hover:bg-cyan-500/10 hover:text-white disabled:opacity-60"
@@ -115,6 +74,10 @@ export function CardLibraryBrowser({
   title,
   onCardActivate,
 }: CardLibraryBrowserProps) {
+  const { prefs, patchPrefs } = useUserPreferences()
+  const pageSize = prefs.library_page_size
+  const sortMode = prefs.library_sort
+  const previewCardMinPx = prefs.library_preview_px
   const suppressClickRef = useRef(false)
   const [facets, setFacets] = useState<CardLibraryFacets>(EMPTY_FACETS)
   const [items, setItems] = useState<CardLibraryItem[]>([])
@@ -129,7 +92,6 @@ export function CardLibraryBrowser({
   const [colors, setColors] = useState<string[]>([])
   const [invokeMin, setInvokeMin] = useState("")
   const [invokeMax, setInvokeMax] = useState("")
-  const [typesLine, setTypesLine] = useState("")
   const [superType, setSuperType] = useState("")
   const [subType, setSubType] = useState("")
   const [offset, setOffset] = useState(0)
@@ -137,33 +99,6 @@ export function CardLibraryBrowser({
   const [advancedOpen, setAdvancedOpen] = useState(false)
   /** Compact deck panel: keep advanced filters collapsed so the grid stays large. */
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [pageSize, setPageSize] = useState<PageSizeOption>(() =>
-    typeof window === "undefined" ? PAGE_SIZE_DEFAULT : readStoredPageSize()
-  )
-  const [previewCardMinPx, setPreviewCardMinPx] = useState(() =>
-    typeof window === "undefined"
-      ? PREVIEW_CARD_DEFAULT_PX
-      : readStoredPreviewCardMinPx()
-  )
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(pageSize))
-    } catch {
-      /* private mode / quota */
-    }
-  }, [pageSize])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(
-        PREVIEW_CARD_STORAGE_KEY,
-        String(previewCardMinPx)
-      )
-    } catch {
-      /* private mode / quota */
-    }
-  }, [previewCardMinPx])
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedName(nameQuery.trim()), 200)
@@ -200,10 +135,10 @@ export function CardLibraryBrowser({
     colors,
     invokeMin,
     invokeMax,
-    typesLine,
     superType,
     subType,
     pageSize,
+    sortMode,
   ])
 
   useEffect(() => {
@@ -223,9 +158,9 @@ export function CardLibraryBrowser({
         colors,
         invokeCostMin: Number.isFinite(min) ? min : null,
         invokeCostMax: Number.isFinite(max) ? max : null,
-        typesLine: typesLine || undefined,
         superType: superType || undefined,
         subType: subType || undefined,
+        sort: sortMode,
         limit: pageSize,
         offset,
       },
@@ -258,9 +193,9 @@ export function CardLibraryBrowser({
     colors,
     invokeMin,
     invokeMax,
-    typesLine,
     superType,
     subType,
+    sortMode,
     offset,
     token,
     pageSize,
@@ -274,11 +209,12 @@ export function CardLibraryBrowser({
 
   function clearFilters() {
     setNameQuery("")
+    setDebouncedName("")
     setDescriptionQuery("")
+    setDebouncedDescription("")
     setColors([])
     setInvokeMin("")
     setInvokeMax("")
-    setTypesLine("")
     setSuperType("")
     setSubType("")
     setOffset(0)
@@ -328,9 +264,11 @@ export function CardLibraryBrowser({
     descriptionQuery.trim() !== "" ||
     invokeMin.trim() !== "" ||
     invokeMax.trim() !== "" ||
-    typesLine !== "" ||
     superType !== "" ||
     subType !== ""
+
+  const filtersActive =
+    nameQuery.trim() !== "" || colors.length > 0 || advancedActive
 
   const paginationBar = (placement: "top" | "bottom") => (
     <SearchPaginationBar
@@ -360,22 +298,49 @@ export function CardLibraryBrowser({
       </span>
       <input
         type="range"
-        min={PREVIEW_CARD_MIN_PX}
-        max={PREVIEW_CARD_MAX_PX}
+        min={PREVIEW_PX_MIN}
+        max={PREVIEW_PX_MAX}
         step={4}
         value={previewCardMinPx}
-        aria-valuemin={PREVIEW_CARD_MIN_PX}
-        aria-valuemax={PREVIEW_CARD_MAX_PX}
+        aria-valuemin={PREVIEW_PX_MIN}
+        aria-valuemax={PREVIEW_PX_MAX}
         aria-valuenow={previewCardMinPx}
         aria-label="Preview card size"
         onChange={(event) =>
-          setPreviewCardMinPx(clampPreviewCardMinPx(Number(event.target.value)))
+          patchPrefs({
+            library_preview_px: clampPreviewPx(Number(event.target.value)),
+          })
         }
         className="h-2 min-w-0 flex-1 cursor-pointer accent-cyan-400"
       />
       <span className="w-9 shrink-0 text-right font-mono text-[11px] text-cyan-200/80">
         {previewCardMinPx}px
       </span>
+      <label className="flex shrink-0 items-center gap-2 border-l border-cyan-500/25 pl-3">
+        <span className="font-buahs93 text-xs tracking-wide text-cyan-100">
+          SORT
+        </span>
+        <select
+          value={sortMode}
+          aria-label="Sort library results"
+          onChange={(event) => {
+            const next = event.target.value
+            if (!isLibrarySortMode(next)) return
+            patchPrefs({ library_sort: next })
+            setOffset(0)
+          }}
+          className={cn(
+            "h-8 rounded-none border border-cyan-500/35 bg-black/80 px-2",
+            "font-mono text-xs text-cyan-50 outline-none focus-visible:border-cyan-300"
+          )}
+        >
+          {LIBRARY_SORT_OPTIONS.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
       <label className="flex shrink-0 items-center gap-2 border-l border-cyan-500/25 pl-3">
         <span className="font-buahs93 text-xs tracking-wide text-cyan-100">
           SHOW
@@ -385,8 +350,8 @@ export function CardLibraryBrowser({
           aria-label="Cards per page"
           onChange={(event) => {
             const next = Number(event.target.value)
-            if (!isPageSizeOption(next)) return
-            setPageSize(next)
+            if (!isLibraryPageSize(next)) return
+            patchPrefs({ library_page_size: next })
             setOffset(0)
           }}
           className={cn(
@@ -394,7 +359,7 @@ export function CardLibraryBrowser({
             "font-mono text-xs text-cyan-50 outline-none focus-visible:border-cyan-300"
           )}
         >
-          {PAGE_SIZE_OPTIONS.map((n) => (
+          {LIBRARY_PAGE_SIZES.map((n) => (
             <option key={n} value={n}>
               {n}
             </option>
@@ -405,10 +370,8 @@ export function CardLibraryBrowser({
   )
 
   const colorCostFilters = (
-    <div>
-      <p className="mb-2 font-buahs93 text-xs text-cyan-200/70">COLOR COST</p>
-      <div className="grid w-fit grid-cols-3 gap-2">
-        {facets.colors.map((color) => {
+    <div className="grid w-fit grid-cols-6 gap-2">
+      {facets.colors.map((color) => {
           const on = colors.includes(color)
           const icon = costTokenToIcon(color)
           return (
@@ -441,16 +404,6 @@ export function CardLibraryBrowser({
             </Button>
           )
         })}
-      </div>
-      <GlitchFx
-        type="button"
-        label="CLEAR FILTERS"
-        className={cn(
-          secondaryActionClassName,
-          compact ? "mt-3 w-full px-2 text-xs" : "mt-4"
-        )}
-        onClick={clearFilters}
-      />
     </div>
   )
 
@@ -488,12 +441,24 @@ export function CardLibraryBrowser({
   const filterFields = (
     <>
       <div className="space-y-3">
-        <CardSearchBar
-          label="NAME"
-          value={nameQuery}
-          onChange={setNameQuery}
-          placeholder="Closest name match…"
-        />
+        <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+          <div className="min-w-0 flex-1 basis-48">
+            <CardSearchBar
+              label=""
+              value={nameQuery}
+              onChange={setNameQuery}
+              placeholder="Closest name match…"
+            />
+          </div>
+          <div className="shrink-0">{colorCostFilters}</div>
+          <GlitchFx
+            type="button"
+            label="CLEAR FILTERS"
+            disabled={!filtersActive}
+            className={cn(secondaryActionClassName, "shrink-0 px-2 text-xs")}
+            onClick={clearFilters}
+          />
+        </div>
 
         <div>
           <button
@@ -574,24 +539,6 @@ export function CardLibraryBrowser({
 
               <label className="block">
                 <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-                  TYPE LINE
-                </span>
-                <select
-                  value={typesLine}
-                  onChange={(e) => setTypesLine(e.target.value)}
-                  className={filterSelectClassName}
-                >
-                  <option value="">Any</option>
-                  {facets.types_lines.map((line) => (
-                    <option key={line} value={line}>
-                      {line}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
                   SUPER TYPE
                 </span>
                 <select
@@ -634,13 +581,24 @@ export function CardLibraryBrowser({
 
   const filters = compact ? (
     <div className="mb-2 shrink-0 space-y-3 border border-cyan-500/25 bg-black/55 p-3">
-      <CardSearchBar
-        label="NAME"
-        value={nameQuery}
-        onChange={setNameQuery}
-        placeholder="Closest name match…"
-      />
-      {colorCostFilters}
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="min-w-0 flex-1 basis-32">
+          <CardSearchBar
+            label=""
+            value={nameQuery}
+            onChange={setNameQuery}
+            placeholder="Closest name match…"
+          />
+        </div>
+        {colorCostFilters}
+        <GlitchFx
+          type="button"
+          label="CLEAR FILTERS"
+          disabled={!filtersActive}
+          className={cn(secondaryActionClassName, "shrink-0 px-2 text-xs")}
+          onClick={clearFilters}
+        />
+      </div>
       {previewSizeControl}
       <div>
         <button
@@ -711,23 +669,6 @@ export function CardLibraryBrowser({
             </label>
             <label className="block">
               <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-                TYPE LINE
-              </span>
-              <select
-                value={typesLine}
-                onChange={(e) => setTypesLine(e.target.value)}
-                className={filterSelectClassName}
-              >
-                <option value="">Any</option>
-                {facets.types_lines.map((line) => (
-                  <option key={line} value={line}>
-                    {line}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
                 SUPER TYPE
               </span>
               <select
@@ -766,9 +707,8 @@ export function CardLibraryBrowser({
       </div>
     </div>
   ) : (
-    <div className="mb-6 grid gap-4 border border-cyan-500/25 bg-black/55 p-4 lg:grid-cols-[minmax(0,1fr)_14rem]">
+    <div className="mb-6 border border-cyan-500/25 bg-black/55 p-4">
       {filterFields}
-      {colorCostFilters}
     </div>
   )
 
@@ -796,7 +736,7 @@ export function CardLibraryBrowser({
         }}
       >
         {items.map((card) => {
-          const art = cardArtUrl(card.card_art_path, card.card_art_version)
+          const art = cardFaceUrl(card)
           return (
             <li key={card.id}>
               <button

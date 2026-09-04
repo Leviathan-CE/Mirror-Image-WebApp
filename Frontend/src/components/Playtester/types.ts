@@ -13,7 +13,7 @@ export type {
   PlayingCardInstance,
   CardCounterKind,
   CardCounterField,
-} from "./playCard.logic"
+} from "./session/playCard.logic"
 export {
   CARD_COUNTER_FIELD,
   deckEntryToPlayInstance,
@@ -32,18 +32,18 @@ export {
   adjustCardCounter,
   duplicatePlayingCard,
   duplicatePlayingCards,
-} from "./playCard.logic"
+} from "./session/playCard.logic"
 
 export {
   isSessionTokenInstance,
   destroySessionTokenIfLeaving,
   destroySessionCardIfLeaving,
-} from "./sessionResources.logic"
+} from "./session/sessionResources.logic"
 
 export type {
   MoveAllSourceZone,
   MoveAllDestinationZone,
-} from "./zoneMoves.logic"
+} from "./drag/zoneMoves.logic"
 export {
   moveToBattlefield,
   moveToHand,
@@ -62,26 +62,26 @@ export {
   putCardOnStockpile,
   moveToPilot,
   putCardOnPilot,
-} from "./zoneMoves.logic"
+} from "./drag/zoneMoves.logic"
 
 export {
   mulberry32,
   rngStep,
   rngFromState,
-} from "./rng.logic"
-export type { RngState, RngNext } from "./rng.logic"
+} from "./session/rng.logic"
+export type { RngState, RngNext } from "./session/rng.logic"
 
 export type {
   PlaySessionState,
   SessionAction,
   SeatRecord,
-} from "./sessionActions.logic"
+} from "./session/sessionActions.logic"
 export {
   applyAction,
   applyActions,
   createPlaySessionState,
   seatRecord,
-} from "./sessionActions.logic"
+} from "./session/sessionActions.logic"
 
-export type { FogView, FogCard, FogStub } from "./fogView.logic"
-export { viewFor, isFogStub, materializeFog, stubToInstance, withPreservedSelection, withPeerSelectionChrome } from "./fogView.logic"
+export type { FogView, FogCard, FogStub } from "./session/fogView.logic"
+export { viewFor, isFogStub, materializeFog, stubToInstance, withPreservedSelection, withPeerSelectionChrome } from "./session/fogView.logic"

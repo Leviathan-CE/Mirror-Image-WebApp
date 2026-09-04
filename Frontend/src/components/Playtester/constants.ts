@@ -5,7 +5,7 @@
  */
 
 import type { GameIconName } from "@/components/common/GameIcon"
-import type { ResourceColor } from "@/components/Playtester/accumulateResources.logic"
+import type { ResourceColor } from "@/components/Playtester/session/accumulateResources.logic"
 
 /** Two seats at a shared table. Solo play is always p1. */
 export const PLAYER_SLOT = {
@@ -59,6 +59,7 @@ export type FlipFlyMode = (typeof FLIP_FLY_MODE)[keyof typeof FLIP_FLY_MODE]
 export const PLAYTESTER_STORAGE = {
   stockpileHeightPx: "mi-playtester-stockpile-height-px",
   deckSearchBoxPx: "mi-playtester-deck-search-box-px",
+  faceUpPileBrowserBoxPx: "mi-playtester-face-up-pile-browser-box-px",
   handBoxPx: "mi-playtester-hand-box-px",
   oppHandBoxPx: "mi-playtester-opp-hand-box-px",
 } as const
@@ -160,6 +161,7 @@ export const CTX_MENU_ACTION = {
   deckShuffle: "deck-shuffle",
   deckRevealTop: "deck-reveal-top",
   deckSearch: "deck-search",
+  pileSearch: "pile-search",
   moveAll: "move-all",
   moveAllToDeck: "move-all-to-deck",
   moveAllToDismantled: "move-all-to-dismantled",
@@ -181,7 +183,7 @@ export const RESOURCE_COLOR_ICON: Record<ResourceColor, GameIconName> = {
   STL: "steel",
 }
 
-/** Map a pilot +GEN bonus (1–10) to a cost icon. */
+/** Map a pilot +GEN bonus (1-10) to a cost icon. */
 export function genIconForCount(n: number): GameIconName {
   if (n <= 0) return "gen0"
   if (n >= 10) return "gen10"

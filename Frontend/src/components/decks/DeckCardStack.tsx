@@ -1,7 +1,7 @@
 /**
  * Vertical overlapping card stack.
  * Hover scales a card and slides covering cards down to reveal it.
- * Left-click +1 (max 3); Ctrl/Cmd+click multi-select; right-click −1 / remove;
+ * Left-click +1 (per-card max); Ctrl/Cmd+click multi-select; right-click −1 / remove;
  * middle-hold enlarge; drag to move (drags whole selection).
  */
 
@@ -13,24 +13,27 @@ import {
 } from "@/components/decks/ClassifiedCardFace"
 import { DeckCardListRow } from "@/components/decks/DeckCardListRow"
 import type { DeckCardViewMode } from "@/components/decks/DeckCardViewControls"
-import { CardEnlargeOverlay } from "@/components/Playtester/CardLargeOverlay"
-import { cardArtUrl, type DeckCardEntry } from "@/lib/api/decks"
+import { CardEnlargeOverlay } from "@/components/Playtester/board/CardLargeOverlay"
+import { cardFaceUrl, type DeckCardEntry } from "@/lib/api/decks"
 
 import "./DeckCardStack.css"
 
 import {
   beginDeckCardDrag,
   DECK_CARD_DRAG_MIME,
-  DECK_CARD_MAX_COPIES,
   deckCardSelectionKey,
   endDeckCardDrag,
   type DeckCardDragItem,
   type DeckCardDragPayload,
 } from "@/components/decks/deckCardDrag"
+import { maxCopiesForDeckCard } from "@/components/decks/deck.logic"
+import type { DeckCategoryOut } from "@/lib/api/decks"
 
 
 type DeckCardStackProps = {
   cards: DeckCardEntry[]
+  /** Section this stack belongs to — used for per-card copy-cap tooltips. */
+  category?: DeckCategoryOut
   draggable?: boolean
   disabled?: boolean
   /** Art stacks vs condensed colour rows. */
@@ -49,6 +52,7 @@ type DeckCardStackProps = {
 
 export function DeckCardStack({
   cards,
+  category,
   draggable = false,
   disabled = false,
   viewMode = "cards",
@@ -115,14 +119,14 @@ export function DeckCardStack({
           const classified = classification != null
           const src = classified
             ? null
-            : cardArtUrl(card.card_art_path, card.card_art_version)
+            : cardFaceUrl(card.card)
           const isHovered = !isList && hoveredIndex === index
           const isCovering =
             !isList &&
             hoveredIndex != null &&
             index > hoveredIndex &&
             !isHovered
-          const cardKey = deckCardSelectionKey(card.category_id, card.card_id)
+          const cardKey = deckCardSelectionKey(card.category_id, card.card.id)
           const isSelected = selectedKeys?.has(cardKey) ?? false
           const isDragging = draggingKeys?.has(cardKey) ?? false
           const canDrag = draggable && !disabled
@@ -157,7 +161,7 @@ export function DeckCardStack({
                 }
                 suppressClickRef.current = true
                 const primary: DeckCardDragItem = {
-                  cardId: card.card_id,
+                  cardId: card.card.id,
                   fromCategoryId: card.category_id,
                 }
                 let cardsToMove: DeckCardDragItem[] = [primary]
@@ -263,6 +267,7 @@ export function DeckCardStack({
               onContextMenu={(event) => {
                 if (!canAdjust) return
                 event.preventDefault()
+                event.stopPropagation()
                 onQuantityDelta?.(card, -1)
               }}
               onAuxClick={(event) => {
@@ -270,12 +275,12 @@ export function DeckCardStack({
               }}
               title={
                 classification === "top_secret"
-                  ? `${card.card_name} — TOP SECRET · click to inspect`
+                  ? `${card.card.card_name} — TOP SECRET · click to inspect`
                   : classification === "classified"
-                    ? `${card.card_name} — CLASSIFIED · click for details / become a member`
+                    ? `${card.card.card_name} — CLASSIFIED · click for details / become a member`
                   : canAdjust
-                    ? `${card.card_name} ×${card.quantity} — click +1 (max ${DECK_CARD_MAX_COPIES}) · Ctrl/Cmd+click select · Shift+click range · right-click −1 · drag to move · middle-hold enlarge`
-                    : `${card.card_name} ×${card.quantity} — middle-click hold to enlarge`
+                    ? `${card.card.card_name} ×${card.quantity} — click +1 (max ${maxCopiesForDeckCard(category ?? { id: 0, name: "Main", sort_order: 0 }, card)}) · Ctrl/Cmd+click select · Shift+click range · right-click −1 · drag to move · middle-hold enlarge`
+                    : `${card.card.card_name} ×${card.quantity} — middle-click hold to enlarge`
               }
             >
               {isList ? (
@@ -284,20 +289,20 @@ export function DeckCardStack({
                 <>
                   {classified && classification ? (
                     <ClassifiedCardFace
-                      name={card.card_name}
+                      name={card.card.card_name}
                       classification={classification}
                       size="stack"
                     />
                   ) : src ? (
                     <img
                       src={src}
-                      alt={card.card_name}
+                      alt={card.card.card_name}
                       className="deck-card-stack__art clip-angled"
                       draggable={false}
                     />
                   ) : (
                     <div className="deck-card-stack__fallback clip-angled">
-                      <span>{card.card_name}</span>
+                      <span>{card.card.card_name}</span>
                     </div>
                   )}
                   {card.quantity > 0 ? (
@@ -311,25 +316,25 @@ export function DeckCardStack({
       </ul>
 
       {enlarged ? (
-        <div className="deck-card-enlarge" role="dialog" aria-label={enlarged.card_name}>
+        <div className="deck-card-enlarge" role="dialog" aria-label={enlarged.card.card_name}>
           {cardClassification(enlarged) ? (
             <ClassifiedCardFace
-              name={enlarged.card_name}
+              name={enlarged.card.card_name}
               classification={cardClassification(enlarged)!}
               size="enlarge"
             />
-          ) : cardArtUrl(enlarged.card_art_path, enlarged.card_art_version) ? (
+          ) : cardFaceUrl(enlarged.card) ? (
             <img
-              src={cardArtUrl(enlarged.card_art_path, enlarged.card_art_version)!}
-              alt={enlarged.card_name}
+              src={cardFaceUrl(enlarged.card)!}
+              alt={enlarged.card.card_name}
               className="deck-card-enlarge__art clip-angled"
               draggable={false}
             />
           ) : (
-            <div className="deck-card-enlarge__fallback clip-angled">{enlarged.card_name}</div>
+            <div className="deck-card-enlarge__fallback clip-angled">{enlarged.card.card_name}</div>
           )}
           <p className="deck-card-enlarge__caption">
-            {enlarged.card_name}
+            {enlarged.card.card_name}
             {cardClassification(enlarged) === "top_secret"
               ? " — TOP SECRET"
               : cardClassification(enlarged) === "classified"
@@ -342,7 +347,7 @@ export function DeckCardStack({
 
       <CardEnlargeOverlay
         open={inspectCard != null}
-        name={inspectCard?.card_name ?? ""}
+        name={inspectCard?.card.card_name ?? ""}
         artSrc={null}
         classification={
           inspectCard ? cardClassification(inspectCard) : null

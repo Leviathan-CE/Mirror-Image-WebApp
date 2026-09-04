@@ -22,6 +22,10 @@ export type DeckSummary = {
   view_count?: number
   tags?: string[]
   liked_by_me?: boolean
+  card_art_path?: string | null
+  card_art_version?: number | null
+  /** Pilot invoke-cost pips (deck colour identity). */
+  identity_cost?: string[]
 }
 
 export type DeckListPage = {
@@ -31,13 +35,27 @@ export type DeckListPage = {
   offset: number
 }
 
+export type PublicDeckSort =
+  | "newest"
+  | "likes"
+  | "likes_asc"
+  | "views"
+  | "views_asc"
+  | "name"
+
+export type PublicDeckColorMode = "or" | "and" | "not"
+
 export type PublicDeckQuery = {
   q?: string
   author?: string
   tag?: string
+  /** Repeat in query string for AND — deck must have every tag. */
+  tags?: string[]
   card?: string
   cardId?: number
-  sort?: "newest" | "likes" | "views" | "name"
+  colors?: string[]
+  colorMode?: PublicDeckColorMode
+  sort?: PublicDeckSort
   limit?: number
   offset?: number
   token?: string | null
@@ -49,8 +67,9 @@ export const DEFAULT_DECK_CATEGORY_NAMES = [
   "Cyberspell",
 ] as const
 
-/** Visual reserved section names (created on the client when needed). */
+/** Visual reserved section name (created on the client when needed). */
 export const PILOT_SECTION_NAME = "Pilot"
+/** Legacy section name — no longer used in deck building. */
 export const AUGMENT_SECTION_NAME = "Augments"
 
 export type DeckCategoryOut = {
@@ -61,33 +80,17 @@ export type DeckCategoryOut = {
   in_deck?: boolean
 }
 
+/** Shared catalogue projection — defined with the card domain. */
+export type { CardSummary } from "@/lib/api/cards"
+import type { CardSummary } from "@/lib/api/cards"
+
+/** One deck membership row: section placement + nested card summary. */
 export type DeckCardEntry = {
-  card_id: number
-  card_name: string
   quantity: number
   category_id: number
   category_name: string
   sort_order: number
-  card_art_path: string | null
-  invoke_cost?: number
-  /** Invoke-cost icon tokens (LIF, MET, GEN2, …). */
-  cost?: string[]
-  /** Printed threat level (TLV). */
-  threat_level?: string
-  types_line?: string
-  /** Epoch seconds — changes when card art is re-uploaded. */
-  card_art_version?: number | null
-  /** Pilot opening hand size (0 on non-pilots). */
-  hand_size?: number
-  /** Starting stockpile resource counts printed on the pilot. */
-  ram_capacity?: number
-  power_capacity?: number
-  metal_capacity?: number
-  spirit_capacity?: number
-  steel_capacity?: number
-  time_capacity?: number
-  /** Starting life total on pilots (not a resource token). */
-  lif_capacity?: number
+  card: CardSummary
   /**
    * Server stripped preview / unpublished art for this viewer.
    * Trust this flag — do not re-derive from subscription client-side alone.
@@ -110,6 +113,8 @@ export type DeckCreatePayload = {
   name: string
   description?: string | null
   is_public?: boolean
+  /** Starting section names from local account prefs. */
+  start_sections?: string[]
 }
 
 export type DeckUpdatePayload = {
@@ -133,8 +138,19 @@ export async function fetchPublicDecks(
   if (query.q?.trim()) url.searchParams.set("q", query.q.trim())
   if (query.author?.trim()) url.searchParams.set("author", query.author.trim())
   if (query.tag?.trim()) url.searchParams.set("tag", query.tag.trim())
+  for (const tag of query.tags ?? []) {
+    const value = tag.trim()
+    if (value) url.searchParams.append("tag", value)
+  }
   if (query.card?.trim()) url.searchParams.set("card", query.card.trim())
   if (query.cardId != null) url.searchParams.set("card_id", String(query.cardId))
+  for (const color of query.colors ?? []) {
+    const token = color.trim()
+    if (token) url.searchParams.append("color", token)
+  }
+  if (query.colorMode && query.colorMode !== "or") {
+    url.searchParams.set("color_mode", query.colorMode)
+  }
   if (query.sort) url.searchParams.set("sort", query.sort)
   url.searchParams.set("limit", String(query.limit ?? 24))
   url.searchParams.set("offset", String(query.offset ?? 0))
@@ -458,4 +474,19 @@ export function cardArtUrl(
 ): string | null {
   if (!path) return null
   return mediaUrl(path, version)
+}
+
+type CardFaceSource = {
+  card_thumbnail_path?: string | null
+  card_art_path?: string | null
+  card_art_version?: number | null
+}
+
+/** Full-card face for hovers, stacks, and play — prefers ``card_thumbnail_path``. */
+export function cardFaceUrl(card: CardFaceSource | null | undefined): string | null {
+  if (!card) return null
+  return cardArtUrl(
+    card.card_thumbnail_path ?? card.card_art_path,
+    card.card_art_version
+  )
 }

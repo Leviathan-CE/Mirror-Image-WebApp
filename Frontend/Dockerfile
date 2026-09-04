@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Vite inlines VITE_API_URL at build time (API host the browser calls).
 # Google client id is NOT baked here — the UI loads it from GET /auth/google/config.
-ARG VITE_API_URL=http://127.0.0.1:8000
+ARG VITE_API_URL=http://127.0.0.1:8001
 ENV VITE_API_URL=$VITE_API_URL
 
 COPY package*.json ./

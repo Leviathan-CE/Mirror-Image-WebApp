@@ -10,7 +10,7 @@ import { CardCostIcons } from "@/components/cards/CardCostIcons"
 import { GameIcon } from "@/components/common/GameIcon"
 import type { CardClassification } from "@/components/decks/ClassifiedCardFace"
 import { deckCardRowStyle } from "@/components/decks/deckCardColors"
-import { cardArtUrl, type DeckCardEntry } from "@/lib/api/decks"
+import { cardFaceUrl, type DeckCardEntry } from "@/lib/api/decks"
 
 type DeckCardListRowProps = {
   card: DeckCardEntry
@@ -47,12 +47,16 @@ export function hoverThumbPoint(clientX: number, clientY: number) {
 }
 
 export function DeckCardListRow({ card, classified }: DeckCardListRowProps) {
-  const threat = (card.threat_level ?? "0").trim()
-  const showThreat = classified == null && threat !== "" && threat !== "0"
-  const style = classified ? undefined : deckCardRowStyle(card.cost)
+  const threat = (card.card.threat_level ?? "0").trim()
+  const showThreat =
+    classified == null &&
+    card.card.is_summon === true &&
+    threat !== "" &&
+    threat !== "0"
+  const style = classified ? undefined : deckCardRowStyle(card.card.cost)
   const art =
     classified == null
-      ? cardArtUrl(card.card_art_path, card.card_art_version)
+      ? cardFaceUrl(card.card)
       : null
   const [thumbPos, setThumbPos] = useState<{ x: number; y: number } | null>(
     null
@@ -86,12 +90,12 @@ export function DeckCardListRow({ card, classified }: DeckCardListRowProps) {
         </span>
       ) : (
         <CardCostIcons
-          cost={card.cost ?? []}
+          cost={card.card.cost ?? []}
           className="deck-card-list__cost inline-flex shrink-0 items-center gap-0"
           iconClassName="h-6 w-auto"
         />
       )}
-      <span className="deck-card-list__name">{card.card_name}</span>
+      <span className="deck-card-list__name">{card.card.card_name}</span>
       {showThreat ? (
         <span className="deck-card-list__tlv">
           <GameIcon name="threat_lvl" className="h-4 w-auto" />

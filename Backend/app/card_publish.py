@@ -145,27 +145,33 @@ def classified_deck_card_overrides(classification: str = "classified") -> dict:
     """
     Field overrides for a classified deck-card stub.
 
-    Keeps name / quantity / category / sort; strips art and printed stats.
+    Keeps name / quantity / category / sort; strips art and printed stats
+    on the nested ``card`` summary.
     ``classification`` is ``classified`` (preview lock) or ``top_secret``.
     """
     kind = (
         "top_secret" if classification == "top_secret" else "classified"
     )
     return {
-        "card_art_path": None,
-        "card_art_version": None,
-        "invoke_cost": 0,
-        "cost": [],
-        "threat_level": "0",
-        "types_line": "TOP SECRET" if kind == "top_secret" else "CLASSIFIED",
-        "hand_size": 0,
-        "ram_capacity": 0,
-        "power_capacity": 0,
-        "metal_capacity": 0,
-        "spirit_capacity": 0,
-        "steel_capacity": 0,
-        "time_capacity": 0,
-        "lif_capacity": 0,
         "is_classified": True,
         "classification": kind,
+        "card": {
+            "card_art_path": None,
+            "card_thumbnail_path": None,
+            "card_art_version": None,
+            "invoke_cost": 0,
+            "cost": [],
+            "threat_level": "0",
+            "types_line": "TOP SECRET" if kind == "top_secret" else "CLASSIFIED",
+            "super_types": [],
+            "sub_types": [],
+            "hand_size": 0,
+            "ram_capacity": 0,
+            "power_capacity": 0,
+            "metal_capacity": 0,
+            "spirit_capacity": 0,
+            "steel_capacity": 0,
+            "time_capacity": 0,
+            "lif_capacity": 0,
+        },
     }

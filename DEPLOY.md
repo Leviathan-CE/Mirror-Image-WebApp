@@ -4,7 +4,7 @@ This app is **not** a static site. Cloudflare (domain + email) is only the front
 You still need somewhere that runs your three Docker services:
 
 1. **frontend** — React/Vite build served by nginx  
-2. **api** — FastAPI (Python) on port 8000  
+2. **api** — FastAPI (Python) on port 8001  
 3. **db** — PostgreSQL 16  
 
 Locally that is already `docker compose up --build` from the repo root.
@@ -65,7 +65,7 @@ Browser
   → Cloudflare (DNS + HTTPS)
     → VPS :443 (Caddy or nginx reverse proxy)
       → frontend container :80
-      → api container :8000
+      → api container :8001
       → db container :5432 (NOT exposed to the public internet)
 ```
 

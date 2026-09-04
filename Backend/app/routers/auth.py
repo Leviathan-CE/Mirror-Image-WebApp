@@ -36,6 +36,12 @@ from app.security import (
     verify_password,
 )
 from app.subscription import is_subscription_entitled
+from app.user_preferences import (
+    fetch_user_preferences,
+    fetch_user_preferences_raw,
+    merge_preference_patch,
+    save_user_preferences,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +92,28 @@ class GoogleLinkWithPasswordRequest(BaseModel):
     client: str = Field(default="", max_length=32)
 
 
+class UserPreferencesOut(BaseModel):
+    deck_view: str = "cards"
+    deck_sort: str = "type"
+    deck_browse_width_px: int = 352
+    library_sort: str = "name"
+    library_page_size: int = 50
+    library_preview_px: int = 112
+    deck_start_sections: list[str] = Field(
+        default_factory=lambda: ["Entity", "Cyberspell"]
+    )
+
+
+class UserPreferencesPatch(BaseModel):
+    deck_view: str | None = None
+    deck_sort: str | None = None
+    deck_browse_width_px: int | None = None
+    library_sort: str | None = None
+    library_page_size: int | None = None
+    library_preview_px: int | None = None
+    deck_start_sections: list[str] | None = None
+
+
 class UserPublic(BaseModel):
     id: int
     user_name: str
@@ -96,6 +124,8 @@ class UserPublic(BaseModel):
     is_subscribed: bool = False
     email_verified: bool = False
     features: list[str] = Field(default_factory=list)
+    # Stored blob: {} until the user has saved prefs (client hydrates defaults).
+    preferences: dict = Field(default_factory=dict)
 
 
 class AuthResponse(BaseModel):
@@ -126,6 +156,7 @@ def _user_public_from_row(
     *,
     email_verified: bool = False,
     features: list[str] | None = None,
+    preferences: dict | None = None,
 ) -> UserPublic:
     """
     Map a users SELECT row:
@@ -146,6 +177,7 @@ def _user_public_from_row(
         ),
         email_verified=email_verified,
         features=features or [],
+        preferences=preferences if isinstance(preferences, dict) else {},
     )
 
 
@@ -184,6 +216,7 @@ def _auth_response_for_user(
     sub_type: str,
     features: list[str],
     client: str = "",
+    preferences: dict | None = None,
 ) -> AuthResponse:
     unity = (client or "").strip().lower() == "unity"
     token = create_access_token(
@@ -199,6 +232,7 @@ def _auth_response_for_user(
         (user_id, user_name, email, role, sub_status or "none", sub_type or ""),
         email_verified=True,
         features=features,
+        preferences=preferences,
     )
     expires_in = UNITY_TOKEN_EXPIRE_MINUTES * 60 if unity else None
     return AuthResponse(access_token=token, user=public, expires_in=expires_in)
@@ -327,6 +361,7 @@ def login(body: LoginRequest):
                 features = _features_for_user(
                     cur, int(user_id), role, sub_status or "none"
                 )
+                prefs = fetch_user_preferences_raw(cur, int(user_id))
     except HTTPException:
         raise
     except OperationalError as e:
@@ -351,6 +386,7 @@ def login(body: LoginRequest):
         (user_id, user_name, email, role, sub_status or "none", sub_type or ""),
         email_verified=True,
         features=features,
+        preferences=prefs,
     )
     expires_in = (
         UNITY_TOKEN_EXPIRE_MINUTES * 60
@@ -420,6 +456,7 @@ def login_with_google(body: GoogleLoginRequest):
                     resolved.role or "user",
                     resolved.subscription_status or "none",
                 )
+                prefs = fetch_user_preferences_raw(cur, int(resolved.user_id))
             conn.commit()
     except HTTPException:
         raise
@@ -439,6 +476,7 @@ def login_with_google(body: GoogleLoginRequest):
         sub_type=resolved.subscription_type or "",
         features=features,
         client=body.client,
+        preferences=prefs,
     )
 
 
@@ -489,6 +527,7 @@ def link_google_account_with_password(body: GoogleLinkWithPasswordRequest):
                     resolved.role or "user",
                     resolved.subscription_status or "none",
                 )
+                prefs = fetch_user_preferences_raw(cur, int(resolved.user_id))
             conn.commit()
     except HTTPException:
         raise
@@ -508,6 +547,7 @@ def link_google_account_with_password(body: GoogleLinkWithPasswordRequest):
         sub_type=resolved.subscription_type or "",
         features=features,
         client=body.client,
+        preferences=prefs,
     )
 
 
@@ -538,10 +578,12 @@ def me(user_id: int = Depends(get_current_user_id)):
                 features = _features_for_user(
                     cur, int(row[0]), row[3], row[4] or "none"
                 )
+                prefs = fetch_user_preferences_raw(cur, int(row[0]))
                 public = _user_public_from_row(
                     row[:6],
                     email_verified=bool(row[6]),
                     features=features,
+                    preferences=prefs,
                 )
     except HTTPException:
         raise
@@ -553,3 +595,28 @@ def me(user_id: int = Depends(get_current_user_id)):
         ) from e
 
     return public
+
+
+@router.patch("/me/preferences", response_model=UserPreferencesOut)
+def patch_my_preferences(
+    body: UserPreferencesPatch,
+    user_id: int = Depends(get_current_user_id),
+):
+    """Merge allowlisted UI prefs onto the current account."""
+    patch = body.model_dump(exclude_unset=True)
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                current = fetch_user_preferences(cur, user_id)
+                merged = merge_preference_patch(current, patch)
+                saved = save_user_preferences(cur, user_id, merged)
+            conn.commit()
+    except OperationalError as e:
+        logger.warning("db error on /me/preferences: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="database_unavailable",
+        ) from e
+
+    return UserPreferencesOut(**saved)
+

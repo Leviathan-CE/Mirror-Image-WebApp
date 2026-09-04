@@ -3,7 +3,7 @@
  *
  * - Guest (`PublicHeader`): marketing nav + LOGIN
  * - Admin on `/admin/*` (`AdminHeader`): analytics / cards db / users
- * - Authenticated (`Userheader`): decks / cards / logout
+ * - Authenticated (`Userheader`): decks / cards / account menu
  */
 
 import { useLocation } from "react-router-dom"

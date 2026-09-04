@@ -12,6 +12,7 @@ import io
 import pytest
 from fastapi.testclient import TestClient
 
+from app.deck_defaults import DEFAULT_DECK_CATEGORY_NAMES
 from app.play_rooms_state import reset_play_rooms
 
 
@@ -25,6 +26,8 @@ def created_deck(client: TestClient, auth_headers: dict[str, str]) -> dict:
             "name": "Pytest Deck",
             "description": "temporary test deck",
             "is_public": False,
+            # Isolate from leftover seed-user preference mutations.
+            "start_sections": list(DEFAULT_DECK_CATEGORY_NAMES),
         },
     )
     assert response.status_code == 201, response.text
@@ -37,7 +40,7 @@ def test_list_default_categories_no_auth(client: TestClient):
     response = client.get("/decks/default-categories")
     assert response.status_code == 200
     body = response.json()
-    assert body["categories"] == ["Entity", "Cyberspell"]
+    assert body["categories"] == list(DEFAULT_DECK_CATEGORY_NAMES)
 
 
 def test_new_deck_seeds_default_categories(
@@ -49,7 +52,7 @@ def test_new_deck_seeds_default_categories(
     )
     assert response.status_code == 200
     names = [c["name"] for c in response.json()]
-    assert names == ["Entity", "Cyberspell"]
+    assert names == list(DEFAULT_DECK_CATEGORY_NAMES)
     assert all(c["in_deck"] is True for c in response.json())
 
 
@@ -287,7 +290,7 @@ def test_add_reorder_update_remove_cards(
     )
     assert added.status_code == 201, added.text
     entry = added.json()
-    assert entry["card_id"] == sample_card_id
+    assert entry["card"]["id"] == sample_card_id
     assert entry["quantity"] == 2
     assert entry["category_id"] == entity_id
     assert entry["category_name"] == "Entity"
@@ -457,3 +460,90 @@ def test_delete_deck(
 
     missing = client.get(f"/decks/{deck_id}", headers=auth_headers)
     assert missing.status_code == 404
+
+
+def test_public_decks_accepts_new_sorts_and_color_mode(
+    client: TestClient, auth_headers: dict[str, str]
+):
+    created = client.post(
+        "/decks",
+        headers=auth_headers,
+        json={"name": "Alpha Public Sort", "is_public": True},
+    )
+    assert created.status_code == 201
+    deck_id = created.json()["id"]
+
+    try:
+        for sort in ("newest", "likes", "likes_asc", "views", "views_asc", "name"):
+            res = client.get(f"/decks/public?sort={sort}")
+            assert res.status_code == 200, res.text
+            assert "items" in res.json()
+
+        colored = client.get(
+            "/decks/public",
+            params=[("color", "LIF"), ("color", "MET"), ("color_mode", "and")],
+        )
+        assert colored.status_code == 200, colored.text
+
+        not_mode = client.get(
+            "/decks/public",
+            params=[("color", "STL"), ("color_mode", "not")],
+        )
+        assert not_mode.status_code == 200, not_mode.text
+
+        ranked = client.get("/decks/public", params={"q": "Alpha", "sort": "likes"})
+        assert ranked.status_code == 200
+        names = [d["name"] for d in ranked.json()["items"]]
+        assert any(n == "Alpha Public Sort" for n in names)
+        # Prefix match should rank ahead of substring-only hits when both match.
+        if names:
+            assert names[0].lower().startswith("alpha") or "Alpha" in names[0]
+    finally:
+        client.delete(f"/decks/{deck_id}", headers=auth_headers)
+
+
+def test_public_decks_filters_by_multiple_tags_and(
+    client: TestClient, auth_headers: dict[str, str]
+):
+    created = client.post(
+        "/decks",
+        headers=auth_headers,
+        json={"name": "Tag AND Filter Deck", "is_public": True},
+    )
+    assert created.status_code == 201
+    deck_id = created.json()["id"]
+
+    try:
+        for tag in ("Aggro", "Midrange"):
+            res = client.post(
+                f"/decks/{deck_id}/tags",
+                headers=auth_headers,
+                json={"tag": tag},
+            )
+            assert res.status_code == 200, res.text
+
+        both = client.get(
+            "/decks/public",
+            params=[("tag", "Aggro"), ("tag", "Midrange")],
+        )
+        assert both.status_code == 200, both.text
+        ids = {item["id"] for item in both.json()["items"]}
+        assert deck_id in ids
+
+        one = client.get("/decks/public", params={"tag": "Aggro"})
+        assert one.status_code == 200
+        assert deck_id in {item["id"] for item in one.json()["items"]}
+
+        missing = client.get(
+            "/decks/public",
+            params=[("tag", "Aggro"), ("tag", "Control")],
+        )
+        assert missing.status_code == 200
+        assert deck_id not in {item["id"] for item in missing.json()["items"]}
+    finally:
+        client.delete(f"/decks/{deck_id}", headers=auth_headers)
+
+
+def test_public_decks_rejects_bad_color_mode(client: TestClient):
+    bad = client.get("/decks/public", params={"color_mode": "xor"})
+    assert bad.status_code == 422

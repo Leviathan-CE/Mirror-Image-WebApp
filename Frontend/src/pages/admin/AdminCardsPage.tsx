@@ -10,7 +10,9 @@ import { costTokenToIcon } from "@/components/cards/constants"
 import { CardSearchBar } from "@/components/cards/CardSearchBar"
 import { SearchPaginationBar } from "@/components/cards/SearchPaginationBar"
 import { GameIcon } from "@/components/common/GameIcon"
+import { GlitchFx } from "@/components/effects/GlitchFx"
 import { Button } from "@/components/ui/button"
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import { EditBox } from "@/components/ui/EditBox"
 import { ApiError } from "@/lib/api/client"
 import {
@@ -21,13 +23,14 @@ import {
   LAGALITY_OPTIONS,
   PUBLISH_STATUSES,
   bulkUpdateAdminCards,
+  deleteAdminCards,
   fetchAdminCardDetail,
   fetchAdminCardLibrary,
   type AdminCardDetail,
   type AdminCardItem,
   type PublishStatus,
 } from "@/lib/api/cards_admin"
-import { cardArtUrl } from "@/lib/api/decks"
+import { cardFaceUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 import { AdminPageShell } from "@/pages/admin/AdminPageShell"
 
@@ -47,6 +50,9 @@ const primaryActionClassName =
 
 const secondaryActionClassName =
   "font-buahs93 h-9 rounded-none border border-cyan-500/35 bg-black/70 px-3 text-sm text-cyan-100 hover:border-cyan-400/60 hover:bg-cyan-500/10 hover:text-white disabled:opacity-60"
+
+const dangerActionClassName =
+  "font-buahs93 h-9 rounded-none border border-red-500/45 bg-red-950/50 px-3 text-sm text-red-100 hover:border-red-400/70 hover:bg-red-950/80 disabled:opacity-60"
 
 const selectClassName =
   "h-9 rounded-none border border-cyan-500/35 bg-black/80 px-2.5 font-mono text-xs text-cyan-50 outline-none focus-visible:border-cyan-300"
@@ -88,6 +94,8 @@ export function AdminCardsPage() {
   const [actionMessage, setActionMessage] = useState("")
   const [detail, setDetail] = useState<AdminCardDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedName(nameQuery.trim()), 200)
@@ -217,6 +225,10 @@ export function AdminCardsPage() {
   const allPageSelected =
     pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id))
   const selectedCount = selectedIds.size
+  const selectedItems = useMemo(
+    () => items.filter((item) => selectedIds.has(item.id)),
+    [items, selectedIds]
+  )
 
   function toggleOne(id: number) {
     setSelectedIds((prev) => {
@@ -302,10 +314,103 @@ export function AdminCardsPage() {
     }
   }
 
+  async function performDelete() {
+    if (!token || selectedCount === 0) return
+
+    setBusy(true)
+    setActionMessage("")
+    try {
+      const ids = [...selectedIds]
+      const result = await deleteAdminCards(token, { card_ids: ids })
+      setItems((prev) => prev.filter((item) => !selectedIds.has(item.id)))
+      setTotal((prev) => Math.max(0, prev - result.deleted))
+      if (detail && selectedIds.has(detail.id)) setDetail(null)
+      setDeleteOpen(false)
+      clearSelection()
+      if (result.deleted === 0 && result.skipped > 0) {
+        setActionMessage(
+          `${result.skipped} selected card(s) were already removed from the catalogue.`
+        )
+      } else if (result.skipped > 0) {
+        setActionMessage(
+          `Deleted ${result.deleted} card(s). Skipped ${result.skipped} that were already removed.`
+        )
+      } else {
+        setActionMessage(`Deleted ${result.deleted} card(s).`)
+      }
+    } catch (error: unknown) {
+      setActionMessage(
+        error instanceof ApiError
+          ? "Could not delete the selected cards."
+          : "Could not reach the server."
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const deletePreviewNames = selectedItems.slice(0, 5).map((item) => item.card_name)
+  const deleteDescription =
+    selectedCount === 1
+      ? `Delete “${deletePreviewNames[0] ?? "this card"}”? It will be removed from the catalogue and every deck that contains it. This cannot be undone.`
+      : `Delete ${selectedCount} cards? They will be removed from the catalogue and every deck that contains them. This cannot be undone.${
+          deletePreviewNames.length > 0
+            ? ` Includes: ${deletePreviewNames.join(", ")}${
+                selectedCount > deletePreviewNames.length ? ", …" : ""
+              }.`
+            : ""
+        }`
+
   const pageStart = total === 0 ? 0 : offset + 1
   const pageEnd = Math.min(offset + items.length, total)
   const canPrev = offset > 0
   const canNext = offset + PAGE_SIZE < total
+  const advancedActive =
+    descriptionQuery.trim() !== "" ||
+    invokeMin.trim() !== "" ||
+    invokeMax.trim() !== "" ||
+    typesLine !== "" ||
+    superType !== "" ||
+    subType !== "" ||
+    publishedFilter !== ""
+
+  const colorCostFilters = (
+    <div className="grid w-fit grid-cols-6 gap-2">
+      {facets.colors.map((color) => {
+        const on = colors.includes(color)
+        const icon = costTokenToIcon(color)
+        return (
+          <Button
+            key={color}
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-pressed={on}
+            aria-label={`Filter ${color}`}
+            title={color}
+            className={cn(
+              "size-9 overflow-visible rounded-none border",
+              on
+                ? "border-cyan-400 bg-cyan-700 hover:bg-cyan-800"
+                : "border-cyan-500/40 bg-black/70 hover:border-cyan-400/70 hover:bg-cyan-500/10"
+            )}
+            onClick={() => toggleColor(color)}
+          >
+            {icon ? (
+              <GameIcon
+                name={icon}
+                className="!h-5 !w-5 shrink-0 object-contain"
+              />
+            ) : (
+              <span className="font-buahs93 text-[10px] text-cyan-100">
+                {color}
+              </span>
+            )}
+          </Button>
+        )
+      })}
+    </div>
+  )
 
   return (
     <AdminPageShell
@@ -313,177 +418,172 @@ export function AdminCardsPage() {
       title="CARDS DB"
       description="Search and filter the catalogue like the public library, multi-select cards, then set publish status or lagality in bulk."
     >
-      <div className="mb-4 grid gap-4 border border-cyan-500/25 bg-black/55 p-4 lg:grid-cols-[minmax(0,1fr)_14rem]">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <CardSearchBar
-              label="NAME"
-              value={nameQuery}
-              onChange={setNameQuery}
-              placeholder="Closest name match…"
+      <div className="mb-4 border border-cyan-500/25 bg-black/55 p-4">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+            <div className="min-w-0 flex-1 basis-48">
+              <CardSearchBar
+                label=""
+                value={nameQuery}
+                onChange={setNameQuery}
+                placeholder="Closest name match…"
+              />
+            </div>
+            <div className="shrink-0">{colorCostFilters}</div>
+            <GlitchFx
+              type="button"
+              label="CLEAR FILTERS"
+              className={cn(secondaryActionClassName, "shrink-0 px-2 text-xs")}
+              onClick={clearFilters}
             />
           </div>
 
-          <label className="block sm:col-span-2">
-            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-              DESCRIPTION
-            </span>
-            <EditBox
-              value={descriptionQuery}
-              onChange={(e) => setDescriptionQuery(e.target.value)}
-              placeholder="Rules text contains…"
-              size="sm"
-              autoComplete="off"
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-              INVOKE MIN
-            </span>
-            <EditBox
-              value={invokeMin}
-              onChange={(e) => setInvokeMin(e.target.value.replace(/\D/g, ""))}
-              placeholder={`${facets.invoke_cost_min}`}
-              size="sm"
-              inputMode="numeric"
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-              INVOKE MAX
-            </span>
-            <EditBox
-              value={invokeMax}
-              onChange={(e) => setInvokeMax(e.target.value.replace(/\D/g, ""))}
-              placeholder={`${facets.invoke_cost_max}`}
-              size="sm"
-              inputMode="numeric"
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-              TYPE LINE
-            </span>
-            <select
-              value={typesLine}
-              onChange={(e) => setTypesLine(e.target.value)}
-              className={filterSelectClassName}
+          <div>
+            <button
+              type="button"
+              aria-expanded={advancedOpen}
+              className={cn(
+                "flex w-full items-center justify-between border border-cyan-500/30 bg-black/60 px-3 py-2",
+                "font-buahs93 text-xs tracking-wide text-cyan-100 hover:border-cyan-400/50 hover:bg-cyan-500/10"
+              )}
+              onClick={() => setAdvancedOpen((prev) => !prev)}
             >
-              <option value="">Any</option>
-              {facets.types_lines.map((line) => (
-                <option key={line} value={line}>
-                  {line}
-                </option>
-              ))}
-            </select>
-          </label>
+              <span className="inline-flex items-center gap-2">
+                ADVANCED SEARCH
+                {advancedActive ? (
+                  <span
+                    className="inline-block size-1.5 rounded-full bg-cyan-400"
+                    title="Filters active"
+                    aria-label="Advanced filters active"
+                  />
+                ) : null}
+              </span>
+              <span className="font-mono text-[10px] text-cyan-300/70">
+                {advancedOpen ? "▲" : "▼"}
+              </span>
+            </button>
 
-          <label className="block">
-            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-              SUPER TYPE
-            </span>
-            <select
-              value={superType}
-              onChange={(e) => setSuperType(e.target.value)}
-              className={filterSelectClassName}
-            >
-              <option value="">Any</option>
-              {facets.super_types.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
+            {advancedOpen ? (
+              <div className="mt-2 grid gap-3 border border-cyan-500/20 border-t-0 bg-black/40 p-3 sm:grid-cols-2">
+                <label className="block sm:col-span-2">
+                  <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                    DESCRIPTION
+                  </span>
+                  <EditBox
+                    value={descriptionQuery}
+                    onChange={(e) => setDescriptionQuery(e.target.value)}
+                    placeholder="Rules text contains…"
+                    size="sm"
+                    autoComplete="off"
+                  />
+                </label>
 
-          <label className="block sm:col-span-2">
-            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-              SUB TYPE
-            </span>
-            <select
-              value={subType}
-              onChange={(e) => setSubType(e.target.value)}
-              className={filterSelectClassName}
-            >
-              <option value="">Any</option>
-              {facets.sub_types.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
+                <label className="block">
+                  <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                    INVOKE MIN
+                  </span>
+                  <EditBox
+                    value={invokeMin}
+                    onChange={(e) =>
+                      setInvokeMin(e.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder={`${facets.invoke_cost_min}`}
+                    size="sm"
+                    inputMode="numeric"
+                  />
+                </label>
 
-          <label className="block sm:col-span-2">
-            <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
-              PUBLISH STATUS
-            </span>
-            <select
-              value={publishedFilter}
-              onChange={(e) =>
-                setPublishedFilter(e.target.value as PublishStatus | "")
-              }
-              className={filterSelectClassName}
-            >
-              <option value="">Any</option>
-              {PUBLISH_STATUSES.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+                <label className="block">
+                  <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                    INVOKE MAX
+                  </span>
+                  <EditBox
+                    value={invokeMax}
+                    onChange={(e) =>
+                      setInvokeMax(e.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder={`${facets.invoke_cost_max}`}
+                    size="sm"
+                    inputMode="numeric"
+                  />
+                </label>
 
-        <div>
-          <p className="mb-2 font-buahs93 text-xs text-cyan-200/70">
-            COLOR COST
-          </p>
-          <div className="grid w-fit grid-cols-3 gap-2">
-            {facets.colors.map((color) => {
-              const on = colors.includes(color)
-              const icon = costTokenToIcon(color)
-              return (
-                <Button
-                  key={color}
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  aria-pressed={on}
-                  aria-label={`Filter ${color}`}
-                  title={color}
-                  className={cn(
-                    "size-9 rounded-none border",
-                    on
-                      ? "border-cyan-400 bg-cyan-700 hover:bg-cyan-800"
-                      : "border-cyan-500/40 bg-black/70 hover:border-cyan-400/70 hover:bg-cyan-500/10"
-                  )}
-                  onClick={() => toggleColor(color)}
-                >
-                  {icon ? (
-                    <GameIcon
-                      name={icon}
-                      className="h-5 w-auto lg:h-5 2xl:h-5"
-                    />
-                  ) : (
-                    <span className="font-buahs93 text-[10px] text-cyan-100">
-                      {color}
-                    </span>
-                  )}
-                </Button>
-              )
-            })}
+                <label className="block">
+                  <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                    TYPE LINE
+                  </span>
+                  <select
+                    value={typesLine}
+                    onChange={(e) => setTypesLine(e.target.value)}
+                    className={filterSelectClassName}
+                  >
+                    <option value="">Any</option>
+                    {facets.types_lines.map((line) => (
+                      <option key={line} value={line}>
+                        {line}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                    SUPER TYPE
+                  </span>
+                  <select
+                    value={superType}
+                    onChange={(e) => setSuperType(e.target.value)}
+                    className={filterSelectClassName}
+                  >
+                    <option value="">Any</option>
+                    {facets.super_types.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block sm:col-span-2">
+                  <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                    SUB TYPE
+                  </span>
+                  <select
+                    value={subType}
+                    onChange={(e) => setSubType(e.target.value)}
+                    className={filterSelectClassName}
+                  >
+                    <option value="">Any</option>
+                    {facets.sub_types.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block sm:col-span-2">
+                  <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                    PUBLISH STATUS
+                  </span>
+                  <select
+                    value={publishedFilter}
+                    onChange={(e) =>
+                      setPublishedFilter(e.target.value as PublishStatus | "")
+                    }
+                    className={filterSelectClassName}
+                  >
+                    <option value="">Any</option>
+                    {PUBLISH_STATUSES.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : null}
           </div>
-          <Button
-            type="button"
-            className={cn(secondaryActionClassName, "mt-4")}
-            onClick={clearFilters}
-          >
-            CLEAR FILTERS
-          </Button>
         </div>
       </div>
 
@@ -544,6 +644,15 @@ export function AdminCardsPage() {
             onClick={() => void applyBulk()}
           >
             APPLY TO {selectedCount || 0}
+          </Button>
+
+          <Button
+            type="button"
+            className={dangerActionClassName}
+            disabled={busy || selectedCount === 0}
+            onClick={() => setDeleteOpen(true)}
+          >
+            DELETE {selectedCount || 0}
           </Button>
         </div>
 
@@ -628,7 +737,7 @@ export function AdminCardsPage() {
               </tr>
             ) : null}
             {items.map((item) => {
-              const art = cardArtUrl(item.card_art_path, item.card_art_version)
+              const art = cardFaceUrl(item)
               const checked = selectedIds.has(item.id)
               return (
                 <tr
@@ -726,6 +835,26 @@ export function AdminCardsPage() {
             : null
         }
         onClose={() => setDetail(null)}
+      />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title={
+          selectedCount === 1
+            ? "Delete this card?"
+            : `Delete ${selectedCount} cards?`
+        }
+        description={deleteDescription}
+        confirmLabel={selectedCount === 1 ? "Delete card" : "Delete cards"}
+        cancelLabel="Keep cards"
+        tone="danger"
+        busy={busy}
+        onCancel={() => {
+          if (!busy) setDeleteOpen(false)
+        }}
+        onConfirm={() => {
+          void performDelete()
+        }}
       />
     </AdminPageShell>
   )

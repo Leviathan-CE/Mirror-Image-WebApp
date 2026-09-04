@@ -16,6 +16,7 @@ They define the full current schema. New deploys do not need migrations.
 | 06 | `06_publish_cards.sql` | Card publish status |
 | 09 | `09_seed_dev_users.sql` | Dev accounts (local only) |
 | 10 | `10_seed_dev_decks.sql` | Dev sample decks (local only) |
+| 14 | `14_analytics.sql` | Daily activity counters for admin analytics |
 
 Default deck section names (`Main`, `Side`, `Maybe`, `Extra`) are seeded by
 the API when a deck is created (`app/deck_defaults.py`), not by SQL.

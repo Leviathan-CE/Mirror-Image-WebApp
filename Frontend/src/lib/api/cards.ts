@@ -12,6 +12,7 @@ export type CardSearchHit = {
   card_set_name: string
   rarity: string
   card_art_path: string | null
+  card_thumbnail_path?: string | null
   card_art_version?: number | null
 }
 
@@ -21,24 +22,60 @@ export type CardDetail = {
   is_pilot: boolean
   is_augment: boolean
   card_art_path: string | null
+  /** Used for deck copy limits (e.g. Token → unlimited). */
+  super_types?: string[]
 }
 
-export type CardLibraryItem = {
+/**
+ * Shared catalogue projection — nested under deck entries, base of library rows.
+ * Keep aligned with Backend ``app.cards.schemas.CardSummary``.
+ */
+export type CardSummary = {
   id: number
   card_name: string
+  card_art_path: string | null
+  card_thumbnail_path?: string | null
+  /** Epoch seconds — changes when card art is re-uploaded. */
+  card_art_version?: number | null
+  invoke_cost?: number
+  /** Invoke-cost icon tokens (LIF, MET, GEN2, …). */
+  cost?: string[]
+  /** Printed threat level (TLV). */
+  threat_level?: string
+  types_line?: string
+  super_types?: string[]
+  sub_types?: string[]
+  is_pilot?: boolean
+  is_augment?: boolean
+  /** Unit / summon cards — only these show TLV in deck list view. */
+  is_summon?: boolean
+  /** Pilot opening hand size (0 on non-pilots). */
+  hand_size?: number
+  /** Starting stockpile resource counts printed on the pilot. */
+  ram_capacity?: number
+  power_capacity?: number
+  metal_capacity?: number
+  spirit_capacity?: number
+  steel_capacity?: number
+  time_capacity?: number
+  /** Starting life total on pilots (not a resource token). */
+  lif_capacity?: number
+}
+
+/** Library browse row = shared summary + set/rarity/text metadata. */
+export type CardLibraryItem = CardSummary & {
   card_set_name: string
   rarity: string
+  description: string
+  keywords: string[]
+  show_help_text: boolean
+  /** Library always returns these; tighten vs optional CardSummary fields. */
   invoke_cost: number
   cost: string[]
   super_types: string[]
   sub_types: string[]
   types_line: string
-  description: string
-  keywords: string[]
-  show_help_text: boolean
   threat_level: string
-  card_art_path: string | null
-  card_art_version?: number | null
 }
 
 export type CardLibraryResponse = {
@@ -57,6 +94,13 @@ export type CardLibraryFacets = {
   invoke_cost_max: number
 }
 
+export type CardLibrarySortMode =
+  | "name"
+  | "name_desc"
+  | "invoke"
+  | "invoke_desc"
+  | "relevance"
+
 export type CardLibraryQuery = {
   q?: string
   description?: string
@@ -66,6 +110,8 @@ export type CardLibraryQuery = {
   typesLine?: string
   superType?: string
   subType?: string
+  /** Result order: A–Z, Z–A, invoke ↑/↓, or name-search relevance. */
+  sort?: CardLibrarySortMode
   limit?: number
   offset?: number
 }
@@ -112,6 +158,7 @@ export async function fetchCardLibrary(
   if (superType) url.searchParams.set("super_type", superType)
   const subType = query.subType?.trim()
   if (subType) url.searchParams.set("sub_type", subType)
+  if (query.sort) url.searchParams.set("sort", query.sort)
   url.searchParams.set("limit", String(query.limit ?? 48))
   url.searchParams.set("offset", String(query.offset ?? 0))
 
@@ -143,6 +190,7 @@ export async function fetchCardById(
     is_pilot: boolean
     is_augment: boolean
     card_art_path: string | null
+    super_types?: string[] | null
   }>(response, "card_fetch_failed")
 
   const id = raw.ID ?? raw.id
@@ -154,5 +202,8 @@ export async function fetchCardById(
     is_pilot: Boolean(raw.is_pilot),
     is_augment: Boolean(raw.is_augment),
     card_art_path: raw.card_art_path,
+    super_types: Array.isArray(raw.super_types)
+      ? raw.super_types.map(String)
+      : [],
   }
 }

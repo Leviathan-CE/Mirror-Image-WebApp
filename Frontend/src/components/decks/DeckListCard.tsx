@@ -6,8 +6,12 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
+import { CardCostIcons } from "@/components/cards/CardCostIcons"
+import { cardColorIdentity } from "@/components/decks/deckCardColors"
 import { GlitchFx } from "@/components/effects/GlitchFx"
+import { SafeMarkdown } from "@/components/common/SafeMarkdown"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
+import { ContextMenu } from "@/components/ui/ContextMenu"
 import { DropdownMenu } from "@/components/ui/DropdownMenu"
 import {
   PublicTextArea,
@@ -17,6 +21,7 @@ import { ApiError } from "@/lib/api/client"
 import {
   deleteDeck,
   updateDeck,
+  cardArtUrl,
   type DeckSummary,
 } from "@/lib/api/decks"
 import {
@@ -56,6 +61,7 @@ export function DeckListCard({
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null)
   const [name, setName] = useState(deck.name ?? "")
   const [description, setDescription] = useState(deck.description ?? "")
   const [isPublic, setIsPublic] = useState(deck.is_public)
@@ -141,7 +147,7 @@ export function DeckListCard({
           <PublicTextArea
             value={description}
             onChange={setDescription}
-            placeholder="description"
+            placeholder="description (markdown supported)"
             disabled={saving || locked}
             rows={3}
           />
@@ -181,19 +187,76 @@ export function DeckListCard({
     )
   }
 
+  const artSrc = cardArtUrl(deck.card_art_path, deck.card_art_version)
+  const identityColors = cardColorIdentity(deck.identity_cost)
+
   return (
-    <div className="relative border border-cyan-500/25 bg-black/50 transition-colors hover:border-cyan-400/50">
+    <div
+      className="relative flex h-full min-h-[11.5rem] overflow-hidden border border-cyan-500/25 bg-black/50 transition-colors hover:border-cyan-400/50"
+      onContextMenu={(event) => {
+        if (!canManage || locked || saving) return
+        const target = event.target
+        if (
+          target instanceof Element &&
+          target.closest("button[aria-haspopup='menu'], [role='menu']")
+        ) {
+          return
+        }
+        event.preventDefault()
+        setCtxMenu({ x: event.clientX, y: event.clientY })
+      }}
+    >
+      {artSrc ? (
+        <>
+          <div className="absolute inset-0 overflow-hidden" aria-hidden>
+            <div
+              className="absolute inset-0 bg-no-repeat"
+              style={{
+                backgroundImage: `url("${artSrc}")`,
+                backgroundSize: "70% auto",
+                backgroundPosition: "top left",
+                WebkitMaskImage:
+                  "linear-gradient(to right, #000 0%, #000 40%, transparent 68%)",
+                maskImage:
+                  "linear-gradient(to right, #000 0%, #000 40%, transparent 68%)",
+              }}
+            />
+            <div
+              className="absolute inset-0 bg-no-repeat opacity-80 blur-xl"
+              style={{
+                backgroundImage: `url("${artSrc}")`,
+                backgroundSize: "70% auto",
+                backgroundPosition: "top left",
+                WebkitMaskImage:
+                  "linear-gradient(to right, transparent 34%, #000 50%, transparent 72%)",
+                maskImage:
+                  "linear-gradient(to right, transparent 34%, #000 50%, transparent 72%)",
+              }}
+            />
+          </div>
+          <div
+            className="absolute inset-0 bg-gradient-to-r from-black/15 via-black/70 to-black/92"
+            aria-hidden
+          />
+        </>
+      ) : (
+        <div
+          className="absolute inset-0 bg-[linear-gradient(145deg,rgba(34,211,238,0.12),transparent_55%),repeating-linear-gradient(-45deg,transparent,transparent_6px,rgba(34,211,238,0.06)_6px,rgba(34,211,238,0.06)_7px)]"
+          aria-hidden
+        />
+      )}
+
       <button
         type="button"
         className={cn(
-          "h-full w-full p-5 text-left",
-          canManage && "pr-12"
+          "relative z-10 flex h-full min-h-[11.5rem] w-full flex-col p-4 text-left",
+          canManage && "pr-10"
         )}
         disabled={locked || saving}
         onClick={() => navigate(ROUTES.deck(deck.id))}
       >
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-buahs93 text-lg text-cyan-100">
+          <h3 className="line-clamp-1 font-buahs93 text-lg text-cyan-100">
             {deck.name ?? `Deck #${deck.id}`}
           </h3>
           <span
@@ -206,36 +269,52 @@ export function DeckListCard({
           </span>
         </div>
         {showAuthor ? (
-          <p className="mt-1 font-buahs93 text-xs text-cyan-200/60">
+          <p className="mt-1 line-clamp-1 font-buahs93 text-xs text-cyan-200/60">
             by {deck.author_name}
           </p>
         ) : null}
+        {identityColors.length > 0 ? (
+          <CardCostIcons
+            cost={identityColors}
+            className="mt-1.5 inline-flex flex-wrap items-center gap-0 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]"
+            iconClassName="h-4 w-auto"
+          />
+        ) : null}
         {deck.description ? (
-          <p className="mt-2 line-clamp-3 text-sm leading-snug text-white/55">
-            {deck.description}
+          <SafeMarkdown
+            text={deck.description}
+            className="mt-2 line-clamp-2 min-h-[2.5rem] leading-snug text-white/55"
+          />
+        ) : (
+          <p className="mt-2 min-h-[2.5rem] text-sm text-white/25">—</p>
+        )}
+        <div className="mt-auto pt-2">
+          {(deck.tags?.length ?? 0) > 0 ? (
+            <p className="mb-2 flex flex-wrap gap-1 overflow-hidden">
+              {deck.tags!.slice(0, 4).map((tag) => (
+                <span
+                  key={tag}
+                  className="border border-cyan-500/25 bg-cyan-500/10 px-1.5 py-0.5 font-mono text-[10px] text-cyan-100/80"
+                >
+                  {tag}
+                </span>
+              ))}
+            </p>
+          ) : null}
+          <p className="font-mono text-xs text-cyan-300/60">
+            {deck.card_count} cards
+            {typeof deck.like_count === "number"
+              ? ` · ${deck.like_count} likes`
+              : ""}
+            {typeof deck.view_count === "number"
+              ? ` · ${deck.view_count} views`
+              : ""}
           </p>
-        ) : null}
-        {(deck.tags?.length ?? 0) > 0 ? (
-          <p className="mt-2 flex flex-wrap gap-1">
-            {deck.tags!.slice(0, 6).map((tag) => (
-              <span
-                key={tag}
-                className="border border-cyan-500/25 bg-cyan-500/10 px-1.5 py-0.5 font-mono text-[10px] text-cyan-100/80"
-              >
-                {tag}
-              </span>
-            ))}
-          </p>
-        ) : null}
-        <p className="mt-4 font-mono text-xs text-cyan-300/60">
-          {deck.card_count} cards
-          {typeof deck.like_count === "number" ? ` · ${deck.like_count} likes` : ""}
-          {typeof deck.view_count === "number" ? ` · ${deck.view_count} views` : ""}
-        </p>
+        </div>
       </button>
 
       {canManage ? (
-        <div className="absolute top-3 right-3">
+        <div className="absolute top-3 right-3 z-20">
           <DropdownMenu
             label={`Options for ${deck.name ?? `deck ${deck.id}`}`}
             disabled={locked || saving}
@@ -257,6 +336,31 @@ export function DeckListCard({
             ]}
           />
         </div>
+      ) : null}
+
+      {canManage ? (
+        <ContextMenu
+          open={ctxMenu != null}
+          x={ctxMenu?.x ?? 0}
+          y={ctxMenu?.y ?? 0}
+          label={`Deck menu for ${label}`}
+          onClose={() => setCtxMenu(null)}
+          items={[
+            {
+              id: "edit",
+              label: "Edit details",
+              disabled: locked || saving,
+              onSelect: beginEdit,
+            },
+            {
+              id: "delete",
+              label: "Delete deck",
+              tone: "danger",
+              disabled: locked || saving,
+              onSelect: () => setDeleteOpen(true),
+            },
+          ]}
+        />
       ) : null}
 
       <ConfirmDialog

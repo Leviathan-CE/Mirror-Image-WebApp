@@ -5,6 +5,7 @@
 import type { DeckCardSortMode } from "@/components/decks/DeckCardSortControls"
 import {
   DECK_CARD_MAX_COPIES,
+  DECK_CARD_MAX_COPIES_UNLIMITED,
   deckCardSelectionKey,
 } from "@/components/decks/deckCardDrag"
 import {
@@ -14,6 +15,7 @@ import {
   type DeckCategoryOut,
   type DeckDetail,
 } from "@/lib/api/decks"
+import type { CardSummary } from "@/lib/api/cards"
 
 export function isPilotCategory(category: DeckCategoryOut): boolean {
   return category.name.trim().toLowerCase() === PILOT_SECTION_NAME.toLowerCase()
@@ -26,12 +28,13 @@ export function isAugmentCategory(category: DeckCategoryOut): boolean {
 }
 
 export function isReservedCategory(category: DeckCategoryOut): boolean {
-  return isPilotCategory(category) || isAugmentCategory(category)
+  return isPilotCategory(category)
 }
 
-/** Playable RIG section — reserved slots and list-only piles are excluded. */
+/** Playable RIG section — reserved slots, augments, and list-only piles are excluded. */
 export function categoryCountsInDeck(category: DeckCategoryOut): boolean {
   if (isReservedCategory(category)) return false
+  if (isAugmentCategory(category)) return false
   return category.in_deck !== false
 }
 
@@ -41,16 +44,18 @@ export function sortDeckCards(
 ): DeckCardEntry[] {
   return [...cards].sort((a, b) => {
     if (mode === "invoke") {
-      const byCost = (a.invoke_cost ?? 0) - (b.invoke_cost ?? 0)
+      const byCost = (a.card.invoke_cost ?? 0) - (b.card.invoke_cost ?? 0)
       if (byCost !== 0) return byCost
-      return a.card_name.localeCompare(b.card_name)
+      return a.card.card_name.localeCompare(b.card.card_name)
     }
     if (mode === "type") {
-      const byType = (a.types_line || "").localeCompare(b.types_line || "")
+      const byType = (a.card.types_line || "").localeCompare(
+        b.card.types_line || ""
+      )
       if (byType !== 0) return byType
-      return a.card_name.localeCompare(b.card_name)
+      return a.card.card_name.localeCompare(b.card.card_name)
     }
-    return a.card_name.localeCompare(b.card_name)
+    return a.card.card_name.localeCompare(b.card.card_name)
   })
 }
 
@@ -61,6 +66,7 @@ export function cardsByCategory(
 ): { category: DeckCategoryOut; cards: DeckCardEntry[] }[] {
   return categories
     .filter((category) => !isReservedCategory(category))
+    .filter((category) => !isAugmentCategory(category))
     .map((category) => ({
       category,
       cards: sortDeckCards(
@@ -71,7 +77,9 @@ export function cardsByCategory(
 }
 
 export function mainCategoryId(categories: DeckCategoryOut[]): number | null {
-  const playable = categories.filter((c) => !isReservedCategory(c))
+  const playable = categories.filter(
+    (c) => !isReservedCategory(c) && !isAugmentCategory(c)
+  )
   const inDeck = playable.filter(categoryCountsInDeck)
   const pool = inDeck.length > 0 ? inDeck : playable
   const preferred = pool.find((c) => {
@@ -123,12 +131,9 @@ export function selectableCardsInOrder(
   categories: DeckCategoryOut[],
   sortMode: DeckCardSortMode
 ): DeckCardEntry[] {
-  return [
-    ...augmentCards(cards, categories, sortMode),
-    ...cardsByCategory(cards, categories, sortMode).flatMap(
-      (group) => group.cards
-    ),
-  ]
+  return cardsByCategory(cards, categories, sortMode).flatMap(
+    (group) => group.cards
+  )
 }
 
 export function withCardEntry(
@@ -138,7 +143,8 @@ export function withCardEntry(
   const withoutDup = prev.cards.filter(
     (card) =>
       !(
-        card.card_id === entry.card_id && card.category_id === entry.category_id
+        card.card.id === entry.card.id &&
+        card.category_id === entry.category_id
       )
   )
   const cards = [...withoutDup, entry]
@@ -155,7 +161,7 @@ export function removeCardEntry(
   categoryId: number
 ): DeckCardEntry[] {
   return cards.filter(
-    (card) => !(card.card_id === cardId && card.category_id === categoryId)
+    (card) => !(card.card.id === cardId && card.category_id === categoryId)
   )
 }
 
@@ -167,11 +173,11 @@ export function applyCardMove(
 ): DeckCardEntry[] {
   const withoutSource = removeCardEntry(
     workingCards,
-    updated.card_id,
+    updated.card.id,
     fromCategoryId
   )
   return [
-    ...removeCardEntry(withoutSource, updated.card_id, updated.category_id),
+    ...removeCardEntry(withoutSource, updated.card.id, updated.category_id),
     updated,
   ]
 }
@@ -192,18 +198,58 @@ export function deckCardCount(
   }, 0)
 }
 
-export function maxCopiesForCategory(category: DeckCategoryOut): number {
-  return isAugmentCategory(category) ? 1 : DECK_CARD_MAX_COPIES
+/** Anything that can expose `super_types` for copy-limit rules. */
+export type SuperTypesSource =
+  | Pick<CardSummary, "super_types">
+  | Pick<DeckCardEntry, "card">
+  | { super_types?: string[] | null }
+  | null
+  | undefined
+
+export function cardHasSuperType(
+  card: SuperTypesSource,
+  superType: string
+): boolean {
+  if (card == null) return false
+  const types =
+    "card" in card && card.card != null
+      ? card.card.super_types
+      : "super_types" in card
+        ? card.super_types
+        : undefined
+  if (!Array.isArray(types)) return false
+  const needle = superType.trim().toLowerCase()
+  return types.some((value) => String(value).trim().toLowerCase() === needle)
 }
 
-/** Sum of quantity for one `card_id` across every section in the deck. */
+/**
+ * Per-stack copy cap:
+ * - Token super-type → 99
+ * - else → 3
+ */
+export function maxCopiesForDeckCard(
+  _category: DeckCategoryOut,
+  cardOrEntry?: SuperTypesSource
+): number {
+  if (cardHasSuperType(cardOrEntry, "Token")) {
+    return DECK_CARD_MAX_COPIES_UNLIMITED
+  }
+  return DECK_CARD_MAX_COPIES
+}
+
+/** Category-only cap (no Token awareness). Prefer `maxCopiesForDeckCard`. */
+export function maxCopiesForCategory(category: DeckCategoryOut): number {
+  return maxCopiesForDeckCard(category)
+}
+
+/** Sum of quantity for one card id across every section in the deck. */
 export function totalCopiesOfCard(
-  cards: readonly Pick<DeckCardEntry, "card_id" | "quantity">[],
+  cards: readonly { card: Pick<CardSummary, "id">; quantity: number }[],
   cardId: number
 ): number {
   let total = 0
   for (const card of cards) {
-    if (card.card_id === cardId) total += card.quantity
+    if (card.card.id === cardId) total += card.quantity
   }
   return total
 }
@@ -214,7 +260,7 @@ export function totalCopiesOfCard(
  * against the same budget.
  */
 export function maxQuantityForStackEntry(
-  cards: readonly Pick<DeckCardEntry, "card_id" | "quantity">[],
+  cards: readonly { card: Pick<CardSummary, "id">; quantity: number }[],
   cardId: number,
   stackQuantity: number,
   maxCopies: number
@@ -305,6 +351,6 @@ export function orderedSelectionKeys(
   sortMode: DeckCardSortMode
 ): string[] {
   return selectableCardsInOrder(cards, categories, sortMode).map((entry) =>
-    deckCardSelectionKey(entry.category_id, entry.card_id)
+    deckCardSelectionKey(entry.category_id, entry.card.id)
   )
 }

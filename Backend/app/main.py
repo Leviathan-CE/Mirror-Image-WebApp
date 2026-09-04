@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.media_urls import MEDIA_URL_PREFIX
 from app.routers import health
 from app.routers import card_manager
+from app.routers import admin_analytics
 from app.routers import admin_cards
 from app.routers import admin_users
 from app.routers import auth
@@ -14,6 +15,13 @@ from app.routers import billing
 from app.routers import decks
 from app.routers import media
 from app.routers import play_rooms
+from app.analytics import (
+    LOGIN_PATHS,
+    host_sampler,
+    peek_user_id_from_authorization,
+    record_http_activity,
+    should_skip_path,
+)
 from app.settings import frontend_origins, is_dev
 
 """
@@ -34,7 +42,9 @@ async def lifespan(_app: FastAPI):
     startup work should run before the app begins serving requests.
     """
     #ensure_schema()
+    host_sampler.start()
     yield
+    host_sampler.stop()
 
 
 app = FastAPI(title="Mirror Image API", lifespan=lifespan)
@@ -76,12 +86,31 @@ async def media_cache_headers(request, call_next):
     return response
 
 
+@app.middleware("http")
+async def record_app_activity(request, call_next):
+    """Count requests for admin analytics. Does not gate access."""
+    response = await call_next(request)
+    if request.method == "OPTIONS":
+        return response
+    path = request.url.path
+    if should_skip_path(path):
+        return response
+    is_login = path in LOGIN_PATHS and request.method == "POST" and response.status_code < 400
+    user_id = peek_user_id_from_authorization(request.headers.get("authorization"))
+    try:
+        record_http_activity(user_id=user_id, is_login=is_login)
+    except Exception:
+        pass
+    return response
+
+
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(email_auth.router)
 app.include_router(billing.router)
 app.include_router(decks.router)
 app.include_router(play_rooms.router)
+app.include_router(admin_analytics.router)
 app.include_router(admin_cards.router)
 app.include_router(admin_users.router)
 app.include_router(card_manager.router)

@@ -14,6 +14,7 @@ from psycopg2.extras import Json
 from app.db import get_connection
 from app.card_library_query import apply_catalogue_filters, catalogue_order_sql
 from app.card_publish import catalogue_visibility_sql, get_optional_include_preview
+from app.cards.schemas import CardLibraryItem
 from app.media_urls import signed_media_path
 from app.security import get_current_admin_user_id, get_optional_is_admin
 
@@ -105,11 +106,19 @@ class CardCreated(BaseModel):
 
 
 class CardThumbnailUploaded(BaseModel):
-    """Response returned after a thumbnail is stored and linked."""
+    """Response returned after a full-card thumbnail is stored on disk."""
 
     id: int
     thumbnail_path: str
     thumbnail_size_bytes: int
+
+
+class CardArtUploaded(BaseModel):
+    """Response returned after thumb-art is stored and linked on the card row."""
+
+    id: int
+    card_art_path: str
+    card_art_size_bytes: int
     card_art_version: int | None = None
 
 
@@ -160,7 +169,7 @@ _CARD_SELECT_SQL = """
            legal_info, card_printing, is_summon, is_pilot, is_augment,
            threat_level, ram_capacity, power_capacity, metal_capacity,
            spirit_capacity, steel_capacity, time_capacity, lif_capacity,
-           hand_size, lagality, card_art_path, card_art_mime_type
+           hand_size, lagality, illustration_thumbnail_path, illustration_thumbnail_mime_type
       FROM cards
 """
 
@@ -306,6 +315,7 @@ class CardSearchHit(BaseModel):
     card_set_name: str
     rarity: str
     card_art_path: str | None = None
+    card_thumbnail_path: str | None = None
     card_art_version: int | None = None
 
 
@@ -341,7 +351,8 @@ def search_cards(
                         c.card_name,
                         c.card_set_name,
                         c.rarity,
-                        c.card_art_path,
+                        c.illustration_thumbnail_path,
+                        c.card_thumbnail_path,
                         EXTRACT(EPOCH FROM c.updated_at)::bigint
                       FROM cards c
                      WHERE c.is_deprecated = false
@@ -377,30 +388,11 @@ def search_cards(
             card_set_name=row[2],
             rarity=row[3],
             card_art_path=signed_media_path(row[4]),
-            card_art_version=int(row[5]) if row[5] is not None else None,
+            card_thumbnail_path=signed_media_path(row[5]),
+            card_art_version=int(row[6]) if row[6] is not None else None,
         )
         for row in rows
     ]
-
-
-class CardLibraryItem(BaseModel):
-    """Card row for the public library browser."""
-
-    id: int
-    card_name: str
-    card_set_name: str
-    rarity: str
-    invoke_cost: int
-    cost: list[Any] = Field(default_factory=list)
-    super_types: list[Any] = Field(default_factory=list)
-    sub_types: list[Any] = Field(default_factory=list)
-    types_line: str = ""
-    description: str = ""
-    keywords: list[Any] = Field(default_factory=list)
-    show_help_text: bool = True
-    threat_level: str = "0"
-    card_art_path: str | None = None
-    card_art_version: int | None = None
 
 
 class CardLibraryResponse(BaseModel):
@@ -518,14 +510,18 @@ def browse_card_library(
     sub_type: str | None = Query(default=None, max_length=60),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    sort: str = Query(
+        default="name",
+        description="Result order: name | name_desc | invoke | invoke_desc | relevance",
+    ),
     is_admin: bool = Depends(get_optional_is_admin),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """
     Browse / filter the card catalogue.
 
-    Name search (`q`) uses the same closest-match ranking as `/cards/search`
-    (prefix first, then substring, shorter names preferred).
+    `sort=name` (default) is A–Z; `sort=invoke` is invoke cost then name;
+    `sort=relevance` uses prefix-first ranking when `q` is set.
     Non-subscribers only see published cards; subscribers also see preview;
     admins see the full catalogue.
     """
@@ -537,7 +533,7 @@ def browse_card_library(
     ]
     params: dict[str, Any] = {"limit": limit, "offset": offset}
 
-    has_name_query = apply_catalogue_filters(
+    filter_state = apply_catalogue_filters(
         where,
         params,
         q=q,
@@ -551,7 +547,11 @@ def browse_card_library(
     )
 
     where_sql = " AND ".join(where)
-    order_sql = catalogue_order_sql(has_name_query)
+    order_sql = catalogue_order_sql(
+        filter_state.has_name_query,
+        sort=sort,
+        has_sub_type_query=filter_state.has_sub_type_query,
+    )
 
     try:
         with get_connection() as conn:
@@ -578,8 +578,19 @@ def browse_card_library(
                         keywords,
                         show_help_text,
                         threat_level,
-                        card_art_path,
-                        EXTRACT(EPOCH FROM updated_at)::bigint
+                        illustration_thumbnail_path,
+                        card_thumbnail_path,
+                        EXTRACT(EPOCH FROM updated_at)::bigint,
+                        is_pilot,
+                        is_augment,
+                        hand_size,
+                        ram_capacity,
+                        power_capacity,
+                        metal_capacity,
+                        spirit_capacity,
+                        steel_capacity,
+                        time_capacity,
+                        lif_capacity
                       FROM cards
                      WHERE {where_sql}
                      ORDER BY {order_sql}
@@ -602,16 +613,27 @@ def browse_card_library(
             card_set_name=row[2],
             rarity=row[3],
             invoke_cost=int(row[4] or 0),
-            cost=row[5] or [],
-            super_types=row[6] or [],
-            sub_types=row[7] or [],
+            cost=list(row[5] or []),
+            super_types=list(row[6] or []),
+            sub_types=list(row[7] or []),
             types_line=row[8] or "",
             description=row[9] or "",
-            keywords=row[10] or [],
+            keywords=list(row[10] or []),
             show_help_text=bool(row[11]),
             threat_level=str(row[12] if row[12] is not None else "0"),
             card_art_path=signed_media_path(row[13]),
-            card_art_version=int(row[14]) if row[14] is not None else None,
+            card_thumbnail_path=signed_media_path(row[14]),
+            card_art_version=int(row[15]) if row[15] is not None else None,
+            is_pilot=bool(row[16]),
+            is_augment=bool(row[17]),
+            hand_size=int(row[18] or 0),
+            ram_capacity=int(row[19] or 0),
+            power_capacity=int(row[20] or 0),
+            metal_capacity=int(row[21] or 0),
+            spirit_capacity=int(row[22] or 0),
+            steel_capacity=int(row[23] or 0),
+            time_capacity=int(row[24] or 0),
+            lif_capacity=int(row[25] or 0),
         )
         for row in rows
     ]
@@ -691,18 +713,74 @@ async def upload_card_thumbnail(
     file: UploadFile = File(...),
     _admin_id: int = Depends(get_current_admin_user_id),
 ):
-    """Upload a card thumbnail, persist it on disk, and store its path. Admin only."""
+    """
+    Upload a full-card PNG from Unity ``Assets/!thumbnail``.
 
+    Updates ``card_thumbnail_path`` / ``card_thumbnail_mime_type``.
+    """
+
+    relative_path, size_bytes, _version = await _store_card_image_file(
+        card_id,
+        file,
+        kind="thumbnail",
+        file_suffix="thumbnail",
+        path_column="card_thumbnail_path",
+        mime_column="card_thumbnail_mime_type",
+    )
+    return CardThumbnailUploaded(
+        id=card_id,
+        thumbnail_path=signed_media_path(relative_path) or relative_path,
+        thumbnail_size_bytes=size_bytes,
+    )
+
+
+@router.post("/{card_id}/art", response_model=CardArtUploaded)
+async def upload_card_art(
+    card_id: int,
+    file: UploadFile = File(...),
+    _admin_id: int = Depends(get_current_admin_user_id),
+):
+    """
+    Upload illustration-only art from Unity ``Assets/!thumb_art``.
+
+    Updates ``illustration_thumbnail_path`` (API JSON: ``card_art_path``).
+    """
+
+    relative_path, size_bytes, version = await _store_card_image_file(
+        card_id,
+        file,
+        kind="art",
+        file_suffix="thumb_art",
+        path_column="illustration_thumbnail_path",
+        mime_column="illustration_thumbnail_mime_type",
+    )
+    return CardArtUploaded(
+        id=card_id,
+        card_art_path=signed_media_path(relative_path) or relative_path,
+        card_art_size_bytes=size_bytes,
+        card_art_version=version,
+    )
+
+
+async def _store_card_image_file(
+    card_id: int,
+    file: UploadFile,
+    *,
+    kind: str,
+    file_suffix: str,
+    path_column: str,
+    mime_column: str,
+) -> tuple[str, int, int | None]:
     if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="thumbnail_must_be_image")
+        raise HTTPException(status_code=400, detail=f"{kind}_must_be_image")
 
     data = await file.read()
     if not data:
-        raise HTTPException(status_code=400, detail="empty_thumbnail_file")
+        raise HTTPException(status_code=400, detail=f"empty_{kind}_file")
 
-    max_size = 8 * 1024 * 1024  # card art can exceed 2MB (e.g. full lore PNGs)
+    max_size = 8 * 1024 * 1024
     if len(data) > max_size:
-        raise HTTPException(status_code=413, detail="thumbnail_too_large")
+        raise HTTPException(status_code=413, detail=f"{kind}_too_large")
 
     ext_map = {
         "image/png": ".png",
@@ -711,17 +789,24 @@ async def upload_card_thumbnail(
     }
     extension = ext_map.get(file.content_type)
     if extension is None:
-        raise HTTPException(status_code=400, detail="unsupported_thumbnail_type")
+        raise HTTPException(status_code=400, detail=f"unsupported_{kind}_type")
+
+    allowed = {
+        ("card_thumbnail_path", "card_thumbnail_mime_type"),
+        ("illustration_thumbnail_path", "illustration_thumbnail_mime_type"),
+    }
+    if (path_column, mime_column) not in allowed:
+        raise HTTPException(status_code=500, detail="invalid_image_column")
 
     select_sql = """
         SELECT id, card_set_name, card_name
         FROM cards
         WHERE id = %(card_id)s
     """
-    update_sql = """
+    update_sql = f"""
         UPDATE cards
-           SET card_art_path = %(card_art_path)s,
-               card_art_mime_type = %(mime_type)s,
+           SET {path_column} = %(stored_path)s,
+               {mime_column} = %(mime_type)s,
                updated_at = NOW()
          WHERE id = %(card_id)s
     """
@@ -742,14 +827,11 @@ async def upload_card_thumbnail(
                 set_dir = base_dir / set_slug
                 set_dir.mkdir(parents=True, exist_ok=True)
 
-                # One stable path per card in the DB. The frontend appends
-                # ?v=<updated_at> so browsers fetch again after a re-upload.
-                file_name = f"{card_slug}_thumbnail{extension}"
+                file_name = f"{card_slug}_{file_suffix}{extension}"
                 file_path = set_dir / file_name
                 file_path.write_bytes(data)
 
-                # Clean leftover hashed names from an older upload scheme.
-                for old in set_dir.glob(f"{card_slug}_thumbnail_*"):
+                for old in set_dir.glob(f"{card_slug}_{file_suffix}_*"):
                     try:
                         old.unlink()
                     except OSError:
@@ -759,7 +841,7 @@ async def upload_card_thumbnail(
                 cur.execute(
                     update_sql,
                     {
-                        "card_art_path": relative_path,
+                        "stored_path": relative_path,
                         "mime_type": file.content_type,
                         "card_id": card_id,
                     },
@@ -775,15 +857,11 @@ async def upload_card_thumbnail(
                 version_row = cur.fetchone()
             conn.commit()
     except OperationalError as e:
-        logger.warning("db error on thumbnail upload: %s", e)
+        logger.warning("db error on %s upload: %s", kind, e)
         raise HTTPException(status_code=503, detail="database_unavailable") from e
     except OSError as e:
-        logger.warning("thumbnail file write error: %s", e)
-        raise HTTPException(status_code=500, detail="thumbnail_write_failed") from e
+        logger.warning("%s file write error: %s", kind, e)
+        raise HTTPException(status_code=500, detail=f"{kind}_write_failed") from e
 
-    return CardThumbnailUploaded(
-        id=card_id,
-        thumbnail_path=signed_media_path(relative_path) or relative_path,
-        thumbnail_size_bytes=len(data),
-        card_art_version=int(version_row[0]) if version_row and version_row[0] is not None else None,
-    )
+    version = int(version_row[0]) if version_row and version_row[0] is not None else None
+    return relative_path, len(data), version

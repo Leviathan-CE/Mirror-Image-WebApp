@@ -23,8 +23,8 @@ docker compose up --build
 App URLs:
 
 - Frontend: `http://localhost:3000`
-- API: `http://localhost:8000`
-- Auth docs: `http://localhost:8000/docs` (`POST /auth/register`, `POST /auth/login`, `GET /auth/me`)
+- API: `http://localhost:8001`
+- Auth docs: `http://localhost:8001/docs` (`POST /auth/register`, `POST /auth/login`, `GET /auth/me`)
 
 ### Dev seed accounts (local only)
 

@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom"
 import { RequireAdmin } from "@/app/RequireAdmin"
 import { RequireAuth } from "@/app/RequireAuth"
 import { AppProviders } from "@/app/providers/AppProviders"
+import { PreferencesNavigationFlush } from "@/app/providers/PreferencesProvider"
 import { AppHeader } from "@/components/common/AppHeader"
 import { HomePage, HowToPlayPage, MainPage } from "@/pages"
 import { LoginPage } from "@/pages/auth/LoginPage"
@@ -18,6 +19,7 @@ import { AdminAnalyticsPage } from "@/pages/admin/AdminAnalyticsPage"
 import { AdminCardsPage } from "@/pages/admin/AdminCardsPage"
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage"
 import { SubscribePage } from "@/pages/billing/SubscribePage"
+import { AccountSettingsPage } from "@/pages/account/AccountSettingsPage"
 import { ComunityDecksPage } from "@/pages/decks/ComunityDecksPage"
 import { ROUTES } from "@/lib/route"
 import { PlayTesterPage } from "@/pages/decks/PlayTesterPage"
@@ -26,6 +28,7 @@ export function AppShell() {
   return (
     <AppProviders>
       <BrowserRouter>
+        <PreferencesNavigationFlush />
         <AppHeader />
         <main className="min-h-screen">
           <Routes>
@@ -66,6 +69,14 @@ export function AppShell() {
               element={
                 <RequireAuth>
                   <SubscribePage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path={ROUTES.ACCOUNT}
+              element={
+                <RequireAuth>
+                  <AccountSettingsPage />
                 </RequireAuth>
               }
             />

@@ -5,8 +5,9 @@ import { describe, expect, it, vi } from "vitest"
 import { DECK_CARD_DRAG_MIME } from "./deckCardDrag"
 import { DeckPilotSlot } from "./DeckPilotSlot"
 import type { DeckCardEntry } from "@/lib/api/decks"
+import { deckEntry } from "@/test/deckEntry.fixture"
 
-const pilot: DeckCardEntry = {
+const pilot: DeckCardEntry = deckEntry({
   card_id: 99,
   card_name: "Diana Ugisaki",
   quantity: 1,
@@ -14,7 +15,7 @@ const pilot: DeckCardEntry = {
   category_name: "Pilot",
   sort_order: 0,
   card_art_path: null,
-}
+})
 
 function dragDataTransfer(payload: object) {
   const encoded = JSON.stringify(payload)
@@ -73,11 +74,13 @@ describe("DeckPilotSlot", () => {
 
     const frame = screen.getByTitle(/middle-click hold to enlarge/i)
     fireEvent.mouseDown(frame, { button: 1 })
-    expect(screen.getByRole("dialog", { name: pilot.card_name })).toBeInTheDocument()
+    expect(
+      screen.getByRole("dialog", { name: pilot.card.card_name })
+    ).toBeInTheDocument()
 
     fireEvent.mouseUp(window)
     expect(
-      screen.queryByRole("dialog", { name: pilot.card_name })
+      screen.queryByRole("dialog", { name: pilot.card.card_name })
     ).not.toBeInTheDocument()
   })
 })

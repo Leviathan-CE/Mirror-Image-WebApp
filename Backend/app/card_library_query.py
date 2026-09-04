@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, NamedTuple
 
 from psycopg2.extras import Json
+
+
+class CatalogueFilterState(NamedTuple):
+    has_name_query: bool
+    has_sub_type_query: bool
 
 
 def escape_like(value: str) -> str:
@@ -103,8 +108,8 @@ def apply_catalogue_filters(
     types_line: str | None = None,
     super_type: str | None = None,
     sub_type: str | None = None,
-) -> bool:
-    """Append library filter clauses. Returns True when a name query is active."""
+) -> CatalogueFilterState:
+    """Append library filter clauses."""
     needle = (q or "").strip()
     if needle:
         escaped = escape_like(needle)
@@ -166,15 +171,182 @@ def apply_catalogue_filters(
 
     sub_val = (sub_type or "").strip()
     if sub_val:
-        where.append(f"{alias}.sub_types @> %(sub_type_json)s::jsonb")
+        escaped_sub = escape_like(sub_val)
+        where.append(
+            f"""(
+            {alias}.sub_types @> %(sub_type_json)s::jsonb
+            OR {alias}.types_line ILIKE %(sub_type_types_line_pattern)s ESCAPE '\\'
+        )"""
+        )
         params["sub_type_json"] = Json([sub_val])
+        params["sub_type_types_line_pattern"] = f"%{escaped_sub}%"
+        params["sub_type_types_line_prefix"] = f"{escaped_sub}%"
 
-    return bool(needle)
+    return CatalogueFilterState(bool(needle), bool(sub_val))
 
 
-def catalogue_order_sql(has_name_query: bool, alias: str = "cards") -> str:
-    if has_name_query:
+def normalize_color_tokens(color: list[str] | None) -> list[str]:
+    """Unique upper-cased colour tokens in first-seen order."""
+    colors: list[str] = []
+    for raw in color or []:
+        token = raw.strip().upper()
+        if token and token not in colors:
+            colors.append(token)
+    return colors
+
+
+def sql_card_matches_color(
+    alias: str,
+    color: str,
+    param_key: str,
+    *,
+    stl_include_pure_numbered: bool = False,
+) -> str:
+    """SQL predicate: card ``alias`` matches one colour identity."""
+    if color == "STL":
+        return sql_card_matches_stl(
+            alias, include_pure_numbered_gen=stl_include_pure_numbered
+        )
+    return f"""EXISTS (
+      SELECT 1
+        FROM jsonb_array_elements_text({alias}.cost) AS token(value)
+       WHERE UPPER(BTRIM(token.value)) = %({param_key})s
+          OR UPPER(BTRIM(token.value))
+             ~ ('(^|[-])' || %({param_key})s || '([-]|$)')
+    )"""
+
+
+def apply_deck_color_filters(
+    where: list[str],
+    params: dict[str, Any],
+    *,
+    colors: list[str] | None,
+    color_mode: str = "or",
+    deck_id_expr: str = "d.id",
+    card_alias: str = "dc_c",
+) -> None:
+    """
+    Filter decks by colour identity of cards they contain.
+
+    - or: ≥1 card matching any selected colour
+    - and: ≥1 card for each selected colour
+    - not: no card matching any selected colour
+    """
+    tokens = normalize_color_tokens(colors)
+    if not tokens:
+        return
+
+    mode = (color_mode or "or").strip().lower()
+    if mode not in {"or", "and", "not"}:
+        mode = "or"
+
+    stl_include_pure = tokens == ["STL"]
+    predicates: list[str] = []
+    for index, token in enumerate(tokens):
+        key = f"deck_color_{index}"
+        predicates.append(
+            sql_card_matches_color(
+                card_alias,
+                token,
+                key,
+                stl_include_pure_numbered=stl_include_pure,
+            )
+        )
+        if token != "STL":
+            params[key] = token
+
+    def exists_sql(inner: str) -> str:
+        return f"""EXISTS (
+            SELECT 1
+              FROM deck_has_cards dhc
+              JOIN cards {card_alias} ON {card_alias}.id = dhc.card_id
+             WHERE dhc.deck_id = {deck_id_expr}
+               AND ({inner})
+        )"""
+
+    if mode == "and":
+        for pred in predicates:
+            where.append(exists_sql(pred))
+        return
+
+    combined = " OR ".join(f"({p})" for p in predicates)
+    clause = exists_sql(combined)
+    if mode == "not":
+        where.append(f"NOT {clause}")
+    else:
+        where.append(clause)
+
+
+# Library browse sort modes (query param `sort`).
+CATALOGUE_SORT_NAME = "name"
+CATALOGUE_SORT_NAME_DESC = "name_desc"
+CATALOGUE_SORT_INVOKE = "invoke"
+CATALOGUE_SORT_INVOKE_DESC = "invoke_desc"
+CATALOGUE_SORT_RELEVANCE = "relevance"
+CATALOGUE_SORT_MODES = frozenset(
+    {
+        CATALOGUE_SORT_NAME,
+        CATALOGUE_SORT_NAME_DESC,
+        CATALOGUE_SORT_INVOKE,
+        CATALOGUE_SORT_INVOKE_DESC,
+        CATALOGUE_SORT_RELEVANCE,
+    }
+)
+
+
+def catalogue_order_sql(
+    has_name_query: bool,
+    alias: str = "cards",
+    sort: str = CATALOGUE_SORT_NAME,
+    *,
+    has_sub_type_query: bool = False,
+) -> str:
+    """
+    ORDER BY clause for catalogue browse.
+
+    - name / name_desc: A–Z / Z–A
+    - invoke / invoke_desc: invoke cost ↑ / ↓, then A–Z
+    - relevance: prefix-first name ranking (only meaningful with a name query;
+      falls back to A–Z when there is no `q`)
+    """
+    mode = sort if sort in CATALOGUE_SORT_MODES else CATALOGUE_SORT_NAME
+
+    sub_type_rank = ""
+    if has_sub_type_query:
+        sub_type_rank = f"""
+            CASE
+              WHEN {alias}.types_line ILIKE %(sub_type_types_line_prefix)s ESCAPE '\\' THEN 0
+              ELSE 1
+            END,
+            LENGTH({alias}.types_line) ASC,
+        """
+
+    if mode == CATALOGUE_SORT_INVOKE:
+        return (
+            f"{sub_type_rank}"
+            f"{alias}.invoke_cost ASC, "
+            f"lower({alias}.card_name) ASC, "
+            f"{alias}.card_name ASC"
+        )
+
+    if mode == CATALOGUE_SORT_INVOKE_DESC:
+        return (
+            f"{sub_type_rank}"
+            f"{alias}.invoke_cost DESC, "
+            f"lower({alias}.card_name) ASC, "
+            f"{alias}.card_name ASC"
+        )
+
+    if mode == CATALOGUE_SORT_NAME_DESC:
+        return (
+            f"{sub_type_rank}"
+            f"lower({alias}.card_name) DESC, "
+            f"{alias}.card_name DESC"
+        )
+
+    if mode == CATALOGUE_SORT_RELEVANCE and has_name_query:
         return f"""
+            {sub_type_rank}
             CASE
               WHEN {alias}.card_name ILIKE %(name_prefix)s ESCAPE '\\' THEN 0
               ELSE 1
@@ -182,4 +354,9 @@ def catalogue_order_sql(has_name_query: bool, alias: str = "cards") -> str:
             LENGTH({alias}.card_name) ASC,
             {alias}.card_name ASC
         """
-    return f"{alias}.card_name ASC"
+
+    return (
+        f"{sub_type_rank}"
+        f"lower({alias}.card_name) ASC, "
+        f"{alias}.card_name ASC"
+    )

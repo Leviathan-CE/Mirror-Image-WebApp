@@ -5,17 +5,22 @@
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from "react"
+import { createPortal } from "react-dom"
 
 import { cn } from "@/lib/utils"
 
 export type DropdownMenuItem = {
   id: string
+  /** Visual divider — omit label / onSelect. */
+  separator?: boolean
   /** Plain text or JSX (e.g. text + GameIcon). */
-  label: ReactNode
+  label?: ReactNode
   /** Required for leaf items; omit when `submenu` is present. */
   onSelect?: () => void
   disabled?: boolean
@@ -81,16 +86,48 @@ export function DropdownMenu({
   menuClassName,
 }: DropdownMenuProps) {
   const menuId = useId()
-  const rootRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({})
+
+  useLayoutEffect(() => {
+    if (!open) return
+
+    function placeMenu() {
+      const trigger = triggerRef.current
+      if (!trigger) return
+      const rect = trigger.getBoundingClientRect()
+      const next: CSSProperties = {
+        position: "fixed",
+        top: rect.bottom + 4,
+        zIndex: 80,
+      }
+      if (align === "right") {
+        next.right = window.innerWidth - rect.right
+      } else {
+        next.left = rect.left
+      }
+      setMenuStyle(next)
+    }
+
+    placeMenu()
+    window.addEventListener("resize", placeMenu)
+    window.addEventListener("scroll", placeMenu, true)
+    return () => {
+      window.removeEventListener("resize", placeMenu)
+      window.removeEventListener("scroll", placeMenu, true)
+    }
+  }, [open, align])
 
   useEffect(() => {
     if (!open) return
 
     function onPointerDown(event: MouseEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false)
-      }
+      const target = event.target as Node
+      if (triggerRef.current?.contains(target)) return
+      if (menuRef.current?.contains(target)) return
+      setOpen(false)
     }
 
     function onKeyDown(event: KeyboardEvent) {
@@ -105,36 +142,28 @@ export function DropdownMenu({
     }
   }, [open])
 
-  return (
-    <div ref={rootRef} className={cn("relative", className)}>
-      <button
-        type="button"
-        aria-label={label}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls={menuId}
-        disabled={disabled}
+  const menuPanel =
+    open && typeof document !== "undefined" ? (
+      <div
+        ref={menuRef}
+        id={menuId}
+        role="menu"
+        style={menuStyle}
         className={cn(
-          "font-buahs93 flex h-8 w-8 items-center justify-center rounded-none",
-          "text-lg leading-none text-cyan-200/80 hover:bg-cyan-500/10 hover:text-white",
-          "disabled:opacity-50",
-          triggerClassName
+          "min-w-[9rem] border border-cyan-500/30 bg-black/95 py-1 shadow-lg",
+          menuClassName
         )}
-        onClick={() => setOpen((prev) => !prev)}
       >
-        {trigger}
-      </button>
-      {open ? (
-        <div
-          id={menuId}
-          role="menu"
-          className={cn(
-            "absolute top-full z-[70] mt-1 min-w-[9rem] border border-cyan-500/30 bg-black/95 py-1 shadow-lg",
-            align === "right" ? "right-0" : "left-0",
-            menuClassName
-          )}
-        >
           {items.map((item) => {
+            if (item.separator) {
+              return (
+                <div
+                  key={item.id}
+                  role="separator"
+                  className="my-1 border-t border-cyan-500/25"
+                />
+              )
+            }
             const textInput = item.textInput
 
             return (
@@ -197,7 +226,29 @@ export function DropdownMenu({
             )
           })}
         </div>
-      ) : null}
+    ) : null
+
+  return (
+    <div className={cn("relative", className)}>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={menuId}
+        disabled={disabled}
+        className={cn(
+          "font-buahs93 flex h-8 w-8 items-center justify-center rounded-none",
+          "text-lg leading-none text-cyan-200/80 hover:bg-cyan-500/10 hover:text-white",
+          "disabled:opacity-50",
+          triggerClassName
+        )}
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        {trigger}
+      </button>
+      {menuPanel ? createPortal(menuPanel, document.body) : null}
     </div>
   )
 }
