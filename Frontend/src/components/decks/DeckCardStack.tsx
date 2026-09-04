@@ -267,6 +267,7 @@ export function DeckCardStack({
               onContextMenu={(event) => {
                 if (!canAdjust) return
                 event.preventDefault()
+                event.stopPropagation()
                 onQuantityDelta?.(card, -1)
               }}
               onAuxClick={(event) => {

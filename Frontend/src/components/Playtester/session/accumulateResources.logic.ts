@@ -125,13 +125,23 @@ export function extractGainablePips(
   return out
 }
 
-/** True when every pip is solid and count ≤ ACCUMULATE_MAX_PIPS — no chooser needed. */
-export function canAutoResolvePips(pips: GainablePip[]): boolean {
-  return (
-    pips.length > 0 &&
-    pips.length <= ACCUMULATE_MAX_PIPS &&
-    pips.every((p) => p.kind === "solid")
+function solidPipColors(pips: GainablePip[]): ResourceColor[] | null {
+  if (pips.length === 0 || pips.some((p) => p.kind !== "solid")) return null
+  return pips.map(
+    (p) => (p as Extract<GainablePip, { kind: "solid" }>).color
   )
+}
+
+/**
+ * Skip the chooser when the gained colours cannot change:
+ * - all solid and count ≤ ACCUMULATE_MAX_PIPS (take them all), or
+ * - all solid and the same colour (take ACCUMULATE_MAX_PIPS of that colour).
+ */
+export function canAutoResolvePips(pips: GainablePip[]): boolean {
+  const colors = solidPipColors(pips)
+  if (!colors) return false
+  if (colors.length <= ACCUMULATE_MAX_PIPS) return true
+  return new Set(colors).size === 1
 }
 
 export function autoResolveColors(pips: GainablePip[]): ResourceColor[] {

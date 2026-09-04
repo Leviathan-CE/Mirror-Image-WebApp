@@ -124,6 +124,7 @@ export function DeckPilotSlot({
         onContextMenu={(event) => {
           if (!canEdit || !pilot || !onClear) return
           event.preventDefault()
+          event.stopPropagation()
           void onClear()
         }}
         title={

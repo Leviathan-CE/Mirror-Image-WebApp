@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState, type DragEvent as ReactDragEvent } from "react"
 
+import { useUserPreferences } from "@/app/providers/PreferencesProvider"
 import { CardDetailOverlay } from "@/components/cards/CardDetailOverlay"
 import { costTokenToIcon } from "@/components/cards/constants"
 import { CardSearchBar } from "@/components/cards/CardSearchBar"
@@ -21,89 +22,18 @@ import { GlitchFx } from "@/components/effects/GlitchFx"
 import { Button } from "@/components/ui/button"
 import { EditBox } from "@/components/ui/EditBox"
 import { ApiError } from "@/lib/api/client"
-import {
-  fetchCardFacets,
-  fetchCardLibrary,
-  type CardLibraryFacets,
-  type CardLibraryItem,
-  type CardLibrarySortMode,
-} from "@/lib/api/cards"
+import { fetchCardFacets, fetchCardLibrary, type CardLibraryFacets, type CardLibraryItem } from "@/lib/api/cards"
 import { cardFaceUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
-
-const PAGE_SIZE_OPTIONS = [50, 100, 150, 200] as const
-type PageSizeOption = (typeof PAGE_SIZE_OPTIONS)[number]
-const PAGE_SIZE_DEFAULT: PageSizeOption = 50
-const PAGE_SIZE_STORAGE_KEY = "mi-library-page-size"
-const SORT_STORAGE_KEY = "mi-library-sort-mode"
-
-const LIBRARY_SORT_OPTIONS: { id: CardLibrarySortMode; label: string }[] = [
-  { id: "name", label: "A–Z" },
-  { id: "name_desc", label: "Z–A" },
-  { id: "invoke", label: "Invoke cost ↑" },
-  { id: "invoke_desc", label: "Invoke cost ↓" },
-  { id: "relevance", label: "Best match" },
-]
-
-function isLibrarySortMode(value: string): value is CardLibrarySortMode {
-  return (
-    value === "name" ||
-    value === "name_desc" ||
-    value === "invoke" ||
-    value === "invoke_desc" ||
-    value === "relevance"
-  )
-}
-
-function readStoredSortMode(): CardLibrarySortMode {
-  try {
-    const raw = window.localStorage.getItem(SORT_STORAGE_KEY)
-    return raw != null && isLibrarySortMode(raw) ? raw : "name"
-  } catch {
-    return "name"
-  }
-}
-
-/** Grid card minimum width (px) — drives `auto-fill` column size. */
-const PREVIEW_CARD_MIN_PX = 72
-const PREVIEW_CARD_MAX_PX = 200
-const PREVIEW_CARD_DEFAULT_PX = 112
-const PREVIEW_CARD_STORAGE_KEY = "mi-library-preview-card-min-px"
-
-function clampPreviewCardMinPx(value: number): number {
-  return Math.min(
-    PREVIEW_CARD_MAX_PX,
-    Math.max(PREVIEW_CARD_MIN_PX, Math.round(value))
-  )
-}
-
-function readStoredPreviewCardMinPx(): number {
-  try {
-    const raw = window.localStorage.getItem(PREVIEW_CARD_STORAGE_KEY)
-    const parsed = raw == null ? NaN : Number(raw)
-    return Number.isFinite(parsed)
-      ? clampPreviewCardMinPx(parsed)
-      : PREVIEW_CARD_DEFAULT_PX
-  } catch {
-    return PREVIEW_CARD_DEFAULT_PX
-  }
-}
-
-function isPageSizeOption(value: number): value is PageSizeOption {
-  return (PAGE_SIZE_OPTIONS as readonly number[]).includes(value)
-}
-
-function readStoredPageSize(): PageSizeOption {
-  try {
-    const raw = window.localStorage.getItem(PAGE_SIZE_STORAGE_KEY)
-    const parsed = raw == null ? NaN : Number(raw)
-    return Number.isFinite(parsed) && isPageSizeOption(parsed)
-      ? parsed
-      : PAGE_SIZE_DEFAULT
-  } catch {
-    return PAGE_SIZE_DEFAULT
-  }
-}
+import {
+  LIBRARY_PAGE_SIZES,
+  LIBRARY_SORT_OPTIONS,
+  PREVIEW_PX_MAX,
+  PREVIEW_PX_MIN,
+  clampPreviewPx,
+  isLibraryPageSize,
+  isLibrarySortMode,
+} from "@/lib/userPreferences.logic"
 
 const secondaryActionClassName =
   "font-buahs93 h-9 rounded-none border border-cyan-500/35 bg-black/70 px-4 text-sm text-cyan-100 hover:border-cyan-400/60 hover:bg-cyan-500/10 hover:text-white disabled:opacity-60"
@@ -144,6 +74,10 @@ export function CardLibraryBrowser({
   title,
   onCardActivate,
 }: CardLibraryBrowserProps) {
+  const { prefs, patchPrefs } = useUserPreferences()
+  const pageSize = prefs.library_page_size
+  const sortMode = prefs.library_sort
+  const previewCardMinPx = prefs.library_preview_px
   const suppressClickRef = useRef(false)
   const [facets, setFacets] = useState<CardLibraryFacets>(EMPTY_FACETS)
   const [items, setItems] = useState<CardLibraryItem[]>([])
@@ -165,44 +99,6 @@ export function CardLibraryBrowser({
   const [advancedOpen, setAdvancedOpen] = useState(false)
   /** Compact deck panel: keep advanced filters collapsed so the grid stays large. */
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [pageSize, setPageSize] = useState<PageSizeOption>(() =>
-    typeof window === "undefined" ? PAGE_SIZE_DEFAULT : readStoredPageSize()
-  )
-  const [sortMode, setSortMode] = useState<CardLibrarySortMode>(() =>
-    typeof window === "undefined" ? "name" : readStoredSortMode()
-  )
-  const [previewCardMinPx, setPreviewCardMinPx] = useState(() =>
-    typeof window === "undefined"
-      ? PREVIEW_CARD_DEFAULT_PX
-      : readStoredPreviewCardMinPx()
-  )
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(pageSize))
-    } catch {
-      /* private mode / quota */
-    }
-  }, [pageSize])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(SORT_STORAGE_KEY, sortMode)
-    } catch {
-      /* private mode / quota */
-    }
-  }, [sortMode])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(
-        PREVIEW_CARD_STORAGE_KEY,
-        String(previewCardMinPx)
-      )
-    } catch {
-      /* private mode / quota */
-    }
-  }, [previewCardMinPx])
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedName(nameQuery.trim()), 200)
@@ -402,16 +298,18 @@ export function CardLibraryBrowser({
       </span>
       <input
         type="range"
-        min={PREVIEW_CARD_MIN_PX}
-        max={PREVIEW_CARD_MAX_PX}
+        min={PREVIEW_PX_MIN}
+        max={PREVIEW_PX_MAX}
         step={4}
         value={previewCardMinPx}
-        aria-valuemin={PREVIEW_CARD_MIN_PX}
-        aria-valuemax={PREVIEW_CARD_MAX_PX}
+        aria-valuemin={PREVIEW_PX_MIN}
+        aria-valuemax={PREVIEW_PX_MAX}
         aria-valuenow={previewCardMinPx}
         aria-label="Preview card size"
         onChange={(event) =>
-          setPreviewCardMinPx(clampPreviewCardMinPx(Number(event.target.value)))
+          patchPrefs({
+            library_preview_px: clampPreviewPx(Number(event.target.value)),
+          })
         }
         className="h-2 min-w-0 flex-1 cursor-pointer accent-cyan-400"
       />
@@ -428,7 +326,7 @@ export function CardLibraryBrowser({
           onChange={(event) => {
             const next = event.target.value
             if (!isLibrarySortMode(next)) return
-            setSortMode(next)
+            patchPrefs({ library_sort: next })
             setOffset(0)
           }}
           className={cn(
@@ -452,8 +350,8 @@ export function CardLibraryBrowser({
           aria-label="Cards per page"
           onChange={(event) => {
             const next = Number(event.target.value)
-            if (!isPageSizeOption(next)) return
-            setPageSize(next)
+            if (!isLibraryPageSize(next)) return
+            patchPrefs({ library_page_size: next })
             setOffset(0)
           }}
           className={cn(
@@ -461,7 +359,7 @@ export function CardLibraryBrowser({
             "font-mono text-xs text-cyan-50 outline-none focus-visible:border-cyan-300"
           )}
         >
-          {PAGE_SIZE_OPTIONS.map((n) => (
+          {LIBRARY_PAGE_SIZES.map((n) => (
             <option key={n} value={n}>
               {n}
             </option>

@@ -147,4 +147,15 @@ describe("accumulate pip cap", () => {
     expect(canAutoResolvePips(pips)).toBe(true)
     expect(autoResolveColors(pips)).toEqual(["RAM", "STL"])
   })
+
+  it("skips the chooser when extra pips are all the same colour", () => {
+    const pips = extractGainablePips(["LIF", "LIF", "LIF"])
+    expect(canAutoResolvePips(pips)).toBe(true)
+    expect(autoResolveColors(pips)).toEqual(["LIF", "LIF"])
+  })
+
+  it("still opens the chooser when extra pips include a hybrid", () => {
+    const pips = extractGainablePips(["LIF", "LIF", "LIF-MET"])
+    expect(canAutoResolvePips(pips)).toBe(false)
+  })
 })

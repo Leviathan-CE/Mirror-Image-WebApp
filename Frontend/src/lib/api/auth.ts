@@ -3,6 +3,10 @@
  */
 
 import { apiBaseUrl, authHeaders, readJsonOrThrow } from "@/lib/api/client"
+import type {
+  UserPreferences,
+  UserPreferencesPatch,
+} from "@/lib/userPreferences.logic"
 
 export type AuthUser = {
   id: number
@@ -14,6 +18,7 @@ export type AuthUser = {
   is_subscribed?: boolean
   email_verified?: boolean
   features?: string[]
+  preferences?: UserPreferences
 }
 
 /** Narrow unknown JSON (e.g. localStorage) to a usable AuthUser. */
@@ -113,4 +118,19 @@ export async function fetchCurrentUser(token: string): Promise<AuthUser> {
     headers: authHeaders(token),
   })
   return readJsonOrThrow<AuthUser>(response, "me_fetch_failed")
+}
+
+export async function patchUserPreferences(
+  token: string,
+  patch: UserPreferencesPatch
+): Promise<UserPreferences> {
+  const response = await fetch(`${apiBaseUrl()}/auth/me/preferences`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(token),
+    },
+    body: JSON.stringify(patch),
+  })
+  return readJsonOrThrow<UserPreferences>(response, "preferences_update_failed")
 }

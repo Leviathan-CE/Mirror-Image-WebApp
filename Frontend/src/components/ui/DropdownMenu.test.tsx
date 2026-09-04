@@ -62,6 +62,24 @@ describe("DropdownMenu", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument()
   })
 
+  it("renders a separator between items", async () => {
+    const user = userEvent.setup()
+    render(
+      <DropdownMenu
+        label="Options"
+        items={[
+          { id: "a", label: "Settings", onSelect: vi.fn() },
+          { id: "sep", separator: true },
+          { id: "b", label: "Sign out", tone: "danger", onSelect: vi.fn() },
+        ]}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: "Options" }))
+    expect(screen.getByRole("separator")).toBeInTheDocument()
+    expect(screen.getByRole("menuitem", { name: "Sign out" })).toBeInTheDocument()
+  })
+
   it("closes on Escape", async () => {
     const user = userEvent.setup()
     render(

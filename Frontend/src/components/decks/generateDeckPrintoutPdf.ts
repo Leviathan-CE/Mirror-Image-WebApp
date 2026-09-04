@@ -99,7 +99,7 @@ function drawPlaceholder(
 }
 
 function safeFileName(name: string): string {
-  return name.replace(/[^\w\-]+/g, "_").replace(/_+/g, "_").slice(0, 80)
+  return name.replace(/[^\w-]+/g, "_").replace(/_+/g, "_").slice(0, 80)
 }
 
 export async function generateDeckPrintoutPdf(opts: {

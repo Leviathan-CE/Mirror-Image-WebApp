@@ -76,11 +76,12 @@ describe("AppHeader", () => {
     expect(screen.getByText("operator_one")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "DECKS" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "CARDS" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "LOGOUT" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Account menu" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "LOGOUT" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "LOGIN" })).not.toBeInTheDocument()
   })
 
-  it("calls clearSession when LOGOUT is clicked", async () => {
+  it("calls clearSession when Sign out is chosen from the account menu", async () => {
     const user = userEvent.setup()
     useAuthMock.mockReturnValue({
       user: sampleUser,
@@ -91,7 +92,8 @@ describe("AppHeader", () => {
     })
 
     renderAppHeader()
-    await user.click(screen.getByRole("button", { name: "LOGOUT" }))
+    await user.click(screen.getByRole("button", { name: "Account menu" }))
+    await user.click(screen.getByRole("menuitem", { name: "Sign out" }))
 
     expect(clearSession).toHaveBeenCalledTimes(1)
   })

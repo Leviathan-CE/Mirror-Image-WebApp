@@ -113,6 +113,8 @@ export type DeckCreatePayload = {
   name: string
   description?: string | null
   is_public?: boolean
+  /** Starting section names from local account prefs. */
+  start_sections?: string[]
 }
 
 export type DeckUpdatePayload = {

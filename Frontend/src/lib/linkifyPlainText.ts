@@ -8,7 +8,7 @@ export type PlainTextSegment =
 
 /** http(s) URLs and bare www. hosts (not inside angle brackets). */
 const URL_PATTERN =
-  /(?:https?:\/\/[^\s<>\[\]{}|\\^`"]+|www\.[^\s<>\[\]{}|\\^`"]+)/gi
+  /(?:https?:\/\/[^\s<>[\]{}|\\^`"]+|www\.[^\s<>[\]{}|\\^`"]+)/gi
 
 const TRAILING_PUNCT = /[.,;:!?)'\]}>]+$/u
 

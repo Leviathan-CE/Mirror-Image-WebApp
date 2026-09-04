@@ -4,12 +4,9 @@
 
 import { useLocation, useNavigate } from "react-router-dom"
 
-import { useAuth } from "@/app/providers/AuthProvider"
+import { AccountMenu } from "@/components/common/AccountMenu"
 import { HeaderShell } from "@/components/common/HeaderShell"
-import {
-  headerUserNameClassName,
-  navButtonClassName,
-} from "@/components/common/headerStyles"
+import { navButtonClassName } from "@/components/common/headerStyles"
 import { Button } from "@/components/ui/button"
 import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
@@ -25,12 +22,6 @@ function adminNavClass(active: boolean) {
 export function AdminHeader() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const { user, clearSession } = useAuth()
-
-  function onLogout() {
-    clearSession()
-    navigate(ROUTES.HOME, { replace: true })
-  }
 
   return (
     <HeaderShell
@@ -64,18 +55,7 @@ export function AdminHeader() {
           </Button>
         </>
       }
-      actions={
-        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-          {user ? (
-            <span className={headerUserNameClassName}>
-              {user.user_name} · admin
-            </span>
-          ) : null}
-          <Button className={navButtonClassName} onClick={onLogout}>
-            LOGOUT
-          </Button>
-        </div>
-      }
+      actions={<AccountMenu suffix=" · admin" />}
     />
   )
 }

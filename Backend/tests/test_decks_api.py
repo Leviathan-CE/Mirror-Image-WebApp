@@ -12,6 +12,7 @@ import io
 import pytest
 from fastapi.testclient import TestClient
 
+from app.deck_defaults import DEFAULT_DECK_CATEGORY_NAMES
 from app.play_rooms_state import reset_play_rooms
 
 
@@ -25,6 +26,8 @@ def created_deck(client: TestClient, auth_headers: dict[str, str]) -> dict:
             "name": "Pytest Deck",
             "description": "temporary test deck",
             "is_public": False,
+            # Isolate from leftover seed-user preference mutations.
+            "start_sections": list(DEFAULT_DECK_CATEGORY_NAMES),
         },
     )
     assert response.status_code == 201, response.text
@@ -37,7 +40,7 @@ def test_list_default_categories_no_auth(client: TestClient):
     response = client.get("/decks/default-categories")
     assert response.status_code == 200
     body = response.json()
-    assert body["categories"] == ["Entity", "Cyberspell"]
+    assert body["categories"] == list(DEFAULT_DECK_CATEGORY_NAMES)
 
 
 def test_new_deck_seeds_default_categories(
@@ -49,7 +52,7 @@ def test_new_deck_seeds_default_categories(
     )
     assert response.status_code == 200
     names = [c["name"] for c in response.json()]
-    assert names == ["Entity", "Cyberspell"]
+    assert names == list(DEFAULT_DECK_CATEGORY_NAMES)
     assert all(c["in_deck"] is True for c in response.json())
 
 

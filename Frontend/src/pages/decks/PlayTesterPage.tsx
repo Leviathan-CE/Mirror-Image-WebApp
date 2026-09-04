@@ -802,7 +802,7 @@ export function PlayTesterPage() {
       return
     }
 
-    // Hybrids / MULTI / more than ACCUMULATE_MAX_PIPS pips — let the player choose.
+    // Hybrids / MULTI / mixed colours over the pip cap — let the player choose.
     setAccumulateChooser({ card, pips, from })
   }
 

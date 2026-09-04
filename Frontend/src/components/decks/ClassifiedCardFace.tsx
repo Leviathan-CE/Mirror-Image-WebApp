@@ -137,7 +137,7 @@ export function ClassifiedCardFace({
           </span>
         ) : (
           <Link
-            to={ROUTES.SUBSCRIBE}
+            to={ROUTES.ACCOUNT}
             className="clip-angled classified-card-face__cta font-buahs93"
             onClick={(event) => event.stopPropagation()}
             onMouseDown={(event) => event.stopPropagation()}

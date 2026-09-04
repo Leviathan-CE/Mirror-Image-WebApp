@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 
 import { sharedImages } from "@/assets"
 import { useAuth } from "@/app/providers/AuthProvider"
+import { useUserPreferences } from "@/app/providers/PreferencesProvider"
 import { Tabs } from "@/components/ui/Tabs"
 import { CommunityDeckBrowser } from "@/components/decks/CommunityDeckBrowser"
 import { DeckListCard } from "@/components/decks/DeckListCard"
@@ -18,6 +19,7 @@ import {
   PROFANITY_REJECTED,
   PUBLIC_TEXT_BLOCKED_MESSAGE,
 } from "@/lib/profanity"
+import { readLocalPreferences } from "@/lib/userPreferences.logic"
 import { ROUTES } from "@/lib/route"
 
 type DeckTab = "mine" | "community"
@@ -40,6 +42,7 @@ function tabFetchStatus(
 export function MainPage() {
   const navigate = useNavigate()
   const { user, token, isAuthenticated } = useAuth()
+  const { flushServerPrefs } = useUserPreferences()
   const [tab, setTab] = useState<DeckTab>("mine")
   const [myDecks, setMyDecks] = useState<DeckSummary[]>([])
   const [myStatus, setMyStatus] = useState<FetchStatus>("idle")
@@ -110,10 +113,15 @@ export function MainPage() {
     setSaving(true)
     setErrorText("")
     try {
+      // Push any pending Settings prefs, then seed from this device's local copy
+      // (do not wait on React state — localStorage is the runtime source of truth).
+      await flushServerPrefs()
+      const startSections = readLocalPreferences().deck_start_sections
       const created = await createDeck(token, {
         name,
         description: newDescription.trim() || null,
         is_public: newIsPublic,
+        start_sections: startSections,
       })
       setMyDecks((prev) => [created, ...prev])
       setMyStatus("ready")

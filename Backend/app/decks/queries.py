@@ -19,6 +19,7 @@ from app.card_publish import (
 from app.deck_community import community_fields
 from app.deck_defaults import (
     DEFAULT_DECK_CATEGORIES,
+    category_in_deck_default,
 )
 from app.decks.colors import fetch_deck_identity_costs
 from app.decks.schemas import CardSummary, DeckCardEntry, DeckCategoryOut, DeckSummary
@@ -62,8 +63,16 @@ def category_out(row) -> DeckCategoryOut:
     )
 
 
-def seed_default_categories(cur, deck_id: int) -> None:
-    for sort_order, (name, in_deck) in enumerate(DEFAULT_DECK_CATEGORIES):
+def seed_default_categories(
+    cur, deck_id: int, names: list[str] | None = None
+) -> None:
+    """Seed starting sections. `names` overrides the stock Entity/Cyberspell pair."""
+    pairs: list[tuple[str, bool]]
+    if names:
+        pairs = [(name, category_in_deck_default(name)) for name in names]
+    else:
+        pairs = list(DEFAULT_DECK_CATEGORIES)
+    for sort_order, (name, in_deck) in enumerate(pairs):
         cur.execute(
             """
             INSERT INTO deck_categories (deck_id, name, sort_order, in_deck)

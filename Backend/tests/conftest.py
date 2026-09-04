@@ -162,6 +162,23 @@ def other_auth_headers(client: TestClient, require_db: None):
 
 
 @pytest.fixture
+def admin_token(client: TestClient, require_db: None) -> str:
+    """JWT for the seeded admin@localhost account."""
+    response = client.post(
+        "/auth/login",
+        json={"identifier": "admin@localhost", "password": "admin123"},
+    )
+    if response.status_code != 200:
+        pytest.skip(f"admin login failed: {response.status_code} {response.text}")
+    return response.json()["access_token"]
+
+
+@pytest.fixture
+def admin_headers(admin_token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {admin_token}"}
+
+
+@pytest.fixture
 def sample_card_id(require_db: None) -> int:
     """A published catalogue card id (add-to-deck rejects unpublished/preview)."""
     with get_connection() as conn:

@@ -54,6 +54,8 @@ class DeckCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=2000)
     is_public: bool = True
+    # Optional starting section names (from client local prefs).
+    start_sections: list[str] | None = Field(default=None, max_length=12)
 
 
 class DeckUpdateRequest(BaseModel):

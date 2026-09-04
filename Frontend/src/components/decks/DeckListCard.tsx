@@ -11,6 +11,7 @@ import { cardColorIdentity } from "@/components/decks/deckCardColors"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { SafeMarkdown } from "@/components/common/SafeMarkdown"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
+import { ContextMenu } from "@/components/ui/ContextMenu"
 import { DropdownMenu } from "@/components/ui/DropdownMenu"
 import {
   PublicTextArea,
@@ -60,6 +61,7 @@ export function DeckListCard({
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null)
   const [name, setName] = useState(deck.name ?? "")
   const [description, setDescription] = useState(deck.description ?? "")
   const [isPublic, setIsPublic] = useState(deck.is_public)
@@ -189,7 +191,21 @@ export function DeckListCard({
   const identityColors = cardColorIdentity(deck.identity_cost)
 
   return (
-    <div className="relative flex h-full min-h-[11.5rem] overflow-hidden border border-cyan-500/25 bg-black/50 transition-colors hover:border-cyan-400/50">
+    <div
+      className="relative flex h-full min-h-[11.5rem] overflow-hidden border border-cyan-500/25 bg-black/50 transition-colors hover:border-cyan-400/50"
+      onContextMenu={(event) => {
+        if (!canManage || locked || saving) return
+        const target = event.target
+        if (
+          target instanceof Element &&
+          target.closest("button[aria-haspopup='menu'], [role='menu']")
+        ) {
+          return
+        }
+        event.preventDefault()
+        setCtxMenu({ x: event.clientX, y: event.clientY })
+      }}
+    >
       {artSrc ? (
         <>
           <div className="absolute inset-0 overflow-hidden" aria-hidden>
@@ -298,7 +314,7 @@ export function DeckListCard({
       </button>
 
       {canManage ? (
-        <div className="absolute top-3 right-3">
+        <div className="absolute top-3 right-3 z-20">
           <DropdownMenu
             label={`Options for ${deck.name ?? `deck ${deck.id}`}`}
             disabled={locked || saving}
@@ -320,6 +336,31 @@ export function DeckListCard({
             ]}
           />
         </div>
+      ) : null}
+
+      {canManage ? (
+        <ContextMenu
+          open={ctxMenu != null}
+          x={ctxMenu?.x ?? 0}
+          y={ctxMenu?.y ?? 0}
+          label={`Deck menu for ${label}`}
+          onClose={() => setCtxMenu(null)}
+          items={[
+            {
+              id: "edit",
+              label: "Edit details",
+              disabled: locked || saving,
+              onSelect: beginEdit,
+            },
+            {
+              id: "delete",
+              label: "Delete deck",
+              tone: "danger",
+              disabled: locked || saving,
+              onSelect: () => setDeleteOpen(true),
+            },
+          ]}
+        />
       ) : null}
 
       <ConfirmDialog

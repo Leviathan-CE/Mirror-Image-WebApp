@@ -95,6 +95,7 @@ from app.decks.schemas import (
 from app.media_urls import signed_media_path
 from app.play_visibility import resolve_room_visibility
 from app.profanity import reject_if_profane
+from app.user_preferences import fetch_user_preferences, normalize_user_preferences
 from app.security import (
     get_current_user_id,
     get_optional_is_admin,
@@ -455,7 +456,14 @@ def create_deck(
                         "is_public": body.is_public,
                     },
                 )
-                seed_default_categories(cur, deck_id)
+                if body.start_sections is not None:
+                    seed_names = normalize_user_preferences(
+                        {"deck_start_sections": body.start_sections}
+                    )["deck_start_sections"]
+                else:
+                    prefs = fetch_user_preferences(cur, user_id)
+                    seed_names = prefs["deck_start_sections"]
+                seed_default_categories(cur, deck_id, names=seed_names)
                 cur.execute(
                     "SELECT user_name FROM users WHERE id = %(user_id)s",
                     {"user_id": user_id},

@@ -5,11 +5,12 @@
  * - Owner can edit name, description, visibility, and categories.
  */
 
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react"
 import { ThumbsUp } from "lucide-react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
+import { useUserPreferences } from "@/app/providers/PreferencesProvider"
 import { sharedImages } from "@/assets"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { DeckBoard } from "@/components/decks/DeckBoard"
@@ -18,11 +19,9 @@ import { DeckDescription } from "@/components/decks/DeckDescription"
 import { collectDeckPrintoutSlots } from "@/components/decks/deckPrintout.logic"
 import {
   DeckCardSortControls,
-  type DeckCardSortMode,
 } from "@/components/decks/DeckCardSortControls"
 import {
   DeckCardViewControls,
-  type DeckCardViewMode,
 } from "@/components/decks/DeckCardViewControls"
 import {
   cardsFromDragPayload,
@@ -51,6 +50,7 @@ import { useCardSelection } from "@/hooks/useCardSelection"
 import { useDeckDetail } from "@/hooks/useDeckDetail"
 import { DeckTagSuggestInput } from "@/components/decks/DeckTagSuggestInput"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
+import { ContextMenu } from "@/components/ui/ContextMenu"
 import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/DropdownMenu"
 import {
   PublicTextArea,
@@ -82,17 +82,14 @@ import {
 } from "@/lib/api/decks"
 import { ROUTES, ADMIN_ROLE } from "@/lib/route"
 import { cn } from "@/lib/utils"
+import {
+  BROWSE_WIDTH_DEFAULT,
+  BROWSE_WIDTH_MIN,
+  clampBrowseWidth,
+} from "@/lib/userPreferences.logic"
 
-const BROWSE_WIDTH_STORAGE_KEY = "mi-deck-browse-width-px"
-const BROWSE_WIDTH_MIN = 280
 /** Leave this much horizontal room for the deck board while resizing. */
 const BROWSE_WIDTH_DECK_REMAIN_MIN = 280
-const BROWSE_WIDTH_DEFAULT = 352
-
-const CARD_SORT_STORAGE_KEY = "mi-deck-card-sort-mode"
-const CARD_VIEW_STORAGE_KEY = "mi-deck-card-view-mode"
-const CARD_SORT_DEFAULT: DeckCardSortMode = "type"
-const CARD_VIEW_DEFAULT: DeckCardViewMode = "cards"
 
 /** Widest the library panel may grow — viewport minus a thin deck strip. */
 function maxBrowseWidth(): number {
@@ -103,49 +100,8 @@ function maxBrowseWidth(): number {
   )
 }
 
-function clampBrowseWidth(width: number): number {
-  return Math.min(
-    maxBrowseWidth(),
-    Math.max(BROWSE_WIDTH_MIN, Math.round(width))
-  )
-}
-
-function readStoredBrowseWidth(): number {
-  try {
-    const raw = window.localStorage.getItem(BROWSE_WIDTH_STORAGE_KEY)
-    const parsed = raw == null ? NaN : Number(raw)
-    return Number.isFinite(parsed)
-      ? clampBrowseWidth(parsed)
-      : BROWSE_WIDTH_DEFAULT
-  } catch {
-    return BROWSE_WIDTH_DEFAULT
-  }
-}
-
-function isCardSortMode(value: string): value is DeckCardSortMode {
-  return value === "type" || value === "invoke" || value === "name"
-}
-
-function isCardViewMode(value: string): value is DeckCardViewMode {
-  return value === "cards" || value === "list"
-}
-
-function readStoredCardSortMode(): DeckCardSortMode {
-  try {
-    const raw = window.localStorage.getItem(CARD_SORT_STORAGE_KEY)
-    return raw != null && isCardSortMode(raw) ? raw : CARD_SORT_DEFAULT
-  } catch {
-    return CARD_SORT_DEFAULT
-  }
-}
-
-function readStoredCardViewMode(): DeckCardViewMode {
-  try {
-    const raw = window.localStorage.getItem(CARD_VIEW_STORAGE_KEY)
-    return raw != null && isCardViewMode(raw) ? raw : CARD_VIEW_DEFAULT
-  } catch {
-    return CARD_VIEW_DEFAULT
-  }
+function clampDeckBrowseWidth(width: number): number {
+  return clampBrowseWidth(width, maxBrowseWidth())
 }
 
 export function DeckPage() {
@@ -153,6 +109,10 @@ export function DeckPage() {
   const deckId = Number(deckIdParam)
   const navigate = useNavigate()
   const { user, token, isAuthenticated } = useAuth()
+  const { prefs, patchPrefs } = useUserPreferences()
+  const browseWidth = clampDeckBrowseWidth(prefs.deck_browse_width_px)
+  const cardSortMode = prefs.deck_sort
+  const cardViewMode = prefs.deck_view
 
   const {
     deck,
@@ -166,18 +126,14 @@ export function DeckPage() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deckCtxMenu, setDeckCtxMenu] = useState<{ x: number; y: number } | null>(
+    null
+  )
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [isPublic, setIsPublic] = useState(false)
   const [searchMenuOpen, setSearchMenuOpen] = useState(false)
   const [browseOpen, setBrowseOpen] = useState(true)
-  const [browseWidth, setBrowseWidth] = useState(BROWSE_WIDTH_DEFAULT)
-  const [cardSortMode, setCardSortMode] = useState<DeckCardSortMode>(() =>
-    typeof window === "undefined" ? CARD_SORT_DEFAULT : readStoredCardSortMode()
-  )
-  const [cardViewMode, setCardViewMode] = useState<DeckCardViewMode>(() =>
-    typeof window === "undefined" ? CARD_VIEW_DEFAULT : readStoredCardViewMode()
-  )
   const [tagDraft, setTagDraft] = useState("")
   const [printoutBusy, setPrintoutBusy] = useState(false)
   const browseResizeRef = useRef<{
@@ -187,44 +143,23 @@ export function DeckPage() {
   } | null>(null)
 
   useEffect(() => {
-    setBrowseWidth(readStoredBrowseWidth())
-  }, [])
+    const clamped = clampDeckBrowseWidth(prefs.deck_browse_width_px)
+    if (clamped !== prefs.deck_browse_width_px) {
+      patchPrefs({ deck_browse_width_px: clamped })
+    }
+  }, [prefs.deck_browse_width_px, patchPrefs])
 
   // If the window shrinks, pull the panel back so it still leaves room for the board.
   useEffect(() => {
     function onWindowResize() {
-      setBrowseWidth((w) => clampBrowseWidth(w))
+      const clamped = clampDeckBrowseWidth(prefs.deck_browse_width_px)
+      if (clamped !== prefs.deck_browse_width_px) {
+        patchPrefs({ deck_browse_width_px: clamped })
+      }
     }
     window.addEventListener("resize", onWindowResize)
     return () => window.removeEventListener("resize", onWindowResize)
-  }, [])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(
-        BROWSE_WIDTH_STORAGE_KEY,
-        String(browseWidth)
-      )
-    } catch {
-      /* private mode / quota */
-    }
-  }, [browseWidth])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(CARD_SORT_STORAGE_KEY, cardSortMode)
-    } catch {
-      /* private mode / quota */
-    }
-  }, [cardSortMode])
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(CARD_VIEW_STORAGE_KEY, cardViewMode)
-    } catch {
-      /* private mode / quota */
-    }
-  }, [cardViewMode])
+  }, [prefs.deck_browse_width_px, patchPrefs])
 
   function onBrowseResizePointerDown(
     event: ReactPointerEvent<HTMLDivElement>
@@ -246,9 +181,11 @@ export function DeckPage() {
     const drag = browseResizeRef.current
     if (!drag || drag.pointerId !== event.pointerId) return
     // Panel is on the right — drag handle leftward = wider.
-    setBrowseWidth(
-      clampBrowseWidth(drag.startWidth - (event.clientX - drag.startX))
-    )
+    patchPrefs({
+      deck_browse_width_px: clampDeckBrowseWidth(
+        drag.startWidth - (event.clientX - drag.startX)
+      ),
+    })
   }
 
   function onBrowseResizePointerUp(event: ReactPointerEvent<HTMLDivElement>) {
@@ -490,6 +427,22 @@ export function DeckPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  function onDeckPageContextMenu(event: ReactMouseEvent<HTMLElement>) {
+    if (!canEdit || saving) return
+    const target = event.target
+    if (!(target instanceof Element)) return
+    // Cards / pilot / form controls keep their own right-click behavior.
+    if (
+      target.closest(
+        "li, input, textarea, select, button, a, [role='menu'], [role='menuitem'], [data-deck-no-page-ctx]"
+      )
+    ) {
+      return
+    }
+    event.preventDefault()
+    setDeckCtxMenu({ x: event.clientX, y: event.clientY })
   }
 
   async function onCreateSectionFromDrop(payload: DeckCardDragPayload) {
@@ -1167,6 +1120,7 @@ export function DeckPage() {
     <section
       className="relative min-h-screen max-w-full overflow-x-clip bg-cover bg-center bg-no-repeat px-4 py-12 sm:px-6 lg:px-8 xl:px-10 2xl:px-12"
       style={{ backgroundImage: `url(${sharedImages.ZONE_BACKGROUND})` }}
+      onContextMenu={onDeckPageContextMenu}
     >
       <div className="absolute inset-0 bg-black/65" aria-hidden />
 
@@ -1433,11 +1387,11 @@ export function DeckPage() {
                   ) : null}
                   <DeckCardSortControls
                     value={cardSortMode}
-                    onChange={setCardSortMode}
+                    onChange={(deck_sort) => patchPrefs({ deck_sort })}
                   />
                   <DeckCardViewControls
                     value={cardViewMode}
-                    onChange={setCardViewMode}
+                    onChange={(deck_view) => patchPrefs({ deck_view })}
                   />
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
@@ -1504,6 +1458,7 @@ export function DeckPage() {
 
               {canEdit && browseOpen ? (
                 <aside
+                  data-deck-no-page-ctx
                   className="relative flex w-full shrink-0 flex-col overflow-visible border border-cyan-500/25 bg-black/55 p-3 xl:w-[var(--browse-w)]"
                   style={{ ["--browse-w" as string]: `${browseWidth}px` }}
                 >
@@ -1534,7 +1489,9 @@ export function DeckPage() {
                     onPointerMove={onBrowseResizePointerMove}
                     onPointerUp={onBrowseResizePointerUp}
                     onPointerCancel={onBrowseResizePointerUp}
-                    onDoubleClick={() => setBrowseWidth(BROWSE_WIDTH_DEFAULT)}
+                    onDoubleClick={() =>
+                      patchPrefs({ deck_browse_width_px: BROWSE_WIDTH_DEFAULT })
+                    }
                   >
                     <span
                       aria-hidden
@@ -1544,6 +1501,23 @@ export function DeckPage() {
                 </aside>
               ) : null}
             </div>
+
+            <ContextMenu
+              open={deckCtxMenu != null && canEdit}
+              x={deckCtxMenu?.x ?? 0}
+              y={deckCtxMenu?.y ?? 0}
+              label="Deck page menu"
+              onClose={() => setDeckCtxMenu(null)}
+              items={[
+                {
+                  id: "delete-deck",
+                  label: "Delete deck",
+                  tone: "danger",
+                  disabled: saving,
+                  onSelect: () => setDeleteOpen(true),
+                },
+              ]}
+            />
 
             <ConfirmDialog
               open={deleteOpen}

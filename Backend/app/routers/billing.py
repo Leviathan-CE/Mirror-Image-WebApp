@@ -352,8 +352,8 @@ def create_checkout_session(
             mode="subscription",
             customer=customer_id,
             line_items=[{"price": price_id, "quantity": 1}],
-            success_url=f"{base}/subscribe?success=1",
-            cancel_url=f"{base}/subscribe?canceled=1",
+            success_url=f"{base}/account?success=1",
+            cancel_url=f"{base}/account?canceled=1",
             client_reference_id=str(user_id),
             metadata={"user_id": str(user_id)},
             allow_promotion_codes=True,
@@ -408,7 +408,7 @@ def create_portal_session(
     try:
         session = stripe.billing_portal.Session.create(
             customer=customer_id,
-            return_url=f"{base}/subscribe",
+            return_url=f"{base}/account",
         )
     except stripe.StripeError as e:
         logger.warning("stripe portal create failed: %s", e)
