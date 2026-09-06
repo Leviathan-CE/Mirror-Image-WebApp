@@ -62,6 +62,21 @@ export type PlaySessionEffects = {
 
 export type PlayNetRole = "local" | "host" | "guest"
 
+/**
+ * True when `localSeat` may start/ready/draw for the current turn.
+ * Hotseat (`local`) has one client for both seats, so it is exempt — the
+ * seat view can be flipped independently of whose turn it is. Networked
+ * matches (`host` / `guest`) must match `turnSeat`, or either player could
+ * ready their board and advance the turn out of order.
+ */
+export function canStartTurn(
+  netRole: PlayNetRole,
+  turnSeat: PlayerSlot,
+  localSeat: PlayerSlot
+): boolean {
+  return netRole === "local" || turnSeat === localSeat
+}
+
 export type UsePlaySessionArgs = {
   status: DeckLoadStatus
   deck: DeckDetail | null
@@ -459,6 +474,9 @@ export function usePlaySession({
 
   function startTurn(blocked: boolean) {
     if (blocked) return
+    if (!canStartTurn(netRoleRef.current, turnSeatRef.current, localSeat)) {
+      return
+    }
 
     const before = sessionCardsRef.current
     const after = dispatch({ t: "rdy", seat: localSeat })

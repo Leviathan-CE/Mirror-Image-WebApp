@@ -115,6 +115,7 @@ const ACTOR_SEAT_TAGS = new Set<SessionAction["t"]>([
   "pg",
   "tk",
   "sel",
+  "ts",
 ]);
 
 /** Host-side: guest may only touch their seat and their instance ids. */
