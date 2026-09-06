@@ -55,6 +55,7 @@ import type { SessionAction } from "@/components/Playtester/session/sessionActio
 import { useCardDragDrop } from "@/components/Playtester/drag/useCardDragDrop"
 import { useDrawAnimations } from "@/components/Playtester/anim/useDrawAnimations"
 import {
+  canStartTurn,
   usePlaySession,
   type PlaySessionEffects,
 } from "@/components/Playtester/session/usePlaySession"
@@ -1543,7 +1544,8 @@ export function PlayTesterPage() {
                 disabled={
                   mulliganOpen ||
                   Boolean(bottomAnim) ||
-                  hasPendingDrawTimers()
+                  hasPendingDrawTimers() ||
+                  !canStartTurn(netRole, turnSeat, localSeat)
                 }
                 className="font-buahs93 h-7 rounded-none bg-cyan-700 px-3 text-xs hover:bg-cyan-900 disabled:opacity-40"
                 onClick={onStartTurn}

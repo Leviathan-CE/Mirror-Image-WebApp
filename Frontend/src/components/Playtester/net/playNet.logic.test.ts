@@ -15,7 +15,10 @@ describe("playNet messages", () => {
   it("rejects intents aimed at the other seat", () => {
     expect(intentAllowed({ t: "sh", seat: "p2" }, "p2")).toBe(true)
     expect(intentAllowed({ t: "sh", seat: "p1" }, "p2")).toBe(false)
-    expect(intentAllowed({ t: "ts", seat: "p1" }, "p2")).toBe(true)
+    // A guest must not be able to spoof the turn hand-off onto the host's
+    // seat — only their own seat's "ts" intent is allowed through.
+    expect(intentAllowed({ t: "ts", seat: "p2" }, "p2")).toBe(true)
+    expect(intentAllowed({ t: "ts", seat: "p1" }, "p2")).toBe(false)
     expect(
       intentAllowed({ t: "mv", seat: "p2", i: ["p1-card"], z: "hand" }, "p2", (id) =>
         id.startsWith("p1") ? "p1" : "p2"
