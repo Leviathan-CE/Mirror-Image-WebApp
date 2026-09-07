@@ -1,10 +1,18 @@
 /**
  * Build a letter-size print-and-play PDF from deck card art.
+ *
+ * Page order is duplex-ready: each 3×3 face sheet is followed by a matching
+ * card-back sheet (columns mirrored for long-edge flip). Print double-sided,
+ * flip on long edge.
  */
 
 import { jsPDF } from "jspdf"
 
-import type { DeckPrintoutSlot } from "@/components/decks/deckPrintout.logic"
+import {
+  duplexBackIndex,
+  type DeckPrintoutSlot,
+} from "@/components/decks/deckPrintout.logic"
+import { sharedImages } from "@/assets/shared"
 import { cardFaceUrl } from "@/lib/api/decks"
 
 const PAGE_W_MM = 215.9
@@ -13,6 +21,7 @@ const PAGE_H_MM = 279.4
 const MARGIN_MM = 5
 const COLS = 3
 const ROWS = 3
+const PER_PAGE = COLS * ROWS
 /** Hairline between cuts; borders are drawn on each card. */
 const GAP_MM = 0.5
 /** Card height ÷ width (3:4 portrait, matches deck board 240×320). */
@@ -80,6 +89,18 @@ function slotPosition(
   }
 }
 
+function drawCardBorder(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+) {
+  doc.setDrawColor(200, 200, 200)
+  doc.setLineWidth(0.1)
+  doc.rect(x, y, w, h)
+}
+
 function drawPlaceholder(
   doc: jsPDF,
   x: number,
@@ -102,6 +123,10 @@ function safeFileName(name: string): string {
   return name.replace(/[^\w-]+/g, "_").replace(/_+/g, "_").slice(0, 80)
 }
 
+function imageFormat(dataUrl: string): "PNG" | "JPEG" {
+  return dataUrl.includes("image/png") ? "PNG" : "JPEG"
+}
+
 export async function generateDeckPrintoutPdf(opts: {
   deckName: string
   slots: DeckPrintoutSlot[]
@@ -115,38 +140,61 @@ export async function generateDeckPrintoutPdf(opts: {
     return { missingArt: 0 }
   }
 
+  const backDataUrl = await loadImageDataUrl(sharedImages.CARD_BACK)
   let missingArt = 0
-  let indexOnPage = 0
 
-  for (const slot of slots) {
-    if (indexOnPage === COLS * ROWS) {
-      doc.addPage()
-      indexOnPage = 0
-    }
+  for (let pageStart = 0; pageStart < slots.length; pageStart += PER_PAGE) {
+    if (pageStart > 0) doc.addPage()
 
-    const { x, y } = slotPosition(layout, indexOnPage)
-    const artUrl = cardFaceUrl(slot)
-    let drawn = false
+    const pageSlots = slots.slice(pageStart, pageStart + PER_PAGE)
 
-    if (artUrl) {
-      const dataUrl = await loadImageDataUrl(artUrl)
-      if (dataUrl) {
-        const format = dataUrl.includes("image/png") ? "PNG" : "JPEG"
-        doc.addImage(dataUrl, format, x, y, layout.cardW, layout.cardH)
-        drawn = true
+    for (let i = 0; i < pageSlots.length; i++) {
+      const slot = pageSlots[i]!
+      const { x, y } = slotPosition(layout, i)
+      const artUrl = cardFaceUrl(slot)
+      let drawn = false
+
+      if (artUrl) {
+        const dataUrl = await loadImageDataUrl(artUrl)
+        if (dataUrl) {
+          doc.addImage(
+            dataUrl,
+            imageFormat(dataUrl),
+            x,
+            y,
+            layout.cardW,
+            layout.cardH
+          )
+          drawn = true
+        }
       }
+
+      if (!drawn) {
+        missingArt += 1
+        drawPlaceholder(doc, x, y, layout.cardW, layout.cardH, slot.card_name)
+      }
+
+      drawCardBorder(doc, x, y, layout.cardW, layout.cardH)
     }
 
-    if (!drawn) {
-      missingArt += 1
-      drawPlaceholder(doc, x, y, layout.cardW, layout.cardH, slot.card_name)
+    // Matching reverse: same sheet positions after long-edge duplex flip.
+    doc.addPage()
+    for (let i = 0; i < pageSlots.length; i++) {
+      const { x, y } = slotPosition(layout, duplexBackIndex(i, COLS))
+      if (backDataUrl) {
+        doc.addImage(
+          backDataUrl,
+          imageFormat(backDataUrl),
+          x,
+          y,
+          layout.cardW,
+          layout.cardH
+        )
+      } else {
+        drawPlaceholder(doc, x, y, layout.cardW, layout.cardH, "Card back")
+      }
+      drawCardBorder(doc, x, y, layout.cardW, layout.cardH)
     }
-
-    doc.setDrawColor(200, 200, 200)
-    doc.setLineWidth(0.1)
-    doc.rect(x, y, layout.cardW, layout.cardH)
-
-    indexOnPage += 1
   }
 
   const fileName = `${safeFileName(deckName || "deck")}_printout.pdf`

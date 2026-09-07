@@ -12,7 +12,6 @@ concurrency:
 
 permissions:
   contents: read
-  pull-requests: read
 
 jobs:
   frontend:
@@ -26,7 +25,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: "22"
           cache: npm
           cache-dependency-path: Frontend/package-lock.json
 
@@ -42,7 +41,7 @@ jobs:
       - name: Production build
         run: npm run build
         env:
-          VITE_API_URL: http://127.0.0.1:8001
+          VITE_API_URL: http://127.0.0.1:8000
 
   backend:
     name: Backend (pytest)
