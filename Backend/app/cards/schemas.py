@@ -33,6 +33,7 @@ class CardSummary(BaseModel):
     is_pilot: bool = False
     is_augment: bool = False
     is_summon: bool = False
+    has_invoke_cost: bool = False
     # Pilot starting values (also present on other cards; usually 0).
     hand_size: int = 0
     ram_capacity: int = 0

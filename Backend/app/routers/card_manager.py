@@ -58,6 +58,7 @@ class CardCreate(BaseModel):
     is_summon: bool = False
     is_pilot: bool = False
     is_augment: bool = False
+    has_invoke_cost: bool = False
 
     # Unity CardData.Threat_level is string (e.g. "0", "3").
     threat_level: str = Field(
@@ -148,6 +149,7 @@ class CardByNameResponse(BaseModel):
     is_summon: bool
     is_pilot: bool
     is_augment: bool
+    has_invoke_cost: bool = False
     threat_level: str
     ram_capacity: int
     power_capacity: int
@@ -167,6 +169,7 @@ _CARD_SELECT_SQL = """
            super_types, sub_types, types_line, keywords, show_help_text,
            description, rarity, artist_name, card_number, card_count,
            legal_info, card_printing, is_summon, is_pilot, is_augment,
+           has_invoke_cost,
            threat_level, ram_capacity, power_capacity, metal_capacity,
            spirit_capacity, steel_capacity, time_capacity, lif_capacity,
            hand_size, lagality, illustration_thumbnail_path, illustration_thumbnail_mime_type
@@ -197,18 +200,19 @@ def _card_row_to_response(row) -> CardByNameResponse:
         is_summon=row[18],
         is_pilot=row[19],
         is_augment=row[20],
-        threat_level=row[21],
-        ram_capacity=row[22],
-        power_capacity=row[23],
-        metal_capacity=row[24],
-        spirit_capacity=row[25],
-        steel_capacity=row[26],
-        time_capacity=row[27],
-        lif_capacity=row[28],
-        hand_size=row[29],
-        lagality=row[30],
-        card_art_path=signed_media_path(row[31]),
-        card_art_mime_type=row[32],
+        has_invoke_cost=bool(row[21]),
+        threat_level=row[22],
+        ram_capacity=row[23],
+        power_capacity=row[24],
+        metal_capacity=row[25],
+        spirit_capacity=row[26],
+        steel_capacity=row[27],
+        time_capacity=row[28],
+        lif_capacity=row[29],
+        hand_size=row[30],
+        lagality=row[31],
+        card_art_path=signed_media_path(row[32]),
+        card_art_mime_type=row[33],
     )
 
 
@@ -253,6 +257,7 @@ def create_card(
         "is_summon": body.is_summon,
         "is_pilot": body.is_pilot,
         "is_augment": body.is_augment,
+        "has_invoke_cost": body.has_invoke_cost,
         "threat_level": body.threat_level,
         "ram_capacity": body.ram_capacity,
         "power_capacity": body.power_capacity,
@@ -590,7 +595,8 @@ def browse_card_library(
                         spirit_capacity,
                         steel_capacity,
                         time_capacity,
-                        lif_capacity
+                        lif_capacity,
+                        has_invoke_cost
                       FROM cards
                      WHERE {where_sql}
                      ORDER BY {order_sql}
@@ -634,6 +640,7 @@ def browse_card_library(
             steel_capacity=int(row[23] or 0),
             time_capacity=int(row[24] or 0),
             lif_capacity=int(row[25] or 0),
+            has_invoke_cost=bool(row[26]),
         )
         for row in rows
     ]

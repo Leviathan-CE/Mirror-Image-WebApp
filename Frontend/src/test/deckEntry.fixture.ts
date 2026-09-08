@@ -15,6 +15,7 @@ export type DeckEntryFixtureOverrides = Partial<
   card_art_path?: string | null
   card_art_version?: number | null
   invoke_cost?: number
+  has_invoke_cost?: boolean
   cost?: string[]
   threat_level?: string
   types_line?: string
@@ -43,6 +44,7 @@ export function deckEntry(
     card_art_path,
     card_art_version,
     invoke_cost,
+    has_invoke_cost,
     cost,
     threat_level,
     types_line,
@@ -75,6 +77,7 @@ export function deckEntry(
     card_art_path: cardPartial?.card_art_path ?? card_art_path ?? null,
     card_art_version: cardPartial?.card_art_version ?? card_art_version,
     invoke_cost: cardPartial?.invoke_cost ?? invoke_cost,
+    has_invoke_cost: cardPartial?.has_invoke_cost ?? has_invoke_cost,
     cost: cardPartial?.cost ?? cost,
     threat_level: cardPartial?.threat_level ?? threat_level,
     types_line: cardPartial?.types_line ?? types_line,

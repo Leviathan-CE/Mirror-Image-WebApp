@@ -88,12 +88,16 @@ export function DeckCardListRow({ card, classified }: DeckCardListRowProps) {
         <span className="deck-card-list__tag">
           {classified === "top_secret" ? "TOP SECRET" : "CLASSIFIED"}
         </span>
-      ) : (
+      ) : card.card.has_invoke_cost ? (
         <CardCostIcons
           cost={card.card.cost ?? []}
           className="deck-card-list__cost inline-flex shrink-0 items-center gap-0"
           iconClassName="h-6 w-auto"
         />
+      ) : (
+        <span className="deck-card-list__cost inline-flex shrink-0 items-center font-mono text-[10px] text-white/35">
+          {/* blank invoke cost — card has no printable cost line */}
+        </span>
       )}
       <span className="deck-card-list__name">{card.card.card_name}</span>
       {showThreat ? (
