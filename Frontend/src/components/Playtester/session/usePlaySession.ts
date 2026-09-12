@@ -192,6 +192,17 @@ export function usePlaySession({
       nextIdRef.current = next.nextId
       seqRef.current = next.seq
       commitCards(next.cards)
+      // Mirror sessionCardsRef: keep the scalar refs current synchronously so
+      // a later dispatch() in the same event handler (before React commits
+      // and useLatestRef's layout effect runs) reads this update via
+      // snapshot() instead of a stale pre-batch value. Without this, e.g.
+      // startTurn()'s back-to-back `lf` (life loss) then `ts` (turn pass)
+      // dispatches would have the `ts` snapshot carry forward the old life,
+      // and its setLifeBySeat(next.life) would silently undo the loss.
+      lifeRef.current = next.life
+      turnRef.current = next.turn
+      turnSeatRef.current = next.turnSeat
+      pilotGenRef.current = next.pilotGenBonus
       setLifeBySeat(next.life)
       setTurn(next.turn)
       setTurnSeat(next.turnSeat)
