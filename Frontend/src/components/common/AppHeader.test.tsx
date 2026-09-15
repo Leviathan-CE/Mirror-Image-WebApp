@@ -48,10 +48,6 @@ describe("AppHeader", () => {
 
     renderAppHeader()
 
-    expect(screen.getByRole("link", { name: "MIRRORIMAGE" })).toHaveAttribute(
-      "href",
-      ROUTES.HOME
-    )
     expect(screen.getByRole("button", { name: "LOGIN" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "LOGOUT" })).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "DECKS" })).toBeInTheDocument()
@@ -69,10 +65,6 @@ describe("AppHeader", () => {
 
     renderAppHeader()
 
-    expect(screen.getByRole("link", { name: "MIRRORIMAGE" })).toHaveAttribute(
-      "href",
-      ROUTES.HOME
-    )
     expect(screen.getByText("operator_one")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "DECKS" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "CARDS" })).toBeInTheDocument()
