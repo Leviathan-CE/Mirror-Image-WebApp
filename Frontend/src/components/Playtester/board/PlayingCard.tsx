@@ -8,9 +8,9 @@
 
 import { useEffect, useState, type ReactNode } from "react"
 
-import { sharedImages } from "@/assets/shared"
 import { GameIcon } from "@/components/common/GameIcon"
 import { ClassifiedCardFace } from "@/components/decks/ClassifiedCardFace"
+import { CardBackImg } from "@/components/Playtester/board/CardBackImg"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
@@ -144,12 +144,7 @@ export function PlayingCard({
           )}
           style={{ transform: "rotateY(180deg)" }}
         >
-          <img
-            src={sharedImages.CARD_BACK}
-            alt=""
-            className="h-full w-full object-cover"
-            draggable={false}
-          />
+          <CardBackImg />
         </div>
       </div>
 

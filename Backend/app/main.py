@@ -14,6 +14,7 @@ from app.routers import email_auth
 from app.routers import billing
 from app.routers import decks
 from app.routers import media
+from app.routers import assets
 from app.routers import play_rooms
 from app.analytics import (
     LOGIN_PATHS,
@@ -115,5 +116,7 @@ app.include_router(admin_cards.router)
 app.include_router(admin_users.router)
 app.include_router(card_manager.router)
 app.include_router(media.router)
+app.include_router(assets.router)
 
 media.MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+assets.SYSTEM_MEDIA_DIR.mkdir(parents=True, exist_ok=True)

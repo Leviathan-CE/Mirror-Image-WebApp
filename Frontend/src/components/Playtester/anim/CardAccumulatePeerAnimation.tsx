@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState, type TransitionEvent } from "react";
 
-import { sharedImages } from "@/assets/shared";
+import { CardBackImg } from "@/components/Playtester/board/CardBackImg";
 import { cardArtUrl } from "@/lib/api/decks";
 import { useLatestRef } from "@/hooks/useLatestRef";
 import { cn } from "@/lib/utils";
@@ -106,12 +106,7 @@ export function CardAccumulatePeerAnimation({
       className={cn(faceShell, "border-cyan-500/40")}
       style={{ transform: "rotateY(180deg)" }}
     >
-      <img
-        src={sharedImages.CARD_BACK}
-        alt=""
-        draggable={false}
-        className="h-full w-full object-cover"
-      />
+      <CardBackImg />
     </div>
   );
 

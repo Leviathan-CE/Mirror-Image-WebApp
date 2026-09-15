@@ -10,6 +10,7 @@ import { ThumbsUp } from "lucide-react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
+import { useCardBackSrc } from "@/app/providers/CardBackProvider"
 import { useUserPreferences } from "@/app/providers/PreferencesProvider"
 import { sharedImages } from "@/assets"
 import { GlitchFx } from "@/components/effects/GlitchFx"
@@ -111,6 +112,7 @@ export function DeckPage() {
   const deckId = Number(deckIdParam)
   const navigate = useNavigate()
   const { user, token, isAuthenticated } = useAuth()
+  const cardBackSrc = useCardBackSrc()
   const { prefs, patchPrefs } = useUserPreferences()
   const browseWidth = clampDeckBrowseWidth(prefs.deck_browse_width_px)
   const cardSortMode = prefs.deck_sort
@@ -212,6 +214,10 @@ export function DeckPage() {
       setErrorText("No cards marked for the deck to print.")
       return
     }
+    if (!cardBackSrc) {
+      setErrorText("Card back art is not available yet — try again in a moment.")
+      return
+    }
     setPrintoutBusy(true)
     setErrorText("")
     try {
@@ -221,6 +227,7 @@ export function DeckPage() {
       const result = await generateDeckPrintoutPdf({
         deckName: deck.name ?? `Deck ${deck.id}`,
         slots,
+        cardBackUrl: cardBackSrc,
       })
       if (result.missingArt > 0) {
         setErrorText(

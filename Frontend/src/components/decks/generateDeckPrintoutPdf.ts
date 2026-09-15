@@ -12,7 +12,6 @@ import {
   duplexBackIndex,
   type DeckPrintoutSlot,
 } from "@/components/decks/deckPrintout.logic"
-import { sharedImages } from "@/assets/shared"
 import { cardFaceUrl } from "@/lib/api/decks"
 
 const PAGE_W_MM = 215.9
@@ -130,8 +129,10 @@ function imageFormat(dataUrl: string): "PNG" | "JPEG" {
 export async function generateDeckPrintoutPdf(opts: {
   deckName: string
   slots: DeckPrintoutSlot[]
+  /** Auth-gated signed card-back URL (from `/assets/card-back`). */
+  cardBackUrl: string
 }): Promise<DeckPrintoutPdfResult> {
-  const { deckName, slots } = opts
+  const { deckName, slots, cardBackUrl } = opts
   const layout = computeGridLayout()
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "letter" })
 
@@ -140,7 +141,7 @@ export async function generateDeckPrintoutPdf(opts: {
     return { missingArt: 0 }
   }
 
-  const backDataUrl = await loadImageDataUrl(sharedImages.CARD_BACK)
+  const backDataUrl = await loadImageDataUrl(cardBackUrl)
   let missingArt = 0
 
   for (let pageStart = 0; pageStart < slots.length; pageStart += PER_PAGE) {

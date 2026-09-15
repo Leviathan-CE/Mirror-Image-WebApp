@@ -9,7 +9,7 @@ export const headerInnerClassName =
   "mx-auto flex max-w-6xl min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:gap-x-3 lg:gap-4"
 
 export const headerBrandClassName =
-  "font-glitch shrink-0 text-xs text-cyan-300 sm:text-sm md:text-base lg:text-xl"
+  "font-glitch inline-flex shrink-0 items-center gap-2 text-xs text-cyan-300 sm:gap-2.5 sm:text-sm md:text-base lg:text-xl"
 
 export const headerNavClassName =
   "flex min-w-0 flex-1 flex-wrap items-center justify-center gap-0.5 sm:gap-1"
