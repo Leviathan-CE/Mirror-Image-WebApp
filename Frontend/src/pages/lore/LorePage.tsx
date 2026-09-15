@@ -3,22 +3,17 @@ import { sharedImages } from "@/assets/shared";
 import { loreImages } from "@/assets";
 
 import {
-
     BackToTocButton,
-
     Section,
-
     Subsection,
-
     TableOfContents,
-
     type TocEntry,
-
 } from "@/components/docs";
 
 import type { CSSProperties } from "react";
 
 import { GlitchFx } from "@/components/effects/GlitchFx";
+import { LoreArtScroll } from "@/pages/lore/LoreArtScroll";
 
 
 
@@ -79,19 +74,18 @@ const fadeLeftImageStyle = {
 export function LorePage() {
 
     return (
+        <div className="bg-black">
+            {/* Full-bleed art theater — backgrounds fade under scrolling panes */}
+            <LoreArtScroll />
 
-        <section
-
-            className="relative min-h-screen bg-cover bg-center bg-no-repeat px-6 py-12"
-
-            style={{ backgroundImage: `url(${sharedImages.ZONE_BACKGROUND})` }}
-
-        >
-
+            {/* Written lore / TOC below the gallery */}
+            <section
+                id="lore-codex"
+                className="relative min-h-screen bg-cover bg-center bg-no-repeat px-6 py-12"
+                style={{ backgroundImage: `url(${sharedImages.ZONE_BACKGROUND})` }}
+            >
             <div className="absolute inset-0 bg-black/60" aria-hidden />
-
             <div className="relative z-10">
-
                 <BackToTocButton />
 
                 <div className="grid w-full gap-8 lg:grid-cols-[260px_1fr] lg:gap-12 2xl:grid-cols-[320px_1fr] 2xl:gap-16">
@@ -171,8 +165,8 @@ export function LorePage() {
                                     corruption left by Dragor&apos;drune the Corruptor and the legacy of
                                     Anorath, seeking peace and balance for Aerathea. No one knows how long he
                                     will live, or where he has gone. Some whisper of a masked elven warrior
-                                    who cut through anything, regenerate his entire body after being cut in half,
-                                    and tears open wormholes to watch
+                                    who cut through anything with the blade, regenerate his entire body after being cut in half,
+                                    and tears open the sky to watch
                                     comets burn through PyAi&apos;s armies from the void.
                                 </p>
 
@@ -182,6 +176,37 @@ export function LorePage() {
                                     className="font-buahs93 h-8 rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
                                     render={<a href="/docs/lore/Refiners_Fire.pdf" download />}
                                 />
+                            </Subsection>
+
+                            <Subsection
+                                id="01-evran"
+                                title="Princess Yagihiryi"
+                                variant="character"
+                                media={
+                                    <img
+                                        src={loreImages.PRINCESS_YAGIHIYRI}
+                                        alt="Princess Yagihiryi"
+                                        className="fade-left clip-angled w-full"
+                                        style={fadeLeftImageStyle}
+                                    />
+                                }
+                            >
+                                <p>
+                                    The Legendary Warrior Princess, who lead her poeple  to saftey after Vrag invaded 
+                                    near the start of the third world war. A changling of a 7 tailed fox she and many of her poeple 
+                                    are called changlings because of the mystical ability to change shape into anything of there own desire
+                                    eventually pernemantly, some say that is how new mythological creatures come to be in Areathea, Gorga’roth currupted many 
+                                    changlings into his twisted way creating the first monsters of a old time. they remain a threat to PyAi being the only 
+                                    faction wihtout pilot augmentation to stand in a fight against it. as such after the third great war the nations of the changling
+                                    decent and fractured into tribes across Aerathea. now few in number. 
+                                </p>
+
+                                {/* <GlitchFx
+                                    label="DOWNLOAD ORIGIN STORY"
+                                    size="lg"
+                                    className="font-buahs93 h-8 rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
+                                    render={<a href="/docs/lore/Refiners_Fire.pdf" download />}
+                                /> */}
                             </Subsection>
 
                         </Section>
@@ -383,9 +408,8 @@ export function LorePage() {
             </div>
 
         </section>
-
+        </div>
     );
-
 }
 
 

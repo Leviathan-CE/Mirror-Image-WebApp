@@ -15,6 +15,22 @@ export type DeckPrintoutSlot = {
   section: "pilot" | "deck"
 }
 
+/**
+ * Map a front-page grid index to the back-page index for duplex print.
+ *
+ * Portrait + flip on long edge mirrors left/right. Without this, the back
+ * behind the top-left face would be the top-right back when you hold the
+ * sheet up to the light / after cutting.
+ */
+export function duplexBackIndex(
+  frontIndex: number,
+  cols = 3
+): number {
+  const col = frontIndex % cols
+  const row = Math.floor(frontIndex / cols)
+  return row * cols + (cols - 1 - col)
+}
+
 function expandQuantity(entries: DeckCardEntry[]): DeckPrintoutSlot[] {
   const out: DeckPrintoutSlot[] = []
   for (const entry of entries) {

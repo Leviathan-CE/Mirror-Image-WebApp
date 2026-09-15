@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react"
 import { useLatestRef } from "@/hooks/useLatestRef"
 
-import { sharedImages } from "@/assets/shared"
+import { CardBackImg } from "@/components/Playtester/board/CardBackImg"
 import { cn } from "@/lib/utils"
 
 export type DeckShuffleAnimationProps = {
@@ -78,12 +78,7 @@ export function DeckShuffleAnimation({
                 "clip-angled shadow-md shadow-black/50"
               )}
             >
-              <img
-                src={sharedImages.CARD_BACK}
-                alt=""
-                draggable={false}
-                className="h-full w-full object-cover"
-              />
+              <CardBackImg />
             </div>
           </div>
         )

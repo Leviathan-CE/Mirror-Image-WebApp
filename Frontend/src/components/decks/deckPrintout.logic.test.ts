@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { collectDeckPrintoutSlots } from "@/components/decks/deckPrintout.logic"
+import {
+  collectDeckPrintoutSlots,
+  duplexBackIndex,
+} from "@/components/decks/deckPrintout.logic"
 import type { DeckCardEntry, DeckCategoryOut, DeckDetail } from "@/lib/api/decks"
 import { deckEntry } from "@/test/deckEntry.fixture"
 
@@ -38,6 +41,15 @@ function deck(
     cards,
   }
 }
+
+describe("duplexBackIndex", () => {
+  it("mirrors columns within each row for long-edge duplex", () => {
+    // Front: 0 1 2 / 3 4 5 / 6 7 8  →  Back: 2 1 0 / 5 4 3 / 8 7 6
+    expect([0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => duplexBackIndex(i))).toEqual([
+      2, 1, 0, 5, 4, 3, 8, 7, 6,
+    ])
+  })
+})
 
 describe("collectDeckPrintoutSlots", () => {
   it("includes pilot and in-deck main rows expanded by quantity", () => {

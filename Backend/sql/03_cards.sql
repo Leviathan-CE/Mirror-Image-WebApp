@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS cards (
     is_summon    BOOLEAN NOT NULL DEFAULT FALSE,
     is_augment BOOLEAN NOT NULL DEFAULT FALSE,
     is_pilot     BOOLEAN NOT NULL DEFAULT FALSE,
+    has_invoke_cost BOOLEAN NOT NULL DEFAULT FALSE,
 
     threat_level          TEXT NOT NULL DEFAULT '0',    
 

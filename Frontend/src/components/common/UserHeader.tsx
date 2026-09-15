@@ -14,7 +14,7 @@ export function Userheader() {
 
   return (
     <HeaderShell
-      brandTo={ROUTES.MAIN}
+      brandTo={ROUTES.HOME}
       nav={
         <>
           <Button

@@ -10,9 +10,9 @@
 
 100.3. Whenever card text uses the word "this," it refers to the card that printed that text.
 
-100.4. A player wins by reducing an opponent's life to 0, decking them out (each draw from an empty deck costs 1 life), or if an opponent begins their turn with 0 resources in their stockpile.
+100.4. A player wins by reducing an opponent's life to 0, decking them out (each draw from an empty deck costs 2 life), or if an opponent begins their turn with 0 resources in their stockpile.
 
-100.5. The most direct path to victory is reducing life to 0 by attacking with units or weapons.
+100.5. The most direct path to victory is reducing life to 0 by attacking with units.
 
 100.6. **`[TLV]` (Threat Level).** Only cards with the Unit supertype have a `[TLV]` on the card.
 
@@ -28,7 +28,7 @@
 
 > 100.7.1. If two type rules conflict, the more permissive rule applies unless card text says otherwise (see rule 100.1).
 >
-> 100.7.2. **Attack.** If the card has the Unit supertype, it may attack even if another of its types says it cannot attack. If the card has the Weapon subtype, it may use its innate attack ability (see rule 603.10) even if another of its types says it cannot attack.
+> 100.7.2. **Attack.** If the card has the Unit supertype, it may attack even if another of its types says it cannot attack.
 >
 > 100.7.3. **Block.** While you control a readied unit on the battlefield, an opponent must target a readied unit you control when declaring an attack if able (see rules 601 and 603.3).
 
@@ -128,7 +128,7 @@
 >
 > 300.3.2. **Quick Hack [Cyberspell]** — Playable whenever a Process can be played, plus at end of turn, during an attack, while the lock holds a card, or when an opponent's effect empties the lock. Cannot attack. See rule 500.8 for full timing.
 >
-> 300.3.3. **Weapon** — Entity subtype with an innate ability to attack (see rule 603.10). Using a weapon's innate attack ability is not an activated ability.
+> 300.3.3. *(Removed.)* Weapon is no longer a playable subtype. Cards formerly printed as weapons are not used.
 
 ---
 
@@ -169,6 +169,8 @@
 > 400.1.3. Determine first player randomly; that player chooses whether to go first.
 >
 > 400.1.4. Each player may mulligan once (first player mulligans first): put any number of hand cards on the bottom of the deck, then draw that many. There is no maximum hand size after the game begins.
+>
+> 400.1.5. The player who takes the first turn chooses two resources in their stockpile and `[EXPEND]`s them (turn them 90° horizontal). If that player controls fewer than two resources in their stockpile, they expend all of them. Those resources do **not** ready during that player's first start-of-turn step (see rule 400.2.2.1); they ready normally on later turns.
 
 ### 400.2. Turn structure
 
@@ -258,6 +260,12 @@
 
 601.4. Damage directed at you as a player that is not from an attack resolved against you becomes loss of life. You cannot block that damage with units.
 
+601.5. **Retreat.** After an attack is declared against a unit you control, you may retreat that unit if it did not enter the battlefield under your control this turn, or if it has Blitz (see rule 800.3.3).
+
+> 601.5.1. To retreat, `[EXPEND]` that unit and mark **1 damage** on it. The attack is negated: no combat damage is dealt by or to either side as a result of that attack (including Preemptive Strike damage from that attack). The 1 damage from retreating is not combat damage from that attack; apply it when you retreat, then check for defeat as usual (see rule 603.7.2).
+
+> 601.5.2. Retreat is not available for a unit that entered the battlefield under your control this turn unless that unit has Blitz.
+
 ### 602. Accumulate resources
 
 602.1. Once per turn during your main phase, reveal a card from hand and gain up to two resource tokens from its colored pips (ignore generic pips; see section 350).
@@ -272,15 +280,17 @@
 
 603.1. Attacking is a primary way to deal damage and pressure opponent resources. Damage marked on units persists until healed.
 
-603.2. **Declare attackers** — Choose unit(s) on the battlefield, weapon(s) using their innate attack ability (see rule 603.10), and/or other legal attackers. Multiple attackers are one attack sharing one target; each attacker is treated separately for damage assignment. A unit may attack if it has the Unit supertype, including when it also has a type that otherwise cannot attack (see rules 100.7 and 100.7.2).
+603.2. **Declare attackers** — Choose unit(s) on the battlefield and/or other legal attackers. Multiple attackers are one attack sharing one target; each attacker is treated separately for damage assignment. A unit may attack if it has the Unit supertype, including when it also has a type that otherwise cannot attack (see rules 100.7 and 100.7.2).
 
 > 603.2.1. A card with one or more time counters on it cannot attack (see rule 700.4.2.1). When the last counter is removed from a stockpile card, it moves to the battlefield (see rules 700.4.4 and 300.2.2).
 >
 > 603.2.2. A unit cannot attack during the turn it entered the battlefield under your control unless it has Blitz (see rules 300.2.2 and 800.3.3).
 
-603.3. **Declare target** — Expend unit attackers. Pay each weapon attacker's innate cost (see rule 603.10.2). Choose the defending player or a unit on the battlefield as the attack target, and trigger on-attack abilities. You must target a readied unit on the battlefield the defender controls if able; if none, you cannot attack.
+603.3. **Declare target** — Expend unit attackers. Choose the defending player or a unit on the battlefield as the attack target, and trigger on-attack abilities. You must target a readied unit on the battlefield the defender controls if able; if none, you cannot attack.
 
 > 603.3.1. Cards in other zones — including the stockpile, discard pile, pilot zone, and deck — cannot be chosen as attack targets unless an effect says otherwise.
+
+> 603.3.2. The defending player may retreat the targeted unit if able (see rule 601.5). If they do, the attack ends with no combat damage (the retreating unit still takes the 1 damage retreat cost).
 
 603.4. **Attack step** — Attackers are now attacking. Pay additional costs such as Stealth if required.
 
@@ -297,20 +307,6 @@
 > 603.7.2. After damage, a unit is defeated if marked damage ≥ its health value (or health value + X with Durable X). Trigger on-defeat abilities; put defeated units in the discard pile.
 
 603.8. **Player damage** — If the attack target is the defending player, damage directed at that player becomes loss of life. The attack ends.
-
-### 603.10. Weapon attacks
-
-603.10.1. A weapon you control has an **innate ability** to attack. Using it is not an activated ability and does not use the lock.
-
-603.10.2. To attack with a weapon, `[EXPEND]` that weapon and `[DISMANTLE]` a resource of your choice you control. If you control your pilot on the battlefield, you do not need to pay the dismantle cost.
-
-603.10.3. Choose targets following the same rules as attacking with units (see rules 603.3 and 603.5.1).
-
-603.10.4. A weapon may join the same attack as one or more units (see rule 603.2).
-
-603.10.5. If a weapon deals damage to a readied unit, put a depletion counter on that weapon.
-
-603.10.6. Otherwise, a weapon in an attack follows rules 603.4–603.8 like other attackers.
 
 ### 604. Allocate a resource to a unit
 
@@ -442,7 +438,7 @@
 >
 > 800.2.7. **Dismantle `[DISMANTLE]`** — From play; put the printed card face up in the dismantle pile as a cost (see rule 200.7).
 >
-> 800.2.8. **Innate abilities** — Abilities on a card that are neither activated abilities nor tags. They follow their rules and do not use the lock unless those rules say otherwise (see rule 603.10 for weapon attacks).
+> 800.2.8. **Innate abilities** — Abilities on a card that are neither activated abilities nor tags. They follow their rules and do not use the lock unless those rules say otherwise.
 
 > 800.3.1. Keywords are static unless noted. Duplicate keywords on one entity do not stack except numerical values, which add.
 >
@@ -511,6 +507,8 @@
 > 900.2.4. Prototype limited to one copy in the deck.
 >
 > 900.2.5. There is no sideboard; include any extra cards in the 40-card minimum when building.
+>
+> 900.2.6. **Augments** and **Weapons** are not used. Do not include them in a constructed deck.
 
 ---
 

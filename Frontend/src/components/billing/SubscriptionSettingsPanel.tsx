@@ -1,5 +1,5 @@
 /**
- * Subscription / billing block for Account Settings.
+ * Subscription / billing block for the Subscribe page.
  * Handles Stripe checkout return query params (?success=1 / ?canceled=1).
  */
 
@@ -20,11 +20,37 @@ import {
   type BillingStatus,
 } from "@/lib/api/billing"
 import {
+  clearBillingReturn,
+  rememberBillingReturn,
+  repairBillingReturnOrigin,
+} from "@/lib/billingReturn"
+import { ROUTES } from "@/lib/route"
+import {
   formatSubscriptionDate,
   isUserSubscribed,
   subscriptionPeriodLabel,
 } from "@/lib/subscription.logic"
 import { cn } from "@/lib/utils"
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
+/** Webhooks can lag locally — pull Stripe a few times before giving up. */
+async function syncUntilEntitled(
+  token: string,
+  attempts = 5
+): Promise<BillingStatus> {
+  let last: BillingStatus | null = null
+  for (let i = 0; i < attempts; i++) {
+    last = await syncBillingFromStripe(token)
+    if (last.is_subscribed) return last
+    if (i < attempts - 1) await delay(1200)
+  }
+  return last ?? fetchBillingStatus(token)
+}
 
 export function SubscriptionSettingsPanel() {
   const { token, user, setSession } = useAuth()
@@ -39,11 +65,18 @@ export function SubscriptionSettingsPanel() {
   const stripeReady =
     plan?.stripe_configured ?? status?.stripe_configured ?? false
 
+  // If Stripe returned on 127.0.0.1 but we left from localhost (or vice versa),
+  // jump back so the JWT in localStorage is on this origin again.
+  useEffect(() => {
+    if (repairBillingReturnOrigin()) return
+  }, [])
+
   useEffect(() => {
     if (params.get("success") === "1") {
       setInfoText("Payment complete — syncing your subscription…")
     } else if (params.get("canceled") === "1") {
       setInfoText("Checkout canceled. You can try again anytime.")
+      clearBillingReturn()
     }
   }, [params])
 
@@ -66,39 +99,48 @@ export function SubscriptionSettingsPanel() {
 
     let cancelled = false
     const afterCheckout = params.get("success") === "1"
+    const afterCancel = params.get("canceled") === "1"
 
     const statusPromise = afterCheckout
-      ? syncBillingFromStripe(token)
+      ? syncUntilEntitled(token)
       : fetchBillingStatus(token)
 
     void statusPromise
       .then(async (data) => {
         if (cancelled) return
         setStatus(data)
-        if (afterCheckout && data.is_subscribed) {
-          setInfoText("Payment complete — subscription is active.")
+        if (afterCheckout) {
+          if (data.is_subscribed) {
+            setInfoText("Payment complete — subscription is active.")
+            clearBillingReturn()
+          } else {
+            setInfoText(
+              "Payment received — still waiting for Stripe to confirm. You can refresh this page in a moment."
+            )
+          }
         }
         try {
           const fresh = await fetchCurrentUser(token)
           if (!cancelled) setSession(token, fresh)
         } catch {
-          /* keep existing session */
+          /* keep existing session — never treat sync UI as logout */
         }
-        if (afterCheckout || params.get("canceled") === "1") {
+        // Only strip query flags once we know entitlement (or cancel).
+        if (afterCancel || (afterCheckout && data.is_subscribed)) {
           const next = new URLSearchParams(params)
           next.delete("success")
           next.delete("canceled")
           setParams(next, { replace: true })
         }
       })
-      .catch(() => {
-        if (!cancelled) {
-          setStatus(null)
-          if (afterCheckout) {
-            setInfoText(
-              "Payment may have succeeded, but we could not sync yet. Refresh in a moment."
-            )
-          }
+      .catch((error: unknown) => {
+        if (cancelled) return
+        if (afterCheckout) {
+          const detail =
+            error instanceof ApiError ? error.detail : "billing_sync_failed"
+          setInfoText(
+            `Payment may have succeeded, but sync failed (${detail}). Stay on this page and refresh — do not check out again yet.`
+          )
         }
       })
 
@@ -115,17 +157,19 @@ export function SubscriptionSettingsPanel() {
     return () => {
       cancelled = true
     }
-  }, [token, setSession, params, setParams])
+  }, [token, setSession, setParams, params])
 
   async function onSubscribe() {
     if (!token) return
     setBusy(true)
     setErrorText("")
     try {
+      rememberBillingReturn(`${ROUTES.SUBSCRIBE}?success=1`)
       const { url } = await createCheckoutSession(token)
       window.location.assign(url)
     } catch (error: unknown) {
       setBusy(false)
+      clearBillingReturn()
       if (error instanceof ApiError) {
         if (error.detail === "already_subscribed") {
           setErrorText("You already have an active subscription.")
@@ -151,10 +195,12 @@ export function SubscriptionSettingsPanel() {
     setBusy(true)
     setErrorText("")
     try {
+      rememberBillingReturn(ROUTES.SUBSCRIBE)
       const { url } = await createPortalSession(token)
       window.location.assign(url)
     } catch (error: unknown) {
       setBusy(false)
+      clearBillingReturn()
       if (error instanceof ApiError && error.detail === "no_stripe_customer") {
         setErrorText("No Stripe customer yet — subscribe first.")
       } else {
@@ -191,6 +237,7 @@ export function SubscriptionSettingsPanel() {
         {(
           plan?.features ?? [
             "Access preview cards still in design",
+            "Create duplex print-and-play PDFs from your decks",
             "Play with friends in the Playtester",
           ]
         ).map((feature) => (

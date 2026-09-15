@@ -13,6 +13,10 @@ const ENTITLED_STATUSES = new Set(["active", "trialing"])
 /** Always available — no account / no grant (mirrors backend PUBLIC_FEATURES). */
 const PUBLIC_FEATURES = new Set(["playtester"])
 
+/** Stripe active/trialing defaults (mirrors backend SUBSCRIBER_DEFAULT_FEATURES). */
+export const FEATURE_PREVIEW_CARDS = "preview_cards"
+export const FEATURE_DECK_PRINTOUT = "deck_printout"
+
 export function isUserSubscribed(user: AuthUser | null | undefined): boolean {
   if (!user) return false
   if (typeof user.is_subscribed === "boolean") return user.is_subscribed
@@ -30,7 +34,12 @@ export function userHasFeature(
   if (user.role === ADMIN_ROLE) return true
   if (user.features?.includes(featureKey)) return true
   // Fallback when older /me payloads omit features[]:
-  if (featureKey === "preview_cards") return isUserSubscribed(user)
+  if (
+    featureKey === FEATURE_PREVIEW_CARDS ||
+    featureKey === FEATURE_DECK_PRINTOUT
+  ) {
+    return isUserSubscribed(user)
+  }
   return false
 }
 

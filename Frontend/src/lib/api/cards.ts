@@ -2,10 +2,18 @@
  * Card catalog API (search / library browse / lookup).
  * Pass an auth token when available so admin / subscriber JWTs unlock
  * unpublished or preview cards (server-side publish gate).
+ *
+ * Receive-model map (keep this small):
+ * - CardSummary — shared catalogue projection (THE receive core)
+ * - CardLibraryItem — summary + set/rarity/text for library/admin
+ * - CardDetail — Pick<> of summary for deck-builder lookups (not a parallel schema)
+ * - CardSearchHit — intentionally slim autocomplete row
+ * Playtester PlayingCardInstance stays separate (runtime instance, not catalogue).
  */
 
 import { apiBaseUrl, authHeaders, readJsonOrThrow } from "@/lib/api/client"
 
+/** Slim search/autocomplete row — not a second full card schema. */
 export type CardSearchHit = {
   id: number
   card_name: string
@@ -14,16 +22,6 @@ export type CardSearchHit = {
   card_art_path: string | null
   card_thumbnail_path?: string | null
   card_art_version?: number | null
-}
-
-export type CardDetail = {
-  id: number
-  card_name: string
-  is_pilot: boolean
-  is_augment: boolean
-  card_art_path: string | null
-  /** Used for deck copy limits (e.g. Token → unlimited). */
-  super_types?: string[]
 }
 
 /**
@@ -38,6 +36,11 @@ export type CardSummary = {
   /** Epoch seconds — changes when card art is re-uploaded. */
   card_art_version?: number | null
   invoke_cost?: number
+  /**
+   * When false, UI leaves invoke-cost blank (list icons / detail INVOKE COST).
+   * Stored cost values may still exist for filters / play rules.
+   */
+  has_invoke_cost?: boolean
   /** Invoke-cost icon tokens (LIF, MET, GEN2, …). */
   cost?: string[]
   /** Printed threat level (TLV). */
@@ -62,6 +65,22 @@ export type CardSummary = {
   lif_capacity?: number
 }
 
+/**
+ * Fields deck builder needs from GET /cards/:id.
+ * Derived from CardSummary — do not grow a parallel hand-written struct.
+ */
+export type CardDetail = Required<
+  Pick<
+    CardSummary,
+    | "id"
+    | "card_name"
+    | "is_pilot"
+    | "is_augment"
+    | "card_art_path"
+    | "super_types"
+  >
+>
+
 /** Library browse row = shared summary + set/rarity/text metadata. */
 export type CardLibraryItem = CardSummary & {
   card_set_name: string
@@ -71,6 +90,7 @@ export type CardLibraryItem = CardSummary & {
   show_help_text: boolean
   /** Library always returns these; tighten vs optional CardSummary fields. */
   invoke_cost: number
+  has_invoke_cost: boolean
   cost: string[]
   super_types: string[]
   sub_types: string[]

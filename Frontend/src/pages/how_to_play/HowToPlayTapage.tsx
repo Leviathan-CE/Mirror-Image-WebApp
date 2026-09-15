@@ -373,13 +373,13 @@ export function HowToPlayPage() {
                         <Section id="how-to-win" title="How to Win">
                             <p>
                                 The most straightforward way to victory is to reduce your
-                                opponent's life points to 0 by attacking with units (a type of
-                                entity) or weapons (a type of entity).
+                                opponent&apos;s life points to 0 by attacking with units (a type of
+                                entity).
                             </p>
                             <p>
                                 Another way to win is to run your opponent out of cards in their
                                 deck. This doesn't end the game immediately, but each card they try
-                                to draw from an empty deck causes them to lose 1 life.
+                                to draw from an empty deck causes them to lose 2 life.
                                 The final way to win is if your opponent starts their turn with 0
                                 resources in their stockpile zone.
                             </p>
@@ -429,7 +429,12 @@ export function HowToPlayPage() {
                             <p>
                                 Once all players have done this, randomly determine who goes first;
                                 the winner decides whether they want the first turn. (A setup demo
-                                using the blue/yellow starter is shown below.)
+                                using the blue/yellow starter is shown below.) The player who takes
+                                the first turn then chooses two resources in their stockpile and
+                                expends them (turns them horizontal). If they have fewer than two,
+                                they expend all of them. Those resources do not ready during that
+                                player&apos;s first start-of-turn step; they ready normally on later
+                                turns.
                             </p>
                             <Note>
                                 Note: You may change which side you prefer to have your deck, pilot zone, and discard pile
@@ -460,7 +465,7 @@ export function HowToPlayPage() {
 
                             <Subsection id="turn-phases" title="Turn Phases">
                             <p>
-                                There are three phases: start of turn, the
+                                There are four phases: start of turn, draw phase, the
                                 main phase, and the end-of-turn phase. Take them in order on your
                                 turn.
                             </p>
@@ -478,12 +483,25 @@ export function HowToPlayPage() {
                                     </ol>
                                 </div>
                             </div>
+                            <div>
+                            <p className="flex items-center gap-2 font-semibold text-cyan-200">
+                                    Draw Phase
+                                </p>
+                                <div className="border-l-2 border-cyan-500/0 pl-4">
+                                    <ol className="list-decimal space-y-1 pl-6">                                        
+                                        <li> Draw a card.</li>
+                                        <Note>
+                                            Skip this step if you are the player taking the first turn of the game.
+                                        </Note>
+                                    </ol>
+                                </div>
+                            </div>
                             <div className="space-y-1">
                                 <p className="font-semibold text-cyan-200">Main Phase</p>
                                 <div className="space-y-1 border-l-2 border-cyan-500/0 pl-4">
                                     <p>
                                         You may play cards, activate abilities, make attacks,
-                                        allocate a resource to a unit you control, accumulate resources,
+                                        accumulate resources,
                                         in any order where timing allows.
                                     </p>
                                     <p>To make an attack, in brief:</p>
@@ -596,10 +614,7 @@ export function HowToPlayPage() {
                                 <Term>Multiple types:</Term> A card may have more than one supertype or
                                 subtype. When type rules conflict, the more permissive rule applies unless
                                 card text says otherwise. If the card has the Unit supertype, it may
-                                attack even if another type says it cannot. If the card has the Weapon
-                                subtype, it may use its innate attack ability (see{" "}
-                                <SectionLink href="#how-to-attack">How to Attack</SectionLink>)
-                                even if another type says it cannot. Readied units you control force
+                                attack even if another type says it cannot. Readied units you control force
                                 opponents to attack them first (see{" "}
                                 <SectionLink href="#how-to-block">How to Block</SectionLink>).
                             </Important>
@@ -638,8 +653,8 @@ export function HowToPlayPage() {
                                 variety of effects and abilities. They cannot attack.
                             </p>
                             <p>
-                                <Term>PROTOTYPE [ ANY ]:</Term> Prototype weapons, spells, and
-                                equipment, often rare in the lore. A card with this type is
+                                <Term>PROTOTYPE [ ANY ]:</Term> Prototype cards—rare experimental
+                                assets in the lore. A card with this type is
                                 restricted to a single copy in your deck.
                             </p>
                             <p>
@@ -680,19 +695,6 @@ export function HowToPlayPage() {
                                 empty. (See Using the Lock for details.) Quick Hacks represent the
                                 fastest scripts you can play, letting you disrupt your opponent or
                                 protect yourself. They cannot attack.
-                            </p>
-                            <p>
-                                <Term>WEAPON:</Term> A subtype on entity cards. A weapon has an{" "}
-                                <strong>innate ability</strong> to attack&mdash;this is not an activated
-                                ability. To attack with a weapon,{" "}
-                                <GameIcon name="expend" /> the weapon and{" "}
-                                <GameIcon name="dismantle" /> a resource of your choice you control
-                                (you do not need to dismantle a resource if you control your pilot on
-                                the battlefield), then choose targets using the same rules as attacking
-                                with units. A
-                                weapon may join the same attack as your units. If a weapon deals
-                                damage to a readied unit, put a depletion counter on that weapon. See{" "}
-                                <SectionLink href="#how-to-attack">How to Attack</SectionLink>.
                             </p>
                             </Subsection>
                         </Section>
@@ -869,9 +871,7 @@ export function HowToPlayPage() {
 
                             <Subsection id="how-to-block" title="How to Block">
                             <p>
-                                You block with <strong>units</strong> on the battlefield only. You
-                                cannot block by discarding from hand or expending programs,
-                                technologies, or cyberspells.
+                                You block with <strong>units</strong> on the battlefield only.
                             </p>
                             <p>
                                 While you control a readied unit on the battlefield, an opponent
@@ -890,6 +890,13 @@ export function HowToPlayPage() {
                                 resolved against you becomes loss of life. You cannot block that
                                 damage with units.
                             </p>
+                            <p>
+                                You can retreat a unit after an attack is declared against it if that
+                                unit did not enter the battlefield under your control this turn, or if
+                                it has Blitz. To retreat, expend that unit and mark 1 damage on it; the
+                                attack is negated and deals 0 combat damage. The 1 damage from
+                                retreating still counts toward defeating the unit.
+                            </p>
 
                             </Subsection>
 
@@ -901,42 +908,35 @@ export function HowToPlayPage() {
                             </p>
                             <ol className="list-decimal space-y-1 pl-6">
                                 <li>
-                                    Choose unit(s), weapon(s) using their innate attack ability, and/or
+                                    Choose unit(s) using their innate attack ability, and/or
                                     other legal attackers. When attacking
                                     with multiple attackers, the group is considered a single attack
                                     and must share the same target, but each attacker is treated
                                     separately when assigning damage. A unit may attack if
                                     it has the Unit supertype and did not enter the battlefield this
                                     turn (unless it has Blitz), including when it also has a type that
-                                    otherwise cannot attack (see Card Types). To attack with a weapon,
-                                    pay its innate cost: <GameIcon name="expend" /> the weapon and{" "}
-                                    <GameIcon name="dismantle" /> a resource of your choice you
-                                    control (you do not need to dismantle a resource if you control
-                                    your pilot on the battlefield).
+                                    otherwise cannot attack (see Card Types).
                                 </li>
                                 <li>
                                     Expend chosen unit(s). Declare an attack target — the defending
                                     player or a unit on the battlefield (not the stockpile or other
                                     zones unless an effect says otherwise) — and trigger the{" "}
-                                    <GameIcon name="attack" /> abilities of the attacking units and
-                                    weapons. When declaring the target of your attack you must target
+                                    <GameIcon name="attack" /> abilities of the attacking units. When declaring the target of your attack you must target
                                     a readied unit on the battlefield the defending player controls if
                                     able. (Every readied unit has this requirement built in.)
                                     <Note>If you cannot target a readied unit on the battlefield that a defending player controls, you cannot make the attack. If they control more than one, you choose which to target.</Note>
                                 </li>
                                 <li>
-                                    The unit(s) and/or weapon(s) are now considered attacking. In this
+                                    The unit(s) are now considered attacking. In this
                                     step you must choose whether to pay additional costs for cards with
                                     them such as stealth.
                                 </li>
                                 <li>Players may play Quick Hacks or activate abilities,
                                     starting with the active player, until no one wants to adds more effects.
+                                </li>
                                 <li>If a Unit would become readied, the attacking target becomes illegal and is redirected to the readied unit instead.
                                     If there ar multiple readied units then the attacker my choose which one to redirect the attack to.
-                                </li>
-                                    <Note>The Active player is usually the one attacking see the lock for details.</Note>
-                                    
-                                </li>
+                                </li>    
                                 <li>
                                     The attacker(s) deal Preemptive Strike damage equal to their
                                     damage value (including modifiers).
@@ -960,8 +960,7 @@ export function HowToPlayPage() {
                                     If there are
                                     multiple attackers, the defending player divides
                                     this damage among them as they choose.
-                                    Damage dealt this way is simultaneous. If a weapon dealt damage to
-                                    a readied unit, put a depletion counter on that weapon.
+                                    Damage dealt this way is simultaneous.
                                 </li>
                                 <li>
                                     After damage is dealt, check each unit that took damage. A unit
@@ -1211,7 +1210,7 @@ export function HowToPlayPage() {
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="invoke" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when you play the card this tag is printed on, as the card goes to the lock; it always resolves as soon as it is triggered. (This is the Invoke tag.)</span>
+                                    <span>Triggers when you play the card this tag is printed on, as the card goes to the lock; it always resolves as soon as it is triggered.</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="conditional" className="mt-0.5 shrink-0" />
@@ -1320,6 +1319,7 @@ export function HowToPlayPage() {
                                 <li>Your deck must have at least 40 entity and cyberspell cards.</li>
                                 <li>Any non-pilot card may have up to three copies with the same name in your deck.</li>
                                 <li>Any card with the Prototype supertype is limited to a single copy in your deck.</li>
+                                <li>Augments and Weapons are not used — do not include them in your deck.</li>
                             </ol>
 
                             <p>That concludes deck building.</p>

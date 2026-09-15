@@ -10,6 +10,7 @@ import {
   categoryCountsInDeck,
   pilotCard,
 } from "@/components/decks/deck.logic"
+import { SHOW_DECK_AUGMENT_SLOT } from "@/components/decks/constants"
 import {
   RESOURCE_COLORS,
   spawnResourceTokenInstance,
@@ -98,14 +99,21 @@ export function libraryDeckEntries(deck: DeckDetail): DeckCardEntry[] {
 /**
  * Build the initial session board for one player.
  * `resourceByColor` should already be loaded; missing colours are skipped.
+ *
+ * Augments are omitted unless `includeAugments` is true (defaults to
+ * {@link SHOW_DECK_AUGMENT_SLOT} so deck builder + playtester stay in sync).
  */
 export function setupOpeningSession(
   deck: DeckDetail,
   resourceByColor: Map<ResourceColor, CardLibraryItem>,
-  owner: PlayerSlot = LOCAL_SEAT
+  owner: PlayerSlot = LOCAL_SEAT,
+  options?: { includeAugments?: boolean }
 ): PlayingCardInstance[] {
+  const includeAugments = options?.includeAugments ?? SHOW_DECK_AUGMENT_SLOT
   const pilotEntry = pilotCard(deck.cards, deck.categories)
-  const augmentEntries = augmentCards(deck.cards, deck.categories, "name")
+  const augmentEntries = includeAugments
+    ? augmentCards(deck.cards, deck.categories, "name")
+    : []
   const mainEntries = libraryDeckEntries(deck)
 
   const session: PlayingCardInstance[] = []

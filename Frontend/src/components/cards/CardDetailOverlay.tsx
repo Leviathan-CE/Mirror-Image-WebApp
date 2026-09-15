@@ -1,5 +1,7 @@
 /**
  * Full-screen card detail dialog (library / admin catalogue).
+ *
+ * Takes the shared library receive model — do not invent a parallel card shape.
  */
 
 import { useEffect } from "react"
@@ -10,32 +12,19 @@ import { CardRulesText } from "@/components/cards/CardRulesText"
 import { parseKeyword } from "@/components/cards/keywordHelp.logic"
 import { GameIcon } from "@/components/common/GameIcon"
 import { GlitchFx } from "@/components/effects/GlitchFx"
+import type { CardLibraryItem } from "@/lib/api/cards"
 import { cardFaceUrl } from "@/lib/api/decks"
 
 const closeButtonClassName =
   "font-buahs93 h-9 rounded-none border border-cyan-500/35 bg-black/70 px-3 text-sm text-cyan-100 hover:border-cyan-400/60 hover:bg-cyan-500/10 hover:text-white"
 
-/** Fields needed to render the shared detail panel. */
-export type CardDetailOverlayData = {
-  card_name: string
-  card_set_name: string
-  rarity: string
-  cost: string[]
-  threat_level?: string
-  super_types?: string[]
-  sub_types?: string[]
-  types_line?: string
-  keywords?: string[]
-  description?: string
-  card_art_path: string | null
-  card_thumbnail_path?: string | null
-  card_art_version?: number | null
-  /** Optional admin metadata line. */
+/** Library/admin card + optional admin chrome line. */
+export type CardDetailOverlayCard = CardLibraryItem & {
   metaLine?: string | null
 }
 
 type CardDetailOverlayProps = {
-  card: CardDetailOverlayData | null
+  card: CardDetailOverlayCard | null
   onClose: () => void
 }
 
@@ -54,6 +43,7 @@ export function CardDetailOverlay({ card, onClose }: CardDetailOverlayProps) {
   const art = cardFaceUrl(card)
   const threat = (card.threat_level ?? "0").trim()
   const showThreat = threat !== "" && threat !== "0"
+  const showInvokeCost = card.has_invoke_cost === true
   const keywords = card.keywords ?? []
 
   return createPortal(
@@ -100,15 +90,17 @@ export function CardDetailOverlay({ card, onClose }: CardDetailOverlayProps) {
             </p>
           ) : null}
           <div className="mt-4 flex flex-wrap items-start gap-8 sm:mt-5">
-            <div className="space-y-2">
-              <p className="font-buahs93 text-sm text-cyan-200/80 sm:text-base">
-                INVOKE COST
-              </p>
-              <CardCostIcons
-                cost={card.cost}
-                iconClassName="h-6 w-auto lg:h-7 2xl:h-7"
-              />
-            </div>
+            {showInvokeCost ? (
+              <div className="space-y-2">
+                <p className="font-buahs93 text-sm text-cyan-200/80 sm:text-base">
+                  INVOKE COST
+                </p>
+                <CardCostIcons
+                  cost={card.cost}
+                  iconClassName="h-6 w-auto lg:h-7 2xl:h-7"
+                />
+              </div>
+            ) : null}
             {showThreat ? (
               <div className="space-y-2">
                 <p className="font-buahs93 text-sm text-cyan-200/80 sm:text-base">

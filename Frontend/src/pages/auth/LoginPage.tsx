@@ -12,6 +12,7 @@ import { useCallback, useState, type SubmitEvent } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
+import { safeNextPath } from "@/app/RequireAuth"
 import { sharedImages } from "@/assets"
 import { LoginBootScreen } from "@/components/auth/loginBoot"
 import {
@@ -59,8 +60,13 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { setSession } = useAuth()
-  const redirectTo =
-    (location.state as { from?: string } | null)?.from || ROUTES.MAIN
+  const nextFromQuery = safeNextPath(
+    new URLSearchParams(location.search).get("next")
+  )
+  const nextFromState = safeNextPath(
+    (location.state as { from?: string } | null)?.from
+  )
+  const redirectTo = nextFromQuery || nextFromState || ROUTES.MAIN
 
   const [identifier, setIdentifier] = useState("")
   const [password, setPassword] = useState("")

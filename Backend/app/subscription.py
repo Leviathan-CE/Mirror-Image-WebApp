@@ -38,8 +38,9 @@ PLAN_TAGLINE = (
 )
 PLAN_FEATURES = (
     "Access preview cards still in design, with new ones added each month to build and play with.",
-    "Helping support a solo developer and illistrator work full time on this project and bring it to life."
-    )
+    "Create duplex print-and-play PDFs from your decks.",
+    "Helping support a solo developer and illustrator work full time on this project and bring it to life.",
+)
 
 
 def require_stripe_config() -> tuple[str, str]:

@@ -41,13 +41,16 @@ describe("DeckCardSearch", () => {
     expect(onPick).toHaveBeenCalledWith(hit)
   })
 
-  it("shows no matches when search returns empty", async () => {
+  it("offers no options when search returns empty", async () => {
     const user = userEvent.setup()
     vi.mocked(searchCards).mockResolvedValue([])
 
     render(<DeckCardSearch onPick={vi.fn()} />)
     await user.type(screen.getByRole("combobox"), "zzz")
 
-    expect(await screen.findByText("No matches")).toBeInTheDocument()
+    await waitFor(() => {
+      expect(searchCards).toHaveBeenCalled()
+    })
+    expect(screen.queryByRole("option")).not.toBeInTheDocument()
   })
 })

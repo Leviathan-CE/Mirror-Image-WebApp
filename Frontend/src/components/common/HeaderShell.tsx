@@ -6,6 +6,7 @@
 import type { ReactNode } from "react"
 import { Link } from "react-router-dom"
 
+import { sharedImages } from "@/assets"
 import {
   headerBrandClassName,
   headerInnerClassName,
@@ -14,7 +15,7 @@ import {
 } from "@/components/common/headerStyles"
 
 type HeaderShellProps = {
-  /** Brand link target (`/` guest, `/main` operator). */
+  /** Brand link target — marketing home (`/`) for guest and operator chrome. */
   brandTo: string
   brandLabel?: string
   nav: ReactNode
@@ -23,7 +24,7 @@ type HeaderShellProps = {
 
 export function HeaderShell({
   brandTo,
-  brandLabel = "MIRRORIMAGE",
+  brandLabel = "",
   nav,
   actions,
 }: HeaderShellProps) {
@@ -31,7 +32,12 @@ export function HeaderShell({
     <header className={headerShellClassName}>
       <div className={headerInnerClassName}>
         <Link to={brandTo} className={headerBrandClassName}>
-          {brandLabel}
+          <img
+            src={sharedImages.LOGO_MARK}
+            alt=""
+            className="h-7 w-auto object-contain sm:h-8 md:h-9"
+          />
+          <span>{brandLabel}</span>
         </Link>
         <nav className={headerNavClassName}>{nav}</nav>
         {actions}

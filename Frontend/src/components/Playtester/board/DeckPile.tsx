@@ -15,7 +15,7 @@ import {
 } from "react"
 import { createPortal } from "react-dom"
 
-import { sharedImages } from "@/assets/shared"
+import { CardBackImg } from "@/components/Playtester/board/CardBackImg"
 import { CardEnlargeOverlay } from "@/components/Playtester/board/CardLargeOverlay"
 import { elementCssPaintScale } from "@/components/Playtester/board/playFieldScale.logic"
 import { scalePlayPile } from "@/components/Playtester/board/playPileScale.logic"
@@ -79,12 +79,7 @@ function CardBackFace({ className }: { className?: string }) {
         className
       )}
     >
-      <img
-        src={sharedImages.CARD_BACK}
-        alt=""
-        draggable={false}
-        className="h-full w-full object-cover"
-      />
+      <CardBackImg />
     </div>
   )
 }
@@ -144,12 +139,7 @@ function TopCardFace({
           className={cn(faceShell, "border-cyan-400/60")}
           style={{ transform: "rotateY(180deg)" }}
         >
-          <img
-            src={sharedImages.CARD_BACK}
-            alt=""
-            draggable={false}
-            className="h-full w-full object-cover"
-          />
+          <CardBackImg />
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 """Feature entitlement helper tests."""
 
 from app.features import (
+    FEATURE_DECK_PRINTOUT,
     FEATURE_PLAYTESTER,
     FEATURE_PREVIEW_CARDS,
     effective_feature_keys,
@@ -14,9 +15,17 @@ def test_admin_has_all_catalog_features():
         role="admin",
         subscription_status="none",
         granted_keys=[],
-        catalog_keys=[FEATURE_PREVIEW_CARDS, FEATURE_PLAYTESTER],
+        catalog_keys=[
+            FEATURE_PREVIEW_CARDS,
+            FEATURE_PLAYTESTER,
+            FEATURE_DECK_PRINTOUT,
+        ],
     )
-    assert keys == [FEATURE_PREVIEW_CARDS, FEATURE_PLAYTESTER]
+    assert keys == [
+        FEATURE_PREVIEW_CARDS,
+        FEATURE_PLAYTESTER,
+        FEATURE_DECK_PRINTOUT,
+    ]
 
 
 def test_playtester_is_always_public():
@@ -42,6 +51,27 @@ def test_subscriber_gets_preview_and_public_playtester():
         subscription_status="active",
         granted_keys=[],
         feature_key=FEATURE_PLAYTESTER,
+    )
+    assert user_has_feature(
+        role="user",
+        subscription_status="active",
+        granted_keys=[],
+        feature_key=FEATURE_DECK_PRINTOUT,
+    )
+
+
+def test_non_subscriber_needs_grant_for_deck_printout():
+    assert not user_has_feature(
+        role="user",
+        subscription_status="none",
+        granted_keys=[],
+        feature_key=FEATURE_DECK_PRINTOUT,
+    )
+    assert user_has_feature(
+        role="user",
+        subscription_status="none",
+        granted_keys=[FEATURE_DECK_PRINTOUT],
+        feature_key=FEATURE_DECK_PRINTOUT,
     )
 
 

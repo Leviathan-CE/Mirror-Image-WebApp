@@ -17,7 +17,7 @@ export const ROUTES = {
   DECK_COMUNITY: "/comunity_decks",
   PLAY_TESTER: "/play_tester",
 
-  /** Legacy path — redirects to ACCOUNT (keeps Stripe query params). */
+  /** Supporter / Stripe subscribe page (auth required). */
   SUBSCRIBE: "/subscribe",
 
   /** Logged-in account UI prefs. */

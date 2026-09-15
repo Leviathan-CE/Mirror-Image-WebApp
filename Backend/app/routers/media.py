@@ -19,10 +19,18 @@ from app.media_urls import (
     resolve_media_file,
     verify_media_signature,
 )
+from app.routers.assets import SYSTEM_MEDIA_DIR
 
 router = APIRouter(tags=["media"])
 
 MEDIA_DIR = Path(__file__).resolve().parent.parent / "thumbnails"
+
+
+def resolve_served_media(key: str) -> Path | None:
+    """Card/deck art under thumbnails, or tracked system assets under system/."""
+    if key.startswith("system/"):
+        return resolve_media_file(SYSTEM_MEDIA_DIR, key[len("system/") :])
+    return resolve_media_file(MEDIA_DIR, key)
 
 
 @router.get(f"/{MEDIA_URL_PREFIX}/{{key:path}}")
@@ -39,7 +47,7 @@ def get_media(
     if not verify_media_signature(key, exp, sig):
         raise HTTPException(status_code=404, detail="media_not_found")
 
-    file_path = resolve_media_file(MEDIA_DIR, key)
+    file_path = resolve_served_media(key)
     if file_path is None:
         raise HTTPException(status_code=404, detail="media_not_found")
 

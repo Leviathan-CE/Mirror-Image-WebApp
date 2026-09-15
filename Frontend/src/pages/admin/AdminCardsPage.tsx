@@ -824,10 +824,6 @@ export function AdminCardsPage() {
           detail
             ? {
                 ...detail,
-                cost: detail.cost.map(String),
-                keywords: detail.keywords.map(String),
-                super_types: detail.super_types.map(String),
-                sub_types: detail.sub_types.map(String),
                 metaLine: `#${detail.id} · ${detail.published} · ${detail.lagality}${
                   detail.is_deprecated ? " · deprecated" : ""
                 }`,

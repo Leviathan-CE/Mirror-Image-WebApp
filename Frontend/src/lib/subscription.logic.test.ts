@@ -55,6 +55,37 @@ describe("userHasFeature", () => {
       )
     ).toBe(true)
   })
+
+  it("subscribers unlock deck_printout via entitlement fallback", () => {
+    expect(
+      userHasFeature(
+        {
+          id: 1,
+          user_name: "a",
+          email: "a@x",
+          role: "user",
+          features: [],
+          is_subscribed: true,
+          subscription_status: "active",
+        },
+        "deck_printout"
+      )
+    ).toBe(true)
+    expect(
+      userHasFeature(
+        {
+          id: 1,
+          user_name: "a",
+          email: "a@x",
+          role: "user",
+          features: [],
+          is_subscribed: false,
+          subscription_status: "none",
+        },
+        "deck_printout"
+      )
+    ).toBe(false)
+  })
 })
 
 describe("isUserSubscribed", () => {

@@ -161,6 +161,7 @@ def classified_deck_card_overrides(classification: str = "classified") -> dict:
             "card_art_version": None,
             "invoke_cost": 0,
             "cost": [],
+            "has_invoke_cost": False,
             "threat_level": "0",
             "types_line": "TOP SECRET" if kind == "top_secret" else "CLASSIFIED",
             "super_types": [],

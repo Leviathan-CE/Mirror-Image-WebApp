@@ -10,6 +10,7 @@ import { ThumbsUp } from "lucide-react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
+import { useCardBackSrc } from "@/app/providers/CardBackProvider"
 import { useUserPreferences } from "@/app/providers/PreferencesProvider"
 import { sharedImages } from "@/assets"
 import { GlitchFx } from "@/components/effects/GlitchFx"
@@ -31,6 +32,7 @@ import {
 import { CardLibraryBrowser } from "@/components/cards/CardLibraryBrowser"
 import "@/components/decks/DeckCardStack.css"
 import {
+  augmentCategory,
   canAddCopyToDeck,
   clampQuantityToMax,
   deckCardCount,
@@ -67,6 +69,7 @@ import {
   addDeckCard,
   addDeckTag,
   copyDeck,
+  AUGMENT_SECTION_NAME,
   createDeckCategory,
   deleteDeck,
   deleteDeckCategory,
@@ -81,6 +84,10 @@ import {
   type DeckCardEntry,
 } from "@/lib/api/decks"
 import { ROUTES, ADMIN_ROLE } from "@/lib/route"
+import {
+  FEATURE_DECK_PRINTOUT,
+  userHasFeature,
+} from "@/lib/subscription.logic"
 import { cn } from "@/lib/utils"
 import {
   BROWSE_WIDTH_DEFAULT,
@@ -109,6 +116,7 @@ export function DeckPage() {
   const deckId = Number(deckIdParam)
   const navigate = useNavigate()
   const { user, token, isAuthenticated } = useAuth()
+  const cardBackSrc = useCardBackSrc()
   const { prefs, patchPrefs } = useUserPreferences()
   const browseWidth = clampDeckBrowseWidth(prefs.deck_browse_width_px)
   const cardSortMode = prefs.deck_sort
@@ -201,6 +209,7 @@ export function DeckPage() {
 
   const canEdit =
     Boolean(deck && user && deck.author_name === user.user_name && token)
+  const canPrintout = userHasFeature(user, FEATURE_DECK_PRINTOUT)
   const isAdmin = user?.role === ADMIN_ROLE
 
   async function onCreatePrintout() {
@@ -208,6 +217,11 @@ export function DeckPage() {
     const slots = collectDeckPrintoutSlots(deck)
     if (slots.length === 0) {
       setErrorText("No cards marked for the deck to print.")
+      return
+    }
+    // Admins get duplex backs; subscribers get faces only.
+    if (isAdmin && !cardBackSrc) {
+      setErrorText("Card back art is not available yet — try again in a moment.")
       return
     }
     setPrintoutBusy(true)
@@ -219,6 +233,7 @@ export function DeckPage() {
       const result = await generateDeckPrintoutPdf({
         deckName: deck.name ?? `Deck ${deck.id}`,
         slots,
+        cardBackUrl: isAdmin ? cardBackSrc : null,
       })
       if (result.missingArt > 0) {
         setErrorText(
@@ -934,6 +949,8 @@ export function DeckPage() {
         await assignPilot(hit.id, null)
         return
       }
+      // Augments slot is hidden (SHOW_DECK_AUGMENT_SLOT); leave is_augment in
+      // the main add path so cards are not dropped into an invisible section.
 
       const categoryId = mainCategoryId(deck.categories)
       if (categoryId == null) {
@@ -977,6 +994,97 @@ export function DeckPage() {
       setDeck((prev) => (prev ? withCardEntry(prev, entry) : prev))
     } catch {
       setErrorText("Could not add that card.")
+    }
+  }
+
+  async function ensureAugmentCategoryId(): Promise<number | null> {
+    if (!token || !deck) return null
+    const existing = augmentCategory(deck.categories)
+    if (existing) return existing.id
+
+    const created = await createDeckCategory(
+      deck.id,
+      token,
+      AUGMENT_SECTION_NAME,
+      { in_deck: false }
+    )
+    setDeck((prev) =>
+      prev
+        ? {
+          ...prev,
+          categories: [...prev.categories, created],
+        }
+        : prev
+    )
+    return created.id
+  }
+
+  async function addAugment(
+    cardId: number,
+    fromCategoryId: number | null
+  ) {
+    if (!token || !deck || !canEdit) return
+
+    const detail = await fetchCardById(cardId, token)
+    if (!detail.is_augment) {
+      setErrorText("Only augment cards can go in Augments.")
+      return
+    }
+
+    const augmentCatId = await ensureAugmentCategoryId()
+    if (augmentCatId == null) {
+      setErrorText("Could not open the Augments section.")
+      return
+    }
+
+    const already = deck.cards.find(
+      (card) => card.card.id === cardId && card.category_id === augmentCatId
+    )
+    if (already) {
+      setErrorText("That augment is already in the list.")
+      return
+    }
+
+    setSaving(true)
+    setErrorText("")
+    try {
+      let entry: DeckCardEntry
+      if (fromCategoryId != null && fromCategoryId !== augmentCatId) {
+        entry = await updateDeckCard(deck.id, cardId, fromCategoryId, token, {
+          category_id: augmentCatId,
+          quantity: 1,
+        })
+      } else {
+        entry = await addDeckCard(deck.id, token, {
+          card_id: cardId,
+          category_id: augmentCatId,
+          quantity: 1,
+        })
+      }
+
+      setDeck((prev) => {
+        if (!prev) return prev
+        const withoutSource =
+          fromCategoryId != null
+            ? prev.cards.filter(
+              (card) =>
+                !(
+                  card.card.id === cardId &&
+                  card.category_id === fromCategoryId
+                )
+            )
+            : prev.cards
+        return withCardEntry(
+          { ...prev, cards: withoutSource },
+          { ...entry, quantity: 1 }
+        )
+      })
+      clearCardSelection()
+    } catch {
+      setErrorText("Could not add that augment.")
+      await loadDeck()
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -1131,7 +1239,7 @@ export function DeckPage() {
             label="← BACK"
             className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900"
             onClick={() => {
-               navigate(ROUTES.DECK_COMUNITY)
+              navigate(ROUTES.MAIN)
             }}
           />
           {canEdit ? (
@@ -1403,7 +1511,7 @@ export function DeckPage() {
                       onClick={() => setBrowseOpen((prev) => !prev)}
                     />
                   ) : null}
-                  {isAdmin ? (
+                  {canPrintout ? (
                     <GlitchFx
                       type="button"
                       label={printoutBusy ? "BUILDING PDF…" : "CREATE PRINTOUT"}
@@ -1452,6 +1560,7 @@ export function DeckPage() {
                   onQuantityDelta={onQuantityDelta}
                   onAssignPilot={assignPilot}
                   onClearPilot={canEdit ? onClearPilot : undefined}
+                  onAddAugment={addAugment}
                   onCreateSectionFromDrop={onCreateSectionFromDrop}
                 />
               </div>

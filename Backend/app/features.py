@@ -9,13 +9,16 @@ from app.subscription import is_subscription_entitled
 # Stable keys — must match rows seeded in features table.
 FEATURE_PREVIEW_CARDS = "preview_cards"
 FEATURE_PLAYTESTER = "playtester"
+FEATURE_DECK_PRINTOUT = "deck_printout"
 
 # Always available (no account / no grant). Kept in the catalog for /auth/me
 # but excluded from admin grant toggles.
 PUBLIC_FEATURES = frozenset({FEATURE_PLAYTESTER})
 
 # Features unlocked automatically for Stripe active/trialing (and admins via role).
-SUBSCRIBER_DEFAULT_FEATURES = frozenset({FEATURE_PREVIEW_CARDS})
+SUBSCRIBER_DEFAULT_FEATURES = frozenset(
+    {FEATURE_PREVIEW_CARDS, FEATURE_DECK_PRINTOUT}
+)
 
 
 def is_public_feature(feature_key: str) -> bool:

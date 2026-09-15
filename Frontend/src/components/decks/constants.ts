@@ -12,6 +12,12 @@ export const DECK_CARD_MAX_COPIES = 3
 /** Max copies for Token super-type (matches backend `le=99`). */
 export const DECK_CARD_MAX_COPIES_UNLIMITED = 99
 
+/**
+ * When false: hide reserved Augments on the deck board and do not deal them
+ * into playtester opening sessions. Flip true to restore both.
+ */
+export const SHOW_DECK_AUGMENT_SLOT = false
+
 /** Sentinel `fromCategoryId` for drags that originate in the card library browser. */
 export const LIBRARY_DRAG_CATEGORY_ID = -1
 
