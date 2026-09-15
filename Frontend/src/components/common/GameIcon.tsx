@@ -53,71 +53,84 @@ const ICON_SOURCES = {
   trash: { src: "/images/icons/tr.png", label: "Trash", shape: "token" },
   dismantle: { src: "/images/icons/DIS.png", label: "Dismantle", shape: "token" },
 
-  // Keyword / timing tags (keywords/).
+  // Keyword / timing tags — CSS text badges (src kept only as unused asset ref).
   atomic: {
     src: "/images/icons/keywords/ATOMIC.png",
     label: "Atomic",
+    text: "ATOMIC",
     shape: "tag",
   },
   entersPlay: {
     src: "/images/icons/keywords/enters play.png",
     label: "Enters play",
+    text: "ENTERS",
     shape: "tag",
   },
   battlefield: {
     src: "/images/icons/keywords/battlefield.png",
     label: "Enters battlefield",
+    text: "BATTLEFIELD",
     shape: "tag",
   },
   stockpile: {
-    src: "/images/icons/keywords/STOCKPILE.png",
+    src: "/images/icons/keywords/stockpile.png",
     label: "Enters stockpile",
+    text: "STOCKPILE",
     shape: "tag",
   },
   attack: {
     src: "/images/icons/keywords/attack trigger.png",
     label: "Attack",
+    text: "ATTACK",
     shape: "tag",
   },
   endTurn: {
     src: "/images/icons/keywords/end of turn.png",
     label: "End of turn",
+    text: "END",
     shape: "tag",
   },
   start: {
     src: "/images/icons/keywords/START.png",
     label: "Start of turn",
+    text: "START",
     shape: "tag",
   },
-  /** Legacy start-of-turn banner art (filename retains old spelling). */
+  /** Legacy start-of-turn name (filename retains old spelling). */
   maintenance: {
     src: "/images/icons/keywords/miantinace phase.png",
     label: "Start of turn",
+    text: "START",
     shape: "tag",
   },
   defeated: {
     src: "/images/icons/keywords/defeated.png",
     label: "Defeated",
+    text: "DEFEATED",
     shape: "tag",
   },
   static: {
-    src: "/images/icons/keywords/STATIC.png",
+    src: "/images/icons/keywords/static.png",
     label: "Static",
+    text: "STATIC",
     shape: "tag",
   },
   effect: {
     src: "/images/icons/keywords/Effect.png",
     label: "Effect",
+    text: "EFFECT",
     shape: "tag",
   },
   invoke: {
     src: "/images/icons/keywords/invoke.png",
     label: "Invoke",
+    text: "INVOKE",
     shape: "tag",
   },
   conditional: {
     src: "/images/icons/keywords/IF.png",
     label: "If",
+    text: "IF",
     shape: "tag",
   },
 } as const
@@ -132,23 +145,20 @@ type GameIconProps = {
 export function GameIcon({ name, className }: GameIconProps) {
   const icon = ICON_SOURCES[name]
 
-  // Tag banners ship with large transparent padding around the text. Crop that
-  // padding by oversizing the image inside a short, clipped box so the label
-  // reads at a size comparable to the surrounding body text.
+  // Text tags: cyan outline + glitch type. No PNG crop/alignment issues.
   if (icon.shape === "tag") {
     return (
       <span
+        title={icon.label}
         className={cn(
-          "inline-flex h-6 items-center overflow-hidden align-text-bottom lg:h-7 2xl:h-8",
-          className
+          className,
+          "clip-corner-tr mx-0.5 inline-flex h-auto w-auto shrink-0 items-center justify-center align-text-bottom",
+          "border border-cyan-400/70 bg-cyan-500/35 px-2 py-1",
+          "font-glitch text-xs leading-none tracking-wider text-white",
+          "lg:px-2.5 lg:py-1.5 lg:text-sm"
         )}
       >
-        <img
-          src={icon.src}
-          alt={icon.label}
-          title={icon.label}
-          className="h-20 w-auto max-w-none object-contain lg:h-24 2xl:h-28"
-        />
+        {icon.text}
       </span>
     )
   }

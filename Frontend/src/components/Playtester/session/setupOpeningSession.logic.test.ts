@@ -88,9 +88,20 @@ function deckWithAugments(): DeckDetail {
 
 describe("setupOpeningSession augments", () => {
   const noResources = new Map<ResourceColor, CardLibraryItem>()
+  const withAugments = { includeAugments: true as const }
+
+  it("omits augments by default while SHOW_DECK_AUGMENT_SLOT is off", () => {
+    const session = setupOpeningSession(deckWithAugments(), noResources)
+    expect(session.filter((c) => c.isAugment)).toHaveLength(0)
+  })
 
   it("flags augments so the shared field can pin them to each owner's stockpile edge", () => {
-    const session = setupOpeningSession(deckWithAugments(), noResources)
+    const session = setupOpeningSession(
+      deckWithAugments(),
+      noResources,
+      "p1",
+      withAugments
+    )
     const augments = session.filter((c) => c.isAugment)
 
     expect(augments.map((c) => c.name)).toEqual(["Ocular Rig", "Spinal Tap"])
@@ -103,8 +114,18 @@ describe("setupOpeningSession augments", () => {
   })
 
   it("gives both seats their own augment instances", () => {
-    const p1 = setupOpeningSession(deckWithAugments(), noResources, "p1")
-    const p2 = setupOpeningSession(deckWithAugments(), noResources, "p2")
+    const p1 = setupOpeningSession(
+      deckWithAugments(),
+      noResources,
+      "p1",
+      withAugments
+    )
+    const p2 = setupOpeningSession(
+      deckWithAugments(),
+      noResources,
+      "p2",
+      withAugments
+    )
     const ids = new Set([
       ...p1.filter((c) => c.isAugment).map((c) => c.instanceId),
       ...p2.filter((c) => c.isAugment).map((c) => c.instanceId),
@@ -120,7 +141,12 @@ describe("setupOpeningSession augments", () => {
   })
 
   it("keeps augments and the pilot out of the shuffled library", () => {
-    const session = setupOpeningSession(deckWithAugments(), noResources)
+    const session = setupOpeningSession(
+      deckWithAugments(),
+      noResources,
+      "p1",
+      withAugments
+    )
     const drawable = session.filter(
       (c) => c.zone === "library" || c.zone === "hand"
     )

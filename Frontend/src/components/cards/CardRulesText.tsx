@@ -11,6 +11,16 @@ import { cn } from "@/lib/utils"
 const TOKEN_RE =
   /<sprite\s+name=([A-Za-z0-9_]+)\s*\/?>|<\/?([ib])>|([^<]+)/gi
 
+/**
+ * Unity / JSON-style escapes sometimes land in description as literal text
+ * (e.g. `\u2022` instead of •). Expand them before tokenizing.
+ */
+export function decodeRulesTextEscapes(text: string): string {
+  return text.replace(/\\u([0-9a-fA-F]{4})/gi, (_, hex: string) =>
+    String.fromCharCode(Number.parseInt(hex, 16))
+  )
+}
+
 type CardRulesTextProps = {
   text: string
   className?: string
@@ -22,7 +32,8 @@ export function CardRulesText({
   className,
   iconClassName,
 }: CardRulesTextProps) {
-  if (!text.trim()) {
+  const decoded = decodeRulesTextEscapes(text)
+  if (!decoded.trim()) {
     return (
       <p className={cn("text-white/50", className)}>No rules text.</p>
     )
@@ -33,7 +44,7 @@ export function CardRulesText({
   let bold = false
   let key = 0
 
-  for (const match of text.matchAll(TOKEN_RE)) {
+  for (const match of decoded.matchAll(TOKEN_RE)) {
     const [, sprite, tag, plain] = match
 
     if (sprite) {

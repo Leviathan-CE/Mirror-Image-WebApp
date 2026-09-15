@@ -177,6 +177,18 @@
     );
   }
 
+  /** Single chamfer on the top-right (keyword tags in rules text). */
+  .clip-corner-tr {
+    --angle: 6px;
+    clip-path: polygon(
+      0 0,
+      calc(100% - var(--angle)) 0,
+      100% var(--angle),
+      100% 100%,
+      0 100%
+    );
+  }
+
   /* Hide the native thin caret; EditBox draws a block caret instead. */
   .terminal-caret {
     caret-color: transparent;

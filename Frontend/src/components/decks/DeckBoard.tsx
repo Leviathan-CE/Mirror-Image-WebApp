@@ -1,5 +1,5 @@
 /**
- * Presentational deck board: pilot + augment + category sections + new-section zone.
+ * Presentational deck board: pilot + category sections + new-section zone.
  * Pages own mutations; this component only renders and forwards events.
  */
 
@@ -18,6 +18,7 @@ import {
   cardsByCategory,
   pilotCard,
 } from "@/components/decks/deck.logic"
+import { SHOW_DECK_AUGMENT_SLOT } from "@/components/decks/constants"
 import {
   AUGMENT_SECTION_NAME,
   type DeckCardEntry,
@@ -49,7 +50,7 @@ export type DeckBoardProps = {
     fromCategoryId: number | null
   ) => void | Promise<void>
   onClearPilot?: () => void
-  onAddAugment: (
+  onAddAugment?: (
     cardId: number,
     fromCategoryId: number | null
   ) => void | Promise<void>
@@ -77,6 +78,7 @@ export function DeckBoard({
   onCreateSectionFromDrop,
 }: DeckBoardProps) {
   const augment = augmentCategory(deck.categories)
+  const showAugments = SHOW_DECK_AUGMENT_SLOT && onAddAugment != null
 
   return (
     <div
@@ -102,7 +104,7 @@ export function DeckBoard({
           }
           onClear={canEdit ? onClearPilot : undefined}
         />
-        {augment ? (
+        {showAugments && augment ? (
           <DeckCategorySection
             category={augment}
             cards={augmentCards(deck.cards, deck.categories, sortMode)}
@@ -123,7 +125,7 @@ export function DeckBoard({
             }
             onQuantityDelta={onQuantityDelta}
           />
-        ) : canEdit ? (
+        ) : showAugments && canEdit ? (
           <DeckCategorySection
             category={{
               id: -1,

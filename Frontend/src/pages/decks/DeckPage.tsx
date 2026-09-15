@@ -936,10 +936,8 @@ export function DeckPage() {
         await assignPilot(hit.id, null)
         return
       }
-      if (detail.is_augment) {
-        await addAugment(hit.id, null)
-        return
-      }
+      // Augments slot is hidden (SHOW_DECK_AUGMENT_SLOT); leave is_augment in
+      // the main add path so cards are not dropped into an invisible section.
 
       const categoryId = mainCategoryId(deck.categories)
       if (categoryId == null) {
@@ -1228,7 +1226,7 @@ export function DeckPage() {
             label="← BACK"
             className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900"
             onClick={() => {
-               navigate(ROUTES.DECK_COMUNITY)
+              navigate(ROUTES.MAIN)
             }}
           />
           {canEdit ? (

@@ -13,6 +13,7 @@ function card(overrides: Parameters<typeof deckEntry>[0] = {}): DeckCardEntry {
     category_id: 4,
     category_name: "Main",
     invoke_cost: 3,
+    has_invoke_cost: true,
     cost: ["LIF", "RAM"],
     threat_level: "4",
     is_summon: true,
@@ -21,7 +22,7 @@ function card(overrides: Parameters<typeof deckEntry>[0] = {}): DeckCardEntry {
 }
 
 describe("DeckCardListRow", () => {
-  it("shows name, cost icons, TLV, and quantity", () => {
+  it("shows cost icons left of name, plus TLV and quantity", () => {
     render(<DeckCardListRow card={card()} classified={null} />)
 
     expect(screen.getByText("Spirit Wire")).toBeInTheDocument()
