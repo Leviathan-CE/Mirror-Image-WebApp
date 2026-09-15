@@ -11,7 +11,6 @@ import { nextNewSectionName } from "@/components/decks/deck.logic"
 import { DeckCardSortControls } from "@/components/decks/DeckCardSortControls"
 import { DeckCardViewControls } from "@/components/decks/DeckCardViewControls"
 import { GlitchFx } from "@/components/effects/GlitchFx"
-import { SubscriptionSettingsPanel } from "@/components/billing/SubscriptionSettingsPanel"
 import {
   BROWSE_WIDTH_MAX,
   BROWSE_WIDTH_MIN,
@@ -66,13 +65,11 @@ export function AccountSettingsPage() {
             SETTINGS
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-white/55">
-            Account defaults, starting sections, and subscription. Signed-in
-            choices follow your account
+            Account defaults and starting sections. Signed-in choices follow your
+            account
             {user ? ` (${user.user_name})` : ""}.
           </p>
         </header>
-
-        <SubscriptionSettingsPanel />
 
         <section className="mb-6 border border-cyan-500/25 bg-black/50 p-5">
           <h2 className="font-buahs93 text-sm tracking-wide text-cyan-100">

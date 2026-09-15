@@ -32,6 +32,7 @@ export const homeCopy = {
   ],
   supportPerks: [
     "Access preview cards still in design",
+    "Create duplex print-and-play PDFs from your decks",
     "Play with friends in the Playtester",
   ],
 

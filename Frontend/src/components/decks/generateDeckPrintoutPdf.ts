@@ -1,9 +1,9 @@
 /**
  * Build a letter-size print-and-play PDF from deck card art.
  *
- * Page order is duplex-ready: each 3×3 face sheet is followed by a matching
- * card-back sheet (columns mirrored for long-edge flip). Print double-sided,
- * flip on long edge.
+ * - Subscribers: faces only (3×3 per page) — no real card backs.
+ * - Admins: duplex — each face sheet followed by a mirrored back sheet
+ *   (pass `cardBackUrl` from the auth-gated card-back asset).
  */
 
 import { jsPDF } from "jspdf"
@@ -129,10 +129,14 @@ function imageFormat(dataUrl: string): "PNG" | "JPEG" {
 export async function generateDeckPrintoutPdf(opts: {
   deckName: string
   slots: DeckPrintoutSlot[]
-  /** Auth-gated signed card-back URL (from `/assets/card-back`). */
-  cardBackUrl: string
+  /**
+   * When set (admin), append duplex back sheets using this signed card-back URL.
+   * When omitted, faces only.
+   */
+  cardBackUrl?: string | null
 }): Promise<DeckPrintoutPdfResult> {
   const { deckName, slots, cardBackUrl } = opts
+  const includeBacks = Boolean(cardBackUrl)
   const layout = computeGridLayout()
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "letter" })
 
@@ -141,7 +145,9 @@ export async function generateDeckPrintoutPdf(opts: {
     return { missingArt: 0 }
   }
 
-  const backDataUrl = await loadImageDataUrl(cardBackUrl)
+  const backDataUrl = includeBacks
+    ? await loadImageDataUrl(cardBackUrl!)
+    : null
   let missingArt = 0
 
   for (let pageStart = 0; pageStart < slots.length; pageStart += PER_PAGE) {
@@ -177,6 +183,8 @@ export async function generateDeckPrintoutPdf(opts: {
 
       drawCardBorder(doc, x, y, layout.cardW, layout.cardH)
     }
+
+    if (!includeBacks) continue
 
     // Matching reverse: same sheet positions after long-edge duplex flip.
     doc.addPage()

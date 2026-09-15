@@ -84,6 +84,10 @@ import {
   type DeckCardEntry,
 } from "@/lib/api/decks"
 import { ROUTES, ADMIN_ROLE } from "@/lib/route"
+import {
+  FEATURE_DECK_PRINTOUT,
+  userHasFeature,
+} from "@/lib/subscription.logic"
 import { cn } from "@/lib/utils"
 import {
   BROWSE_WIDTH_DEFAULT,
@@ -205,6 +209,7 @@ export function DeckPage() {
 
   const canEdit =
     Boolean(deck && user && deck.author_name === user.user_name && token)
+  const canPrintout = userHasFeature(user, FEATURE_DECK_PRINTOUT)
   const isAdmin = user?.role === ADMIN_ROLE
 
   async function onCreatePrintout() {
@@ -214,7 +219,8 @@ export function DeckPage() {
       setErrorText("No cards marked for the deck to print.")
       return
     }
-    if (!cardBackSrc) {
+    // Admins get duplex backs; subscribers get faces only.
+    if (isAdmin && !cardBackSrc) {
       setErrorText("Card back art is not available yet — try again in a moment.")
       return
     }
@@ -227,7 +233,7 @@ export function DeckPage() {
       const result = await generateDeckPrintoutPdf({
         deckName: deck.name ?? `Deck ${deck.id}`,
         slots,
-        cardBackUrl: cardBackSrc,
+        cardBackUrl: isAdmin ? cardBackSrc : null,
       })
       if (result.missingArt > 0) {
         setErrorText(
@@ -1505,7 +1511,7 @@ export function DeckPage() {
                       onClick={() => setBrowseOpen((prev) => !prev)}
                     />
                   ) : null}
-                  {isAdmin ? (
+                  {canPrintout ? (
                     <GlitchFx
                       type="button"
                       label={printoutBusy ? "BUILDING PDF…" : "CREATE PRINTOUT"}

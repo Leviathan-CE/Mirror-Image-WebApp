@@ -24,7 +24,7 @@ type HeaderShellProps = {
 
 export function HeaderShell({
   brandTo,
-  brandLabel = "MIRRORIMAGE",
+  brandLabel = "",
   nav,
   actions,
 }: HeaderShellProps) {

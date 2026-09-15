@@ -26,7 +26,7 @@ export function HomePage() {
     navigate(isAuthenticated ? ROUTES.MAIN : ROUTES.REGISTER)
 
   const goSubscribe = () =>
-    navigate(isAuthenticated ? ROUTES.ACCOUNT : ROUTES.REGISTER)
+    navigate(isAuthenticated ? ROUTES.SUBSCRIBE : ROUTES.REGISTER)
 
   useHomeReveal()
 

@@ -71,7 +71,7 @@ describe("AppHeader", () => {
 
     expect(screen.getByRole("link", { name: "MIRRORIMAGE" })).toHaveAttribute(
       "href",
-      ROUTES.MAIN
+      ROUTES.HOME
     )
     expect(screen.getByText("operator_one")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "DECKS" })).toBeInTheDocument()
@@ -96,6 +96,21 @@ describe("AppHeader", () => {
     await user.click(screen.getByRole("menuitem", { name: "Sign out" }))
 
     expect(clearSession).toHaveBeenCalledTimes(1)
+  })
+
+  it("opens Subscribe from the account menu", async () => {
+    const user = userEvent.setup()
+    useAuthMock.mockReturnValue({
+      user: sampleUser,
+      token: "test-token",
+      isAuthenticated: true,
+      setSession: vi.fn(),
+      clearSession,
+    })
+
+    renderAppHeader()
+    await user.click(screen.getByRole("button", { name: "Account menu" }))
+    expect(screen.getByRole("menuitem", { name: "Subscribe" })).toBeInTheDocument()
   })
 
   it("keeps PublicHeader on /cards when logged out", () => {
