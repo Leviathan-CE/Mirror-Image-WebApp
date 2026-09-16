@@ -18,11 +18,11 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
   },
   {
     name: "BLITZ",
-    text: "This unit may attack during the turn it entered the battlefield.",
+    text: "This unit may attack during the turn it entered the battlefield. It may also retreat that turn.",
   },
   {
     name: "CORROSIVE BILE",
-    text: "Whenever this entity deals damage to a unit, destroy that unit.",
+    text: "Whenever this entity deals damage to a unit, destroy that unit. The pilot is not destroyed this way; expend it instead, or put a time counter on it if it is already expended.",
   },
   {
     name: "DEGRADE X",
@@ -48,18 +48,18 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
   //   name: "HARDENED X",
   //   text: "Whenever this entity takes damage, reduce that damage by X.",
   // },
-  // {
-  //   name: "HARD POINT",
-  //   text: "You may include a second copy of this card in your deck (in addition to the normal copy limit).",
-  // },
+  {
+    name: "HARD POINT",
+    text: "You may equip a second copy of this card as an augment.",
+  },
   {
     name: "INSATIABLE HUNGER",
-    text: "Attacks must target a unit the defender controls if they control one.",
+    text: "Attacks must target a readied non-pilot unit the defender controls if they control one.",
   },
-  // {
-  //   name: "INVULNERABLE",
-  //   text: "This entity cannot be dismantled, trashed, or destroyed by effects that say to trash, dismantle, or destroy. Players cannot choose it as a valid target for those effects or costs.",
-  // },
+  {
+    name: "INVULNERABLE",
+    text: "This entity cannot be dismantled, trashed, or destroyed by effects that say to trash, dismantle, or destroy. Players cannot choose it as a valid target for those effects or costs.",
+  },
   // {
   //   name: "LETHAL X",
   //   text: "Whenever this unit or cyberspell deals damage, it deals X additional damage.",

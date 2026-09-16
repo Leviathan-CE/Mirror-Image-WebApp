@@ -34,7 +34,10 @@ const SECTIONS: TocEntry[] = [
     {
         id: "reading-cards",
         label: "Reading Your Cards",
-        children: [{ id: "threat-level", label: "Threat Level" }],
+        children: [
+            { id: "threat-level", label: "Threat Level" },
+            { id: "combat-rating", label: "Combat Rating" },
+        ],
     },
     {
         id: "card-types",
@@ -132,9 +135,10 @@ const PLAYMAT_ZONES: PlaymatZone[] = [
         label: "Pilot",
         description: (
             <>
-                Where you put your pilot card. Play it by paying its cost. When your pilot is defeated
-                or moves zones, you may instead return it here and increase its cost by{" "}
-                <GameIcon name="gen2" />.
+                A battlefield slot for your pilot. The pilot starts here, stays in play the whole
+                game, and is a legal attack target when no readied non-pilot unit intercepts.
+                Damage to the pilot is loss of life. If it would leave play, expend it instead
+                (or put a time counter on it if it is already expended).
             </>
         ),
         top: "5%",
@@ -176,7 +180,7 @@ const PLAYMAT_ZONES: PlaymatZone[] = [
         id: "battlefield",
         label: "Battlefield",
         description:
-            "Where all your entities go when played from anywhere. The exception: cards paid for with time counters wait in the stockpile until their counters are gone.",
+            "Where your entities live in play — including your pilot, starting augments, units, and weapons. Cards paid for with time counters wait in the stockpile until their counters are gone.",
         top: "5%",
         left: "16.5%",
         width: "80.5%",
@@ -373,15 +377,14 @@ export function HowToPlayPage() {
                         <Section id="how-to-win" title="How to Win">
                             <p>
                                 The most straightforward way to victory is to reduce your
-                                opponent&apos;s life points to 0 by attacking with units (a type of
-                                entity).
+                                opponent&apos;s life to 0 by attacking with units, weapons, or the
+                                pilot.
                             </p>
                             <p>
                                 Another way to win is to run your opponent out of cards in their
-                                deck. This doesn't end the game immediately, but each card they try
-                                to draw from an empty deck causes them to lose 2 life.
-                                The final way to win is if your opponent starts their turn with 0
-                                resources in their stockpile zone.
+                                deck. This doesn&apos;t end the game immediately, but each card they
+                                try to draw from an empty deck costs 1 life. You also win if your
+                                opponent begins their turn with 0 resources in their stockpile.
                             </p>
                         </Section>
 
@@ -419,22 +422,18 @@ export function HowToPlayPage() {
 
 
                             <p>
-                                First, place your pilot in the pilot zone. Then shuffle your deck and
-                                place it in the deck zone (labeled R.I.G. on the mat). Grab the starting resource tokens
-                                noted on your pilot and place them in your stockpile readied (vertical,
-                                90 degrees). Set your life total and draw a hand of cards based on your pilots starting values in the same
-                                fashion.
+                                First, place your pilot on the battlefield. Shuffle
+                                your deck and place it in the deck zone (labeled R.I.G. on the mat).
+                                Place your augments on the battlefield, readied. Grab the starting
+                                resource tokens noted on your pilot and place them in your stockpile
+                                readied (vertical, 90 degrees). Set your life total and draw a hand
+                                based on your pilot&apos;s starting values.
                             </p>
 
                             <p>
                                 Once all players have done this, randomly determine who goes first;
                                 the winner decides whether they want the first turn. (A setup demo
-                                using the blue/yellow starter is shown below.) The player who takes
-                                the first turn then chooses two resources in their stockpile and
-                                expends them (turns them horizontal). If they have fewer than two,
-                                they expend all of them. Those resources do not ready during that
-                                player&apos;s first start-of-turn step; they ready normally on later
-                                turns.
+                                using the blue/yellow starter is shown below.)
                             </p>
                             <Note>
                                 Note: You may change which side you prefer to have your deck, pilot zone, and discard pile
@@ -506,9 +505,10 @@ export function HowToPlayPage() {
                                     </p>
                                     <p>To make an attack, in brief:</p>
                                     <ol className="list-decimal space-y-1 pl-6">
-                                        <li>Choose and expend your attacker(s), then declare a target. Then trigger any units attacking with a <GameIcon name="attack" /> tag.</li>
+                                        <li>Choose and expend attackers (units and/or weapons), then declare a target. You must attack a readied non-pilot unit if the defender has one; otherwise you may attack their pilot.</li>
+                                        <li>A non-pilot unit may retreat (expend, take 1 damage, attack deals 0). If the target is the pilot, the defender may pitch cards and/or expend augments to reduce damage.</li>
                                         <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
-                                        <li>Deal damage (Preemptive Strike first, then simultaneous). Defeated units go to the discard pile. If the attack target is the defending player, that damage becomes loss of life.</li>
+                                        <li>Deal damage (Preemptive Strike first, then simultaneous). Defeated units go to the discard pile. Damage to the pilot is loss of life; a readied pilot retaliates then expends.</li>
                                     </ol>
                                     <p>
                                         See <SectionLink href="#how-to-block">How to Block</SectionLink>{" "}
@@ -570,6 +570,21 @@ export function HowToPlayPage() {
                                 used for both values. Example: <strong>3</strong> deals 3 damage and
                                 is defeated at 3 marked damage.
                             </p>
+                            <p>
+                                The pilot is a unit and has a Threat Level, but marked damage on the
+                                pilot is loss of life. The pilot is not defeated by reaching its
+                                health value.
+                            </p>
+                            </Subsection>
+
+                            <Subsection id="combat-rating" title="Combat Rating">
+                            <p>
+                                Weapons and augments print a <Term>combat rating</Term> instead of a
+                                Threat Level. A weapon uses that number as the damage it deals when
+                                it attacks. An augment uses it when you block with it (reduce an
+                                attacker by that much) and as the depletion total at which the piece
+                                is trashed.
+                            </p>
                             </Subsection>
 
                         </Section>
@@ -614,19 +629,20 @@ export function HowToPlayPage() {
                                 <Term>Multiple types:</Term> A card may have more than one supertype or
                                 subtype. When type rules conflict, the more permissive rule applies unless
                                 card text says otherwise. If the card has the Unit supertype, it may
-                                attack even if another type says it cannot. Readied units you control force
-                                opponents to attack them first (see{" "}
+                                attack even if another type says it cannot. A weapon may use its innate
+                                attack even if another type says it cannot attack. Readied{" "}
+                                <strong>non-pilot</strong> units you control force opponents to attack
+                                them first (see{" "}
                                 <SectionLink href="#how-to-block">How to Block</SectionLink>).
                             </Important>
                             <p>
-                                <Term>PILOT [ Entity ]:</Term> Your pilot is the center of
-                                attention, commanding drones, mechs, hacks, spells, and other
-                                effects from your deck in the pilot zone. You can also have them join
-                                the heat of battle if you choose, to show off why you picked this
-                                pilot. The pilot is a unit that starts in your pilot zone and can be
-                                played from that zone by paying its invoke cost. Whenever your pilot
-                                moves zones you may instead of moving the pilot to that zone back to the pilot
-                                zone instead increasing the pilots cost for the rest of the game by {" "} <GameIcon name="gen2" />.
+                                <Term>PILOT [ Entity ]:</Term> Your pilot is a unit that starts on
+                                the battlefield in the pilot zone and stays there the entire game.
+                                You do not recast it and there is no cost tax. Damage to the pilot
+                                is loss of life. If it would leave play, expend it instead; if it is
+                                already expended, put a time counter on it. A readied pilot with no
+                                time counters retaliates when attacked, then expends. An expended or
+                                time-countered pilot deals 0 back. The pilot cannot retreat.
                             </p>
                             <p>
                                 <Term>UNIT [ Entity ]:</Term> Units are call-ins that back up your
@@ -645,12 +661,24 @@ export function HowToPlayPage() {
                             <p>
                                 <Term>PROGRAM [ Entity ]:</Term> A type of card that tends to be
                                 synergistic, stays in play once played, and has a variety of effects
-                                and abilities. They cannot attack.
+                                and abilities. They cannot attack. They cannot block unless their
+                                text says so.
                             </p>
                             <p>
                                 <Term>TECHNOLOGY [ Entity ]:</Term> A type of card that tends to be a
                                 counter-play or support piece, stays in play once played, and has a
-                                variety of effects and abilities. They cannot attack.
+                                variety of effects and abilities. They cannot attack. They cannot
+                                block unless their text says so.
+                            </p>
+                            <p>
+                                <Term>AUGMENT [ Entity ]:</Term> Equipment or cybernetics. Augments
+                                start the game on the battlefield, readied. They cannot attack unless
+                                their text says so. They are not units (no Threat Level unless they
+                                also have Unit). You block with them only when the attack targets
+                                your pilot: expend the augment, reduce an attacker by its combat
+                                rating, then put a depletion counter on it. When depletion reaches
+                                that rating, trash the augment. You cannot equip two with the same
+                                name unless the card has Hard Point.
                             </p>
                             <p>
                                 <Term>PROTOTYPE [ ANY ]:</Term> Prototype cards—rare experimental
@@ -695,6 +723,14 @@ export function HowToPlayPage() {
                                 empty. (See Using the Lock for details.) Quick Hacks represent the
                                 fastest scripts you can play, letting you disrupt your opponent or
                                 protect yourself. They cannot attack.
+                            </p>
+                            <p>
+                                <Term>WEAPON [ Entity subtype ]:</Term> A weapon has an innate ability
+                                to attack. Using it is not an activated ability and does not use the
+                                lock. To attack with a weapon, expend it. It may join the same attack
+                                as units. If it deals damage to a readied non-pilot unit or a readied
+                                pilot, put a depletion counter on it; trash it when depletion reaches
+                                its combat rating. Weapons do not deal damage back.
                             </p>
                             </Subsection>
                         </Section>
@@ -775,8 +811,8 @@ export function HowToPlayPage() {
                             <p>
                                 Each card has an invoke cost printed on it; pay that cost to play the card. A card
                                 without an invoke cost in the upper-left corner cannot be played unless an effect
-                                allows it. You normally play from your hand; you may play from another zone
-                                (pilot zone, trashyard, dismantled zone, and so on) only when a card ability or
+                                allows it.                                 You normally play from your hand; you may play from another zone
+                                (trashyard, dismantled zone, and so on) only when a card ability or
                                 effect says you can. To pay the cost, you must have the required resources in your
                                 resource pool&mdash;an imaginary area where resources go when a card says to
                                 "add" a resource of the color you need; they stay there until the end
@@ -871,31 +907,51 @@ export function HowToPlayPage() {
 
                             <Subsection id="how-to-block" title="How to Block">
                             <p>
-                                You block with <strong>units</strong> on the battlefield only.
+                                Combat defense has two layers: intercept with readied units, then
+                                face defense when the attack targets your pilot.
                             </p>
                             <p>
-                                While you control a readied unit on the battlefield, an opponent
-                                declaring an attack must choose a readied unit you control as the
-                                attack target if able. That is how readied units protect you&mdash;they
-                                force attackers to fight them first.
+                                <Term>Intercept:</Term> While you control a readied{" "}
+                                <strong>non-pilot</strong> unit, an opponent must choose one of those
+                                as the attack target. That unit, if still readied when damage is
+                                dealt, deals damage back. An expended non-pilot unit deals 0 back.
                             </p>
                             <p>
-                                When your unit is the attack target and is readied when combat
-                                damage is dealt, it deals damage back (see{" "}
-                                <SectionLink href="#how-to-attack">How to Attack</SectionLink>). An
-                                expended unit deals 0 damage back even if it is attacked.
+                                <Term>Face (the pilot):</Term> When no readied non-pilot unit
+                                intercepts, the attacker may target your pilot. Damage that gets
+                                through is loss of life. You may:
+                            </p>
+                            <ul className="list-disc space-y-1 pl-6">
+                                <li>
+                                    Pitch any number of cards from hand that have a combat rating or
+                                    a Threat Level damage value. Sum them onto{" "}
+                                    <strong>one</strong> attacker. A card contributes at most{" "}
+                                    <strong>4</strong>. For each pitched card, put it on the bottom
+                                    of your deck or into your discard pile (your choice).
+                                </li>
+                                <li>
+                                    Expend any number of augments you control. Each is assigned to an
+                                    attacker, reduces that attacker by the augment&apos;s combat
+                                    rating, then gets a depletion counter.
+                                </li>
+                            </ul>
+                            <p>
+                                Programs, technologies, and cyberspells do not block unless their
+                                text says so. Pitch and augment block do not use the lock. Quick
+                                Hacks still use the attack response window.
                             </p>
                             <p>
-                                Damage directed at you as a player that is not from an attack
-                                resolved against you becomes loss of life. You cannot block that
-                                damage with units.
+                                Damage that is not from an attack resolved against your pilot still
+                                becomes loss of life. You cannot intercept or pitch that damage
+                                unless an effect says so.
                             </p>
                             <p>
-                                You can retreat a unit after an attack is declared against it if that
-                                unit did not enter the battlefield under your control this turn, or if
-                                it has Blitz. To retreat, expend that unit and mark 1 damage on it; the
-                                attack is negated and deals 0 combat damage. The 1 damage from
-                                retreating still counts toward defeating the unit.
+                                You can retreat a <strong>non-pilot</strong> unit after an attack is
+                                declared against it if that unit did not enter the battlefield under
+                                your control this turn, or if it has Blitz. To retreat, expend that
+                                unit and mark 1 damage on it; the attack is negated and deals 0
+                                combat damage. The 1 damage from retreating still counts toward
+                                defeating the unit. The pilot cannot retreat.
                             </p>
 
                             </Subsection>
@@ -908,53 +964,69 @@ export function HowToPlayPage() {
                             </p>
                             <ol className="list-decimal space-y-1 pl-6">
                                 <li>
-                                    Choose unit(s) using their innate attack ability, and/or
-                                    other legal attackers. When attacking
-                                    with multiple attackers, the group is considered a single attack
-                                    and must share the same target, but each attacker is treated
-                                    separately when assigning damage. A unit may attack if
-                                    it has the Unit supertype and did not enter the battlefield this
-                                    turn (unless it has Blitz), including when it also has a type that
-                                    otherwise cannot attack (see Card Types).
+                                    Choose unit(s) and/or weapon(s) using their innate attack
+                                    ability, and/or other legal attackers whose text allows an
+                                    attack. When attacking with multiple attackers, the group is
+                                    considered a single attack and must share the same target, but
+                                    each attacker is treated separately when assigning damage and
+                                    when assigning pitch or augment block. A unit may attack if it
+                                    has the Unit supertype and did not enter the battlefield this
+                                    turn (unless it has Blitz), including when it also has a type
+                                    that otherwise cannot attack (see Card Types). The pilot was
+                                    placed during setup and may attack on the first turn unless it
+                                    has time counters.
                                 </li>
                                 <li>
-                                    Expend chosen unit(s). Declare an attack target — the defending
-                                    player or a unit on the battlefield (not the stockpile or other
-                                    zones unless an effect says otherwise) — and trigger the{" "}
-                                    <GameIcon name="attack" /> abilities of the attacking units. When declaring the target of your attack you must target
-                                    a readied unit on the battlefield the defending player controls if
-                                    able. (Every readied unit has this requirement built in.)
-                                    <Note>If you cannot target a readied unit on the battlefield that a defending player controls, you cannot make the attack. If they control more than one, you choose which to target.</Note>
+                                    Expend chosen unit attackers. To attack with a weapon, expend
+                                    that weapon (no dismantle cost). Declare an attack target — a
+                                    non-pilot unit on the battlefield, or the defender&apos;s
+                                    pilot — and trigger the{" "}
+                                    <GameIcon name="attack" /> abilities of the attacking units. You
+                                    must target a readied non-pilot unit the defender controls if
+                                    they have one. If they have none, you may attack their pilot.
+                                    <Note>
+                                        Cards in the stockpile, discard pile, or deck cannot be
+                                        attack targets unless an effect says otherwise.
+                                    </Note>
                                 </li>
                                 <li>
-                                    The unit(s) are now considered attacking. In this
+                                    After the target is declared, the defender may retreat a
+                                    non-pilot unit (see{" "}
+                                    <SectionLink href="#how-to-block">How to Block</SectionLink>
+                                    ). If the target is the pilot, they may pitch cards and/or
+                                    expend augments.
+                                </li>
+                                <li>
+                                    The attacker(s) are now considered attacking. In this
                                     step you must choose whether to pay additional costs for cards with
                                     them such as stealth.
                                 </li>
                                 <li>Players may play Quick Hacks or activate abilities,
                                     starting with the active player, until no one wants to adds more effects.
                                 </li>
-                                <li>If a Unit would become readied, the attacking target becomes illegal and is redirected to the readied unit instead.
-                                    If there ar multiple readied units then the attacker my choose which one to redirect the attack to.
+                                <li>If a non-pilot unit would become readied, an attack targeting
+                                    that player&apos;s pilot becomes illegal and is redirected to a
+                                    readied non-pilot unit the attacker chooses.
                                 </li>    
                                 <li>
                                     The attacker(s) deal Preemptive Strike damage equal to their
-                                    damage value (including modifiers).
+                                    damage value or combat rating (plus allocate and other card text).
                                 </li>
                                 <li>
                                     If the attacker(s) did not already deal Preemptive Strike
-                                    damage, they deal damage equal to their damage value
-                                    (including modifiers) to the target of the attack. Then the
-                                    defending unit deals damage back:
+                                    damage, they deal that damage to the target. Then:
                                     <ul className="list-disc space-y-1 pl-6 pt-1">
                                         <li>
-                                            If it is <span className="font-semibold text-cyan-200">readied</span>,
-                                            it deals damage equal to its damage value, including all
-                                            modifiers (such as Lethal).
+                                            A readied defending <strong>non-pilot</strong> unit deals
+                                            its damage value back; an expended one deals 0.
                                         </li>
                                         <li>
-                                            If it is <span className="font-semibold text-cyan-200">expended</span>,
-                                            it deals 0 damage.
+                                            If the target is the <strong>pilot</strong> and it is
+                                            readied with no time counters, it retaliates (damage
+                                            value back, split among attackers as the defender
+                                            chooses) then expends. If it is expended or has time
+                                            counters, it deals 0 back. Damage to the pilot is loss of
+                                            life.
                                         </li>
                                     </ul>
                                     If there are
@@ -963,19 +1035,20 @@ export function HowToPlayPage() {
                                     Damage dealt this way is simultaneous.
                                 </li>
                                 <li>
-                                    After damage is dealt, check each unit that took damage. A unit
-                                    is defeated if its marked damage is at least its health value
-                                    — unless it has Durable X, in which case it survives until
-                                    marked damage is at least its health value + X. When a unit is defeated
-                                    this way, trigger its <GameIcon name="defeated" /> tag (if any)
-                                    and any other on-defeat abilities, then put it into the discard
-                                    pile.
+                                    After damage is dealt, a non-pilot unit is defeated if marked
+                                    damage is at least its printed health value. Trigger its{" "}
+                                    <GameIcon name="defeated" /> tag (if any) and put it into the
+                                    discard pile.
                                     <Note>
-                                        Example: Threat Level 3|2 with Durable 2 is defeated at 4
-                                        marked damage (health 2 + 2), not 2.
+                                        Example: Threat Level 3|2 is defeated at 2 marked damage.
                                     </Note>
                                 </li>
-                                <li>If the attack target is the defending player, damage directed at that player becomes loss of life. Then the attack ends.</li>
+                                <li>
+                                    If a weapon dealt damage to a readied non-pilot unit or a
+                                    readied pilot, put a depletion counter on that weapon. Trash a
+                                    weapon or augment when its depletion counters are at least its
+                                    combat rating. Then the attack ends.
+                                </li>
                             </ol>
                             </Subsection>
                         </Section>
@@ -1131,7 +1204,8 @@ export function HowToPlayPage() {
                                 cost. However, you do not get any of the card's effects right away:
                                 while the card has one or more time counters on it, it has no abilities
                                 (except abilities with the <GameIcon name="atomic" /> tag) and cannot
-                                attack&mdash;regardless of zone or ready state. At the start
+                                attack&mdash;regardless of zone or ready state. A pilot with time
+                                counters cannot retaliate. At the start
                                 of each of your turns, remove 1 counter from each card you have in play
                                 with time counters on it. When the last time counter is removed from a
                                 card in your stockpile, resolve its effects without using the lock and
@@ -1139,9 +1213,11 @@ export function HowToPlayPage() {
                                 it's an entity, or to the discard pile if it's a cyberspell. If a unit
                                 moves to the battlefield this way, you choose whether it enters readied
                                 or expended, and it cannot attack during that turn unless it has
-                                Blitz. You may have
+                                Blitz. If the last counter comes off a card already on the battlefield
+                                (including the pilot), it stays there. You may have
                                 up to 2 cards with time counters on them in your stockpile at any given
-                                time.
+                                time. Time counters on a battlefield pilot from being removed from play
+                                do not count toward that stockpile limit.
                             </p>
                             </Subsection>
                         </Section>
@@ -1310,23 +1386,50 @@ export function HowToPlayPage() {
                             <p>
                                 Your deck holds the entity and cyberspell cards you bring to battle.
                                 On the playmat it is labeled <Term>R.I.G.</Term> (Regressive Integrated Gear).
-                                You also bring one pilot. Your deck must have at
-                                least 40 cards; the pilot does not count toward that minimum.
+                                You also bring one pilot and augments. The pilot and equipped
+                                augments do not count toward the deck&apos;s card minimum. There is
+                                no colour-identity restriction; any colours may be included. You still
+                                pay invoke costs with matching pool resources.
                             </p>
+                            <table className="w-full max-w-xl border-collapse text-left text-sm text-gray-200">
+                                <thead>
+                                    <tr className="border-b border-cyan-500/30 text-cyan-200">
+                                        <th className="py-2 pr-4">R.I.G. (deck)</th>
+                                        <th className="py-2 pr-4">Capacity (# cards)</th>
+                                        <th className="py-2">Equip slots (# augments)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr className="border-b border-white/10">
+                                        <td className="py-2 pr-4">Light weight</td>
+                                        <td className="py-2 pr-4">30–39</td>
+                                        <td className="py-2">1</td>
+                                    </tr>
+                                    <tr className="border-b border-white/10">
+                                        <td className="py-2 pr-4">Medium weight</td>
+                                        <td className="py-2 pr-4">40–59</td>
+                                        <td className="py-2">2</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="py-2 pr-4">Heavy weight</td>
+                                        <td className="py-2 pr-4">60–70</td>
+                                        <td className="py-2">3</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                             <p>When building a deck, keep these rules in mind:</p>
                             <ol className="list-decimal space-y-2 pl-6">
-                                <li>You must include exactly one pilot. The pilot is not part of the 40-card minimum.</li>
-                                <li>Your deck must have at least 40 entity and cyberspell cards.</li>
+                                <li>You must include exactly one pilot.</li>
+                                <li>Meet the card-count range for your chosen R.I.G. class (entity and cyberspell cards only).</li>
                                 <li>Any non-pilot card may have up to three copies with the same name in your deck.</li>
                                 <li>Any card with the Prototype supertype is limited to a single copy in your deck.</li>
-                                <li>Augments and Weapons are not used — do not include them in your deck.</li>
+                                <li>Equip at most as many augments as your class allows. Unique names among equipped augments, except Hard Point.</li>
                             </ol>
 
                             <p>That concludes deck building.</p>
                             <p>
                                 A few guidelines for building a functional deck: include enough resources
                                 and low-cost cards so you can pay invoke costs consistently. If you rely
-                                on colors outside your pilot&apos;s starting resources, you will likely need
                                 to accumulate a card of that color before you can play others in it.
                             </p>
                             <p>
@@ -1336,7 +1439,7 @@ export function HowToPlayPage() {
                             <p>
                                 May you find thorough enjoyment in the game, whether it be crafting the
                                 perfect deck, the heat of battle, or creative self-expression with your
-                                resources and pilot, or collecting cards for themeatic experince.
+                                resources, pilot, and augments, or collecting cards for themeatic experince.
                                 Good luck and have fun!
                             </p>
                             <Note>
