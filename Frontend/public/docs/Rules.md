@@ -194,7 +194,7 @@
 
 ### 400.2. Turn structure
 
-400.2.1. Each turn has three phases in order: start of turn, main, end-of-turn.
+400.2.1. Each turn has four phases in order: start of turn, draw, main, end-of-turn.
 
 #### 400.2.2. Start of turn
 
@@ -206,21 +206,25 @@
 >
 > 400.2.2.4. If you control no resources in your stockpile, you lose the game.
 
-#### 400.2.3. Main phase
+#### 400.2.3. Draw phase
 
-> 400.2.3.1. You may play cards, activate abilities, make attacks, allocate a resource to a unit, or accumulate resources, in any order where timing allows.
+> 400.2.3.1. Draw one card.
 >
-> 400.2.3.2. See sections 600–605 for default game actions.
+> 400.2.3.2. Skip this phase if you are taking the first turn of the game.
 
-#### 400.2.4. End-of-turn phase
+#### 400.2.4. Main phase
 
-> 400.2.4.1. Players may play Quick Hacks or activate abilities, active player first, until both pass.
+> 400.2.4.1. You may play cards, activate abilities, make attacks, allocate a resource to a unit, or accumulate resources, in any order where timing allows.
 >
-> 400.2.4.2. Trigger end-of-turn abilities.
+> 400.2.4.2. See sections 600–605 for default game actions.
+
+#### 400.2.5. End-of-turn phase
+
+> 400.2.5.1. Players may play Quick Hacks or activate abilities, active player first, until both pass.
 >
-> 400.2.4.3. Lose unspent resources in your resource pool (not stockpile).
+> 400.2.5.2. Trigger end-of-turn abilities.
 >
-> 400.2.4.4. Draw until your hand equals your pilot's `[HAND SIZE]` minus 2; for each card you cannot draw, lose 1 life.
+> 400.2.5.3. Lose unspent resources in your resource pool (not stockpile).
 
 ---
 
@@ -254,7 +258,7 @@
 
 500.8.2. **Quick Hack speed** — A Quick Hack cyberspell may be played whenever you could play a Process, and also (see rule 300.3.2):
 
-> 500.8.2.1. During the end-of-turn phase (see rule 400.2.4.1).
+> 500.8.2.1. During the end-of-turn phase (see rule 400.2.5.1).
 >
 > 500.8.2.2. During an attack response window (see rule 603.5).
 >

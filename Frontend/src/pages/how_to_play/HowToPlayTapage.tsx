@@ -478,7 +478,6 @@ export function HowToPlayPage() {
                                         <li> Trigger all Abilities with the <GameIcon name="start" /> tag.</li>
                                         <li>Remove a time counter from each card you control in play, and resolve any effect triggered when the last time counter is removed from a card in your stockpile.</li>
                                         <li>If you control no resoruces in your stockpile, you loose the game.</li>
-                                        <li>if you are not the player going first on the first turn of the game, Draw a card.</li>
                                     </ol>
                                 </div>
                             </div>
@@ -500,7 +499,7 @@ export function HowToPlayPage() {
                                 <div className="space-y-1 border-l-2 border-cyan-500/0 pl-4">
                                     <p>
                                         You may play cards, activate abilities, make attacks,
-                                        accumulate resources,
+                                        allocate a resource to a unit, or accumulate resources,
                                         in any order where timing allows.
                                     </p>
                                     <p>To make an attack, in brief:</p>
