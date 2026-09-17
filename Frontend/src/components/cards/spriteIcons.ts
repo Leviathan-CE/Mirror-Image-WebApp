@@ -19,6 +19,9 @@ const SPRITE_TO_ICON: Record<string, GameIconName> = {
   DEFEATED: "defeated",
   INVOKE: "invoke",
   TLV: "threat_lvl",
+  HS: "hand_size",
+  HP: "hp",
+  VP: "vp",
   EX: "expend",
   RE: "recycle",
   TR: "trash",
@@ -42,7 +45,6 @@ const SPRITE_TO_ICON: Record<string, GameIconName> = {
   GEN9: "gen9",
   GEN10: "gen10",
   GENX: "genX",
-  HS: "hand_size",
 }
 
 export function spriteNameToIcon(sprite: string): GameIconName | null {

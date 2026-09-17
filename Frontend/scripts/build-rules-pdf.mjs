@@ -23,6 +23,7 @@ const PLACEHOLDER_TO_ICON = {
   TLV: { file: "TLV-pdf.png" },
   "HAND SIZE": { file: "HS.png" },
   HP: { file: "HP.png" },
+  VP: { file: "VP.png" },
   RECYCLE: { file: "RE.png" },
   TRASH: { file: "tr.png" },
   DISMANTLE: { file: "DIS.png" },

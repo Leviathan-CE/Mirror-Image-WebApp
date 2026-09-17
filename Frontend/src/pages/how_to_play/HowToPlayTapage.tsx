@@ -52,7 +52,7 @@ const SECTIONS: TocEntry[] = [
             { id: "accumulate-resources", label: "Accumulate Resources" },
             { id: "how-to-allocate", label: "Allocate a Resource" },
             { id: "how-to-play-card", label: "How to Play a Card" },
-            { id: "how-to-block", label: "How to Block" },
+            { id: "objectives", label: "Objectives" },
             { id: "how-to-attack", label: "How to Attack" },
         ],
     },
@@ -60,8 +60,8 @@ const SECTIONS: TocEntry[] = [
         id: "lock",
         label: "The Lock & Time Counters",
         children: [
-            { id: "lock-scenario-1", label: "Scenario 1 — Quick Hacks" },
-            { id: "lock-scenario-2", label: "Scenario 2 — The Queue" },
+            { id: "lock-scenario-1", label: "Scenario 1: Quick Hacks" },
+            { id: "lock-scenario-2", label: "Scenario 2: The Queue" },
             { id: "time-counters", label: "Time Counters" },
         ],
     },
@@ -146,7 +146,7 @@ const PLAYMAT_ZONES: PlaymatZone[] = [
         id: "rig",
         label: "Deck (R.I.G.)",
         description:
-            "Your deck — called a R.I.G. (Regressive Integrated Gear) on the playmat. Place it face down and shuffle it before the game. It holds the entity and cyberspell cards you assembled.",
+            "Your deck, called a R.I.G. (Regressive Integrated Gear) on the playmat. Place it face down and shuffle it before the game. It holds the entity and cyberspell cards you assembled.",
         top: "35%",
         left: "2.8%",
         width: "11.5%",
@@ -156,7 +156,7 @@ const PLAYMAT_ZONES: PlaymatZone[] = [
         id: "trashyard",
         label: "Discard pile (Trashyard)",
         description:
-            "Your discard pile — labeled Trashyard on the playmat. Cards go here when they leave play, for example when a unit is defeated or a cyberspell finishes resolving.",
+            "Your discard pile, labeled Trashyard on the playmat. Cards go here when they leave play, for example when a unit is defeated or a cyberspell finishes resolving.",
         top: "65%",
         left: "2.8%",
         width: "11.5%",
@@ -176,7 +176,7 @@ const PLAYMAT_ZONES: PlaymatZone[] = [
         id: "battlefield",
         label: "Battlefield",
         description:
-            "Where all your entities go when played from anywhere. The exception: cards paid for with time counters wait in the stockpile until their counters are gone.",
+            "Where all your entities go when played from anywhere. Shared objective cards and units on them are also on the battlefield. The exception: cards paid for with time counters wait in the stockpile until their counters are gone.",
         top: "5%",
         left: "16.5%",
         width: "80.5%",
@@ -349,8 +349,8 @@ export function HowToPlayPage() {
                                 a world already ravaged by thousands of years of conflict. The
                                 Empire of Vrag, ruled by a rogue AI shadow government, seeks total
                                 control and dominance over the entire world. Opposing it, the
-                                United Democratic Countries (UDC)&mdash;an alliance of men, elves,
-                                and the remnants of many other factions broken in the old wars&mdash;
+                                United Democratic Countries (UDC), an alliance of men, elves,
+                                and the remnants of many other factions broken in the old wars,
                                 fight to resist this oppressive threat to freedom and liberty.
                             </p>
                             <p>
@@ -372,16 +372,30 @@ export function HowToPlayPage() {
 
                         <Section id="how-to-win" title="How to Win">
                             <p>
-                                The most straightforward way to victory is to reduce your
-                                opponent&apos;s life points to 0 by attacking with units (a type of
-                                entity).
+                                A player wins when their <Term>victory points</Term>{" "}
+                                (<GameIcon name="vp" /> are greater than or equal to the{" "}
+                                <Term>victory number</Term> printed on their pilot. Check whenever
+                                you gain <GameIcon name="vp" />. Different pilots can have different
+                                victory numbers.
                             </p>
                             <p>
-                                Another way to win is to run your opponent out of cards in their
-                                deck. This doesn't end the game immediately, but each card they try
-                                to draw from an empty deck causes them to lose 2 life.
-                                The final way to win is if your opponent starts their turn with 0
-                                resources in their stockpile zone.
+                                You score by controlling <Term>objectives</Term>:
+                            </p>
+                            <ul className="list-disc space-y-1 pl-6">
+                                <li>
+                                    <Term>Conquer</Term>: When you gain control of an objective,
+                                    gain 1 <GameIcon name="vp" /> right away, then check for a win.
+                                    Claiming an empty objective does not cause Conquer.
+                                </li>
+                                <li>
+                                    <Term>Hold</Term>: At the start of your turn, gain 1{" "}
+                                    <GameIcon name="vp" /> for each objective you control, then
+                                    check for a win.
+                                </li>
+                            </ul>
+                            <p>
+                                See <SectionLink href="#objectives">Objectives</SectionLink> for how
+                                control works.
                             </p>
                         </Section>
 
@@ -391,13 +405,13 @@ export function HowToPlayPage() {
                             </p>
                             <InteractivePlaymat />
                             <p>
-                                <Term>Dismantled:</Term> Not shown on the mat&mdash;the dismantled
+                                <Term>Dismantled:</Term> Not shown on the mat. The dismantled
                                 zone holds cards removed from the game; they stay there, unusable,
                                 until the game ends. Cards in the dismantled zone are always face up.
                                 It functions like a separate discard pile, placed wherever you choose
                                 so long as it is not part of the main areas above. Whenever you gain
                                 a resource card into your stockpile, you may instead take one from the
-                                dismantled zone&mdash;the same applies when creating tokens (which
+                                dismantled zone. The same applies when creating tokens (which
                                 resources are).
                             </p>
                         </Section>
@@ -411,8 +425,9 @@ export function HowToPlayPage() {
                             <ul className="list-disc space-y-1 pl-6">
                                 <li>A pilot</li>
                                 <li>A deck of at least 40 cards, with no more than 3 copies of a named card</li>
-                                <li>A 20-sided dice health tracker or other way to track life totals</li>
-                                <li>5  or more red damage 6-sided dice</li>
+                                <li>Exactly three objective cards (not part of the 40-card deck)</li>
+                                <li>A way to track life totals and <GameIcon name="vp" /></li>
+                                <li>5 or more red damage 6-sided dice</li>
                                 <li>5 or more green time-counter 6-sided dice</li>
                                 <li>Resource and other tokens</li>
                             </ul>
@@ -422,8 +437,10 @@ export function HowToPlayPage() {
                                 First, place your pilot in the pilot zone. Then shuffle your deck and
                                 place it in the deck zone (labeled R.I.G. on the mat). Grab the starting resource tokens
                                 noted on your pilot and place them in your stockpile readied (vertical,
-                                90 degrees). Set your life total and draw a hand of cards based on your pilots starting values in the same
-                                fashion.
+                                90 degrees). Set your life total, start at 0 <GameIcon name="vp" />, and
+                                draw a hand of cards based on your pilot&apos;s starting values.
+                                Keep your three objective cards face down beside your deck until they
+                                are chosen.
                             </p>
 
                             <p>
@@ -434,7 +451,13 @@ export function HowToPlayPage() {
                                 expends them (turns them horizontal). If they have fewer than two,
                                 they expend all of them. Those resources do not ready during that
                                 player&apos;s first start-of-turn step; they ready normally on later
-                                turns.
+                                turns. That player also skips the draw phase on their first turn.
+                            </p>
+                            <p>
+                                After first player is known, starting with that player and going
+                                clockwise, each player chooses one of their three objective cards and
+                                places it face up in the shared objective area. Set aside each
+                                player&apos;s unchosen objectives out of the game.
                             </p>
                             <Note>
                                 Note: You may change which side you prefer to have your deck, pilot zone, and discard pile
@@ -474,12 +497,29 @@ export function HowToPlayPage() {
                                     Start of Turn
                                 </p>
                                 <div className="border-l-2 border-cyan-500/0 pl-4">
-                                    <ol className="list-decimal space-y-1 pl-6">                                        
+                                    <ol className="list-decimal space-y-1 pl-6">
                                         <li>Ready all entities you control.</li>
-                                        <li> Trigger all Abilities with the <GameIcon name="start" /> tag.</li>
-                                        <li>Remove a time counter from each card you control in play, and resolve any effect triggered when the last time counter is removed from a card in your stockpile.</li>
-                                        <li>If you control no resoruces in your stockpile, you loose the game.</li>
-                                        <li>if you are not the player going first on the first turn of the game, Draw a card.</li>
+                                        <li>
+                                            <Term>Heal.</Term> Remove 1 marked damage (not below 0)
+                                            from each unit you control on the battlefield that is{" "}
+                                            <strong>not</strong> on an objective. Units on an
+                                            objective do not heal. Opponent units do not heal on your
+                                            turn.
+                                        </li>
+                                        <li>
+                                            <Term>Hold <GameIcon name="vp" />.</Term> Gain 1{" "}
+                                            <GameIcon name="vp" /> for each objective you control,
+                                            then check for a win.
+                                        </li>
+                                        <li>
+                                            Trigger all abilities with the{" "}
+                                            <GameIcon name="start" /> tag.
+                                        </li>
+                                        <li>
+                                            Remove a time counter from each card you control in play,
+                                            and resolve any effect triggered when the last time
+                                            counter is removed from a card in your stockpile.
+                                        </li>
                                     </ol>
                                 </div>
                             </div>
@@ -488,10 +528,11 @@ export function HowToPlayPage() {
                                     Draw Phase
                                 </p>
                                 <div className="border-l-2 border-cyan-500/0 pl-4">
-                                    <ol className="list-decimal space-y-1 pl-6">                                        
-                                        <li> Draw a card.</li>
+                                    <ol className="list-decimal space-y-1 pl-6">
+                                        <li>Draw one card.</li>
                                         <Note>
-                                            Skip this step if you are the player taking the first turn of the game.
+                                            Skip this step if you are the player taking the first
+                                            turn of the game.
                                         </Note>
                                     </ol>
                                 </div>
@@ -500,19 +541,33 @@ export function HowToPlayPage() {
                                 <p className="font-semibold text-cyan-200">Main Phase</p>
                                 <div className="space-y-1 border-l-2 border-cyan-500/0 pl-4">
                                     <p>
-                                        You may play cards, activate abilities, make attacks,
-                                        accumulate resources,
-                                        in any order where timing allows.
+                                        You may play cards, activate abilities, make attacks, move
+                                        units onto or off objectives, allocate a resource to a unit,
+                                        or accumulate resources, in any order where timing allows.
                                     </p>
-                                    <p>To make an attack, in brief:</p>
+                                    <p>To contest an objective, in brief:</p>
                                     <ol className="list-decimal space-y-1 pl-6">
-                                        <li>Choose and expend your attacker(s), then declare a target. Then trigger any units attacking with a <GameIcon name="attack" /> tag.</li>
-                                        <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
-                                        <li>Deal damage (Preemptive Strike first, then simultaneous). Defeated units go to the discard pile.</li>
+                                        <li>
+                                            Declare an attack at an objective with legal attacker(s),
+                                            expend them, and trigger any <GameIcon name="attack" />{" "}
+                                            tags.
+                                        </li>
+                                        <li>
+                                            Players may play Quick Hacks or activate abilities,
+                                            starting with the active player, until no one adds more
+                                            effects.
+                                        </li>
+                                        <li>
+                                            Deal damage (Preemptive Strike first, then simultaneous).
+                                            Each player divides their side&apos;s damage among
+                                            opposing units on that fight. Defeated units go to the
+                                            discard pile. Surviving control may Conquer.
+                                        </li>
                                     </ol>
                                     <p>
-                                        See <SectionLink href="#how-to-block">How to Block</SectionLink>{" "}
-                                        and <SectionLink href="#how-to-attack">How to Attack</SectionLink>{" "}
+                                        See <SectionLink href="#objectives">Objectives</SectionLink>{" "}
+                                        and{" "}
+                                        <SectionLink href="#how-to-attack">How to Attack</SectionLink>{" "}
                                         under Core Actions for the full step-by-step.
                                     </p>
                                 </div>
@@ -579,7 +634,7 @@ export function HowToPlayPage() {
                                 Each non-resource card is called an Asset and has a base type of
                                 either Entity or Cyberspell, along with an assortment of supertypes
                                 and subtypes. If a card does not have the base type Cyberspell
-                                written in its supertype text, it has the base type Entity&mdash;even
+                                written in its supertype text, it has the base type Entity, even
                                 if it is not written on the card.
                             </p>
                             <p>
@@ -614,9 +669,9 @@ export function HowToPlayPage() {
                                 <Term>Multiple types:</Term> A card may have more than one supertype or
                                 subtype. When type rules conflict, the more permissive rule applies unless
                                 card text says otherwise. If the card has the Unit supertype, it may
-                                attack even if another type says it cannot. Readied units you control force
-                                opponents to attack them first (see{" "}
-                                <SectionLink href="#how-to-block">How to Block</SectionLink>).
+                                attack even if another type says it cannot. Attacks are declared at{" "}
+                                <SectionLink href="#objectives">objectives</SectionLink>, not at a
+                                chosen unit or player.
                             </Important>
                             <p>
                                 <Term>PILOT [ Entity ]:</Term> Your pilot is the center of
@@ -624,23 +679,28 @@ export function HowToPlayPage() {
                                 effects from your deck in the pilot zone. You can also have them join
                                 the heat of battle if you choose, to show off why you picked this
                                 pilot. The pilot is a unit that starts in your pilot zone and can be
-                                played from that zone by paying its invoke cost. Whenever your pilot
+                                played from that zone by paying its invoke cost. It may sit on an
+                                objective and counts toward controlling it. Its printed victory
+                                number is how many <GameIcon name="vp" /> you need to win. Whenever your pilot
                                 moves zones you may instead of moving the pilot to that zone back to the pilot
                                 zone instead increasing the pilots cost for the rest of the game by {" "} <GameIcon name="gen2" />.
                             </p>
                             <p>
                                 <Term>UNIT [ Entity ]:</Term> Units are call-ins that back up your
                                 pilot, ranging from drones, turrets, and tanks to spacecraft,
-                                helping you eliminate your opponent tactfully or with overwhelming
-                                force. Units have a Threat Level (see{" "}
+                                helping you contest objectives. Units have a Threat Level (see{" "}
                                 <SectionLink href="#threat-level">Threat Level</SectionLink>
                                 ). To play a unit, pay its invoke cost (see{" "}
                                 <SectionLink href="#how-to-play-card">How to Play a Card</SectionLink>
-                                ). If it resolves, it goes to the battlefield&mdash;provided you chose
-                                not to use time as part of its cost (see Time Counters). When it
-                                enters, you choose whether it is readied or expended. A unit cannot
-                                attack during the turn it entered the battlefield unless it has
-                                Blitz (see Keyword Abilities).
+                                ). If it resolves, it goes to the battlefield, provided you chose
+                                not to use time as part of its cost (see Time Counters). A unit you
+                                control enters the battlefield <strong>readied</strong>. It cannot
+                                attack during the turn it entered unless it has Blitz
+                                (see Keyword Abilities). Moving onto an opponent-controlled objective
+                                is an attack, so a unit that entered this turn cannot do that unless
+                                it has Blitz, but it{" "}
+                                <strong>may</strong> reinforce an objective you already control. It
+                                cannot claim an empty objective that turn unless it has Blitz.
                             </p>
                             <p>
                                 <Term>PROGRAM [ Entity ]:</Term> A type of card that tends to be
@@ -653,7 +713,7 @@ export function HowToPlayPage() {
                                 variety of effects and abilities. They cannot attack.
                             </p>
                             <p>
-                                <Term>PROTOTYPE [ ANY ]:</Term> Prototype cards—rare experimental
+                                <Term>PROTOTYPE [ ANY ]:</Term> Prototype cards: rare experimental
                                 assets in the lore. A card with this type is
                                 restricted to a single copy in your deck.
                             </p>
@@ -662,7 +722,7 @@ export function HowToPlayPage() {
                                 cards (assets) from different zones of play. Whenever a card
                                 says to "gain" a resource, create a token of the specified color and
                                 put it into your stockpile readied (90 degrees vertical). You can use
-                                resources as soon as they enter play&mdash;no need to wait as a unit
+                                resources as soon as they enter play, with no need to wait as a unit
                                 does.
                             </p>
                             <p>
@@ -674,8 +734,8 @@ export function HowToPlayPage() {
                                 creates a token, that creation may enter the lock if it is empty, or its
                                 controller's queue if the lock is full. The token is not created until
                                 the creating effect resolves: resource tokens enter the stockpile
-                                readied; unit tokens enter the battlefield readied or expended at their
-                                controller's choice; other tokens enter the battlefield readied.
+                                readied; unit tokens enter the battlefield readied; other tokens enter
+                                the battlefield readied.
                             </p>
 
                             </Subsection>
@@ -684,7 +744,7 @@ export function HowToPlayPage() {
                             <p>
                                 <Term>PROCESS [ Cyberspell ]:</Term> This cyberspell can be played
                                 any time during your main phase. Processes represent a combination of
-                                magic and technology&mdash;complex programs or scripts that take
+                                magic and technology: complex programs or scripts that take
                                 significant time to play in battle. They cannot attack.
                             </p>
                             <p>
@@ -778,7 +838,7 @@ export function HowToPlayPage() {
                                 allows it. You normally play from your hand; you may play from another zone
                                 (pilot zone, trashyard, dismantled zone, and so on) only when a card ability or
                                 effect says you can. To pay the cost, you must have the required resources in your
-                                resource pool&mdash;an imaginary area where resources go when a card says to
+                                resource pool, an imaginary area where resources go when a card says to
                                 "add" a resource of the color you need; they stay there until the end
                                 of the turn.
 
@@ -823,11 +883,11 @@ export function HowToPlayPage() {
                                 Resources in Resource pool: <GameIcon name="ram" /><GameIcon name="power" />
                             </p>
                             <p>
-                                Once you have paid the cost by removing the resources in your resource pool equal to the invoke cost&mdash;and if the card says to target, you
+                                Once you have paid the cost by removing the resources in your resource pool equal to the invoke cost, and if the card says to target, you
                                 must have legal targets before you play the card, or you cannot play
                                 it; then reveal the card you intend to play. Put it in the lock if the
                                 lock is empty, or overwrite the lock occupant if the lock is full (only
-                                effects go to a queue when the lock is full&mdash;see{" "}
+                                effects go to a queue when the lock is full; see{" "}
                                 <SectionLink href="#lock">The Lock</SectionLink>). Declare its legal
                                 targets, then trigger any{" "}
                                 <GameIcon name="invoke" /> tags printed on the card and resolve those tags immediately. The card remains the lock occupant until it resolves or is overwritten.
@@ -869,113 +929,147 @@ export function HowToPlayPage() {
 
                             </Subsection>
 
-                            <Subsection id="how-to-block" title="How to Block">
+                            <Subsection id="objectives" title="Objectives">
                             <p>
-                                You block with <strong>units</strong> on the battlefield only.
+                                Objectives are the shared battlefield locations you fight over.
+                                Each player brings three objective cards with their deck and places
+                                one during setup. While you <Term>control</Term> an objective, you
+                                get the benefit of that card&apos;s rules text.
                             </p>
                             <p>
-                                While you control a readied unit on the battlefield, an opponent
-                                declaring an attack must choose a readied unit you control as the
-                                attack target if able. That is how readied units protect you&mdash;they
-                                force attackers to fight them first.
+                                You control an objective if you have at least one unit on it and no
+                                opponent does. Your pilot is a unit and counts. Units on an objective
+                                are still on the battlefield: they ready normally, and they skip the
+                                start-of-turn heal step.
                             </p>
                             <p>
-                                When your unit is the attack target and is readied when combat
-                                damage is dealt, it deals damage back (see{" "}
-                                <SectionLink href="#how-to-attack">How to Attack</SectionLink>). An
-                                expended unit deals 0 damage back even if it is attacked.
+                                <Term>Scoring:</Term> <Term>Conquer</Term> when you gain control of
+                                an objective: gain 1 <GameIcon name="vp" /> immediately (claiming
+                                an empty objective does not cause Conquer). <Term>Hold</Term> at the
+                                start of your turn: gain 1 <GameIcon name="vp" /> per objective
+                                you control. See{" "}
+                                <SectionLink href="#how-to-win">How to Win</SectionLink>.
                             </p>
+                            <p className="font-semibold text-cyan-200">Moving onto an objective</p>
                             <p>
-                                Damage directed at you as a player that is not from an attack
-                                resolved against you becomes loss of life. You cannot block that
-                                damage with units.
+                                During your main phase, choose an objective and a unit you control
+                                that is not already on an objective and is not waiting on time
+                                counters (your pilot counts):
                             </p>
+                            <ul className="list-disc space-y-1 pl-6">
+                                <li>
+                                    <Term>Claim (empty)</Term>: Move without expending. You control
+                                    it afterward; this does not cause Conquer. A unit that entered
+                                    this turn cannot claim an empty objective unless it has Blitz.
+                                </li>
+                                <li>
+                                    <Term>Reinforce (you control it)</Term>: Move without expending.
+                                    A unit that entered this turn may reinforce.
+                                </li>
+                                <li>
+                                    <Term>Attack move (opponent controls it)</Term>: Declares an{" "}
+                                    <SectionLink href="#how-to-attack">attack</SectionLink> with that
+                                    unit. Expend it as it joins the stack.
+                                </li>
+                            </ul>
                             <p>
-                                You can retreat a unit after an attack is declared against it if that
-                                unit did not enter the battlefield under your control this turn, or if
-                                it has Blitz. To retreat, expend that unit and mark 1 damage on it; the
-                                attack is negated and deals 0 combat damage. The 1 damage from
-                                retreating still counts toward defeating the unit.
+                                <Term>Leave:</Term> During your main phase, choose a{" "}
+                                <strong>readied</strong> unit you control on an objective,{" "}
+                                <GameIcon name="expend" /> it, and move it off the objective (it
+                                stays on the battlefield). If this causes a player to gain control,
+                                apply Conquer.
                             </p>
-
+                            <Note>
+                                Readied units on an objective deal combat damage back during the
+                                damage step. Expended units deal 0.
+                            </Note>
                             </Subsection>
 
                             <Subsection id="how-to-attack" title="How to Attack">
                             <p>
-                                Attakcing is the primary way to get damage in along with potentailly reducing you opponents resources
-                                on there turn to mount a counter attack. <Important> NOTE: Damage stays marked on a unit turn after turn. you can heal the damage
-                                    with cards and effect that say to heal it. </Important>
+                                To attack, declare an attack at an objective. Combat is how you
+                                contest objectives.
                             </p>
+                            <Important>
+                                NOTE: Damage stays marked on a unit turn after turn. You can heal
+                                it with cards and effects that say to heal, and units not on
+                                an objective also heal 1 at the start of your turn.
+                            </Important>
                             <ol className="list-decimal space-y-1 pl-6">
                                 <li>
-                                    Choose unit(s) using their innate attack ability, and/or
-                                    other legal attackers. When attacking
-                                    with multiple attackers, the group is considered a single attack
-                                    and must share the same target, but each attacker is treated
-                                    separately when assigning damage. A unit may attack if
-                                    it has the Unit supertype and did not enter the battlefield this
-                                    turn (unless it has Blitz), including when it also has a type that
-                                    otherwise cannot attack (see Card Types).
+                                    Choose an objective and legal attacker(s): units you control on
+                                    the battlefield (including units already on that objective) that
+                                    did not enter this turn unless they have Blitz, and that are not
+                                    waiting on time counters. Multiple attackers are one attack. A
+                                    unit may attack if it has the Unit supertype, even if another type
+                                    says it cannot.
                                 </li>
                                 <li>
-                                    Expend chosen unit(s). Declare an attack target — the defending
-                                    player or a unit on the battlefield (not the stockpile or other
-                                    zones unless an effect says otherwise) — and trigger the{" "}
-                                    <GameIcon name="attack" /> abilities of the attacking units. When declaring the target of your attack you must target
-                                    a readied unit on the battlefield the defending player controls if
-                                    able. (Every readied unit has this requirement built in.)
-                                    <Note>If you cannot target a readied unit on the battlefield that a defending player controls, you cannot make the attack. If they control more than one, you choose which to target.</Note>
+                                    Expend the attackers (unless Stalwart). Trigger their{" "}
+                                    <GameIcon name="attack" /> tags. Damage recipients are chosen in
+                                    the damage step.
+                                    <Note>
+                                        If the objective has at least one Airborne unit, at least one
+                                        attacker must have Airborne or Long Range. If the objective
+                                        has Stealth, pay Stealth once for the whole attack force.
+                                    </Note>
                                 </li>
                                 <li>
-                                    The unit(s) are now considered attacking. In this
-                                    step you must choose whether to pay additional costs for cards with
-                                    them such as stealth.
-                                </li>
-                                <li>Players may play Quick Hacks or activate abilities,
-                                    starting with the active player, until no one wants to adds more effects.
-                                </li>
-                                <li>If a Unit would become readied, the attacking target becomes illegal and is redirected to the readied unit instead.
-                                    If there ar multiple readied units then the attacker my choose which one to redirect the attack to.
-                                </li>    
-                                <li>
-                                    The attacker(s) deal Preemptive Strike damage equal to their
-                                    damage value (including modifiers).
+                                    Players may play Quick Hacks or activate abilities, starting with
+                                    the active player, until no one adds more effects.
                                 </li>
                                 <li>
-                                    If the attacker(s) did not already deal Preemptive Strike
-                                    damage, combat damage is simultaneous. Attackers deal damage equal to their
-                                    damage value (including modifiers). Then the
-                                    defending unit deals damage back:
+                                    Attackers with Preemptive Strike deal their damage first. The
+                                    attacking player divides that damage among the defending
+                                    player&apos;s units on that objective. If Preemptive Strike
+                                    damage was dealt for a unit, skip ordinary combat damage for that
+                                    unit.
+                                </li>
+                                <li>
+                                    Otherwise, combat damage is simultaneous using each unit&apos;s{" "}
+                                    <GameIcon name="threat_lvl" /> damage value:
                                     <ul className="list-disc space-y-1 pl-6 pt-1">
                                         <li>
-                                            If it is <span className="font-semibold text-cyan-200">readied</span>,
-                                            it deals damage equal to its damage value, including all
-                                            modifiers (such as Lethal).
+                                            The <strong>attacking player</strong> divides each
+                                            attacker&apos;s damage among the defending player&apos;s
+                                            units on that objective. Assign damage to readied
+                                            defenders before expended ones when you have excess to
+                                            assign. You cannot assign an attacker&apos;s damage to an
+                                            Airborne unit unless that attacker has Airborne or Long
+                                            Range.
                                         </li>
                                         <li>
-                                            If it is <span className="font-semibold text-cyan-200">expended</span>,
-                                            it deals 0 damage.
+                                            The <strong>defending player</strong> divides damage from
+                                            their units on that objective among the attackers. A
+                                            readied defending unit deals its damage value; an expended
+                                            one deals 0.
+                                        </li>
+                                        <li>
+                                            A player may put all of a unit&apos;s damage on one
+                                            opposing unit or split it; assign all of that unit&apos;s
+                                            damage.
                                         </li>
                                     </ul>
-                                    If there are
-                                    multiple attackers, the defending player divides
-                                    this damage among them as they choose.
-                                    Damage dealt this way is simultaneous.
                                 </li>
                                 <li>
-                                    After damage is dealt, check each unit that took damage. A unit
-                                    is defeated if its marked damage is at least its health value
-                                    — unless it has Durable X, in which case it survives until
-                                    marked damage is at least its health value + X. When a unit is defeated
-                                    this way, trigger its <GameIcon name="defeated" /> tag (if any)
-                                    and any other on-defeat abilities, then put it into the discard
-                                    pile.
+                                    After damage, a unit is defeated if marked damage is at least its
+                                    health value. Trigger{" "}
+                                    <GameIcon name="defeated" /> and other on-defeat abilities, then
+                                    put defeated units in the discard pile. If combat causes a player
+                                    to gain control of the objective, apply Conquer.
                                     <Note>
                                         Example: Threat Level 3|2 with Durable 2 is defeated at 4
                                         marked damage (health 2 + 2), not 2.
                                     </Note>
                                 </li>
-                                <li>If the attack target is the defending player, damage directed at that player becomes loss of life. Then the attack ends.</li>
+                                <li>
+                                    After the attack resolves: if at least one defending unit and at
+                                    least one attacking unit both survived, the attacking units leave
+                                    the objective and stay on their controller&apos;s battlefield
+                                    expended. If no defending unit survived, every unit still in play
+                                    stays on that objective (including surviving attackers, still
+                                    expended).
+                                </li>
                             </ol>
                             </Subsection>
                         </Section>
@@ -1012,7 +1106,7 @@ export function HowToPlayPage() {
                                 the non-active player.
                             </Note>
 
-                            <Subsection id="lock-scenario-1" title="Scenario 1 — The lock occupant and Quick Hacks">
+                            <Subsection id="lock-scenario-1" title="Scenario 1: The lock occupant and Quick Hacks">
                             <p>
                                 The lock holds at most one card or effect.
                             </p>
@@ -1022,12 +1116,12 @@ export function HowToPlayPage() {
                                     you play, or an effect that uses the lock, goes to the lock.
                                 </li>
                                 <li>
-                                    <strong className="text-cyan-100">Full lock — card:</strong> a
+                                    <strong className="text-cyan-100">Full lock (card):</strong> a
                                     card you play overwrites the lock occupant and becomes the new
                                     occupant. It does not go to a queue (see Overwrite result below).
                                 </li>
                                 <li>
-                                    <strong className="text-cyan-100">Full lock — effect:</strong> that
+                                    <strong className="text-cyan-100">Full lock (effect):</strong> that
                                     effect goes to its controller's queue instead. It does not enter
                                     the lock.
                                 </li>
@@ -1055,7 +1149,7 @@ export function HowToPlayPage() {
 
                             </Subsection>
 
-                            <Subsection id="lock-scenario-2" title="Scenario 2 — The queue (lock is full)">
+                            <Subsection id="lock-scenario-2" title="Scenario 2: The queue (lock is full)">
                             <p>
                                 Whenever an ability or effect would be added to the lock but the lock
                                 already holds a card or effect, it is not added to the lock. Put it
@@ -1126,12 +1220,12 @@ export function HowToPlayPage() {
                                 card's invoke cost by <GameIcon name="gen1" /> for each time counter you place on it after you
                                 play it. You can only reduce grey numbered-value costs this way. When
                                 you do, instead of putting the card into the lock, you ignore the lock
-                                entirely&mdash;protecting your asset&mdash;and place it in your
+                                entirely (protecting your asset) and place it in your
                                 stockpile revealed with the number of time counters you used to reduce its
                                 cost. However, you do not get any of the card's effects right away:
                                 while the card has one or more time counters on it, it has no abilities
                                 (except abilities with the <GameIcon name="atomic" /> tag) and cannot
-                                attack&mdash;regardless of zone or ready state. At the start
+                                attack, regardless of zone or ready state. At the start
                                 of each of your turns, remove 1 counter from each card you have in play
                                 with time counters on it. When the last time counter is removed from a
                                 card in your stockpile, resolve its effects without using the lock and
@@ -1156,7 +1250,8 @@ export function HowToPlayPage() {
                                 uses an exclusion (for example, &ldquo;non-Unit&rdquo;), the target is
                                 illegal if it has the excluded type, even if it also has a required type.
                                 If an effect does not name a zone, you may only choose targets on the
-                                battlefield. You cannot choose an illegal target.
+                                battlefield (units on an objective count). You cannot choose an illegal
+                                target.
                             </p>
                             <p>
                                 If a card or activated ability requires targets, you must have at least
@@ -1166,6 +1261,11 @@ export function HowToPlayPage() {
                                 Invulnerable and Stealth may further restrict targeting (see Keyword
                                 Abilities).
                             </p>
+                            <Important>
+                                Attacks are declared at objectives. Combat damage assignment follows
+                                the damage step (see{" "}
+                                <SectionLink href="#how-to-attack">How to Attack</SectionLink>).
+                            </Important>
                             <p>
                                 Some cards include highlighted words or keyword abilities. All
                                 abilities except the EFFECT tag and ACTIVATED abilities are displayed
@@ -1220,7 +1320,7 @@ export function HowToPlayPage() {
                                         playing a card (for example, &ldquo;whenever you play a
                                         cyberspell&rdquo;), the condition is met as soon as that play
                                         finishes entering the lock or, if you used time counters,
-                                        going to your stockpile&mdash;not when the played card&apos;s{" "}
+                                        going to your stockpile, not when the played card&apos;s{" "}
                                         <GameIcon name="effect" className="inline align-text-bottom" />{" "}
                                         resolves. The triggered effect then uses the lock or a queue
                                         like other triggers.
@@ -1257,7 +1357,7 @@ export function HowToPlayPage() {
                                 Example: the activated ability "<GameIcon name="expend" />, <GameIcon name="power" /> <GameIcon name="gen1" /> : Draw a
                                 card" means to expend the card the ability is printed on, then pay 1
                                 yellow unit of power and 1 of any color of your choice, to add the
-                                "draw a card" effect to the lock&mdash;after which it resolves.
+                                "draw a card" effect to the lock, after which it resolves.
                             </p>
                             <ul className="space-y-3">
                                 <li className="flex items-start gap-3">
@@ -1310,8 +1410,8 @@ export function HowToPlayPage() {
                             <p>
                                 Your deck holds the entity and cyberspell cards you bring to battle.
                                 On the playmat it is labeled <Term>R.I.G.</Term> (Regressive Integrated Gear).
-                                You also bring one pilot. Your deck must have at
-                                least 40 cards; the pilot does not count toward that minimum.
+                                You also bring one pilot and exactly three objective cards. Your deck must have at
+                                least 40 cards; the pilot and objective cards do not count toward that minimum.
                             </p>
                             <p>When building a deck, keep these rules in mind:</p>
                             <ol className="list-decimal space-y-2 pl-6">
@@ -1319,6 +1419,11 @@ export function HowToPlayPage() {
                                 <li>Your deck must have at least 40 entity and cyberspell cards.</li>
                                 <li>Any non-pilot card may have up to three copies with the same name in your deck.</li>
                                 <li>Any card with the Prototype supertype is limited to a single copy in your deck.</li>
+                                <li>
+                                    Bring exactly three objective cards with your deck. They are not
+                                    shuffled into the deck. During setup, you place one of them (see{" "}
+                                    <SectionLink href="#setting-up">Setting Up</SectionLink>).
+                                </li>
                             </ol>
 
                             <p>That concludes deck building.</p>
@@ -1339,10 +1444,10 @@ export function HowToPlayPage() {
                                 Good luck and have fun!
                             </p>
                             <Note>
-                                "He forgot to mention HAIs, man. I'm kind of a big deal&mdash;being
+                                "He forgot to mention HAIs, man. I'm kind of a big deal, being
                                 attached to a pilot and all... (someone wishipering in the mic) yeah... oh, right, for the next batch...
                                 got it. Well then, log complete for the new pilot, I guess. Until we
-                                meet again on the field of battle, signing off..." &mdash;Svn
+                                meet again on the field of battle, signing off..." - Svn
                             </Note>
                         </Section>
                     </div>
