@@ -10,9 +10,15 @@
 
 100.3. Whenever card text uses the word "this," it refers to the card that printed that text.
 
-100.4. A player wins by reducing an opponent's life to 0, decking them out (each draw from an empty deck costs 2 life), or if an opponent begins their turn with 0 resources in their stockpile.
+100.4. The only way to win is by **victory points (VP)**. Whenever you gain VP, if your VP is greater than or equal to the **victory number printed on your pilot**, you win immediately (see rules 250.7 and 400.2.2.3).
 
-100.5. The most direct path to victory is reducing life to 0 by attacking with units.
+> 100.4.1. Life, drawing from an empty deck, and beginning a turn with 0 resources in your stockpile do **not** win or eliminate a player. Combat damage and defeat still apply to units.
+>
+> 100.4.2. Different pilots can have different victory numbers. Conquer can win mid-turn. Hold VP is only on your start of turn.
+>
+> 100.4.3. There is **no** end-of-turn VP.
+
+100.5. The primary way to score is controlling **objectives**: Conquer when you gain control of one, and Hold at the start of your turn (see section 250).
 
 100.6. **`[TLV]` (Threat Level).** Only cards with the Unit supertype have a `[TLV]` on the card.
 
@@ -30,7 +36,7 @@
 >
 > 100.7.2. **Attack.** If the card has the Unit supertype, it may attack even if another of its types says it cannot attack.
 >
-> 100.7.3. **Block.** While you control a readied unit on the battlefield, an opponent must target a readied unit you control when declaring an attack if able (see rules 601 and 603.3).
+> 100.7.3. **Objectives.** Attacks are declared at **objectives**, not at a player or a chosen unit (see section 603). There is no attack target.
 
 ### 100.8. Targeting
 
@@ -50,9 +56,9 @@
 >
 > 100.8.8. Keywords and other rules may further restrict or modify targeting and what can happen to a chosen target (see section 800.3).
 >
-> 100.8.9. Attack targeting is handled by combat rules in addition to these rules (see section 603).
+> 100.8.9. Attacks are declared at objectives. Who takes combat damage is decided in the damage step, not by choosing an attack target (see section 603).
 >
-> 100.8.10. If an effect does not specify a zone, only cards and objects on the battlefield may be chosen (see rule 200.3). To target a card in the stockpile, hand, discard pile, dismantle pile, pilot zone, or another zone, the effect must say so.
+> 100.8.10. If an effect does not specify a zone, only cards and objects on the battlefield may be chosen (see rule 200.3). Units on an objective are not on the battlefield. To target a card in the stockpile, hand, discard pile, dismantle pile, pilot zone, on an objective, or another zone, the effect must say so.
 
 ---
 
@@ -62,7 +68,7 @@
 
 200.2. **Deck** — Your face-down shuffled deck of entity and cyberspell cards.
 
-200.3. **Battlefield** — Where played entities go unless time counters were used (see rule 700.4).
+200.3. **Battlefield** — Where played entities go unless time counters were used (see rule 700.4). Units on an objective are not on the battlefield (see rule 200.11).
 
 200.4. **Stockpile** — Where readied resources are stored and where time-counter cards wait. **Expend** a resource (turn it 90° horizontal) to add its color to your resource pool.
 
@@ -77,6 +83,38 @@
 200.9. **Lock** — Holds at most one card or effect before it resolves (see section 700).
 
 200.10. **Queue** — Holds overflow effects while the lock is full (see rule 700.3).
+
+200.11. **Objective** — Shared zone in the center of the table, not part of any player's battlefield. Units on an objective are not on the battlefield. You still control those units. They ready as entities you control (see rule 400.2.2.1).
+
+---
+
+## 250. Objectives
+
+250.1. This game is for **2–4 players**. Shared objectives are placed during setup (see rule 400.1.6).
+
+250.2. An objective is empty, or has **any number of units** on it (a stack). Units of more than one player may be on the same objective.
+
+250.3. The **pilot is a unit**. It may be on an objective and counts toward controlling that objective.
+
+250.4. Programs, technologies, and resources cannot be on an objective unless they are also a unit.
+
+250.5. If a unit leaves play, is retreated, or is otherwise moved off an objective, it leaves that objective. Other units on that objective stay. Last-touch does **not** keep control.
+
+250.6. You **control** an objective if you have at least one unit on it and no opponent does. Otherwise you do not control it.
+
+### 250.7. Scoring
+
+250.7.1. **Conquer.** When you **gain control** of an objective (you did not control it, and now you do), you immediately gain **1 VP**, then check win (see rule 100.4).
+
+> 250.7.1.1. Typical cases: you move onto an empty objective; the last opponent unit on it leaves or is defeated while you still have a unit on it.
+>
+> 250.7.1.2. Walking onto an objective another player controls does not conquer until you are the only player with a unit on it.
+>
+> 250.7.1.3. Reinforcing an objective you already control is not a conquer.
+>
+> 250.7.1.4. If you move a unit off an objective you control and it becomes empty, moving a unit back onto that same empty objective is **not** a conquer. You do not gain VP. This applies even if it is a different unit, and even if you wait before returning. It stops applying once another player has controlled that objective.
+
+250.7.2. **Hold.** At the start of your turn (see rule 400.2.2.3), gain 1 VP per objective you control. Then check win (see rule 100.4). Objectives you do not control score 0.
 
 ---
 
@@ -94,9 +132,15 @@
 
 ### 300.2. Supertypes
 
-> 300.2.1. **Pilot [Entity]** — Starts in the pilot zone; a unit you may play from there.
+> 300.2.1. **Pilot [Entity]** — Starts in the pilot zone; a unit you may play from there. The pilot may be on an objective and counts toward controlling it (see rule 250.3).
 >
-> 300.2.2. **Unit [Entity]** — Call-in combatants (see rule 100.6). After resolving, enter the battlefield unless time was used (see rule 700.4). When a unit you control enters the battlefield, you choose whether it enters readied or expended. A unit cannot attack during the turn it entered the battlefield unless it has Blitz (see rule 800.3.3).
+> 300.2.2. **Unit [Entity]** — Call-in combatants (see rule 100.6). After resolving, enter the battlefield unless time was used (see rule 700.4). When a unit you control enters the battlefield, it enters **readied**.
+>
+> 300.2.2.1. **Summoning sick.** A unit cannot attack during the turn it entered the battlefield unless it has Blitz (see rule 800.3.3). Moving onto an opponent-controlled objective is an attack (see rule 606.4), so a summoning-sick unit cannot do that.
+>
+> 300.2.2.2. A summoning-sick unit **may** move onto an objective you **control** (see rule 606.3). It cannot move onto an empty objective (empty is not friendly).
+>
+> 300.2.2.3. If a unit enters the battlefield because the last time counter was removed from it (see rule 700.4.4), it enters **as though it has Blitz**. Apply rules 300.2.2 and 300.2.2.1 as if it had Blitz (it enters readied and may attack this turn). It does not gain the Blitz keyword for other effects.
 >
 > 300.2.3. **Program [Entity]** — Stays in play; cannot attack.
 >
@@ -120,15 +164,13 @@
 >
 > 300.2.7.6. When a resource token is created, put it into the stockpile readied (see rule 300.2.6).
 >
-> 300.2.7.7. When any other token is created, put it onto the battlefield. If it is a unit, its controller chooses whether it enters readied or expended (see rule 300.2.2); otherwise it enters readied.
+> 300.2.7.7. When any other token is created, put it onto the battlefield. If it is a unit, it enters readied (see rule 300.2.2); otherwise it enters readied.
 
 ### 300.3. Subtypes
 
 > 300.3.1. **Process [Cyberspell]** — Playable during your main phase while the lock is empty. Cannot attack. See rule 500.8 for full timing.
 >
 > 300.3.2. **Quick Hack [Cyberspell]** — Playable whenever a Process can be played, plus at end of turn, during an attack, while the lock holds a card, or when an opponent's effect empties the lock. Cannot attack. See rule 500.8 for full timing.
->
-> 300.3.3. *(Removed.)* Weapon is no longer a playable subtype. Cards formerly printed as weapons are not used.
 
 ---
 
@@ -162,15 +204,21 @@
 
 ### 400.1. Setup
 
-> 400.1.1. Each player needs a pilot, a deck, life tracking, damage dice, time-counter dice, and resource tokens.
+> 400.1.1. This game is for 2–4 players. Each player needs a pilot, a deck, life tracking, VP tracking, damage dice, time-counter dice, resource tokens, and shared **objectives**.
 >
-> 400.1.2. Place pilot in the pilot zone; shuffle your deck; place pilot's starting resources readied in stockpile; set life and draw a starting hand per pilot values.
+> 400.1.2. Place pilot in the pilot zone; shuffle your deck; place pilot's starting resources readied in stockpile; set life and draw a starting hand per pilot values. Each player starts at **0 VP**. Your **victory number** is the VP printed on your pilot.
 >
-> 400.1.3. Determine first player randomly; that player chooses whether to go first.
+> 400.1.3. Determine first player randomly; that player chooses whether to go first. Turn order is clockwise from the first player.
 >
 > 400.1.4. Each player may mulligan once (first player mulligans first): put any number of hand cards on the bottom of the deck, then draw that many. There is no maximum hand size after the game begins.
 >
 > 400.1.5. The player who takes the first turn chooses two resources in their stockpile and `[EXPEND]`s them (turn them 90° horizontal). If that player controls fewer than two resources in their stockpile, they expend all of them. Those resources do **not** ready during that player's first start-of-turn step (see rule 400.2.2.1); they ready normally on later turns.
+>
+> 400.1.6. Place shared **objectives** in the center of the table, not in any player's battlefield.
+>
+> 400.1.6.1. If there are **2** players, place **2** objectives.
+>
+> 400.1.6.2. If there are **3 or more** players, place **H = max(3, number of players − 1)** objectives (3 players → 3; 4 players → 3).
 
 ### 400.2. Turn structure
 
@@ -180,17 +228,19 @@
 
 > 400.2.2.1. Ready all entities you control.
 >
-> 400.2.2.2. Trigger all abilities with the start-of-turn tag.
+> 400.2.2.2. **Heal.** Remove **1** marked damage (not below 0) from each unit you control on the **battlefield**, including your pilot if it is on the battlefield. Units on an objective are not on the battlefield for this step and do not heal (including your pilot if it is on an objective). Opponent units do not heal on your turn.
 >
-> 400.2.2.3. Remove one time counter from each card you control in play; resolve effects when the last counter is removed from a stockpile card.
+> 400.2.2.3. **Hold VP.** Gain **1 VP** for each objective you control. Then check win (see rule 100.4). Objectives you do not control score 0.
 >
-> 400.2.2.4. If you control no resources in your stockpile, you lose the game.
+> 400.2.2.4. Trigger all abilities with the start-of-turn tag.
+>
+> 400.2.2.5. Remove one time counter from each card you control in play; resolve effects when the last counter is removed from a stockpile card.
 
 #### 400.2.3. Main phase
 
-> 400.2.3.1. You may play cards, activate abilities, make attacks, allocate a resource to a unit, or accumulate resources, in any order where timing allows.
+> 400.2.3.1. You may play cards, activate abilities, make attacks, move units onto or off objectives, allocate a resource to a unit, or accumulate resources, in any order where timing allows.
 >
-> 400.2.3.2. See sections 600–605 for default game actions.
+> 400.2.3.2. See sections 600–606 for default game actions.
 
 #### 400.2.4. End-of-turn phase
 
@@ -250,21 +300,25 @@
 
 ## 600. Default Game Actions
 
-### 601. Block
+### 601. Block and retreat
 
-601.1. Blocking is not a default game action. You block passively with readied **units** on the battlefield only. You cannot block by discarding from hand or expending programs, technologies, or cyberspells.
+601.1. Blocking is not a default game action. Attacks are declared at objectives (see section 603). You cannot block by discarding from hand or expending programs, technologies, or cyberspells.
 
-601.2. While you control a readied unit on the battlefield, an opponent declaring an attack must choose a readied unit you control as the attack target if able (see rule 603.3).
+601.2. Readied units on an objective deal combat damage back during the damage step (see rule 603.7). An expended unit deals 0 combat damage even if it is in that fight.
 
-601.3. When your unit is the attack target and is readied when combat damage is dealt, it deals damage back (see rule 603.7). An expended unit deals 0 damage back even if it is attacked.
+601.3. Damage directed at you as a player that is not from combat on an objective becomes loss of life. You cannot block that damage with units. Life loss does not win the game (see rule 100.4.1).
 
-601.4. Damage directed at you as a player that is not from an attack resolved against you becomes loss of life. You cannot block that damage with units.
+601.4. **Retreat.** After an attack is declared at an objective, the defending player may retreat a **readied** unit they control on that objective if it did not enter the battlefield under their control this turn, or if it has Blitz (see rule 800.3.3).
 
-601.5. **Retreat.** After an attack is declared against a unit you control, you may retreat that unit if it did not enter the battlefield under your control this turn, or if it has Blitz (see rule 800.3.3).
-
-> 601.5.1. To retreat, `[EXPEND]` that unit and mark **1 damage** on it. The attack is negated: no combat damage is dealt by or to either side as a result of that attack (including Preemptive Strike damage from that attack). The 1 damage from retreating is not combat damage from that attack; apply it when you retreat, then check for defeat as usual (see rule 603.7.2).
-
-> 601.5.2. Retreat is not available for a unit that entered the battlefield under your control this turn unless that unit has Blitz.
+> 601.4.1. Units not on an objective cannot retreat. Expended units on an objective cannot retreat.
+>
+> 601.4.2. A unit that moved onto an empty objective without expending may still be readied, so it can retreat. A unit that moved on as an attack is expended and cannot retreat until it readies.
+>
+> 601.4.3. To retreat: that unit leaves the objective, returns to the battlefield **expended**, and takes **2** retreat damage. It is not in the damage step. Other units on that objective stay; the attack continues. The 2 damage from retreating is not combat damage from that attack; apply it when you retreat, then check for defeat as usual (see rule 603.7.5).
+>
+> 601.4.4. Retreat is not available for a unit that entered the battlefield under your control this turn unless that unit has Blitz.
+>
+> 601.4.5. If retreat causes a player to **gain control** of the objective, apply rule 250.7.1 (conquer).
 
 ### 602. Accumulate resources
 
@@ -278,35 +332,55 @@
 
 ### 603. Attack
 
-603.1. Attacking is a primary way to deal damage and pressure opponent resources. Damage marked on units persists until healed.
+603.1. Attacks are declared **at an objective**, not at a unit or a player. Combat is how you contest objectives. Damage marked on units persists until healed (see rule 400.2.2.2).
 
-603.2. **Declare attackers** — Choose unit(s) on the battlefield and/or other legal attackers. Multiple attackers are one attack sharing one target; each attacker is treated separately for damage assignment. A unit may attack if it has the Unit supertype, including when it also has a type that otherwise cannot attack (see rules 100.7 and 100.7.2).
+603.2. **Declare attackers** — Choose unit(s) you control that are legal attackers: units on the battlefield and/or units already on that objective. Multiple attackers are one attack. A unit may attack if it has the Unit supertype, including when it also has a type that otherwise cannot attack (see rules 100.7 and 100.7.2).
 
 > 603.2.1. A card with one or more time counters on it cannot attack (see rule 700.4.2.1). When the last counter is removed from a stockpile card, it moves to the battlefield (see rules 700.4.4 and 300.2.2).
 >
-> 603.2.2. A unit cannot attack during the turn it entered the battlefield under your control unless it has Blitz (see rules 300.2.2 and 800.3.3).
+> 603.2.2. A unit cannot attack during the turn it entered the battlefield under your control unless it has Blitz (see rules 300.2.2.1 and 800.3.3).
+>
+> 603.2.3. You cannot declare an attack at an objective that has no opposing unit on it.
+>
+> 603.2.4. If the attackers are not already on that objective, they move onto it as they attack (see rule 606.4). Units already on it still expend to attack as in this section.
+>
+> 603.2.5. Combat is pairwise: the attacker versus the controller of the defending units in that fight. Other players with units on the same objective are not in that combat unless a card targets them.
 
-603.3. **Declare target** — Expend unit attackers. Choose the defending player or a unit on the battlefield as the attack target, and trigger on-attack abilities. You must target a readied unit on the battlefield the defender controls if able; if none, you cannot attack.
+603.3. **Declare the objective** — Expend unit attackers. Trigger `[ATTACK]` tags and other on-attack abilities. Do **not** choose an attack target. Who takes damage is decided in the damage step (see rule 603.7).
 
-> 603.3.1. Cards in other zones — including the stockpile, discard pile, pilot zone, and deck — cannot be chosen as attack targets unless an effect says otherwise.
+> 603.3.1. **Airborne.** If the defending player has at least one Airborne unit on that objective, the attack is legal only if at least one attacking unit has Airborne or Long Range (see rules 800.3.2 and 800.3.13). That one unit enables the entire attack force.
+>
+> 603.3.2. **Stealth.** If the defending player has at least one unit with Stealth on that objective, pay Stealth as an additional cost of the attack (see rules 800.3.20 and 603.4). Pay **once** for the entire attack force. If more than one such unit is on that objective, pay the highest Stealth X among them.
+>
+> 603.3.3. Other additional costs that would be paid to attack or target a unit on that objective are paid once for the entire attack force, using the highest value among those units if more than one applies.
 
-> 603.3.2. The defending player may retreat the targeted unit if able (see rule 601.5). If they do, the attack ends with no combat damage (the retreating unit still takes the 1 damage retreat cost).
-
-603.4. **Attack step** — Attackers are now attacking. Pay additional costs such as Stealth if required.
+603.4. **Attack step** — Attackers are now attacking. Pay additional costs as required by rule 603.3.
 
 603.5. **Response window** — Players play Quick Hacks or activate abilities, active player first, until both pass.
 
-> 603.5.1. If a unit on the battlefield would become readied, an illegal player target redirects to a readied unit on the battlefield the attacker chooses.
+> 603.5.1. The defending player may retreat a readied unit they control on that objective if able (see rule 601.4).
 
-603.6. **Preemptive Strike damage** — Attackers with Preemptive Strike deal damage equal to their damage value (including modifiers).
+603.6. **Preemptive Strike damage** — Attackers with Preemptive Strike deal damage equal to their damage value (including modifiers). The attacking player divides that damage among the defending player's units on that objective, as they choose (rule 603.7.4 still applies). If Preemptive Strike damage was dealt, skip ordinary combat damage as in rule 603.7.
 
-603.7. **Combat damage** — If Preemptive Strike damage was not dealt, attackers deal damage equal to their damage value (including modifiers) to the attack target. A readied defending unit deals damage equal to its damage value back; an expended defending unit deals 0. Damage is simultaneous.
+603.7. **Combat damage** — If Preemptive Strike damage was not dealt, combat damage is simultaneous.
 
-> 603.7.1. If there are multiple attackers, the defending player divides the defending unit's damage among them as they choose.
+> 603.7.1. The **attacking player** divides combat damage from attacking units among the defending player's units on that objective, as they choose.
 >
-> 603.7.2. After damage, a unit is defeated if marked damage ≥ its health value (or health value + X with Durable X). Trigger on-defeat abilities; put defeated units in the discard pile.
+> 603.7.2. The **defending player** divides combat damage from their units on that objective among the attacking units, as they choose. A readied defending unit deals its damage value; an expended defending unit deals 0.
+>
+> 603.7.3. A player may assign all of a unit's damage to one opposing unit, or split it among more than one. Assign all of that unit's damage.
+>
+> 603.7.4. You cannot assign damage from an attacking unit to an Airborne unit unless that attacking unit has Airborne or Long Range.
+>
+> 603.7.5. After damage, a unit is defeated if marked damage ≥ its health value (or health value + X with Durable X). Trigger on-defeat abilities; put defeated units in the discard pile.
+>
+> 603.7.6. If combat causes a player to **gain control** of the objective, apply rule 250.7.1 (conquer).
 
-603.8. **Player damage** — If the attack target is the defending player, damage directed at that player becomes loss of life. The attack ends.
+603.8. After the attack resolves:
+
+> 603.8.1. If at least one defending unit **and** at least one attacking unit both survived, the attacking units **return to their controller's battlefield expended**. They leave the objective. Other units on that objective stay.
+>
+> 603.8.2. If no defending unit survived, every unit that is still in play **stays on that objective**, including surviving attackers (they remain expended).
 
 ### 604. Allocate a resource to a unit
 
@@ -328,6 +402,28 @@
 
 605.3. See section 500 for invoke costs, zones you may play from, targeting, and lock interaction.
 
+### 606. Move onto or off an objective
+
+606.1. During your main phase, as a default game action: choose an objective and a unit(s) you control on the battlefield that is not waiting on a time counter (this includes your pilot). Move that unit onto the objective.
+
+606.2. **Empty objective** (no units on it): do **not** expend the unit. It keeps its current readied or expended state. This is not an attack. A summoning-sick unit cannot move onto an empty objective (see rule 300.2.2.2).
+
+606.3. **You control it** (your units on it, no opponent): do **not** expend. This is not an attack. A summoning-sick unit **may** move onto this objective (see rule 300.2.2.2).
+
+606.4. **Opponent controls it:** This move is declaring an **attack** with that unit (see section 603). Expend the unit as it joins the stack (if it was already expended, it stays expended). Because this is an attack, `[ATTACK]` tags and other attack triggers resolve, and players may play Quick Hacks in the attack response window (see rules 500.8.2.2 and 603.5).
+
+> 606.4.1. The unit must be a legal attacker (see rules 603.2, 603.2.2, and 300.2.2.1).
+
+606.5. If this move causes you to **gain control** of the objective, apply rule 250.7.1 (conquer).
+
+606.6. **Leave an objective.** During your main phase, as a default game action: choose a **readied** unit you control on an objective. `[EXPEND]` it and move it to your battlefield. This is not an attack and not a retreat (no retreat damage).
+
+> 606.6.1. You may leave with more than one unit in the same action; expend each chosen unit.
+>
+> 606.6.2. An expended unit on an objective cannot leave this way.
+>
+> 606.6.3. If this causes a player to **gain control** of the objective, apply rule 250.7.1 (conquer).
+
 ---
 
 ## 700. The Lock and Time Counters
@@ -338,7 +434,7 @@
 >
 > 700.1.2. At the start of a turn, the turn player is the active player.
 >
-> 700.1.3. When a card or effect enters the lock, its controller becomes the non-active player; their opponent becomes active.
+> 700.1.3. When a card or effect enters the lock, its controller becomes the non-active player; an opponent of that player becomes active. Other players are not in that lock unless a card targets them.
 >
 > 700.1.4. If multiple effects would enter an empty lock simultaneously, the active player puts one of theirs in first; others go to queues.
 >
@@ -382,7 +478,7 @@
 
 700.4.3. At the start of each of your turns, remove one counter from each of your time-counter cards.
 
-700.4.4. When the last counter is removed from a stockpile card, resolve its effects without using the lock, then move it to the battlefield (entity) or discard pile (cyberspell). If an entity unit moves to the battlefield this way, apply rule 300.2.2.
+700.4.4. When the last counter is removed from a stockpile card, resolve its effects without using the lock, then move it to the battlefield (entity) or discard pile (cyberspell). If an entity unit moves to the battlefield this way, apply rule 300.2.2 (including rule 300.2.2.3).
 
 700.4.5. You may have at most two time-counter cards in stockpile.
 
@@ -440,11 +536,15 @@
 >
 > 800.2.8. **Innate abilities** — Abilities on a card that are neither activated abilities nor tags. They follow their rules and do not use the lock unless those rules say otherwise.
 
+### 800.3. Keyword abilities
+
+800.3. Keyword abilities are **not** activated abilities. They do not use the `[cost]: [effect]` format, they are not played, and they do not use the lock unless a keyword's rule says otherwise.
+
 > 800.3.1. Keywords are static unless noted. Duplicate keywords on one entity do not stack except numerical values, which add.
 >
-> 800.3.2. **Airborne** — Only Airborne or Long Range can attack this entity.
+> 800.3.2. **Airborne** — Only Airborne or Long Range can attack this entity. To declare an attack at an objective that has at least one Airborne unit, at least one attacking unit must have Airborne or Long Range (see rule 603.3.1).
 >
-> 800.3.3. **Blitz** — This unit may attack during the turn it entered the battlefield (see rules 300.2.2 and 603.2.2).
+> 800.3.3. **Blitz** — This unit may attack during the turn it entered the battlefield (see rules 300.2.2.1 and 603.2.2).
 >
 > 800.3.4. **Corrosive Bile** — Whenever this entity deals damage to a unit, destroy that unit.
 >
@@ -452,13 +552,13 @@
 >
 > 800.3.6. **Durable X** — Defeated at health value + X damage instead of health value.
 >
-> 800.3.7. **Preemptive Strike** — Deals damage first in a fight unless the opponent also has Preemptive Strike.
+> 800.3.7. **Preemptive Strike** — Deals damage first in a fight unless the opponent also has Preemptive Strike (see rule 603.6).
 >
 > 800.3.8. **Hardened X** — Reduce damage taken by X.
 >
 > 800.3.9. **Hard Point** — You may include a second copy of this card in your deck (in addition to the normal copy limit).
 >
-> 800.3.10. **Insatiable Hunger** — Attacks must target a unit the defender controls if they control one.
+> 800.3.10. **Insatiable Hunger** — You cannot declare an attack at an objective that has no unit the defender controls if that player controls a unit on an objective (see rule 603.2.3).
 >
 > 800.3.11. **Invulnerable** — Cannot be trashed, dismantled, or destroyed by those effects; cannot be chosen as target for them.
 >
@@ -478,7 +578,7 @@
 >
 > 800.3.19. **Stationary** — Cannot attack.
 >
-> 800.3.20. **Stealth X** — Additional cost to target or attack with cyberspells/abilities/attacks.
+> 800.3.20. **Stealth X** — Additional cost to target or attack with cyberspells/abilities/attacks. To declare an attack at an objective that has Stealth, pay once for the entire attack force (see rule 603.3.2).
 >
 > 800.3.21. **Sturdy** — Cannot be destroyed by "destroy" effects.
 >
@@ -507,8 +607,6 @@
 > 900.2.4. Prototype limited to one copy in the deck.
 >
 > 900.2.5. There is no sideboard; include any extra cards in the 40-card minimum when building.
->
-> 900.2.6. **Augments** and **Weapons** are not used. Do not include them in a constructed deck.
 
 ---
 

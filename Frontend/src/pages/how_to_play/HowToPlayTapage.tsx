@@ -508,7 +508,7 @@ export function HowToPlayPage() {
                                     <ol className="list-decimal space-y-1 pl-6">
                                         <li>Choose and expend your attacker(s), then declare a target. Then trigger any units attacking with a <GameIcon name="attack" /> tag.</li>
                                         <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
-                                        <li>Deal damage (Preemptive Strike first, then simultaneous). Defeated units go to the discard pile. If the attack target is the defending player, that damage becomes loss of life.</li>
+                                        <li>Deal damage (Preemptive Strike first, then simultaneous). Defeated units go to the discard pile.</li>
                                     </ol>
                                     <p>
                                         See <SectionLink href="#how-to-block">How to Block</SectionLink>{" "}
@@ -943,8 +943,8 @@ export function HowToPlayPage() {
                                 </li>
                                 <li>
                                     If the attacker(s) did not already deal Preemptive Strike
-                                    damage, they deal damage equal to their damage value
-                                    (including modifiers) to the target of the attack. Then the
+                                    damage, combat damage is simultaneous. Attackers deal damage equal to their
+                                    damage value (including modifiers). Then the
                                     defending unit deals damage back:
                                     <ul className="list-disc space-y-1 pl-6 pt-1">
                                         <li>
@@ -1319,7 +1319,6 @@ export function HowToPlayPage() {
                                 <li>Your deck must have at least 40 entity and cyberspell cards.</li>
                                 <li>Any non-pilot card may have up to three copies with the same name in your deck.</li>
                                 <li>Any card with the Prototype supertype is limited to a single copy in your deck.</li>
-                                <li>Augments and Weapons are not used — do not include them in your deck.</li>
                             </ol>
 
                             <p>That concludes deck building.</p>

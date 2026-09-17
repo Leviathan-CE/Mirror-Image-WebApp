@@ -39,19 +39,11 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
   //       This unit can take X more marked damage than its health value before being defeated.
   //     </>
   //   ),
-  // },
+  //   },
   {
     name: "PREEMPTIVE STRIKE",
     text: "When this entity deals damage in a fight, it deals damage first, unless the opposing entity also has Preemptive Strike.",
   },
-  // {
-  //   name: "HARDENED X",
-  //   text: "Whenever this entity takes damage, reduce that damage by X.",
-  // },
-  // {
-  //   name: "HARD POINT",
-  //   text: "You may include a second copy of this card in your deck (in addition to the normal copy limit).",
-  // },
   {
     name: "INSATIABLE HUNGER",
     text: "Attacks must target a unit the defender controls if they control one.",
