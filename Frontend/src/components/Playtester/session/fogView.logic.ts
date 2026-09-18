@@ -240,8 +240,7 @@ export function materializeFog(view: FogView): PlayingCardInstance[] {
  */
 export function withPreservedSelection(
   cards: PlayingCardInstance[],
-  selectedIds: ReadonlySet<string>,
-  _localSeat?: PlayerSlot
+  selectedIds: ReadonlySet<string>
 ): PlayingCardInstance[] {
   return cards.map((card) => {
     const next = selectedIds.has(card.instanceId)

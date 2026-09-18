@@ -69,7 +69,7 @@ describe("fog view augments", () => {
     const mine = augment("p1", { selected: false, instanceId: "p1-a" })
     const peer = augment("p2", { selected: true, instanceId: "p2-a" })
     const fogged = materializeFog(viewFor("p1", stateWith([mine, peer])))
-    const kept = withPreservedSelection(fogged, new Set(["p1-a", "p2-a"]), "p1")
+    const kept = withPreservedSelection(fogged, new Set(["p1-a", "p2-a"]))
     expect(kept.find((c) => c.instanceId === "p1-a")?.selected).toBe(true)
     expect(kept.find((c) => c.instanceId === "p2-a")?.selected).toBe(true)
   })

@@ -194,6 +194,11 @@ export function PlayTesterPage() {
   const [peerLibraryHover, setPeerLibraryHover] = useState(false)
   /** Peer opened a private browse / look-at-top overlay. */
   const [peerBrowse, setPeerBrowse] = useState<BrowseMessage | null>(null)
+  if (!playNet.peerPresent) {
+    if (peerHandHoverIndex !== null) setPeerHandHoverIndex(null)
+    if (peerLibraryHover) setPeerLibraryHover(false)
+    if (peerBrowse !== null) setPeerBrowse(null)
+  }
   const [accumulateChooser, setAccumulateChooser] =
     useState<AccumulateChooserState | null>(null)
   /** Deck row counts persist for the whole playtester session. */
@@ -437,14 +442,6 @@ export function PlayTesterPage() {
       setSearchParams({ room: playNet.code }, { replace: true })
     }
   }, [playNet.code, playNet.status, searchParams, setSearchParams])
-
-  useEffect(() => {
-    if (!playNet.peerPresent) {
-      setPeerHandHoverIndex(null)
-      setPeerLibraryHover(false)
-      setPeerBrowse(null)
-    }
-  }, [playNet.peerPresent])
 
   // Guest keeps asking until the host's real deal actually lands. The host
   // may answer an early snapshot request with an empty view (still waiting
@@ -723,10 +720,7 @@ export function PlayTesterPage() {
   }, [status, netActive, twoSeat])
 
   useEffect(() => {
-    if (!netActive) {
-      setBoardScale(1)
-      return
-    }
+    if (!netActive) return
     const el = playRowRef.current
     if (!el) return
     const sync = () => {
@@ -740,7 +734,6 @@ export function PlayTesterPage() {
       })
       setBoardScale(playFieldFitScale(width, height, PLAY_FIELD_LOGICAL, 1))
     }
-    sync()
     const observer = new ResizeObserver(sync)
     observer.observe(el)
     return () => observer.disconnect()

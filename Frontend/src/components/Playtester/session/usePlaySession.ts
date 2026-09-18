@@ -321,7 +321,7 @@ export function usePlaySession({
         : { ...card, selected: false }
     )
     seqRef.current = view.seq
-    commitCards(withPreservedSelection(nextCards, keepLocal, view.viewer))
+    commitCards(withPreservedSelection(nextCards, keepLocal))
     setLifeBySeat(view.life)
     setVpBySeat(view.vp ?? seatRecord(0))
     setVpGoalBySeat(view.vpGoal ?? seatRecord(0))

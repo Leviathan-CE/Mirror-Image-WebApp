@@ -4,8 +4,6 @@
  * cannot double-load these exports in the TS language service.
  */
 
-import type { PlayerSlot } from "@/components/Playtester/constants"
-
 /** Local selection ring (cyan). */
 export function selectionRingClass(): string {
   return "ring-2 ring-cyan-300 ring-offset-1 ring-offset-black/80"
@@ -24,9 +22,6 @@ export function selectionOverlayClass(): string {
  * Local click-highlight. Any seat's card can be painted — drag / bulk
  * actions still filter by owner separately.
  */
-export function cardIsPaintSelected(
-  card: { selected?: boolean },
-  _localSeat?: PlayerSlot
-): boolean {
+export function cardIsPaintSelected(card: { selected?: boolean }): boolean {
   return Boolean(card.selected)
 }

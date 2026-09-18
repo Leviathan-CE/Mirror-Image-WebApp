@@ -4,6 +4,7 @@
 
 import { useLocation, useNavigate } from "react-router-dom"
 
+import { useComingSoon } from "@/app/providers/ComingSoonProvider"
 import { AccountMenu } from "@/components/common/AccountMenu"
 import { HeaderShell } from "@/components/common/HeaderShell"
 import { navButtonClassName } from "@/components/common/headerStyles"
@@ -22,6 +23,7 @@ function adminNavClass(active: boolean) {
 export function AdminHeader() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const { comingSoon } = useComingSoon()
 
   return (
     <HeaderShell
@@ -53,6 +55,11 @@ export function AdminHeader() {
           >
             APP
           </Button>
+          {comingSoon ? (
+            <span className="font-buahs93 px-1.5 text-[10px] text-amber-300 sm:text-xs">
+              COMING SOON ON
+            </span>
+          ) : null}
         </>
       }
       actions={<AccountMenu suffix=" · admin" />}

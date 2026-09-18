@@ -29,7 +29,7 @@ import {
 } from "@/components/Playtester/board/handCardSize.logic"
 import { elementCssPaintScale } from "@/components/Playtester/board/playFieldScale.logic"
 import { PlayingCard } from "@/components/Playtester/board/PlayingCard"
-import { HAND_CARD_SIZE, LOCAL_SEAT, type PlayerSlot } from "@/components/Playtester/constants"
+import { HAND_CARD_SIZE, type PlayerSlot } from "@/components/Playtester/constants"
 import {
   cardIsPaintSelected,
   selectionRingClass,
@@ -99,7 +99,7 @@ export type PlayerHandProps = {
   hoveredIndex?: number | null
   /** Local hover changed — parent may relay index over the net. */
   onHoverIndexChange?: (index: number | null) => void
-  /** Seat at the bottom of this client — colours selection rings. */
+  /** Kept so callers can pass the seated owner; paint uses `card.selected`. */
   localSeat?: PlayerSlot
   /**
    * Collapse the docked strip to a peek sliver at rest; hovering raises the
@@ -163,7 +163,6 @@ export function PlayerHand({
   embedded = false,
   hoveredIndex = null,
   onHoverIndexChange,
-  localSeat = LOCAL_SEAT,
   peek,
 }: PlayerHandProps) {
   const rootRef = useRef<HTMLDivElement>(null)
@@ -728,7 +727,7 @@ export function PlayerHand({
                       isHovered &&
                       !isDragging &&
                       "-translate-y-2",
-                    cardIsPaintSelected(card, localSeat) &&
+                    cardIsPaintSelected(card) &&
                       !isDragging &&
                       selectionRingClass()
                   )}

@@ -21,6 +21,7 @@ import { AdminUsersPage } from "@/pages/admin/AdminUsersPage"
 import { SubscribePage } from "@/pages/billing/SubscribePage"
 import { AccountSettingsPage } from "@/pages/account/AccountSettingsPage"
 import { ComunityDecksPage } from "@/pages/decks/ComunityDecksPage"
+import { ComingSoonGate } from "@/app/ComingSoonGate"
 import { ROUTES } from "@/lib/route"
 import { PlayTesterPage } from "@/pages/decks/PlayTesterPage"
 
@@ -29,9 +30,10 @@ export function AppShell() {
     <AppProviders>
       <BrowserRouter>
         <PreferencesNavigationFlush />
-        <AppHeader />
-        <main className="min-h-screen">
-          <Routes>
+        <ComingSoonGate>
+          <AppHeader />
+          <main className="min-h-screen">
+            <Routes>
             <Route path={ROUTES.HOME} element={<HomePage />} />
             <Route
               path={ROUTES.MAIN}
@@ -106,7 +108,8 @@ export function AppShell() {
               }
             />
           </Routes>
-        </main>
+          </main>
+        </ComingSoonGate>
       </BrowserRouter>
     </AppProviders>
   )

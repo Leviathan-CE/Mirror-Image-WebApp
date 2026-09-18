@@ -673,7 +673,7 @@ export function FreeFloatSurface({
                   : card.owner === localSeat
                     ? "z-10 cursor-grab"
                     : "z-10 cursor-pointer",
-                cardIsPaintSelected(card, localSeat) &&
+                cardIsPaintSelected(card) &&
                   !isDragging &&
                   selectionRingClass()
               )}
@@ -765,7 +765,7 @@ export function FreeFloatSurface({
                   className={cn(
                     "pointer-events-none fixed z-[80]",
                     card.expended && "rotate-90",
-                    cardIsPaintSelected(card, localSeat) &&
+                    cardIsPaintSelected(card) &&
                     selectionRingClass()
                   )}
                   style={{
