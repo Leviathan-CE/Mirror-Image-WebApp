@@ -18,6 +18,8 @@ import {
   neededResourceColorsFromDecks,
   openingTimCoverage,
   missingStartingResourceColors,
+  observeOpeningFilledCounts,
+  unfilledOpeningColors,
 } from "@/components/Playtester/session/setupOpeningSession.logic"
 
 function pilot(overrides: Parameters<typeof deckEntry>[0] = {}): DeckCardEntry {
@@ -484,16 +486,27 @@ describe("guestPlaceholderCoverageImproved", () => {
       guestPlaceholderCoverageImproved({
         needed: ["TIM", "STL"],
         resourceByColor: mapWithTim,
-        stockpile: spawnGroupedStockpileResources(["STL"], new Map([
-          ["STL", resource(11, "Steel", ["GEN"])],
-        ])),
+        filledCounts: new Map([["STL", 1]]),
       })
     ).toBe(true)
     expect(
       guestPlaceholderCoverageImproved({
         needed: ["TIM"],
         resourceByColor: mapWithTim,
-        stockpile: spawnGroupedStockpileResources(["TIM"], mapWithTim),
+        filledCounts: new Map([["TIM", 1]]),
+      })
+    ).toBe(false)
+  })
+
+  it("stays false after a starting pip was issued then deleted", () => {
+    const mapWithTim = new Map<ResourceColor, CardLibraryItem>([
+      ["TIM", resource(10, "Time Token", ["TIM"])],
+    ])
+    expect(
+      guestPlaceholderCoverageImproved({
+        needed: ["TIM"],
+        resourceByColor: mapWithTim,
+        filledCounts: new Map([["TIM", 1]]),
       })
     ).toBe(false)
   })
@@ -519,6 +532,53 @@ describe("missingStartingResourceColors", () => {
         stockpile: spawnGroupedStockpileResources(["LIF", "TIM"], mapWithTim),
       })
     ).toEqual([])
+  })
+})
+
+describe("unfilledOpeningColors", () => {
+  it("does not re-issue a starting pip after it was already filled", () => {
+    const mapWithTim = new Map<ResourceColor, CardLibraryItem>([
+      ["TIM", resource(10, "Time Token", ["TIM"])],
+      ["LIF", resource(2, "Spirit Power", ["LIF"])],
+    ])
+    expect(
+      unfilledOpeningColors({
+        needed: ["LIF", "TIM"],
+        resourceByColor: mapWithTim,
+        filledCounts: new Map([
+          ["LIF", 1],
+          ["TIM", 1],
+        ]),
+      })
+    ).toEqual([])
+  })
+
+  it("issues TIM when the map later covers a pip opening never filled", () => {
+    const mapWithTim = new Map<ResourceColor, CardLibraryItem>([
+      ["TIM", resource(10, "Time Token", ["TIM"])],
+      ["LIF", resource(2, "Spirit Power", ["LIF"])],
+    ])
+    expect(
+      unfilledOpeningColors({
+        needed: ["LIF", "TIM"],
+        resourceByColor: mapWithTim,
+        filledCounts: new Map([["LIF", 1]]),
+      })
+    ).toEqual(["TIM"])
+  })
+})
+
+describe("observeOpeningFilledCounts", () => {
+  it("keeps the issued count when the stockpile is emptied", () => {
+    const mapWithTim = new Map<ResourceColor, CardLibraryItem>([
+      ["TIM", resource(10, "Time Token", ["TIM"])],
+    ])
+    const issued = observeOpeningFilledCounts(
+      new Map(),
+      spawnGroupedStockpileResources(["TIM"], mapWithTim)
+    )
+    expect(issued.get("TIM")).toBe(1)
+    expect(observeOpeningFilledCounts(issued, []).get("TIM")).toBe(1)
   })
 })
 

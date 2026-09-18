@@ -297,13 +297,54 @@ function stockpileColorCounts(
   return have
 }
 
-/** Map gained a needed colour the placeholder stockpile does not have yet. */
+/**
+ * Raise issued opening counts to at least what is sitting in `stockpile`.
+ * A guest `tk` or the opening deal itself counts as issued — Delete later
+ * must not look like "never spawned."
+ */
+export function observeOpeningFilledCounts(
+  filled: ReadonlyMap<ResourceColor, number>,
+  stockpile: Array<{ cost?: string[] | null }>
+): Map<ResourceColor, number> {
+  const next = new Map(filled)
+  const have = stockpileColorCounts(stockpile)
+  for (const [color, n] of have) {
+    const prev = next.get(color) ?? 0
+    if (n > prev) next.set(color, n)
+  }
+  return next
+}
+
+/**
+ * Colours still owed to the opening deal: the catalogue can spawn them
+ * and we have not yet issued that many. Live stockpile is not an input —
+ * a deleted starting token stays deleted.
+ */
+export function unfilledOpeningColors(args: {
+  needed: readonly ResourceColor[]
+  resourceByColor: Map<ResourceColor, unknown>
+  filledCounts: ReadonlyMap<ResourceColor, number>
+}): ResourceColor[] {
+  const want = new Map<ResourceColor, number>()
+  for (const color of args.needed) {
+    want.set(color, (want.get(color) ?? 0) + 1)
+  }
+  const missing: ResourceColor[] = []
+  for (const [color, count] of want) {
+    if (!args.resourceByColor.has(color)) continue
+    const filled = args.filledCounts.get(color) ?? 0
+    for (let i = filled; i < count; i++) missing.push(color)
+  }
+  return missing
+}
+
+/** Map gained a needed colour the placeholder never issued. */
 export function guestPlaceholderCoverageImproved(args: {
   needed: readonly ResourceColor[]
   resourceByColor: Map<ResourceColor, unknown>
-  stockpile: Array<{ cost?: string[] | null }>
+  filledCounts: ReadonlyMap<ResourceColor, number>
 }): boolean {
-  return missingStartingResourceColors(args).length > 0
+  return unfilledOpeningColors(args).length > 0
 }
 
 /**
@@ -315,18 +356,11 @@ export function missingStartingResourceColors(args: {
   resourceByColor: Map<ResourceColor, unknown>
   stockpile: Array<{ cost?: string[] | null }>
 }): ResourceColor[] {
-  const want = new Map<ResourceColor, number>()
-  for (const color of args.needed) {
-    want.set(color, (want.get(color) ?? 0) + 1)
-  }
-  const have = stockpileColorCounts(args.stockpile)
-  const missing: ResourceColor[] = []
-  for (const [color, count] of want) {
-    if (!args.resourceByColor.has(color)) continue
-    const spawned = have.get(color) ?? 0
-    for (let i = spawned; i < count; i++) missing.push(color)
-  }
-  return missing
+  return unfilledOpeningColors({
+    needed: args.needed,
+    resourceByColor: args.resourceByColor,
+    filledCounts: stockpileColorCounts(args.stockpile),
+  })
 }
 
 /**

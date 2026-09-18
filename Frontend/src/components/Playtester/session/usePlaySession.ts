@@ -41,8 +41,9 @@ import {
   mergeOpeningStockpilePips,
   openingTimCoverage,
   startingResourceColorsFromPilot,
-  missingStartingResourceColors,
+  observeOpeningFilledCounts,
   spawnGroupedStockpileResources,
+  unfilledOpeningColors,
 } from "@/components/Playtester/session/setupOpeningSession.logic"
 import {
   applyAction,
@@ -74,6 +75,13 @@ export type PlaySessionEffects = {
 }
 
 export type PlayNetRole = "local" | "host" | "guest"
+
+function emptyOpeningFilledBySeat() {
+  return seatRecord(
+    new Map<ResourceColor, number>(),
+    new Map<ResourceColor, number>()
+  )
+}
 
 export type UsePlaySessionArgs = {
   status: DeckLoadStatus
@@ -151,6 +159,9 @@ export function usePlaySession({
   const guestMulliganArmed = useRef(false)
   const guestPlaceholderDealt = useRef(false)
   const guestOpeningTkIds = useRef(new Set<string>())
+  const openingFilledBySeatRef = useRef(
+    seatRecord(new Map<ResourceColor, number>(), new Map())
+  )
   const netRoleRef = useLatestRef(netRole)
   const sendIntentRef = useLatestRef(sendIntent)
   const onHostCommitRef = useLatestRef(onHostCommit)
@@ -354,6 +365,7 @@ export function usePlaySession({
     guestPlaceholderDealt.current = false
     guestMulliganArmed.current = false
     guestOpeningTkIds.current.clear()
+    openingFilledBySeatRef.current = emptyOpeningFilledBySeat()
     seqRef.current = 0
     nextIdRef.current = 1
     setTopRevealedBySeat(seatRecord(false))
@@ -375,6 +387,7 @@ export function usePlaySession({
       setFogCounts(null)
       guestPlaceholderDealt.current = false
       guestOpeningTkIds.current.clear()
+      openingFilledBySeatRef.current = emptyOpeningFilledBySeat()
       effectsRef.current.clearDrawTimers?.()
       return
     }
@@ -384,9 +397,7 @@ export function usePlaySession({
       const coverageImproved = guestPlaceholderCoverageImproved({
         needed: guestNeeded,
         resourceByColor,
-        stockpile: sessionCardsRef.current.filter(
-          (card) => card.zone === PLAY_ZONE.stockpile && card.owner === mySeat
-        ),
+        filledCounts: openingFilledBySeatRef.current[mySeat],
       })
       if (
         !guestMayPlaceholderDeal({
@@ -422,6 +433,10 @@ export function usePlaySession({
           stockpile: guestStockpile,
         }),
       })
+      openingFilledBySeatRef.current = {
+        ...openingFilledBySeatRef.current,
+        [mySeat]: observeOpeningFilledCounts(new Map(), guestStockpile),
+      }
       seqRef.current = 0
       nextIdRef.current = 1
       commitCards(mine)
@@ -494,6 +509,15 @@ export function usePlaySession({
       guestTIMCount: guestTIM.length,
       totalOpeningCards: opening.length,
     })
+    openingFilledBySeatRef.current = emptyOpeningFilledBySeat()
+    openingFilledBySeatRef.current[mySeat] = observeOpeningFilledCounts(
+      new Map(),
+      hostStockpile
+    )
+    openingFilledBySeatRef.current[theirSeat] = observeOpeningFilledCounts(
+      new Map(),
+      guestStockpile
+    )
     rngRef.current = (Date.now() ^ deck.id ^ (opponentDeck?.id ?? 0)) >>> 0
     nextIdRef.current = 1
     seqRef.current = 0
@@ -552,18 +576,29 @@ export function usePlaySession({
       const needed = startingResourceColorsFromPilot(
         pilotCard(source.cards, source.categories)
       )
-      const missing = missingStartingResourceColors({
+      const stockpile = sessionCardsRef.current.filter(
+        (card) =>
+          card.zone === PLAY_ZONE.stockpile && card.owner === seat
+      )
+      const filled = observeOpeningFilledCounts(
+        openingFilledBySeatRef.current[seat],
+        stockpile
+      )
+      openingFilledBySeatRef.current[seat] = filled
+      const missing = unfilledOpeningColors({
         needed,
         resourceByColor,
-        stockpile: sessionCardsRef.current.filter(
-          (card) =>
-            card.zone === PLAY_ZONE.stockpile && card.owner === seat
-        ),
+        filledCounts: filled,
       })
       if (missing.length === 0) continue
       const stamped = stampStockpileWorldHomes(
         spawnGroupedStockpileResources(missing, resourceByColor, 0, seat),
         seat
+      )
+      if (stamped.length === 0) continue
+      openingFilledBySeatRef.current[seat] = observeOpeningFilledCounts(
+        filled,
+        stamped
       )
       for (const card of stamped) {
         dispatch({
