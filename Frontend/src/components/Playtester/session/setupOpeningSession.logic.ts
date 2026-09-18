@@ -1,16 +1,16 @@
 /**
  * Opening playtester setup from a loaded deck:
- * pilot → pilot zone, augments → battlefield (row above the default hand,
+ * pilot → pilot zone, objectives → battlefield (row above the default hand,
  * applied per viewer), main deck shuffle + draw, starting resource tokens
  * → stockpile (colour fans beside the hand, applied per viewer).
  */
 
 import {
-  augmentCards,
+  objectiveCards,
   categoryCountsInDeck,
   pilotCard,
 } from "@/components/decks/deck.logic"
-import { SHOW_DECK_AUGMENT_SLOT } from "@/components/decks/constants"
+import { SHOW_DECK_OBJECTIVE_SLOT } from "@/components/decks/constants"
 import {
   RESOURCE_COLORS,
   spawnResourceTokenInstance,
@@ -88,7 +88,7 @@ export function spawnGroupedStockpileResources(
   return out
 }
 
-/** Playable library rows = in-deck sections (not Pilot / Augments / list-only). */
+/** Playable library rows = in-deck sections (not Pilot / Objectives / list-only). */
 export function libraryDeckEntries(deck: DeckDetail): DeckCardEntry[] {
   const inDeckIds = new Set(
     deck.categories.filter(categoryCountsInDeck).map((c) => c.id)
@@ -100,19 +100,22 @@ export function libraryDeckEntries(deck: DeckDetail): DeckCardEntry[] {
  * Build the initial session board for one player.
  * `resourceByColor` should already be loaded; missing colours are skipped.
  *
- * Augments are omitted unless `includeAugments` is true (defaults to
- * {@link SHOW_DECK_AUGMENT_SLOT} so deck builder + playtester stay in sync).
+ * Objectives are omitted unless `includeObjectives` is true (defaults to
+ * {@link SHOW_DECK_OBJECTIVE_SLOT} so deck builder + playtester stay in sync).
  */
 export function setupOpeningSession(
   deck: DeckDetail,
   resourceByColor: Map<ResourceColor, CardLibraryItem>,
   owner: PlayerSlot = LOCAL_SEAT,
-  options?: { includeAugments?: boolean }
+  options?: { includeObjectives?: boolean; includeAugments?: boolean }
 ): PlayingCardInstance[] {
-  const includeAugments = options?.includeAugments ?? SHOW_DECK_AUGMENT_SLOT
+  const includeObjectives =
+    options?.includeObjectives ??
+    options?.includeAugments ??
+    SHOW_DECK_OBJECTIVE_SLOT
   const pilotEntry = pilotCard(deck.cards, deck.categories)
-  const augmentEntries = includeAugments
-    ? augmentCards(deck.cards, deck.categories, "name")
+  const objectiveEntries = includeObjectives
+    ? objectiveCards(deck.cards, deck.categories, "name")
     : []
   const mainEntries = libraryDeckEntries(deck)
 
@@ -135,20 +138,21 @@ export function setupOpeningSession(
     }
   }
 
-  for (let i = 0; i < augmentEntries.length; i++) {
-    const entry = augmentEntries[i]!
+  for (let i = 0; i < objectiveEntries.length; i++) {
+    const entry = objectiveEntries[i]!
     const [inst] = expandDeckToPlayInstances(
       [{ ...entry, quantity: 1 }],
       "battlefield",
       owner
     )
     if (!inst) continue
-    // No x/y: each client pins unmoved augments above the default hand.
+    // No x/y: each client pins unmoved objectives above the default hand.
     session.push({
       ...inst,
       zone: "battlefield",
+      isObjective: true,
       isAugment: true,
-      instanceId: `${owner}-augment-${inst.cardId}-${i}`,
+      instanceId: `${owner}-objective-${inst.cardId}-${i}`,
       expended: false,
       selected: false,
     })

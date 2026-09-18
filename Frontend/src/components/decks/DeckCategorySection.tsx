@@ -39,7 +39,7 @@ type DeckCategorySectionProps = {
     mode: "toggle" | "range"
   ) => void
   onClearSelect?: (card?: DeckCardEntry) => void
-  /** Hide rename/delete — used for reserved slots like Augments. */
+  /** Hide rename/delete — used for reserved slots like Objectives. */
   reserved?: boolean
 }
 

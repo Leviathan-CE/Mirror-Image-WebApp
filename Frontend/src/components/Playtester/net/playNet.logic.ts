@@ -64,6 +64,15 @@ export type PlayNetMessage =
   /** UI-only peer chrome (fog hands have no shared ids; library is a boolean lift). */
   | { type: "hover"; zone: "hand"; index: number | null }
   | { type: "hover"; zone: "library"; active: boolean }
+  /**
+   * UI-only: peer opened a private browse/peek overlay.
+   * No card ids or faces — just which pile and (for look-at-top) how many.
+   */
+  | { type: "browse"; pile: null }
+  | { type: "browse"; pile: "library" }
+  | { type: "browse"; pile: "library-top"; count: number }
+  | { type: "browse"; pile: "trashyard" }
+  | { type: "browse"; pile: "dismantled" }
   /** Immediate selection chrome — not stored on `card.selected`. */
   | { type: "selection"; ids: string[]; seat?: PlayerSlot }
   | { type: "fx"; fx: PlayFx }
@@ -115,7 +124,15 @@ const ACTOR_SEAT_TAGS = new Set<SessionAction["t"]>([
   "pg",
   "tk",
   "sel",
+  "rv",
 ]);
+
+/**
+ * Counters and expend/ready mark battlefield state that either player can
+ * cause (combat damage, a timer, tapping something) — unlike moves, deletes,
+ * or flips, they are not restricted to the target card's own seat.
+ */
+const ANY_OWNER_TARGET_TAGS = new Set<SessionAction["t"]>(["ct", "xp"]);
 
 /** Host-side: guest may only touch their seat and their instance ids. */
 export function intentAllowed(
@@ -130,6 +147,7 @@ export function intentAllowed(
   ) {
     return false;
   }
+  if (ANY_OWNER_TARGET_TAGS.has(action.t)) return true;
   if (!ownerOf || !("i" in action) || !Array.isArray(action.i)) return true;
   const ids = action.i.map((item) =>
     typeof item === "string" ? item : item.id,

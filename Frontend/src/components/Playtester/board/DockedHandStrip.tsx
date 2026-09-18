@@ -18,6 +18,8 @@ export type DockedHandStripProps = {
   className?: string
   /** Strip height in px (PlayerHand scales cards to fill). */
   heightPx: number
+  /** Drop border/fill so only the card slivers show (Arena-style peek). */
+  bare?: boolean
 }
 
 export function DockedHandStrip({
@@ -26,12 +28,14 @@ export function DockedHandStrip({
   children,
   className,
   heightPx,
+  bare = false,
 }: DockedHandStripProps) {
   return (
     <div
       ref={panelRef}
       className={cn(
-        "relative z-40 flex shrink-0 flex-col overflow-x-hidden overflow-y-visible border border-cyan-500/40 bg-black/80",
+        "relative z-40 flex shrink-0 flex-col overflow-x-hidden overflow-y-visible",
+        bare ? "border-0 bg-transparent" : "border border-cyan-500/40 bg-black/80",
         className
       )}
       style={{ height: heightPx }}

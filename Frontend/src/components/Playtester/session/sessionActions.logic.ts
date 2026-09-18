@@ -62,6 +62,8 @@ export type PlaySessionState = {
   nextId: number
   /** Host sequence — every applied action bumps this. */
   seq: number
+  /** True while a seat's deck top is publicly revealed (both sides see it). */
+  topRevealedBySeat: SeatRecord<boolean>
 }
 
 export function seatRecord<T>(p1: T, p2: T = p1): SeatRecord<T> {
@@ -79,6 +81,7 @@ export function createPlaySessionState(
     rng: 1,
     nextId: 1,
     seq: 0,
+    topRevealedBySeat: seatRecord(false),
     ...partial,
   }
 }
@@ -122,6 +125,8 @@ export type SessionAction =
   | { t: "ps"; i: Array<{ id: string; x: number; y: number }> }
   | { t: "pg"; seat: PlayerSlot; d: number }
   | { t: "ts"; seat: PlayerSlot }
+  /** Toggle public reveal of this seat's deck top (both sides then see it). */
+  | { t: "rv"; seat: PlayerSlot }
   | {
       t: "tk"
       seat: PlayerSlot
@@ -324,6 +329,14 @@ export function applyAction(
         turnSeat: action.seat,
         seq: state.seq + 1,
       }
+    case "rv": {
+      const next = !state.topRevealedBySeat[action.seat]
+      return {
+        ...state,
+        topRevealedBySeat: { ...state.topRevealedBySeat, [action.seat]: next },
+        seq: state.seq + 1,
+      }
+    }
     case "tk": {
       const token: PlayingCardInstance = {
         instanceId: `tok-${state.nextId}`,

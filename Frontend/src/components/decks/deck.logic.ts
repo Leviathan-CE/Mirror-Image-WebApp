@@ -10,6 +10,7 @@ import {
 } from "@/components/decks/deckCardDrag"
 import {
   AUGMENT_SECTION_NAME,
+  OBJECTIVE_SECTION_NAME,
   PILOT_SECTION_NAME,
   type DeckCardEntry,
   type DeckCategoryOut,
@@ -21,20 +22,29 @@ export function isPilotCategory(category: DeckCategoryOut): boolean {
   return category.name.trim().toLowerCase() === PILOT_SECTION_NAME.toLowerCase()
 }
 
-export function isAugmentCategory(category: DeckCategoryOut): boolean {
+function objectiveSectionName(name: string): boolean {
+  const n = name.trim().toLowerCase()
   return (
-    category.name.trim().toLowerCase() === AUGMENT_SECTION_NAME.toLowerCase()
+    n === OBJECTIVE_SECTION_NAME.toLowerCase() ||
+    n === AUGMENT_SECTION_NAME.toLowerCase()
   )
 }
+
+export function isObjectiveCategory(category: DeckCategoryOut): boolean {
+  return objectiveSectionName(category.name)
+}
+
+/** @deprecated Use {@link isObjectiveCategory}. */
+export const isAugmentCategory = isObjectiveCategory
 
 export function isReservedCategory(category: DeckCategoryOut): boolean {
   return isPilotCategory(category)
 }
 
-/** Playable RIG section — reserved slots, augments, and list-only piles are excluded. */
+/** Playable RIG section: reserved slots, objectives, and list-only piles are excluded. */
 export function categoryCountsInDeck(category: DeckCategoryOut): boolean {
   if (isReservedCategory(category)) return false
-  if (isAugmentCategory(category)) return false
+  if (isObjectiveCategory(category)) return false
   return category.in_deck !== false
 }
 
@@ -66,7 +76,7 @@ export function cardsByCategory(
 ): { category: DeckCategoryOut; cards: DeckCardEntry[] }[] {
   return categories
     .filter((category) => !isReservedCategory(category))
-    .filter((category) => !isAugmentCategory(category))
+    .filter((category) => !isObjectiveCategory(category))
     .map((category) => ({
       category,
       cards: sortDeckCards(
@@ -78,7 +88,7 @@ export function cardsByCategory(
 
 export function mainCategoryId(categories: DeckCategoryOut[]): number | null {
   const playable = categories.filter(
-    (c) => !isReservedCategory(c) && !isAugmentCategory(c)
+    (c) => !isReservedCategory(c) && !isObjectiveCategory(c)
   )
   const inDeck = playable.filter(categoryCountsInDeck)
   const pool = inDeck.length > 0 ? inDeck : playable
@@ -97,11 +107,14 @@ export function pilotCategory(
   return categories.find(isPilotCategory) ?? null
 }
 
-export function augmentCategory(
+export function objectiveCategory(
   categories: DeckCategoryOut[]
 ): DeckCategoryOut | null {
-  return categories.find(isAugmentCategory) ?? null
+  return categories.find(isObjectiveCategory) ?? null
 }
+
+/** @deprecated Use {@link objectiveCategory}. */
+export const augmentCategory = objectiveCategory
 
 export function pilotCard(
   cards: DeckCardEntry[],
@@ -112,16 +125,30 @@ export function pilotCard(
   return cards.find((card) => card.category_id === cat.id) ?? null
 }
 
-export function augmentCards(
+export function objectiveCards(
   cards: DeckCardEntry[],
   categories: DeckCategoryOut[],
   sortMode: DeckCardSortMode
 ): DeckCardEntry[] {
-  const cat = augmentCategory(categories)
+  const cat = objectiveCategory(categories)
   if (!cat) return []
   return sortDeckCards(
     cards.filter((card) => card.category_id === cat.id),
     sortMode
+  )
+}
+
+/** @deprecated Use {@link objectiveCards}. */
+export const augmentCards = objectiveCards
+
+/** Total objective card copies in the reserved Objectives section. */
+export function totalObjectiveCopies(
+  cards: DeckCardEntry[],
+  categories: DeckCategoryOut[]
+): number {
+  return objectiveCards(cards, categories, "name").reduce(
+    (sum, entry) => sum + entry.quantity,
+    0
   )
 }
 
@@ -220,6 +247,11 @@ export function cardHasSuperType(
   if (!Array.isArray(types)) return false
   const needle = superType.trim().toLowerCase()
   return types.some((value) => String(value).trim().toLowerCase() === needle)
+}
+
+/** Catalogue cards with the Objective super type (reserved Objectives section). */
+export function isObjectiveCard(card: SuperTypesSource): boolean {
+  return cardHasSuperType(card, "Objective")
 }
 
 /**

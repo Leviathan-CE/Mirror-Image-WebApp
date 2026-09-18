@@ -419,20 +419,28 @@ export function FreeFloatSurface({
     card: PlayingCardInstance
   ) {
     if (!interactive) return
-    if (card.owner !== localSeat) return
-    // Counter badges own their clicks — do not select / drag / expend.
+    // Counter badges own their clicks — do not select / drag / expend / enlarge.
     if (
       event.target instanceof Element &&
       event.target.closest("[data-counter-badge]")
     ) {
       return
     }
-    event.stopPropagation()
+    // Middle-click enlarges any card, ours or the opponent's — same info as
+    // right-click "View details", just without opening the action menu.
     if (event.button === 1) {
       event.preventDefault()
+      event.stopPropagation()
       setEnlarged(card)
       return
     }
+    // Stop propagation before the ownership gate: otherwise a click on an
+    // opponent's card bubbles to the surface's empty-space handler, which
+    // preventDefault()s the pointerdown to start a marquee drag. That
+    // suppresses the browser's synthesized click/dblclick events entirely,
+    // silently swallowing double-click-to-expend on their card.
+    event.stopPropagation()
+    if (card.owner !== localSeat) return
     if (event.button !== 0) return
     if (marqueeRef.current) {
       detachWindowMarquee()
@@ -686,11 +694,16 @@ export function FreeFloatSurface({
                 )
               }}
               onDoubleClick={(event) => {
-                if (card.owner !== localSeat) return
                 if (
                   event.target instanceof Element &&
                   event.target.closest("[data-counter-badge]")
                 ) {
+                  return
+                }
+                // Expend/ready an opponent's card only ever targets that one
+                // card — bulk-selection is a same-owner, local-only concept.
+                if (card.owner !== localSeat) {
+                  onToggleExpended([card.instanceId])
                   return
                 }
                 if (card.selected) {

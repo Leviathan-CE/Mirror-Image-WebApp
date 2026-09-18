@@ -190,6 +190,26 @@ describe("viewFor fog", () => {
     ).toBe(true)
   })
 
+  it("reveals only the top library card once its seat toggles it public", () => {
+    const state = createPlaySessionState({
+      cards: [
+        card({ instanceId: "p1-lib-top", zone: PLAY_ZONE.library, name: "Top" }),
+        card({ instanceId: "p1-lib-2", zone: PLAY_ZONE.library, name: "Under" }),
+      ],
+    })
+
+    const hidden = viewFor("p2", state)
+    expect(hidden.cards.some((c) => c.instanceId === "p1-lib-top")).toBe(false)
+
+    const revealed = applyAction(state, { t: "rv", seat: "p1" })
+    const view = viewFor("p2", revealed)
+    const top = view.cards.find((c) => c.instanceId === "p1-lib-top")
+    const under = view.cards.find((c) => c.instanceId === "p1-lib-2")
+
+    expect(top && !isFogStub(top) && top.name).toBe("Top")
+    expect(under).toBeUndefined()
+  })
+
   it("stubs opponent face-down public cards", () => {
     const state = createPlaySessionState({
       cards: [

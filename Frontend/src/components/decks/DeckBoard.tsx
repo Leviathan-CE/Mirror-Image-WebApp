@@ -13,14 +13,14 @@ import {
   type DeckCardDragPayload,
 } from "@/components/decks/deckCardDrag"
 import {
-  augmentCards,
-  augmentCategory,
+  objectiveCards,
+  objectiveCategory,
   cardsByCategory,
   pilotCard,
 } from "@/components/decks/deck.logic"
-import { SHOW_DECK_AUGMENT_SLOT } from "@/components/decks/constants"
+import { SHOW_DECK_OBJECTIVE_SLOT } from "@/components/decks/constants"
 import {
-  AUGMENT_SECTION_NAME,
+  OBJECTIVE_SECTION_NAME,
   type DeckCardEntry,
   type DeckDetail,
 } from "@/lib/api/decks"
@@ -50,7 +50,7 @@ export type DeckBoardProps = {
     fromCategoryId: number | null
   ) => void | Promise<void>
   onClearPilot?: () => void
-  onAddAugment?: (
+  onAddObjective?: (
     cardId: number,
     fromCategoryId: number | null
   ) => void | Promise<void>
@@ -74,11 +74,11 @@ export function DeckBoard({
   onQuantityDelta,
   onAssignPilot,
   onClearPilot,
-  onAddAugment,
+  onAddObjective,
   onCreateSectionFromDrop,
 }: DeckBoardProps) {
-  const augment = augmentCategory(deck.categories)
-  const showAugments = SHOW_DECK_AUGMENT_SLOT && onAddAugment != null
+  const objectives = objectiveCategory(deck.categories)
+  const showObjectives = SHOW_DECK_OBJECTIVE_SLOT && onAddObjective != null
 
   return (
     <div
@@ -104,10 +104,10 @@ export function DeckBoard({
           }
           onClear={canEdit ? onClearPilot : undefined}
         />
-        {showAugments && augment ? (
+        {showObjectives && objectives ? (
           <DeckCategorySection
-            category={augment}
-            cards={augmentCards(deck.cards, deck.categories, sortMode)}
+            category={{ ...objectives, name: OBJECTIVE_SECTION_NAME }}
+            cards={objectiveCards(deck.cards, deck.categories, sortMode)}
             canEdit={canEdit}
             disabled={disabled}
             viewMode={viewMode}
@@ -118,18 +118,18 @@ export function DeckBoard({
             onRename={async () => undefined}
             onDelete={async () => undefined}
             onCardDrop={(payload) =>
-              void onAddAugment(
+              void onAddObjective(
                 payload.cardId,
                 isLibraryDragPayload(payload) ? null : payload.fromCategoryId
               )
             }
             onQuantityDelta={onQuantityDelta}
           />
-        ) : showAugments && canEdit ? (
+        ) : showObjectives && canEdit ? (
           <DeckCategorySection
             category={{
               id: -1,
-              name: AUGMENT_SECTION_NAME,
+              name: OBJECTIVE_SECTION_NAME,
               sort_order: -2,
               in_deck: false,
             }}
@@ -144,7 +144,7 @@ export function DeckBoard({
             onRename={async () => undefined}
             onDelete={async () => undefined}
             onCardDrop={(payload) =>
-              void onAddAugment(
+              void onAddObjective(
                 payload.cardId,
                 isLibraryDragPayload(payload) ? null : payload.fromCategoryId
               )

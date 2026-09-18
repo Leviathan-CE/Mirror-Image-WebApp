@@ -13,7 +13,6 @@ import { genIconForCount } from "@/components/Playtester/constants"
 import {
   generatedResourceHome,
   placeInPlayForView,
-  displayToWorld,
 } from "@/components/Playtester/board/augmentRow.logic"
 import {
   autoResolveColors,
@@ -34,6 +33,7 @@ import {
   PLAY_ZONE,
   HAND_CARD_SIZE,
   HAND_DOCK_HEIGHT_PX,
+  HAND_DOCK_EXPANDED_PX,
   PLAY_PILE_SIZE,
   SELECTABLE_ACTION_ZONES,
   PLAYER_SLOT,
@@ -50,6 +50,12 @@ import {
 } from "@/components/Playtester/board/playFieldScale.logic"
 import { viewFor } from "@/components/Playtester/session/fogView.logic"
 import { intentAllowed, type PlayFx } from "@/components/Playtester/net/playNet.logic"
+import {
+  browseMessageFromLocalUi,
+  peerBrowseOppPile,
+  peerBrowseStatusLabel,
+  type BrowseMessage,
+} from "@/components/Playtester/net/browseIndicator.logic"
 import { usePlayNet } from "@/components/Playtester/net/usePlayNet"
 import type { SessionAction } from "@/components/Playtester/session/sessionActions.logic"
 import { useCardDragDrop } from "@/components/Playtester/drag/useCardDragDrop"
@@ -79,7 +85,10 @@ import {
 } from "@/components/Playtester/board/FreeFloatSurface"
 import { LifeCounter } from "@/components/Playtester/board/LifeCounter"
 import { DockedHandStrip } from "@/components/Playtester/board/DockedHandStrip"
-import { PlayerHand } from "@/components/Playtester/board/PlayerHand"
+import {
+  PlayerHand,
+  type HandPeekConfig,
+} from "@/components/Playtester/board/PlayerHand"
 import { TrashyardPile } from "@/components/Playtester/board/TrashyardPile"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { selectableActionTargets } from "@/components/Playtester/session/playCard.logic"
@@ -108,6 +117,19 @@ type DeckPeekState = {
   cards: PlayingCardInstance[]
   allowReorder: boolean
 }
+
+/**
+ * Stable peek configs (same reference every render) so `PlayerHand` doesn't
+ * re-measure on every parent re-render. Own hand sits at the bottom of the
+ * board and rises up into the battlefield above it; opponent hand sits at
+ * the top and rises down into the battlefield below it.
+ */
+const HAND_PEEK_BOTTOM: HandPeekConfig = {
+  collapsedPx: HAND_DOCK_HEIGHT_PX,
+  expandedPx: HAND_DOCK_EXPANDED_PX,
+  anchor: "bottom",
+}
+const HAND_PEEK_TOP: HandPeekConfig = { ...HAND_PEEK_BOTTOM, anchor: "top" }
 
 export function PlayTesterPage() {
   const navigate = useNavigate()
@@ -165,6 +187,8 @@ export function PlayTesterPage() {
   )
   /** Peer is hovering their library top card. */
   const [peerLibraryHover, setPeerLibraryHover] = useState(false)
+  /** Peer opened a private browse / look-at-top overlay. */
+  const [peerBrowse, setPeerBrowse] = useState<BrowseMessage | null>(null)
   const [accumulateChooser, setAccumulateChooser] =
     useState<AccumulateChooserState | null>(null)
   /** Deck row counts persist for the whole playtester session. */
@@ -262,11 +286,12 @@ export function PlayTesterPage() {
     pilotGenBonus,
     mulliganOpen,
     topRevealed,
-    setTopRevealed,
+    oppTopRevealed,
     handCards,
     pilotCards,
     libraryCount,
     topLibraryCard,
+    oppTopLibraryCard,
     trashCards,
     dismantledCards,
     moveCards: onMoveCards,
@@ -313,7 +338,7 @@ export function PlayTesterPage() {
       playNet.send({ type: "intent", action })
     },
     onHostCommit: (action, state) => {
-      if (!playNet.isHost) return
+      if (netRole !== "host") return
       playNet.send({ type: "fog", view: viewFor(otherSeat(mySeat), state) })
       // Selection is local-only — don't relay `sel` as a peer event.
       if (action && action.t !== "sel") {
@@ -386,8 +411,47 @@ export function PlayTesterPage() {
     if (!playNet.peerPresent) {
       setPeerHandHoverIndex(null)
       setPeerLibraryHover(false)
+      setPeerBrowse(null)
     }
   }, [playNet.peerPresent])
+
+  // Guest keeps asking until the host's real deal actually lands. The host
+  // may answer an early snapshot request with an empty view (still waiting
+  // on the guest's own deck fetch) — that empty fog is dropped on purpose,
+  // so nothing else would ever prompt a second request otherwise.
+  const haveOpponentCards =
+    oppHandCards.length > 0 || oppLibraryCount > 0 || oppPilotCards.length > 0
+  useEffect(() => {
+    if (netRole !== "guest" || !playNet.peerPresent || haveOpponentCards) {
+      return
+    }
+    const id = window.setInterval(() => {
+      playNet.send({ type: "snapshot" })
+    }, 750)
+    return () => window.clearInterval(id)
+  }, [netRole, playNet.peerPresent, haveOpponentCards, playNet.send])
+
+  useEffect(() => {
+    if (!netActive || !playNet.peerPresent) return
+    const ownPile =
+      pileBrowser === "trashyard" || pileBrowser === "dismantled"
+        ? pileBrowser
+        : null
+    playNet.send(
+      browseMessageFromLocalUi({
+        deckPeekCount: deckPeek ? deckPeek.cards.length : null,
+        deckSearchOpen,
+        pileBrowser: ownPile,
+      })
+    )
+  }, [
+    netActive,
+    playNet.peerPresent,
+    playNet.send,
+    deckPeek,
+    deckSearchOpen,
+    pileBrowser,
+  ])
 
   const zoneRefs = {
     deck: deckRef,
@@ -450,7 +514,7 @@ export function PlayTesterPage() {
   useEffect(() => {
     playNet.setHandlers({
       onIntent: (msg) => {
-        if (!playNet.isHost) return
+        if (netRole !== "host") return
         // Selection is local-only for now (no peer orange chrome).
         if (msg.action.t === "sel") return
         const actor = otherSeat(mySeat)
@@ -464,11 +528,11 @@ export function PlayTesterPage() {
         dispatch(msg.action)
       },
       onFog: (view) => {
-        if (playNet.isHost) return
+        if (netRole !== "guest") return
         applyFog(view)
       },
       onSnapshot: () => {
-        if (!playNet.isHost) return
+        if (netRole !== "host") return
         playNet.send({
           type: "fog",
           view: viewFor(otherSeat(mySeat), snapshot()),
@@ -483,14 +547,23 @@ export function PlayTesterPage() {
           setPeerLibraryHover(msg.active)
         }
       },
+      onBrowse: (msg) => {
+        setPeerBrowse(msg.pile == null ? null : msg)
+      },
       onFx: (fx) => {
         playPeerFx(fx)
       },
     })
+    // Handlers first, then ask host for fog — avoids welcome-snapshot racing a
+    // stale "I'm still host" onFog no-op after leave/rejoin.
+    if (netRole === "guest" && playNet.peerPresent) {
+      playNet.send({ type: "snapshot" })
+    }
   }, [
     playNet.setHandlers,
-    playNet.isHost,
     playNet.send,
+    playNet.peerPresent,
+    netRole,
     mySeat,
     dispatch,
     applyFog,
@@ -589,6 +662,8 @@ export function PlayTesterPage() {
   const pileW = PLAY_PILE_SIZE.lg.w
   const handDockPx = HAND_DOCK_HEIGHT_PX
   const pilotColW = pileW
+  const peerBrowseLabel = peerBrowseStatusLabel(peerBrowse)
+  const peerBrowsePile = peerBrowseOppPile(peerBrowse)
   const boardLayoutW = boardScreen.width * boardScale
   const boardLayoutH = boardScreen.height * boardScale
 
@@ -924,9 +999,10 @@ export function PlayTesterPage() {
       setPlayNotice("Deck is empty.")
       return
     }
-    const next = !topRevealed
-    setTopRevealed(next)
-    setPlayNotice(next ? "Top card revealed." : "Top card hidden.")
+    // Public reveal — goes through the shared action pipeline (like any other
+    // table state) so the host relays it and the opponent sees the same card.
+    dispatch({ t: "rv", seat: localSeat })
+    setPlayNotice(topRevealed ? "Top card hidden." : "Top card revealed.")
   }
 
   function onDeckPeekDone(result: DeckPeekCloseResult) {
@@ -1155,28 +1231,6 @@ export function PlayTesterPage() {
       openDeckSearch,
       openFaceUpPileSearch,
       moveAllFromZone: moveAll,
-      moveInPlayToZone: (instanceIds, zone) => {
-        instanceIds.forEach((id) => {
-          const card = sessionCards.find((c) => c.instanceId === id)
-          if (!card || card.owner !== localSeat) return
-          // Session x/y are world. Display homes on `visInPlay` are view — convert.
-          const shown = visInPlay.find((c) => c.instanceId === id)
-          const viewX = card.x ?? shown?.x ?? 0
-          const viewY = card.y ?? shown?.y ?? 0
-          const world =
-            card.x != null && card.y != null
-              ? { x: card.x, y: card.y }
-              : displayToWorld(viewX, viewY, localSeat, floatLogical)
-          dispatch({
-            t: "mv",
-            seat: localSeat,
-            i: [id],
-            z: zone,
-            x: world.x,
-            y: world.y,
-          })
-        })
-      },
     },
   })
 
@@ -1193,6 +1247,9 @@ export function PlayTesterPage() {
               cards={visOppTrash}
               label="Opp trash"
               size="lg"
+              statusLabel={
+                peerBrowsePile === "trashyard" ? peerBrowseLabel : null
+              }
               onReleaseCards={() => undefined}
               onBrowse={() => setPileBrowser("oppTrash")}
             />
@@ -1203,12 +1260,20 @@ export function PlayTesterPage() {
               busy
               size="lg"
               lift={peerLibraryHover}
+              topRevealed={oppTopRevealed}
+              topCard={oppTopLibraryCard}
+              statusLabel={
+                peerBrowsePile === "library" ? peerBrowseLabel : null
+              }
             />
             <TrashyardPile
               ref={oppDismantledRef}
               cards={visOppDismantled}
               label="Opp dismantled"
               size="lg"
+              statusLabel={
+                peerBrowsePile === "dismantled" ? peerBrowseLabel : null
+              }
               onReleaseCards={() => undefined}
               onBrowse={() => setPileBrowser("oppDismantled")}
             />
@@ -1250,11 +1315,13 @@ export function PlayTesterPage() {
                 className="min-w-0 flex-1"
                 panelRef={oppHandRef}
                 heightPx={handDockPx}
+                bare
                 label={`Opp hand · ${visOppHand.length}`}
               >
                 <PlayerHand
                   className="h-full min-h-0"
                   cards={visOppHand}
+                  peek={HAND_PEEK_TOP}
                   hideFaces
                   interactive={false}
                   embedded
@@ -1305,11 +1372,13 @@ export function PlayTesterPage() {
               className="min-w-0 flex-1"
               panelRef={handRef}
               heightPx={handDockPx}
+              bare
               label={`Hand · ${visHand.length}`}
             >
               <PlayerHand
                 className="h-full min-h-0"
                 cards={visHand}
+                peek={HAND_PEEK_BOTTOM}
                 embedded
                 localSeat={localSeat}
                 onReleaseCards={onHandRelease}
@@ -1366,6 +1435,7 @@ export function PlayTesterPage() {
             cards={visDismantled}
             label="Dismantled"
             size="lg"
+            className="mb-2"
             onReleaseCards={onFaceUpPileRelease}
             onBrowse={() => setPileBrowser("dismantled")}
             onCardContextMenu={onFloatCardContextMenu}

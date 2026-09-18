@@ -117,7 +117,8 @@ export function usePlaySession({
   const [pilotGenBySeat, setPilotGenBySeat] = useState(seatRecord(0))
   const [pilotHandBySeat, setPilotHandBySeat] = useState(seatRecord(0))
   const [mulliganOpen, setMulliganOpen] = useState(false)
-  const [topRevealed, setTopRevealed] = useState(false)
+  /** Per-seat public deck-top reveal — shared session state, not local UI. */
+  const [topRevealedBySeat, setTopRevealedBySeat] = useState(seatRecord(false))
   const rngRef = useRef(1)
   const nextIdRef = useRef(1)
   const seqRef = useRef(0)
@@ -138,6 +139,7 @@ export function usePlaySession({
   const turnRef = useLatestRef(turn)
   const turnSeatRef = useLatestRef(turnSeat)
   const pilotGenRef = useLatestRef(pilotGenBySeat)
+  const topRevealedRef = useLatestRef(topRevealedBySeat)
 
   const setSessionCards: Dispatch<SetStateAction<PlayingCardInstance[]>> = (
     action
@@ -165,6 +167,7 @@ export function usePlaySession({
         rng: rngRef.current,
         nextId: nextIdRef.current,
         seq: seqRef.current,
+        topRevealedBySeat: topRevealedRef.current,
       }),
     []
   )
@@ -185,6 +188,12 @@ export function usePlaySession({
           const next = applyAction(snapshot(), action)
           commitCards(next.cards)
         }
+        // Reveal toggles a scalar, not `cards` — same instant-feedback intent
+        // as above, just committed to the scalar it actually changes.
+        if (action.t === "rv") {
+          const next = applyAction(snapshot(), action)
+          setTopRevealedBySeat(next.topRevealedBySeat)
+        }
         return snapshot()
       }
       const next = applyAction(snapshot(), action)
@@ -196,6 +205,7 @@ export function usePlaySession({
       setTurn(next.turn)
       setTurnSeat(next.turnSeat)
       setPilotGenBySeat(next.pilotGenBonus)
+      setTopRevealedBySeat(next.topRevealedBySeat)
       onHostCommitRef.current?.(action, next)
       return next
     },
@@ -231,6 +241,7 @@ export function usePlaySession({
     setTurn(view.turn)
     setTurnSeat(view.turnSeat)
     setPilotGenBySeat(view.pilotGenBonus ?? { p1: 0, p2: 0 })
+    setTopRevealedBySeat(view.topRevealedBySeat ?? seatRecord(false))
     const counts = { hand: view.handCount, library: view.libraryCount }
     fogCountsRef.current = counts
     setFogCounts(counts)
@@ -255,6 +266,22 @@ export function usePlaySession({
     netRole === "guest" ||
     (netRole === "host" && peerPresent)
 
+  // Leave / role change must drop stale fog bookkeeping so a rejoin can
+  // placeholder-deal and accept seq-0 opening fog from the new host.
+  // seqRef must reset here too — not just inside the deal effect below —
+  // or a leftover seq from the previous room can outrun deck-fetch timing
+  // and silently reject the new host's very first fog (view.seq < seqRef).
+  useEffect(() => {
+    if (netRole === "guest") return
+    fogCountsRef.current = null
+    setFogCounts(null)
+    guestPlaceholderDealt.current = false
+    guestMulliganArmed.current = false
+    seqRef.current = 0
+    nextIdRef.current = 1
+    setTopRevealedBySeat(seatRecord(false))
+  }, [netRole])
+
   useEffect(() => {
     if (status !== "ready" || !deck) {
       commitCards([])
@@ -264,7 +291,10 @@ export function usePlaySession({
       setPilotGenBySeat(seatRecord(0))
       setPilotHandBySeat(seatRecord(0))
       setMulliganOpen(false)
-      setTopRevealed(false)
+      setTopRevealedBySeat(seatRecord(false))
+      fogCountsRef.current = null
+      setFogCounts(null)
+      guestPlaceholderDealt.current = false
       effectsRef.current.clearDrawTimers?.()
       return
     }
@@ -273,6 +303,8 @@ export function usePlaySession({
         guestPlaceholderDealt.current = true
         const mine = setupOpeningSession(deck, resourceByColor, mySeat)
         const pilot = pilotCard(deck.cards, deck.categories)
+        seqRef.current = 0
+        nextIdRef.current = 1
         commitCards(mine)
         setLifeBySeat((prev) => ({
           ...prev,
@@ -323,7 +355,7 @@ export function usePlaySession({
     if (OPENING_MULLIGAN_ENABLED) {
       setMulliganOpen(cardsInZone(opening, "hand", mySeat).length > 0)
     }
-    setTopRevealed(false)
+    setTopRevealedBySeat(seatRecord(false))
     if (netRole === "host") {
       onHostCommitRef.current?.(
         null,
@@ -401,12 +433,26 @@ export function usePlaySession({
     () => cardsInZone(sessionCardsState, PLAY_ZONE.dismantled, oppSeat),
     [sessionCardsState, oppSeat]
   )
+  const topRevealed = topRevealedBySeat[localSeat]
+  const oppTopRevealed = topRevealedBySeat[oppSeat]
   const topLibraryCard = useMemo(
     () =>
       topRevealed
         ? (peekTopLibrary(sessionCardsState, 1, localSeat)[0] ?? null)
         : null,
     [sessionCardsState, topRevealed, localSeat]
+  )
+  /**
+   * Opponent's revealed top card. Real card data only exists on this client
+   * once fog/host state actually carries it (see `viewFor`'s reveal
+   * exception) — otherwise the opponent's library stays count-only.
+   */
+  const oppTopLibraryCard = useMemo(
+    () =>
+      oppTopRevealed
+        ? (peekTopLibrary(sessionCardsState, 1, oppSeat)[0] ?? null)
+        : null,
+    [sessionCardsState, oppTopRevealed, oppSeat]
   )
 
   const life = lifeBySeat[localSeat]
@@ -439,14 +485,12 @@ export function usePlaySession({
     dispatch({ t: "bk", i: instanceId })
   }
 
-  function toggleExpendedIds(instanceIds: string[]) {
-    const owned = instanceIds.filter(
-      (id) =>
-        sessionCardsRef.current.find((c) => c.instanceId === id)?.owner ===
-        localSeat
-    )
-    if (owned.length === 0) return
-    dispatch({ t: "xp", i: owned })
+   function toggleExpendedIds(instanceIds: string[]) {
+    // Ownership is the caller's job: FreeFloatSurface only ever passes your
+    // own selection as a group, or a single explicitly double-clicked card
+    // (which may be the opponent's — expend/ready is allowed either way).
+    if (instanceIds.length === 0) return
+    dispatch({ t: "xp", i: instanceIds })
   }
 
   function changeFloatSelection(instanceIds: string[]) {
@@ -634,7 +678,7 @@ export function usePlaySession({
     mulliganOpen,
     setMulliganOpen,
     topRevealed,
-    setTopRevealed,
+    oppTopRevealed,
     handCards,
     oppHandCards,
     battlefieldCards,
@@ -645,6 +689,7 @@ export function usePlaySession({
     libraryCount,
     oppLibraryCount,
     topLibraryCard,
+    oppTopLibraryCard,
     trashCards,
     oppTrashCards,
     dismantledCards,

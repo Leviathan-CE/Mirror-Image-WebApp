@@ -127,9 +127,10 @@ export const AUGMENT_LAYOUT: HomeLayout = {
  * Tune `start` to slide the whole fan; tune `offset` for spacing inside a pile.
  */
 export const RESOURCE_FAN_LAYOUT: HomeLayout = {
-  start: { x: 100, y: 10 },
+  // y negative = up off the hand; pad widens colour-pile step (FACE.w + pad)
+  start: { x: 100, y: -0 },
   offset: { x: -22, y: -22 },
-  pad: 28,
+  pad: 100,
 }
 
 /** Local: bot-center. Opp: top-center. */
@@ -334,7 +335,7 @@ export function placeAugmentsForView(
     const unbound = cards
       .filter(
         (card) =>
-          card.isAugment &&
+          (card.isObjective || card.isAugment) &&
           card.x == null &&
           card.y == null &&
           (card.owner === localSeat) === nearLocal

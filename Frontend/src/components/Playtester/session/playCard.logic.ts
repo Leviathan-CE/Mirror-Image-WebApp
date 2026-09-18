@@ -40,10 +40,11 @@ export type PlayingCardInstance = {
    */
   isToken?: boolean
   /**
-   * Equipped augment. Lives in the battlefield zone per the rules, but renders
-   * in its owner's augment row rather than free-floating, so it always sits on
-   * the side of the shared field next to that player's own stockpile.
+   * Objective card from the deck's reserved Objectives section. Lives on the
+   * battlefield, pinned to the owner's objective row until moved.
    */
+  isObjective?: boolean
+  /** @deprecated Use {@link isObjective}. Kept for fog / layout compat. */
   isAugment?: boolean
   /** Green time counters (stockpile / lock timing). */
   timeCounters?: number

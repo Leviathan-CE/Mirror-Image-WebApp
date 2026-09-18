@@ -86,73 +86,80 @@ function deckWithAugments(): DeckDetail {
   }
 }
 
-describe("setupOpeningSession augments", () => {
+describe("setupOpeningSession objectives", () => {
   const noResources = new Map<ResourceColor, CardLibraryItem>()
-  const withAugments = { includeAugments: true as const }
+  const withObjectives = { includeObjectives: true as const }
 
-  it("omits augments by default while SHOW_DECK_AUGMENT_SLOT is off", () => {
+  it("spawns objectives by default while SHOW_DECK_OBJECTIVE_SLOT is on", () => {
     const session = setupOpeningSession(deckWithAugments(), noResources)
-    expect(session.filter((c) => c.isAugment)).toHaveLength(0)
+    expect(session.filter((c) => c.isObjective || c.isAugment)).toHaveLength(2)
   })
 
-  it("flags augments so the shared field can pin them to each owner's stockpile edge", () => {
+  it("omits objectives when includeObjectives is false", () => {
+    const session = setupOpeningSession(deckWithAugments(), noResources, "p1", {
+      includeObjectives: false,
+    })
+    expect(session.filter((c) => c.isObjective || c.isAugment)).toHaveLength(0)
+  })
+
+  it("flags objectives so the shared field can pin them to each owner's stockpile edge", () => {
     const session = setupOpeningSession(
       deckWithAugments(),
       noResources,
       "p1",
-      withAugments
+      withObjectives
     )
-    const augments = session.filter((c) => c.isAugment)
+    const objectives = session.filter((c) => c.isObjective || c.isAugment)
 
-    expect(augments.map((c) => c.name)).toEqual(["Ocular Rig", "Spinal Tap"])
-    expect(augments.every((c) => c.zone === "battlefield")).toBe(true)
+    expect(objectives.map((c) => c.name)).toEqual(["Ocular Rig", "Spinal Tap"])
+    expect(objectives.every((c) => c.zone === "battlefield")).toBe(true)
     // Viewer-relative y is applied at render. Storing a y here would put both
-    // seats' augments on the same edge of the one shared field.
-    expect(augments.every((c) => c.x === undefined && c.y === undefined)).toBe(
+    // seats' objectives on the same edge of the one shared field.
+    expect(objectives.every((c) => c.x === undefined && c.y === undefined)).toBe(
       true
     )
   })
 
-  it("gives both seats their own augment instances", () => {
+  it("gives both seats their own objective instances", () => {
     const p1 = setupOpeningSession(
       deckWithAugments(),
       noResources,
       "p1",
-      withAugments
+      withObjectives
     )
     const p2 = setupOpeningSession(
       deckWithAugments(),
       noResources,
       "p2",
-      withAugments
+      withObjectives
     )
     const ids = new Set([
-      ...p1.filter((c) => c.isAugment).map((c) => c.instanceId),
-      ...p2.filter((c) => c.isAugment).map((c) => c.instanceId),
+      ...p1.filter((c) => c.isObjective || c.isAugment).map((c) => c.instanceId),
+      ...p2.filter((c) => c.isObjective || c.isAugment).map((c) => c.instanceId),
     ])
 
     expect(ids.size).toBe(4)
-    expect(p1.filter((c) => c.isAugment).every((c) => c.owner === "p1")).toBe(
-      true
-    )
-    expect(p2.filter((c) => c.isAugment).every((c) => c.owner === "p2")).toBe(
-      true
-    )
+    expect(
+      p1.filter((c) => c.isObjective || c.isAugment).every((c) => c.owner === "p1")
+    ).toBe(true)
+    expect(
+      p2.filter((c) => c.isObjective || c.isAugment).every((c) => c.owner === "p2")
+    ).toBe(true)
   })
 
-  it("keeps augments and the pilot out of the shuffled library", () => {
+  it("keeps objectives and the pilot out of the shuffled library", () => {
     const session = setupOpeningSession(
       deckWithAugments(),
       noResources,
       "p1",
-      withAugments
+      withObjectives
     )
     const drawable = session.filter(
       (c) => c.zone === "library" || c.zone === "hand"
     )
 
     expect(drawable.map((c) => c.name)).toEqual(["Street Runner"])
-    expect(session.filter((c) => c.isAugment)).toHaveLength(2)
+    expect(session.filter((c) => c.isObjective || c.isAugment)).toHaveLength(2)
   })
 })
 

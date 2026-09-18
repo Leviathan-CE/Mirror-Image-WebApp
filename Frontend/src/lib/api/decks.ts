@@ -69,7 +69,9 @@ export const DEFAULT_DECK_CATEGORY_NAMES = [
 
 /** Visual reserved section name (created on the client when needed). */
 export const PILOT_SECTION_NAME = "Pilot"
-/** Legacy section name — no longer used in deck building. */
+/** Reserved list-only section: exactly three objective cards (not in the RIG). */
+export const OBJECTIVE_SECTION_NAME = "Objectives"
+/** @deprecated Legacy name; still recognized as the Objectives section. */
 export const AUGMENT_SECTION_NAME = "Augments"
 
 export type DeckCategoryOut = {

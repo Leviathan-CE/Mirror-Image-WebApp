@@ -213,6 +213,8 @@ export function DropdownMenu({
                           : event.target.value
                       )
                     }
+                    onFocus={(event) => event.currentTarget.select()}
+                    onMouseUp={(event) => event.preventDefault()}
                     onKeyDown={(event) => {
                       if (event.key !== "Enter") return
                       event.preventDefault()

@@ -62,6 +62,7 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
     onFog?: (view: Extract<PlayNetMessage, { type: "fog" }>["view"]) => void
     onSnapshot?: () => void
     onHover?: (msg: Extract<PlayNetMessage, { type: "hover" }>) => void
+    onBrowse?: (msg: Extract<PlayNetMessage, { type: "browse" }>) => void
     onSelection?: (msg: Extract<PlayNetMessage, { type: "selection" }>) => void
     onEvent?: (action: Extract<PlayNetMessage, { type: "event" }>["action"]) => void
     onFx?: (fx: Extract<PlayNetMessage, { type: "fx" }>["fx"]) => void
@@ -80,10 +81,19 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
 
   const send = useCallback(
     (msg: PlayNetMessage) => {
+      // fog/snapshot carry the opening deal — a DC that just reported "open"
+      // does not mean the peer's onmessage is bound yet (ICE can finish
+      // mid deck-fetch on a fresh join). Those two always go over WS, which
+      // is live from `welcome` onward with no such race.
+      const isCritical = msg.type === "fog" || msg.type === "snapshot"
       const dc = dcRef.current
-      if (dc && dc.readyState === "open") {
-        dc.send(JSON.stringify(msg))
-        return
+      if (!isCritical && dc && dc.readyState === "open") {
+        try {
+          dc.send(JSON.stringify(msg))
+          return
+        } catch {
+          // Dead/half-open channel after leave/rejoin — fall through to WS.
+        }
       }
       sendWs(msg)
     },
@@ -106,6 +116,10 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
     }
     if (raw.type === "hover") {
       handlersRef.current.onHover?.(raw)
+      return
+    }
+    if (raw.type === "browse") {
+      handlersRef.current.onBrowse?.(raw)
       return
     }
     if (raw.type === "selection") {
@@ -230,8 +244,11 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
   )
 
   const startHostOffer = useCallback(async () => {
+    // Always renegotiate — a leftover DC after leave/rejoin would early-return
+    // and leave the guest without a working channel (WS relay still helps, but
+    // offer/answer must restart cleanly for the new peer).
+    closePeer()
     const pc = ensurePeer()
-    if (dcRef.current) return
     const dc = pc.createDataChannel("play", { ordered: true })
     bindDataChannel(dc)
     const offer = await pc.createOffer()
@@ -240,7 +257,7 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
       type: "signal",
       payload: { kind: "offer", sdp: pc.localDescription ?? offer },
     })
-  }, [bindDataChannel, ensurePeer, sendWs])
+  }, [bindDataChannel, closePeer, ensurePeer, sendWs])
 
   const connectSocket = useCallback(
     (roomCode: string) => {
@@ -296,13 +313,12 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
         if (raw == null) return
         if (!isPlayNetMessage(raw)) return
         if (raw.type === "welcome") {
-          if (isHostRef.current) {
-            setIsHost(true)
-            setSeat("p1")
-          } else {
-            setSeat(raw.seat)
-            setIsHost(raw.host)
-          }
+          // Always trust the server seat/host. A stale local isHostRef (create
+          // then join another code, or leave/rejoin races) used to force p1/host
+          // on the joiner — then onFog no-op'd and the opponent never appeared.
+          setSeat(raw.seat)
+          setIsHost(raw.host)
+          isHostRef.current = raw.host
           sendWs({ type: "join", deckId: deckIdRef.current })
           if (raw.peer) setPeerSeated(true)
           if (raw.peer?.deckId) {
@@ -328,8 +344,10 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
           if (isHostRef.current) {
             void startHostOffer()
           } else {
+            // Peer (re)sat — drop any half-open PC and ask host for fog again.
             closePeer()
             setTransport("connecting")
+            send({ type: "snapshot" })
           }
           return
         }
@@ -398,8 +416,12 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
       if (joiningRef.current && codeRef.current === trimmed) return
       blockAutoJoinRef.current = false
       joiningRef.current = true
-      // Reconnect keeps host flag if this client created the room.
-      if (!isHostRef.current) {
+      // Only keep a local host claim when reconnecting to the same code we
+      // already hosted. Otherwise clear so welcome can seat us as guest.
+      const reconnectingHost =
+        isHostRef.current && codeRef.current === trimmed
+      if (!reconnectingHost) {
+        isHostRef.current = false
         setIsHost(false)
         setSeat("p2")
       }
