@@ -91,7 +91,7 @@ export type FreeFloatSurfaceProps = {
   interactive?: boolean
   /** Drop the cyan frame so this surface can sit inside a shared playmat. */
   plain?: boolean
-  /** Only this seat's cards can be dragged / selected. */
+  /** Only this seat's cards can be dragged. Either seat can be click-selected. */
   localSeat?: PlayerSlot
   /**
    * Same shrink factor as the side-column piles (1 = full `lg`). Keeps
@@ -267,7 +267,6 @@ export function FreeFloatSurface({
   /** Instance ids present on the previous cards paint — detect fly-ins. */
   const prevCardIdsRef = useRef<Set<string>>(new Set())
   const onCardsReleasedRef = useLatestRef(onCardsReleased)
-  const localSeatRef = useLatestRef(localSeat)
   const cardDragListenersRef = useRef<{
     move: (event: PointerEvent) => void
     up: (event: PointerEvent) => void
@@ -399,11 +398,7 @@ export function FreeFloatSurface({
       const box = normalizeRect(current.x0, current.y0, current.x1, current.y1)
       const { w, h } = cardSizeRef.current
       const hit = cardsRef.current
-        .filter(
-          (card) =>
-            card.owner === localSeatRef.current &&
-            rectsIntersect(box, cardHitBox(card, w, h))
-        )
+        .filter((card) => rectsIntersect(box, cardHitBox(card, w, h)))
         .map((card) => card.instanceId)
       onSelectionRef.current?.(hit)
     }
@@ -440,7 +435,6 @@ export function FreeFloatSurface({
     // suppresses the browser's synthesized click/dblclick events entirely,
     // silently swallowing double-click-to-expend on their card.
     event.stopPropagation()
-    if (card.owner !== localSeat) return
     if (event.button !== 0) return
     if (marqueeRef.current) {
       detachWindowMarquee()
@@ -448,14 +442,11 @@ export function FreeFloatSurface({
       setMarquee(null)
     }
 
-    onBringToFront(card.instanceId)
-    event.preventDefault()
-
     const selectedIds = cards
-      .filter((c) => c.owner === localSeat && c.selected)
+      .filter((c) => c.selected)
       .map((c) => c.instanceId)
 
-    // Ctrl/Cmd+click toggles membership without starting a drag.
+    // Ctrl/Cmd+click toggles membership without starting a drag (either seat).
     if (event.ctrlKey || event.metaKey) {
       const nextIds = card.selected
         ? selectedIds.filter((id) => id !== card.instanceId)
@@ -464,14 +455,27 @@ export function FreeFloatSurface({
       return
     }
 
+    // Opponent cards: click-highlight only. Dragging theirs would look like
+    // you moved their board; bulk expend still requires a double-click on
+    // that one card (see onDoubleClick).
+    if (card.owner !== localSeat) {
+      onSelectionRef.current?.([card.instanceId])
+      return
+    }
+
+    onBringToFront(card.instanceId)
+    event.preventDefault()
+
     const local = clientToLocal(event.clientX, event.clientY)
     const x = card.x ?? 0
     const y = card.y ?? 0
 
+    const dragIds = cards
+      .filter((c) => c.owner === localSeat && c.selected)
+      .map((c) => c.instanceId)
+
     const groupIds =
-      card.selected && selectedIds.length > 0
-        ? selectedIds
-        : [card.instanceId]
+      card.selected && dragIds.length > 0 ? dragIds : [card.instanceId]
 
     // Clicking an unselected card replaces the selection with just that card.
     if (!card.selected) {
@@ -668,7 +672,7 @@ export function FreeFloatSurface({
                   ? "z-20 cursor-grabbing opacity-0"
                   : card.owner === localSeat
                     ? "z-10 cursor-grab"
-                    : "z-10 cursor-default",
+                    : "z-10 cursor-pointer",
                 cardIsPaintSelected(card, localSeat) &&
                   !isDragging &&
                   selectionRingClass()
@@ -719,7 +723,7 @@ export function FreeFloatSurface({
               <PlayingCard
                 card={card}
                 className="h-full w-full"
-                isSelected={card.owner === localSeat && Boolean(card.selected)}
+                isSelected={Boolean(card.selected)}
                 onCounterAdjust={
                   onCardCounterAdjust
                     ? (kind, delta) =>
@@ -774,7 +778,7 @@ export function FreeFloatSurface({
                   <PlayingCard
                     card={card}
                     className="h-full w-full"
-                    isSelected={card.owner === localSeat && Boolean(card.selected)}
+                    isSelected={Boolean(card.selected)}
                   />
                 </div>
               ))}

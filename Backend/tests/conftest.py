@@ -10,6 +10,14 @@ from psycopg2 import OperationalError
 
 from app.db import get_connection
 from app.main import app
+from app.play_room_limits import reset_play_room_limits
+
+
+@pytest.fixture(autouse=True)
+def _reset_play_room_limits():
+    reset_play_room_limits()
+    yield
+    reset_play_room_limits()
 
 
 @pytest.fixture

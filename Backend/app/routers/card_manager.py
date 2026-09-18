@@ -6,7 +6,14 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 from psycopg2 import OperationalError
 from psycopg2.errors import CheckViolation, DataError, NotNullViolation, UniqueViolation
 from psycopg2.extras import Json
@@ -16,7 +23,12 @@ from app.card_library_query import apply_catalogue_filters, catalogue_order_sql
 from app.card_publish import catalogue_visibility_sql, get_optional_include_preview
 from app.cards.schemas import CardLibraryItem
 from app.media_urls import signed_media_path
-from app.security import get_current_admin_user_id, get_optional_is_admin
+from app.security import (
+    get_current_admin_user_id,
+    get_optional_is_admin,
+    get_optional_user_id,
+)
+from app.play_visibility import resolve_room_member_visibility
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +97,11 @@ class CardCreate(BaseModel):
         validation_alias=AliasChoices("metal_capacity", "met_capacity"),
     )
     spirit_capacity: int = Field(default=0, ge=0)
-    steel_capacity: int = Field(default=0, ge=0)
+    steel_capacity: int = Field(
+        default=0,
+        ge=0,
+        validation_alias=AliasChoices("steel_capacity", "stl_capacity"),
+    )
     time_capacity: int = Field(
         default=0,
         ge=0,
@@ -95,6 +111,47 @@ class CardCreate(BaseModel):
     hand_size: int = Field(default=0, ge=0)
 
     lagality: str = "Legal"
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_capacity_keys(cls, value: Any) -> Any:
+        """Unity keys vary in case (TIM_capacity vs tim_capacity). One table for all colours."""
+        if not isinstance(value, dict):
+            return value
+        lowered: dict[str, Any] = {}
+        for raw_key, raw_val in value.items():
+            lowered[str(raw_key).strip().lower()] = raw_val
+
+        aliases = {
+            "ram_capacity": ("ram_capacity",),
+            "power_capacity": ("power_capacity", "pow_capacity"),
+            "metal_capacity": ("metal_capacity", "met_capacity"),
+            "spirit_capacity": ("spirit_capacity",),
+            "steel_capacity": ("steel_capacity", "stl_capacity"),
+            "time_capacity": ("time_capacity", "tim_capacity"),
+            "lif_capacity": ("lif_capacity",),
+            "hand_size": ("hand_size",),
+        }
+        out = dict(value)
+        for canonical, names in aliases.items():
+            picked = [
+                lowered[name]
+                for name in names
+                if name in lowered and lowered[name] is not None
+            ]
+            if not picked:
+                continue
+            nums = []
+            for item in picked:
+                try:
+                    n = int(item)
+                except (TypeError, ValueError):
+                    continue
+                if n >= 0:
+                    nums.append(n)
+            if nums:
+                out[canonical] = max(nums)
+        return out
 
 
 class CardCreated(BaseModel):
@@ -519,8 +576,18 @@ def browse_card_library(
         default="name",
         description="Result order: name | name_desc | invoke | invoke_desc | relevance",
     ),
+    room: str | None = Query(
+        default=None,
+        max_length=16,
+        description=(
+            "Playtest room code. Seated callers may load unpublished Resource "
+            "tokens so both seats can spawn opening pips. Ignored unless you "
+            "are seated in that live room; other super types stay gated."
+        ),
+    ),
     is_admin: bool = Depends(get_optional_is_admin),
     include_preview: bool = Depends(get_optional_include_preview),
+    user_id: int | None = Depends(get_optional_user_id),
 ):
     """
     Browse / filter the card catalogue.
@@ -528,18 +595,14 @@ def browse_card_library(
     `sort=name` (default) is A–Z; `sort=invoke` is invoke cost then name;
     `sort=relevance` uses prefix-first ranking when `q` is set.
     Non-subscribers only see published cards; subscribers also see preview;
-    admins see the full catalogue.
+    admins see the full catalogue. A live playtest room unlocks unpublished
+    Resource tokens for seated players only.
     """
-    where = [
-        "is_deprecated = false",
-        catalogue_visibility_sql(
-            "cards", bypass=is_admin, include_preview=include_preview
-        ),
-    ]
+    filter_where: list[str] = []
     params: dict[str, Any] = {"limit": limit, "offset": offset}
 
     filter_state = apply_catalogue_filters(
-        where,
+        filter_where,
         params,
         q=q,
         description=description,
@@ -551,16 +614,29 @@ def browse_card_library(
         sub_type=sub_type,
     )
 
-    where_sql = " AND ".join(where)
-    order_sql = catalogue_order_sql(
-        filter_state.has_name_query,
-        sort=sort,
-        has_sub_type_query=filter_state.has_sub_type_query,
-    )
-
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
+                pooled = resolve_room_member_visibility(
+                    cur, code=room, user_id=user_id
+                )
+                is_resource = (super_type or "").strip().lower() == "resource"
+                visibility = catalogue_visibility_sql(
+                    "cards",
+                    bypass=is_admin or (pooled is not None and is_resource),
+                    include_preview=(
+                        include_preview or bool(pooled and pooled.include_preview)
+                    ),
+                )
+                where_sql = " AND ".join(
+                    ["is_deprecated = false", visibility, *filter_where]
+                )
+                order_sql = catalogue_order_sql(
+                    filter_state.has_name_query,
+                    sort=sort,
+                    has_sub_type_query=filter_state.has_sub_type_query,
+                )
+
                 cur.execute(
                     f"SELECT COUNT(*)::int FROM cards WHERE {where_sql}",
                     params,

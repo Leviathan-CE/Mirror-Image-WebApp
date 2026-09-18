@@ -10,6 +10,14 @@ import {
   spawnGroupedStockpileResources,
   startingLifeFromPilot,
   startingResourceColorsFromPilot,
+  victoryNumberFromPilot,
+  guestMayPlaceholderDeal,
+  guestPlaceholderCoverageImproved,
+  hostOpeningMayCommit,
+  mergeOpeningStockpilePips,
+  neededResourceColorsFromDecks,
+  openingTimCoverage,
+  missingStartingResourceColors,
 } from "@/components/Playtester/session/setupOpeningSession.logic"
 
 function pilot(overrides: Parameters<typeof deckEntry>[0] = {}): DeckCardEntry {
@@ -178,6 +186,42 @@ describe("startingResourceColorsFromPilot", () => {
     expect(colors.filter((c) => c === "STL")).toHaveLength(1)
     expect(colors.filter((c) => c === "LIF")).toHaveLength(1)
   })
+
+  it("reads tim_capacity when time_capacity is omitted", () => {
+    const colors = startingResourceColorsFromPilot(
+      pilot({
+        time_capacity: 0,
+        card: { tim_capacity: 2 } as never,
+      })
+    )
+    expect(colors.filter((c) => c === "TIM")).toHaveLength(2)
+  })
+})
+
+describe("neededResourceColorsFromDecks", () => {
+  it("unions unique starting colours from both seated decks", () => {
+    const asDeck = (time: number, steel: number): DeckDetail => ({
+      id: time,
+      name: "d",
+      description: null,
+      is_public: true,
+      author_name: "a",
+      cover_image_path: null,
+      card_count: 1,
+      categories: [{ id: 1, name: "Pilot", sort_order: -1, in_deck: false }],
+      cards: [
+        pilot({
+          time_capacity: time,
+          steel_capacity: steel,
+          card_id: 1,
+          category_id: 1,
+        }),
+      ],
+    })
+    expect(neededResourceColorsFromDecks([asDeck(1, 0), asDeck(0, 1)]).sort()).toEqual(
+      ["STL", "TIM"]
+    )
+  })
 })
 
 describe("startingLifeFromPilot", () => {
@@ -185,6 +229,13 @@ describe("startingLifeFromPilot", () => {
     expect(startingLifeFromPilot(pilot({ lif_capacity: 20 }))).toBe(20)
     expect(startingLifeFromPilot(pilot({ lif_capacity: -3 }))).toBe(0)
     expect(startingLifeFromPilot(null)).toBe(0)
+  })
+})
+
+describe("victoryNumberFromPilot", () => {
+  it("uses the printed pilot number (lif_capacity until vp_capacity exists)", () => {
+    expect(victoryNumberFromPilot(pilot({ lif_capacity: 12 }))).toBe(12)
+    expect(victoryNumberFromPilot(null)).toBe(0)
   })
 })
 
@@ -318,5 +369,254 @@ describe("libraryDeckEntries", () => {
       ],
     }
     expect(libraryDeckEntries(deck).map((card) => card.card.id)).toEqual([2])
+  })
+})
+
+describe("guestMayPlaceholderDeal", () => {
+  it("waits for the resource catalogue before dealing", () => {
+    expect(
+      guestMayPlaceholderDeal({
+        hasFog: false,
+        resourcesReady: false,
+        alreadyDealt: false,
+      })
+    ).toBe(false)
+  })
+
+  it("deals once resources are ready if host fog has not arrived", () => {
+    expect(
+      guestMayPlaceholderDeal({
+        hasFog: false,
+        resourcesReady: true,
+        alreadyDealt: false,
+      })
+    ).toBe(true)
+  })
+
+  it("does not re-deal after fog or a prior placeholder", () => {
+    expect(
+      guestMayPlaceholderDeal({
+        hasFog: true,
+        resourcesReady: true,
+        alreadyDealt: false,
+      })
+    ).toBe(false)
+    expect(
+      guestMayPlaceholderDeal({
+        hasFog: false,
+        resourcesReady: true,
+        alreadyDealt: true,
+      })
+    ).toBe(false)
+  })
+
+  it("rebuilds the placeholder when coverage improves before fog", () => {
+    expect(
+      guestMayPlaceholderDeal({
+        hasFog: false,
+        resourcesReady: true,
+        alreadyDealt: true,
+        coverageImproved: true,
+      })
+    ).toBe(true)
+    expect(
+      guestMayPlaceholderDeal({
+        hasFog: true,
+        resourcesReady: true,
+        alreadyDealt: true,
+        coverageImproved: true,
+      })
+    ).toBe(false)
+  })
+})
+
+describe("opening TIM coverage probe", () => {
+  it("reads the three room-deal facts without using a card name", () => {
+    const mapWithTim = new Map<ResourceColor, CardLibraryItem>([
+      ["TIM", resource(10, "Time Token", ["TIM"])],
+    ])
+    expect(
+      openingTimCoverage({
+        requestedColors: ["LIF"],
+        resourceByColor: mapWithTim,
+        stockpile: [],
+      })
+    ).toEqual({
+      pilotAsksTim: false,
+      mapHasTim: true,
+      stockpileTimCount: 0,
+    })
+    expect(
+      openingTimCoverage({
+        requestedColors: ["TIM"],
+        resourceByColor: new Map(),
+        stockpile: [],
+      })
+    ).toEqual({
+      pilotAsksTim: true,
+      mapHasTim: false,
+      stockpileTimCount: 0,
+    })
+    const spawned = spawnGroupedStockpileResources(
+      ["TIM", "TIM"],
+      mapWithTim
+    )
+    expect(
+      openingTimCoverage({
+        requestedColors: ["TIM"],
+        resourceByColor: mapWithTim,
+        stockpile: spawned,
+      })
+    ).toEqual({
+      pilotAsksTim: true,
+      mapHasTim: true,
+      stockpileTimCount: 2,
+    })
+  })
+})
+
+describe("guestPlaceholderCoverageImproved", () => {
+  it("is true when the map gains TIM the placeholder skipped", () => {
+    const mapWithTim = new Map<ResourceColor, CardLibraryItem>([
+      ["TIM", resource(10, "Time Token", ["TIM"])],
+    ])
+    expect(
+      guestPlaceholderCoverageImproved({
+        needed: ["TIM", "STL"],
+        resourceByColor: mapWithTim,
+        stockpile: spawnGroupedStockpileResources(["STL"], new Map([
+          ["STL", resource(11, "Steel", ["GEN"])],
+        ])),
+      })
+    ).toBe(true)
+    expect(
+      guestPlaceholderCoverageImproved({
+        needed: ["TIM"],
+        resourceByColor: mapWithTim,
+        stockpile: spawnGroupedStockpileResources(["TIM"], mapWithTim),
+      })
+    ).toBe(false)
+  })
+})
+
+describe("missingStartingResourceColors", () => {
+  it("lists TIM when generate can spawn it but opening skipped it", () => {
+    const mapWithTim = new Map<ResourceColor, CardLibraryItem>([
+      ["TIM", resource(10, "Time Token", ["TIM"])],
+      ["LIF", resource(2, "Spirit Power", ["LIF"])],
+    ])
+    expect(
+      missingStartingResourceColors({
+        needed: ["LIF", "TIM"],
+        resourceByColor: mapWithTim,
+        stockpile: spawnGroupedStockpileResources(["LIF"], mapWithTim),
+      })
+    ).toEqual(["TIM"])
+    expect(
+      missingStartingResourceColors({
+        needed: ["LIF", "TIM"],
+        resourceByColor: mapWithTim,
+        stockpile: spawnGroupedStockpileResources(["LIF", "TIM"], mapWithTim),
+      })
+    ).toEqual([])
+  })
+})
+
+describe("hostOpeningMayCommit", () => {
+  it("waits for the opponent deck, not for every pip to be in the map", () => {
+    expect(
+      hostOpeningMayCommit({
+        resourcesReady: false,
+        hasOpponentDeck: true,
+        requiresOpponentDeck: true,
+      })
+    ).toBe(false)
+    expect(
+      hostOpeningMayCommit({
+        resourcesReady: true,
+        hasOpponentDeck: false,
+        requiresOpponentDeck: true,
+      })
+    ).toBe(false)
+    expect(
+      hostOpeningMayCommit({
+        resourcesReady: true,
+        hasOpponentDeck: true,
+        requiresOpponentDeck: true,
+      })
+    ).toBe(true)
+  })
+
+  it("keeps guest TIM on seq-0 fog that omitted that pip", () => {
+    const byColor = new Map<ResourceColor, CardLibraryItem>([
+      ["LIF", resource(9, "Life", ["LIF"])],
+      ["TIM", resource(10, "Time Token", ["TIM"])],
+    ])
+    const placeholder = spawnGroupedStockpileResources(
+      ["LIF", "TIM"],
+      byColor,
+      0,
+      "p2"
+    )
+    const fogOnlyLife = spawnGroupedStockpileResources(["LIF"], byColor, 0, "p2")
+    const merged = mergeOpeningStockpilePips({
+      seq: 0,
+      owner: "p2",
+      incoming: fogOnlyLife,
+      previous: placeholder,
+    })
+    const coverage = openingTimCoverage({
+      requestedColors: ["LIF", "TIM"],
+      resourceByColor: byColor,
+      stockpile: merged,
+    })
+    expect(coverage.stockpileTimCount).toBe(1)
+    const fogLife = fogOnlyLife[0]
+    const keptTim = merged.find((card) =>
+      (card.cost ?? []).some((pip) => pip.trim().toUpperCase() === "TIM")
+    )
+    expect(fogLife.x).toBeUndefined()
+    expect(keptTim?.x).toEqual(expect.any(Number))
+    expect(keptTim?.y).toEqual(expect.any(Number))
+  })
+
+  it("does not keep placeholder pips after the opening seq", () => {
+    const byColor = new Map<ResourceColor, CardLibraryItem>([
+      ["TIM", resource(10, "Time Token", ["TIM"])],
+    ])
+    const placeholder = spawnGroupedStockpileResources(["TIM"], byColor, 0, "p2")
+    const later = spawnGroupedStockpileResources([], byColor, 0, "p2")
+    expect(
+      mergeOpeningStockpilePips({
+        seq: 1,
+        owner: "p2",
+        incoming: later,
+        previous: placeholder,
+      })
+    ).toEqual(later)
+  })
+
+  it("keeps TIM on a two-seat opening when the map covers TIM", () => {
+    const byColor = new Map<ResourceColor, CardLibraryItem>([
+      ["TIM", resource(10, "Time Token", ["TIM"])],
+      ["STL", resource(11, "Steel", ["GEN"])],
+    ])
+    const p1 = spawnGroupedStockpileResources(["TIM", "STL"], byColor, 0, "p1")
+    const p2 = spawnGroupedStockpileResources(["TIM", "STL"], byColor, 0, "p2")
+    const opening = [...p1, ...p2]
+    expect(
+      openingTimCoverage({
+        requestedColors: ["TIM", "STL"],
+        resourceByColor: byColor,
+        stockpile: opening.filter((c) => c.owner === "p1"),
+      }).stockpileTimCount
+    ).toBe(1)
+    expect(
+      openingTimCoverage({
+        requestedColors: ["TIM", "STL"],
+        resourceByColor: byColor,
+        stockpile: opening.filter((c) => c.owner === "p2"),
+      }).stockpileTimCount
+    ).toBe(1)
   })
 })

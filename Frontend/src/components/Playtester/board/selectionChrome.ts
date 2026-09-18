@@ -20,10 +20,13 @@ export function selectionOverlayClass(): string {
   return "pointer-events-none absolute inset-0 z-20 shadow-[inset_0_0_0_3px_rgb(103_232_249)]"
 }
 
-/** Paint only this client's own `card.selected` (action targeting). */
+/**
+ * Local click-highlight. Any seat's card can be painted — drag / bulk
+ * actions still filter by owner separately.
+ */
 export function cardIsPaintSelected(
-  card: { owner: PlayerSlot; selected?: boolean },
-  localSeat: PlayerSlot
+  card: { selected?: boolean },
+  _localSeat?: PlayerSlot
 ): boolean {
-  return card.owner === localSeat && Boolean(card.selected)
+  return Boolean(card.selected)
 }

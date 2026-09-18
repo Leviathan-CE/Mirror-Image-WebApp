@@ -5,7 +5,9 @@ import {
   buildResourceTokenMap,
   autoResolveColors,
   canAutoResolvePips,
+  catalogueCoversColors,
   classifyCostToken,
+  collectResourceCatalogue,
   extractGainablePips,
   findResourceTokenByCost,
 } from "@/components/Playtester/session/accumulateResources.logic"
@@ -94,7 +96,7 @@ describe("buildResourceTokenMap (Resource + invoke cost)", () => {
     expect(map.get("LIF")?.card_name).toBe("Spirit Power")
   })
 
-  it("maps TIM from Natural Time (Resource + cost TIM)", () => {
+  it("maps TIM from a Resource whose cost pip is TIM", () => {
     const naturalTime = card({
       id: 1044497,
       card_name: "Natural Time",
@@ -112,6 +114,18 @@ describe("buildResourceTokenMap (Resource + invoke cost)", () => {
 })
 
 describe("classifyCostToken / extractGainablePips (GEN → STL)", () => {
+  it("maps TIM as solid TIM", () => {
+    expect(classifyCostToken("TIM")).toEqual({
+      kind: "solid",
+      token: "TIM",
+      color: "TIM",
+    })
+  })
+
+  it("does not treat TIME as TIM", () => {
+    expect(classifyCostToken("TIME")).toBeNull()
+  })
+
   it("maps bare GEN to solid STL", () => {
     expect(classifyCostToken("GEN")).toEqual({
       kind: "solid",
@@ -157,5 +171,96 @@ describe("accumulate pip cap", () => {
   it("still opens the chooser when extra pips include a hybrid", () => {
     const pips = extractGainablePips(["LIF", "LIF", "LIF-MET"])
     expect(canAutoResolvePips(pips)).toBe(false)
+  })
+})
+
+describe("catalogueCoversColors / collectResourceCatalogue", () => {
+  it("is uncovered when page 1 has no TIM pip", () => {
+    const page1 = [
+      card({
+        id: 2,
+        card_name: "Spirit Power",
+        cost: ["LIF"],
+        super_types: ["Resource"],
+      }),
+    ]
+    const map = buildResourceTokenMap(page1)
+    expect(map.has("TIM")).toBe(false)
+    expect(catalogueCoversColors(map, ["LIF", "TIM"])).toBe(false)
+  })
+
+  it("covers TIM after a later Resource page with a TIM pip", async () => {
+    const page1 = [
+      card({
+        id: 2,
+        card_name: "Spirit Power",
+        cost: ["LIF"],
+        super_types: ["Resource"],
+      }),
+    ]
+    const page2 = [
+      card({
+        id: 10,
+        card_name: "Time Token",
+        cost: ["TIM"],
+        super_types: ["Resource"],
+      }),
+    ]
+    const result = await collectResourceCatalogue({
+      needed: ["LIF", "TIM"],
+      pageSize: 1,
+      fetchPage: async (offset) => {
+        if (offset === 0) return { items: page1, total: 2 }
+        return { items: page2, total: 2 }
+      },
+    })
+    const map = buildResourceTokenMap(result.tokens)
+    expect(result.covered).toBe(true)
+    expect(map.has("TIM")).toBe(true)
+    expect(map.get("TIM")?.cost).toEqual(["TIM"])
+  })
+
+  it("stops paging once needed colours are covered", async () => {
+    let pages = 0
+    const result = await collectResourceCatalogue({
+      needed: ["TIM"],
+      pageSize: 1,
+      fetchPage: async () => {
+        pages += 1
+        return {
+          items: [
+            card({
+              id: 10,
+              card_name: "Time Token",
+              cost: ["TIM"],
+              super_types: ["Resource"],
+            }),
+          ],
+          total: 99,
+        }
+      },
+    })
+    expect(result.covered).toBe(true)
+    expect(pages).toBe(1)
+  })
+
+  it("uses the TIM pip shortcut without a name search", async () => {
+    const result = await collectResourceCatalogue({
+      needed: ["TIM"],
+      pageSize: 1,
+      fetchPage: async () => ({ items: [], total: 0 }),
+      fetchTimShortcut: async () => ({
+        items: [
+          card({
+            id: 10,
+            card_name: "Time Token",
+            cost: ["TIM"],
+            super_types: ["Resource"],
+          }),
+        ],
+      }),
+    })
+    expect(result.covered).toBe(true)
+    expect(buildResourceTokenMap(result.tokens).has("TIM")).toBe(true)
   })
 })

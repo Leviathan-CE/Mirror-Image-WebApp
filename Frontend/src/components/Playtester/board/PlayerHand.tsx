@@ -20,7 +20,13 @@ import {
 import { createPortal } from "react-dom"
 
 import { CardEnlargeOverlay } from "@/components/Playtester/board/CardLargeOverlay"
-import { handCardSizePx } from "@/components/Playtester/board/handCardSize.logic"
+import {
+  handCardSizePx,
+  peekPortalBox,
+  peekStickOutSlot,
+  scaleHandCardPx,
+  shownHandHoverIndex,
+} from "@/components/Playtester/board/handCardSize.logic"
 import { elementCssPaintScale } from "@/components/Playtester/board/playFieldScale.logic"
 import { PlayingCard } from "@/components/Playtester/board/PlayingCard"
 import { HAND_CARD_SIZE, LOCAL_SEAT, type PlayerSlot } from "@/components/Playtester/constants"
@@ -43,6 +49,8 @@ const GROUP_GHOST_STEP_RATIO = 18 / HAND_CARD_SIZE.defaultWidth
 const PEEK_COLLAPSE_DELAY_MS = 120
 /** Extra size on the inspected card while the peek overlay is open. */
 const PEEK_HOVER_SCALE = 1.28
+/** Logical px the opponent sliver grows when they inspect a card. */
+const PEEK_STICK_OUT_NUDGE_PX = 22
 
 export type HandPeekConfig = {
   /** Height (px, logical/unscaled) of the always-visible sliver at rest. */
@@ -194,10 +202,18 @@ export function PlayerHand({
   }, [peek])
 
   const [peekExpanded, setPeekExpanded] = useState(false)
-  // Cards inside the portal are still sized in *logical* px (see `cardPx`),
-  // but the portal itself lives outside the board's CSS scale transform —
-  // `sx`/`sy` are how much to shrink the logical-sized content back down so
-  // it matches the board's current fit-scale (same idea as the drag ghosts).
+  const [localHoverIndex, setLocalHoverIndex] = useState<number | null>(null)
+  const onHoverIndexRef = useLatestRef(onHoverIndexChange)
+  const shownHoverIndex = shownHandHoverIndex(hoveredIndex, localHoverIndex)
+  const peekRaised = Boolean(peek) && peekExpanded
+  const stickOut =
+    Boolean(peek) &&
+    !peekRaised &&
+    !interactive &&
+    shownHoverIndex != null
+  // Overlay lives on `document.body` (outside the board's fit-scale). Cards
+  // inside it are sized in *painted* px (`rowCardPx`) so we never CSS-scale
+  // raster art — that squash is what made the hand look soft.
   const [peekPortalStyle, setPeekPortalStyle] = useState<{
     left: number
     top: number
@@ -206,7 +222,6 @@ export function PlayerHand({
     sx: number
     sy: number
   } | null>(null)
-  const [peekEntered, setPeekEntered] = useState(false)
   const peekCollapseTimerRef = useRef<number | null>(null)
 
   function clearPeekCollapseTimer() {
@@ -226,45 +241,68 @@ export function PlayerHand({
     clearPeekCollapseTimer()
     peekCollapseTimerRef.current = window.setTimeout(() => {
       setPeekExpanded(false)
-      // Reset so the next open re-plays the slide-in from the sliver.
-      setPeekEntered(false)
     }, PEEK_COLLAPSE_DELAY_MS)
+  }
+
+  function reportHoverIndex(index: number | null) {
+    if (!interactive) return
+    setLocalHoverIndex(index)
+    onHoverIndexRef.current?.(index)
   }
 
   useEffect(() => clearPeekCollapseTimer, [])
 
-  // Position the raised overlay from the dock's live painted rect once it
-  // opens — `getBoundingClientRect` already reflects the board's fit-scale.
-  useLayoutEffect(() => {
-    if (!peek || !peekExpanded) return
-    const el = rootRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    const { sx, sy } = elementCssPaintScale(el)
-    // Portal is already in painted (on-screen) px. The inner child is sized
-    // in logical px and then `scale(sx,sy)`'d with origin top-left so it
-    // *exactly* fills this box — do not bottom-align an unscaled inner in a
-    // painted box or the tops sit above the clip edge.
-    const paintedHeight = peek.expandedPx * PEEK_HOVER_SCALE * sy
-    setPeekPortalStyle({
-      left: rect.left,
-      paintedWidth: rect.width,
-      paintedHeight,
-      sx,
-      sy,
-      top: peek.anchor === "bottom" ? rect.bottom - paintedHeight : rect.top,
-    })
-  }, [peek, peekExpanded])
-
-  // Slide-in: start aligned with the collapsed sliver, then rise (own hand)
-  // or drop (opponent hand) into full view on the frame after mount.
-  // (`peekEntered` resets to false on close, in `closePeekSoon`, so this
-  // only ever needs to flip it on — never reset it here.)
   useEffect(() => {
-    if (!peek || !peekExpanded) return
-    const raf = requestAnimationFrame(() => setPeekEntered(true))
-    return () => cancelAnimationFrame(raf)
-  }, [peek, peekExpanded])
+    if (localHoverIndex == null) return
+    if (localHoverIndex < cards.length) return
+    setLocalHoverIndex(null)
+    onHoverIndexRef.current?.(null)
+  }, [cards.length, localHoverIndex, onHoverIndexRef])
+
+  // Position the overlay from the dock's live painted rect. Keep it mounted
+  // collapsed *and* expanded so the sliver is never under the board scale.
+  // Animate `top`/`height` — do not use `transform` on this layer.
+  useLayoutEffect(() => {
+    if (!peek) {
+      setPeekPortalStyle(null)
+      return
+    }
+
+    function sync() {
+      if (!peek) return
+      const dockEl = rootRef.current
+      if (!dockEl) return
+      const rect = dockEl.getBoundingClientRect()
+      const { sx, sy } = elementCssPaintScale(dockEl)
+      const box = peekPortalBox({
+        dock: {
+          left: rect.left,
+          top: rect.top,
+          width: rect.width,
+          bottom: rect.bottom,
+        },
+        anchor: peek.anchor,
+        collapsedPx: peek.collapsedPx,
+        expandedPx: peek.expandedPx,
+        expanded: peekRaised,
+        sy,
+        hoverScale: PEEK_HOVER_SCALE,
+        stickOutNudgePx: stickOut ? PEEK_STICK_OUT_NUDGE_PX : undefined,
+      })
+      setPeekPortalStyle({ ...box, sx, sy })
+    }
+
+    sync()
+    const dockEl = rootRef.current
+    if (!dockEl) return
+    const observer = new ResizeObserver(sync)
+    observer.observe(dockEl)
+    window.addEventListener("resize", sync)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener("resize", sync)
+    }
+  }, [peek, peekRaised, stickOut])
 
   /** Exact listener refs attached for this gesture (identity must match remove). */
   const cardDragListenersRef = useRef<{
@@ -520,6 +558,17 @@ export function PlayerHand({
     ? normalizeRect(marquee.x0, marquee.y0, marquee.x1, marquee.y1)
     : null
 
+  // Peek overlay is outside the board scale, so layout cards in painted px
+  // for both the collapsed sliver and the raised row.
+  const rowCardPx =
+    peek && peekPortalStyle
+      ? scaleHandCardPx(cardPx, peekPortalStyle.sx, peekPortalStyle.sy)
+      : cardPx
+  const sliverPx =
+    peek && peekPortalStyle
+      ? Math.round(peek.collapsedPx * peekPortalStyle.sy)
+      : rowCardPx.height
+
   // Scale sampled in pointer handlers — do not read refs during render.
   const paintSx = drag?.paintSx ?? 1
   const paintSy = drag?.paintSy ?? 1
@@ -530,14 +579,14 @@ export function PlayerHand({
             const card = cards.find((c) => c.instanceId === id)
             if (!card) return null
             const step = Math.round(
-              cardPx.width * GROUP_GHOST_STEP_RATIO * paintSx
+              rowCardPx.width * GROUP_GHOST_STEP_RATIO * paintSx
             )
             return {
               card,
               left: drag.ghostX + index * step,
               top: drag.ghostY,
-              width: cardPx.width * paintSx,
-              height: cardPx.height * paintSy,
+              width: rowCardPx.width * paintSx,
+              height: rowCardPx.height * paintSy,
             }
           })
           .filter(
@@ -559,10 +608,11 @@ export function PlayerHand({
   // box — pin collapsed to items-end or you see the bottoms and clip down.
   function peekRowAlign(): "items-start" | "items-end" {
     if (!peek) return "items-end"
+    const pinToDock = peekRaised || stickOut
     if (peek.anchor === "bottom") {
-      return peekExpanded ? "items-end" : "items-start"
+      return pinToDock ? "items-end" : "items-start"
     }
-    return peekExpanded ? "items-start" : "items-end"
+    return pinToDock ? "items-start" : "items-end"
   }
 
   // Shared row markup: rendered inline (clipped to a peek sliver) or raised
@@ -618,7 +668,7 @@ export function PlayerHand({
           {cards.length === 0 ? (
             <div
               className="flex shrink-0 items-center justify-center"
-              style={{ width: cardPx.width, height: cardPx.height }}
+              style={{ width: rowCardPx.width, height: rowCardPx.height }}
               aria-hidden
             >
               <p className="font-mono text-xs text-white/35">Hand is empty</p>
@@ -626,43 +676,78 @@ export function PlayerHand({
           ) : (
             cards.map((card, index) => {
               const isDragging = Boolean(draggingIds?.has(card.instanceId))
-              const isHovered = hoveredIndex === index
+              const isHovered = shownHoverIndex === index
+              const bump =
+                Boolean(peek) &&
+                isHovered &&
+                !isDragging &&
+                (peekRaised || stickOut)
+              const stick = stickOut
+                ? peekStickOutSlot({
+                    hovered: bump,
+                    sliverPx,
+                    card: rowCardPx,
+                    nudgePx: Math.round(
+                      PEEK_STICK_OUT_NUDGE_PX * (peekPortalStyle?.sy ?? 1)
+                    ),
+                  })
+                : null
+              const faceW = stick
+                ? stick.faceW
+                : bump
+                  ? Math.round(rowCardPx.width * PEEK_HOVER_SCALE)
+                  : rowCardPx.width
+              const faceH = stick
+                ? stick.faceH
+                : bump
+                  ? Math.round(rowCardPx.height * PEEK_HOVER_SCALE)
+                  : rowCardPx.height
+              const slotW = stick ? stick.slotW : rowCardPx.width
+              const slotH = stick ? stick.slotH : rowCardPx.height
+              const cropToSliver = Boolean(stick)
+              const pinToTop =
+                peek?.anchor === "top"
+                  ? !cropToSliver
+                  : cropToSliver
               return (
                 <div
                   key={card.instanceId}
                   className={cn(
-                    "shrink-0 touch-none transition-transform duration-150",
-                    peek
-                      ? peek.anchor === "bottom"
-                        ? "origin-bottom"
-                        : "origin-top"
-                      : null,
+                    "relative shrink-0 touch-none",
+                    cropToSliver && "overflow-hidden",
+                    peek ? null : "transition-transform duration-150",
                     isDragging
                       ? "cursor-grabbing opacity-30"
                       : interactive
                         ? peek
-                          ? "cursor-grab hover:z-20 hover:scale-[1.28]"
+                          ? "cursor-grab"
                           : "cursor-grab hover:-translate-y-2"
                         : "cursor-default",
-                    isHovered &&
+                    bump && "z-20",
+                    !peek &&
+                      isHovered &&
                       !isDragging &&
-                      (peek ? "z-20 scale-[1.28]" : "-translate-y-2"),
+                      "-translate-y-2",
                     cardIsPaintSelected(card, localSeat) &&
                       !isDragging &&
                       selectionRingClass()
                   )}
-                  style={{ width: cardPx.width, height: cardPx.height }}
+                  style={{
+                    width: slotW,
+                    height: slotH,
+                    transition: stick
+                      ? "height 150ms ease-out, width 150ms ease-out"
+                      : undefined,
+                  }}
                   onPointerDown={(event) => {
                     if (!interactive) return
                     onCardPointerDown(event, card)
                   }}
                   onPointerEnter={() => {
-                    if (!interactive) return
-                    onHoverIndexChange?.(index)
+                    reportHoverIndex(index)
                   }}
                   onPointerLeave={() => {
-                    if (!interactive) return
-                    onHoverIndexChange?.(null)
+                    reportHoverIndex(null)
                   }}
                   onContextMenu={(event) => {
                     event.preventDefault()
@@ -675,13 +760,35 @@ export function PlayerHand({
                   }}
                   data-playtester-instance={card.instanceId}
                 >
-                  <PlayingCard
-                    card={hideFaces ? { ...card, faceDown: true } : card}
-                    className={cn(
-                      "h-full w-full",
-                      peek?.anchor === "top" && "rotate-180"
-                    )}
-                  />
+                  <div
+                    className={
+                      peek
+                        ? "absolute left-1/2"
+                        : "h-full w-full"
+                    }
+                    style={
+                      peek
+                        ? {
+                            width: faceW,
+                            height: faceH,
+                            marginLeft: -faceW / 2,
+                            bottom: pinToTop ? undefined : 0,
+                            top: pinToTop ? 0 : undefined,
+                            transition:
+                              "width 150ms ease-out, height 150ms ease-out, margin-left 150ms ease-out",
+                          }
+                        : undefined
+                    }
+                  >
+                    <PlayingCard
+                      card={hideFaces ? { ...card, faceDown: true } : card}
+                      flat={Boolean(peek)}
+                      className={cn(
+                        "h-full w-full",
+                        peek?.anchor === "top" && "rotate-180"
+                      )}
+                    />
+                  </div>
                 </div>
               )
             })
@@ -703,43 +810,27 @@ export function PlayerHand({
         onPointerEnter={peek ? openPeek : undefined}
         onPointerLeave={peek ? closePeekSoon : undefined}
       >
-        {peek && peekExpanded ? null : handRow}
+        {peek ? null : handRow}
       </div>
 
-      {peek && peekExpanded && peekPortalStyle
+      {peek && peekPortalStyle
         ? createPortal(
             <div
               ref={peekPortalRef}
-              className="fixed z-[70] overflow-hidden transition-transform duration-150 ease-out"
+              className={cn(
+                "fixed z-[70] overflow-hidden transition-[top,height] duration-150 ease-out",
+                stickOut && "pointer-events-none"
+              )}
               style={{
                 left: peekPortalStyle.left,
                 top: peekPortalStyle.top,
                 width: peekPortalStyle.paintedWidth,
                 height: peekPortalStyle.paintedHeight,
-                // Start aligned with the collapsed sliver's screen position,
-                // then slide the rest of the hand into view on enter — up
-                // for the bottom-anchored (own) hand, down for the top one.
-                // Hover extra is already in paintedHeight, so the slide
-                // distance is only the unclip (expanded − collapsed).
-                transform: peekEntered
-                  ? "translateY(0)"
-                  : `translateY(${
-                      (peek.anchor === "bottom" ? 1 : -1) *
-                      (peek.expandedPx - peek.collapsedPx) *
-                      peekPortalStyle.sy
-                    }px)`,
               }}
-              onPointerEnter={openPeek}
-              onPointerLeave={closePeekSoon}
+              onPointerEnter={stickOut ? undefined : openPeek}
+              onPointerLeave={stickOut ? undefined : closePeekSoon}
             >
-              <div
-                className="absolute top-0 left-0 flex origin-top-left flex-col"
-                style={{
-                  width: peekPortalStyle.paintedWidth / peekPortalStyle.sx,
-                  height: peek.expandedPx * PEEK_HOVER_SCALE,
-                  transform: `scale(${peekPortalStyle.sx}, ${peekPortalStyle.sy})`,
-                }}
-              >
+              <div className="absolute inset-0 flex flex-col">
                 {handRow}
               </div>
             </div>,

@@ -102,13 +102,14 @@ export const HAND_FLOAT_SIZE = {
 /**
  * Docked hand strip footprint (px) in the shared two-seat layout.
  *
- * `HAND_DOCK_HEIGHT_PX` is the collapsed/peek height — what's actually
- * reserved in `PLAY_FLOAT_LOGICAL` on both clients, so shrinking it grows
- * the shared battlefield float for everyone. Only this many px of each hand
- * card shows at rest. `HAND_DOCK_EXPANDED_PX` is the raised, fully-visible
- * card height shown in a floating overlay while the strip is hovered (see
- * `PlayerHand`'s `peek` prop). Larger than the old dock so looking at the
- * hand actually enlarges the faces, not just unclips them.
+ * `HAND_DOCK_HEIGHT_PX` is the collapsed/peek height of the overlay strip.
+ * `HAND_DOCK_EXPANDED_PX` is the raised, fully-visible card height shown in
+ * a floating overlay while the strip is hovered (see `PlayerHand`'s `peek`
+ * prop). Larger than the old dock so looking at the hand actually enlarges
+ * the faces, not just unclips them.
+ *
+ * These do not inset the shared float coordinate space — the battlefield
+ * is the full screen and this chrome sits on top.
  */
 export const HAND_DOCK_HEIGHT_PX = 64
 export const HAND_DOCK_EXPANDED_PX = 252

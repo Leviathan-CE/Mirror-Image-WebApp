@@ -9,6 +9,8 @@ import {
   iceServersFromEnv,
   isPlayNetMessage,
   PLAY_ICE_TIMEOUT_MS,
+  PLAY_RELAY_ONLY,
+  PLAY_SNAPSHOT_MIN_MS,
   type PlayNetMessage,
   type PlayTransport,
   type SignalPayload,
@@ -57,6 +59,7 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
   const iceQueueRef = useRef<RTCIceCandidateInit[]>([])
   const remoteSetRef = useRef(false)
   const iceTimerRef = useRef<number | null>(null)
+  const lastSnapshotAtRef = useRef(0)
   const handlersRef = useRef<{
     onIntent?: (action: PlayNetMessage & { type: "intent" }) => void
     onFog?: (view: Extract<PlayNetMessage, { type: "fog" }>["view"]) => void
@@ -111,6 +114,9 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
       return
     }
     if (raw.type === "snapshot") {
+      const now = Date.now()
+      if (now - lastSnapshotAtRef.current < PLAY_SNAPSHOT_MIN_MS) return
+      lastSnapshotAtRef.current = now
       handlersRef.current.onSnapshot?.()
       return
     }
@@ -209,6 +215,7 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
 
   const applySignal = useCallback(
     async (payload: SignalPayload) => {
+      if (PLAY_RELAY_ONLY) return
       const pc = ensurePeer()
       if (payload.kind === "offer") {
         await pc.setRemoteDescription(payload.sdp)
@@ -244,6 +251,7 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
   )
 
   const startHostOffer = useCallback(async () => {
+    if (PLAY_RELAY_ONLY) return
     // Always renegotiate — a leftover DC after leave/rejoin would early-return
     // and leave the guest without a working channel (WS relay still helps, but
     // offer/answer must restart cleanly for the new peer).
@@ -280,13 +288,14 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
       setPeerSeated(false)
       setPeerDeckId(null)
 
-      const ws = new WebSocket(playWsUrl(roomCode, auth))
+      const ws = new WebSocket(playWsUrl(roomCode))
       wsRef.current = ws
 
       ws.onopen = () => {
         if (gen !== connectGenRef.current) return
         joiningRef.current = false
-        setStatus("waiting")
+        ws.send(JSON.stringify({ type: "auth", token: auth }))
+        if (PLAY_RELAY_ONLY) setTransport("relay")
       }
       ws.onclose = () => {
         if (gen !== connectGenRef.current) return
@@ -331,6 +340,8 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
             if (raw.host) {
               void startHostOffer()
             }
+          } else {
+            setStatus("waiting")
           }
           if (!raw.host) {
             send({ type: "snapshot" })

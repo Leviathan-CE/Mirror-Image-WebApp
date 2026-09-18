@@ -1,6 +1,7 @@
 /**
- * Playtester session core: card bag + turn/life/pilot.
- * Table mutations go through `dispatch` → `applyAction`. Selection stays local.
+ * Table mutations go through `dispatch` → `applyAction`.
+ * Public-zone click-highlight is mirrored over the `selection` net message;
+ * hand/library selection stays on this client.
  */
 
 import {
@@ -18,6 +19,7 @@ import type { ResourceColor } from "@/components/Playtester/session/accumulateRe
 import { useLatestRef } from "@/hooks/useLatestRef"
 import {
   displayToWorld,
+  stampStockpileWorldHomes,
 } from "@/components/Playtester/board/augmentRow.logic"
 import { peekTopLibrary } from "@/components/Playtester/search/deckActions.logic"
 import { PLAY_FLOAT_LOGICAL } from "@/components/Playtester/board/playFieldScale.logic"
@@ -32,6 +34,15 @@ import {
 import {
   setupOpeningSession,
   startingLifeFromPilot,
+  victoryNumberFromPilot,
+  guestMayPlaceholderDeal,
+  guestPlaceholderCoverageImproved,
+  hostOpeningMayCommit,
+  mergeOpeningStockpilePips,
+  openingTimCoverage,
+  startingResourceColorsFromPilot,
+  missingStartingResourceColors,
+  spawnGroupedStockpileResources,
 } from "@/components/Playtester/session/setupOpeningSession.logic"
 import {
   applyAction,
@@ -39,6 +50,8 @@ import {
   createPlaySessionState,
   materializeFog,
   withPreservedSelection,
+  applySharedSelection,
+  sharedSelectionIds,
   seatRecord,
   type CardCounterKind,
   type FogView,
@@ -85,6 +98,8 @@ export type UsePlaySessionArgs = {
   peerPresent?: boolean
   sendIntent?: (action: SessionAction) => void
   onHostCommit?: (action: SessionAction | null, state: PlaySessionState) => void
+  /** Fire after a local click-highlight so the peer can paint the same rings. */
+  shareSelection?: (ids: string[]) => void
   /** Painted float size — coords from drag/spawn convert through this ref. */
   displayFieldRef?: MutableRefObject<ParentSize>
 }
@@ -102,6 +117,7 @@ export function usePlaySession({
   peerPresent = false,
   sendIntent,
   onHostCommit,
+  shareSelection,
   displayFieldRef: displayFieldRefArg,
 }: UsePlaySessionArgs) {
   const fallbackDisplayRef = useRef<ParentSize>(PLAY_FLOAT_LOGICAL)
@@ -112,6 +128,8 @@ export function usePlaySession({
   const sessionCardsRef = useLatestRef(sessionCardsState)
 
   const [lifeBySeat, setLifeBySeat] = useState(seatRecord(0))
+  const [vpBySeat, setVpBySeat] = useState(seatRecord(0))
+  const [vpGoalBySeat, setVpGoalBySeat] = useState(seatRecord(0))
   const [turn, setTurn] = useState(1)
   const [turnSeat, setTurnSeat] = useState<PlayerSlot>(LOCAL_SEAT)
   const [pilotGenBySeat, setPilotGenBySeat] = useState(seatRecord(0))
@@ -132,10 +150,14 @@ export function usePlaySession({
   } | null>(null)
   const guestMulliganArmed = useRef(false)
   const guestPlaceholderDealt = useRef(false)
+  const guestOpeningTkIds = useRef(new Set<string>())
   const netRoleRef = useLatestRef(netRole)
   const sendIntentRef = useLatestRef(sendIntent)
   const onHostCommitRef = useLatestRef(onHostCommit)
+  const shareSelectionRef = useLatestRef(shareSelection)
   const lifeRef = useLatestRef(lifeBySeat)
+  const vpRef = useLatestRef(vpBySeat)
+  const vpGoalRef = useLatestRef(vpGoalBySeat)
   const turnRef = useLatestRef(turn)
   const turnSeatRef = useLatestRef(turnSeat)
   const pilotGenRef = useLatestRef(pilotGenBySeat)
@@ -161,6 +183,8 @@ export function usePlaySession({
       createPlaySessionState({
         cards: sessionCardsRef.current,
         life: lifeRef.current,
+        vp: vpRef.current,
+        vpGoal: vpGoalRef.current,
         turn: turnRef.current,
         turnSeat: turnSeatRef.current,
         pilotGenBonus: pilotGenRef.current,
@@ -194,6 +218,10 @@ export function usePlaySession({
           const next = applyAction(snapshot(), action)
           setTopRevealedBySeat(next.topRevealedBySeat)
         }
+        if (action.t === "vp") {
+          const next = applyAction(snapshot(), action)
+          setVpBySeat(next.vp)
+        }
         return snapshot()
       }
       const next = applyAction(snapshot(), action)
@@ -202,6 +230,8 @@ export function usePlaySession({
       seqRef.current = next.seq
       commitCards(next.cards)
       setLifeBySeat(next.life)
+      setVpBySeat(next.vp)
+      setVpGoalBySeat(next.vpGoal)
       setTurn(next.turn)
       setTurnSeat(next.turnSeat)
       setPilotGenBySeat(next.pilotGenBonus)
@@ -220,13 +250,57 @@ export function usePlaySession({
     const viewerHasCards = nextCards.some((c) => c.owner === view.viewer)
     const viewerCounts =
       (view.handCount[view.viewer] ?? 0) + (view.libraryCount[view.viewer] ?? 0)
+
+    // DEBUG: Log fog reception for TIM diagnosis
+    const viewerStockpile = nextCards.filter(
+      (c) => c.owner === view.viewer && c.zone === PLAY_ZONE.stockpile
+    )
+    const viewerTIM = viewerStockpile.filter((c) =>
+      c.cost?.some((pip) => pip === "TIM")
+    )
+    console.info("[applyFog] received fog", {
+      viewer: view.viewer,
+      seq: view.seq,
+      localSeq: seqRef.current,
+      viewerHasCards,
+      viewerCounts,
+      viewerStockpileCount: viewerStockpile.length,
+      viewerTIMCount: viewerTIM.length,
+      totalCards: nextCards.length,
+    })
+
     if (!viewerHasCards && viewerCounts === 0 && view.seq === 0) {
       return
     }
 
+    const incomingIds = new Set(nextCards.map((card) => card.instanceId))
+    nextCards = mergeOpeningStockpilePips({
+      seq: view.seq,
+      owner: view.viewer,
+      incoming: nextCards,
+      previous: sessionCardsRef.current,
+    })
+    for (const card of nextCards) {
+      if (incomingIds.has(card.instanceId)) continue
+      if (card.zone !== PLAY_ZONE.stockpile) continue
+      if (guestOpeningTkIds.current.has(card.instanceId)) continue
+      guestOpeningTkIds.current.add(card.instanceId)
+      dispatch({
+        t: "tk",
+        seat: card.owner,
+        cardId: card.cardId,
+        name: card.name,
+        artPath: card.artPath,
+        artVersion: card.artVersion ?? null,
+        cost: card.cost,
+        x: card.x,
+        y: card.y,
+      })
+    }
+
     const keepLocal = new Set(
       sessionCardsRef.current
-        .filter((card) => card.selected && card.owner === view.viewer)
+        .filter((card) => card.selected)
         .map((card) => card.instanceId)
     )
     // Selection is local-only — never copy peer `selected` onto the action bag.
@@ -238,6 +312,8 @@ export function usePlaySession({
     seqRef.current = view.seq
     commitCards(withPreservedSelection(nextCards, keepLocal, view.viewer))
     setLifeBySeat(view.life)
+    setVpBySeat(view.vp ?? seatRecord(0))
+    setVpGoalBySeat(view.vpGoal ?? seatRecord(0))
     setTurn(view.turn)
     setTurnSeat(view.turnSeat)
     setPilotGenBySeat(view.pilotGenBonus ?? { p1: 0, p2: 0 })
@@ -256,7 +332,7 @@ export function usePlaySession({
       guestMulliganArmed.current = true
       setMulliganOpen(true)
     }
-  }, [])
+  }, [dispatch])
 
   // Opponent row only when a second deck exists, or this client is the guest
   // waiting on / rendering a fog view. Creating a room must not flip the
@@ -277,6 +353,7 @@ export function usePlaySession({
     setFogCounts(null)
     guestPlaceholderDealt.current = false
     guestMulliganArmed.current = false
+    guestOpeningTkIds.current.clear()
     seqRef.current = 0
     nextIdRef.current = 1
     setTopRevealedBySeat(seatRecord(false))
@@ -286,6 +363,8 @@ export function usePlaySession({
     if (status !== "ready" || !deck) {
       commitCards([])
       setLifeBySeat(seatRecord(0))
+      setVpBySeat(seatRecord(0))
+      setVpGoalBySeat(seatRecord(0))
       setTurn(1)
       setTurnSeat(LOCAL_SEAT)
       setPilotGenBySeat(seatRecord(0))
@@ -295,37 +374,86 @@ export function usePlaySession({
       fogCountsRef.current = null
       setFogCounts(null)
       guestPlaceholderDealt.current = false
+      guestOpeningTkIds.current.clear()
       effectsRef.current.clearDrawTimers?.()
       return
     }
     if (netRole === "guest") {
-      if (!fogCountsRef.current && !guestPlaceholderDealt.current) {
-        guestPlaceholderDealt.current = true
-        const mine = setupOpeningSession(deck, resourceByColor, mySeat)
-        const pilot = pilotCard(deck.cards, deck.categories)
-        seqRef.current = 0
-        nextIdRef.current = 1
-        commitCards(mine)
-        setLifeBySeat((prev) => ({
-          ...prev,
-          [mySeat]: startingLifeFromPilot(pilot),
-        }))
-        setPilotHandBySeat((prev) => ({
-          ...prev,
-          [mySeat]: Math.max(0, Math.floor(pilot?.card.hand_size ?? 0)),
-        }))
-        setTurnSeat(mySeat)
-        if (OPENING_MULLIGAN_ENABLED) {
-          setMulliganOpen(cardsInZone(mine, "hand", mySeat).length > 0)
-        }
+      const guestPilot = pilotCard(deck.cards, deck.categories)
+      const guestNeeded = startingResourceColorsFromPilot(guestPilot)
+      const coverageImproved = guestPlaceholderCoverageImproved({
+        needed: guestNeeded,
+        resourceByColor,
+        stockpile: sessionCardsRef.current.filter(
+          (card) => card.zone === PLAY_ZONE.stockpile && card.owner === mySeat
+        ),
+      })
+      if (
+        !guestMayPlaceholderDeal({
+          hasFog: Boolean(fogCountsRef.current),
+          resourcesReady,
+          alreadyDealt: guestPlaceholderDealt.current,
+          coverageImproved,
+        })
+      ) {
+        return
+      }
+      guestPlaceholderDealt.current = true
+      guestOpeningTkIds.current.clear()
+      const mine = setupOpeningSession(deck, resourceByColor, mySeat)
+      const pilot = guestPilot
+      // Always log for TIM diagnosis
+      const guestStockpile = mine.filter(
+        (card) => card.zone === PLAY_ZONE.stockpile && card.owner === mySeat
+      )
+      const guestTIM = guestStockpile.filter((c) =>
+        c.cost?.some((pip) => pip === "TIM")
+      )
+      console.info("[guest placeholder deal]", {
+        seat: mySeat,
+        neededColors: guestNeeded,
+        resourceMapHasTIM: resourceByColor.has("TIM"),
+        resourceMapColors: [...resourceByColor.keys()],
+        stockpileCount: guestStockpile.length,
+        TIMCount: guestTIM.length,
+        coverage: openingTimCoverage({
+          requestedColors: guestNeeded,
+          resourceByColor,
+          stockpile: guestStockpile,
+        }),
+      })
+      seqRef.current = 0
+      nextIdRef.current = 1
+      commitCards(mine)
+      setLifeBySeat((prev) => ({
+        ...prev,
+        [mySeat]: startingLifeFromPilot(pilot),
+      }))
+      setVpBySeat((prev) => ({ ...prev, [mySeat]: 0 }))
+      setVpGoalBySeat((prev) => ({
+        ...prev,
+        [mySeat]: victoryNumberFromPilot(pilot),
+      }))
+      setPilotHandBySeat((prev) => ({
+        ...prev,
+        [mySeat]: Math.max(0, Math.floor(pilot?.card.hand_size ?? 0)),
+      }))
+      setTurnSeat(mySeat)
+      if (OPENING_MULLIGAN_ENABLED) {
+        setMulliganOpen(cardsInZone(mine, "hand", mySeat).length > 0)
       }
       return
     }
     guestPlaceholderDealt.current = false
-    if (!resourcesReady) return
-    // Host waiting for a guest: keep the current solo deal at the bottom.
-    // Re-deal both seats only once the opponent deck is actually loaded.
-    if ((twoSeat || netRole === "host") && !opponentDeck) return
+    if (
+      !hostOpeningMayCommit({
+        resourcesReady,
+        hasOpponentDeck: Boolean(opponentDeck),
+        requiresOpponentDeck: twoSeat || netRole === "host",
+      })
+    ) {
+      return
+    }
 
     const theirSeat = otherSeat(mySeat)
     const mine = setupOpeningSession(deck, resourceByColor, mySeat)
@@ -337,6 +465,35 @@ export function usePlaySession({
     const oppPilot = opponentDeck
       ? pilotCard(opponentDeck.cards, opponentDeck.categories)
       : null
+    // Always log for TIM diagnosis
+    const hostStockpile = mine.filter(
+      (card) => card.zone === PLAY_ZONE.stockpile && card.owner === mySeat
+    )
+    const guestStockpile = theirs.filter(
+      (card) => card.zone === PLAY_ZONE.stockpile && card.owner === theirSeat
+    )
+    const hostTIM = hostStockpile.filter((c) =>
+      c.cost?.some((pip) => pip === "TIM")
+    )
+    const guestTIM = guestStockpile.filter((c) =>
+      c.cost?.some((pip) => pip === "TIM")
+    )
+    const hostNeeded = startingResourceColorsFromPilot(pilot)
+    const oppNeeded = startingResourceColorsFromPilot(oppPilot)
+    console.info("[host opening deal]", {
+      netRole,
+      mySeat,
+      theirSeat,
+      resourceMapHasTIM: resourceByColor.has("TIM"),
+      resourceMapColors: [...resourceByColor.keys()],
+      hostNeededColors: hostNeeded,
+      oppNeededColors: oppNeeded,
+      hostStockpileCount: hostStockpile.length,
+      guestStockpileCount: guestStockpile.length,
+      hostTIMCount: hostTIM.length,
+      guestTIMCount: guestTIM.length,
+      totalOpeningCards: opening.length,
+    })
     rngRef.current = (Date.now() ^ deck.id ^ (opponentDeck?.id ?? 0)) >>> 0
     nextIdRef.current = 1
     seqRef.current = 0
@@ -344,10 +501,16 @@ export function usePlaySession({
     const life = seatRecord(0)
     life[mySeat] = startingLifeFromPilot(pilot)
     life[theirSeat] = startingLifeFromPilot(oppPilot)
+    const vp = seatRecord(0)
+    const vpGoal = seatRecord(0)
+    vpGoal[mySeat] = victoryNumberFromPilot(pilot)
+    vpGoal[theirSeat] = victoryNumberFromPilot(oppPilot)
     const handSizes = seatRecord(0)
     handSizes[mySeat] = Math.max(0, Math.floor(pilot?.card.hand_size ?? 0))
     handSizes[theirSeat] = Math.max(0, Math.floor(oppPilot?.card.hand_size ?? 0))
     setLifeBySeat(life)
+    setVpBySeat(vp)
+    setVpGoalBySeat(vpGoal)
     setTurn(1)
     setTurnSeat(mySeat)
     setPilotGenBySeat(seatRecord(0))
@@ -362,6 +525,8 @@ export function usePlaySession({
         createPlaySessionState({
           cards: opening,
           life,
+          vp,
+          vpGoal,
           turn: 1,
           turnSeat: mySeat,
           rng: rngRef.current,
@@ -372,6 +537,59 @@ export function usePlaySession({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- resourceByColor identity tracked via resourcesReady+deck
   }, [status, deck, opponentDeck, resourcesReady, resourceByColor, twoSeat, mySeat, netRole])
+
+  useEffect(() => {
+    if (status !== "ready" || !deck || !resourcesReady) return
+
+    const seats: Array<{ seat: PlayerSlot; source: typeof deck }> = [
+      { seat: mySeat, source: deck },
+    ]
+    if (netRole !== "guest" && opponentDeck) {
+      seats.push({ seat: otherSeat(mySeat), source: opponentDeck })
+    }
+
+    for (const { seat, source } of seats) {
+      const needed = startingResourceColorsFromPilot(
+        pilotCard(source.cards, source.categories)
+      )
+      const missing = missingStartingResourceColors({
+        needed,
+        resourceByColor,
+        stockpile: sessionCardsRef.current.filter(
+          (card) =>
+            card.zone === PLAY_ZONE.stockpile && card.owner === seat
+        ),
+      })
+      if (missing.length === 0) continue
+      const stamped = stampStockpileWorldHomes(
+        spawnGroupedStockpileResources(missing, resourceByColor, 0, seat),
+        seat
+      )
+      for (const card of stamped) {
+        dispatch({
+          t: "tk",
+          seat,
+          cardId: card.cardId,
+          name: card.name,
+          artPath: card.artPath,
+          artVersion: card.artVersion ?? null,
+          cost: card.cost,
+          x: card.x,
+          y: card.y,
+        })
+      }
+    }
+  }, [
+    status,
+    deck,
+    opponentDeck,
+    resourcesReady,
+    resourceByColor,
+    netRole,
+    mySeat,
+    sessionCardsState,
+    dispatch,
+  ])
 
   const oppSeat = otherSeat(localSeat)
 
@@ -457,6 +675,10 @@ export function usePlaySession({
 
   const life = lifeBySeat[localSeat]
   const oppLife = lifeBySeat[oppSeat]
+  const vp = vpBySeat[localSeat]
+  const oppVp = vpBySeat[oppSeat]
+  const vpGoal = vpGoalBySeat[localSeat]
+  const oppVpGoal = vpGoalBySeat[oppSeat]
   const pilotGenBonus = pilotGenBySeat[localSeat]
   const oppPilotGenBonus = pilotGenBySeat[oppSeat]
   const pilotHandSize = pilotHandBySeat[localSeat]
@@ -495,11 +717,27 @@ export function usePlaySession({
 
   function changeFloatSelection(instanceIds: string[]) {
     dispatch({ t: "sel", seat: localSeat, i: instanceIds })
+    shareSelectionRef.current?.(
+      sharedSelectionIds(sessionCardsRef.current, instanceIds)
+    )
   }
 
   function changeHandSelection(instanceIds: string[]) {
     dispatch({ t: "sel", seat: localSeat, i: instanceIds })
+    shareSelectionRef.current?.(
+      sharedSelectionIds(sessionCardsRef.current, instanceIds)
+    )
   }
+
+  /** Peer click-highlight — do not echo back over the net. */
+  const applyPeerSelection = useCallback((instanceIds: string[]) => {
+    const next = applySharedSelection(
+      sessionCardsRef.current,
+      new Set(instanceIds)
+    )
+    sessionCardsRef.current = next
+    setSessionCardsState(next)
+  }, [sessionCardsRef])
 
   function startTurn(blocked: boolean) {
     if (blocked) return
@@ -655,6 +893,12 @@ export function usePlaySession({
     dispatch({ t: "lf", seat: localSeat, d: value - current })
   }
 
+  function setVpForLocal(next: number | ((prev: number) => number)) {
+    const current = vpRef.current[localSeat]
+    const value = typeof next === "function" ? next(current) : next
+    dispatch({ t: "vp", seat: localSeat, d: value - current })
+  }
+
   return {
     sessionCards: sessionCardsState,
     setSessionCards,
@@ -670,6 +914,11 @@ export function usePlaySession({
     oppLife,
     setLife: setLifeForLocal,
     lifeBySeat,
+    vp,
+    oppVp,
+    vpGoal,
+    oppVpGoal,
+    setVp: setVpForLocal,
     turn,
     turnSeat,
     pilotGenBonus,
@@ -700,6 +949,7 @@ export function usePlaySession({
     toggleExpendedIds,
     changeFloatSelection,
     changeHandSelection,
+    applyPeerSelection,
     startTurn,
     deleteCards,
     adjustCounters,

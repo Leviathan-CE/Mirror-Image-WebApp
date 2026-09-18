@@ -28,22 +28,38 @@ import {
 import type { CardLibraryItem } from "@/lib/api/cards"
 import type { DeckCardEntry, DeckDetail } from "@/lib/api/decks"
 
+function capacityOn(
+  card: { [key: string]: unknown } | undefined,
+  keys: string[]
+): number {
+  if (!card) return 0
+  const lowered: { [key: string]: unknown } = {}
+  for (const [rawKey, rawVal] of Object.entries(card)) {
+    lowered[rawKey.trim().toLowerCase()] = rawVal
+  }
+  for (const key of keys) {
+    const n = Math.floor(Number(lowered[key]))
+    if (Number.isFinite(n) && n > 0) return n
+  }
+  return 0
+}
+
 /** Map pilot capacity columns → coloured resource pips (not life). */
 export function startingResourceColorsFromPilot(
   pilot: DeckCardEntry | null | undefined
 ): ResourceColor[] {
   if (!pilot) return []
   const out: ResourceColor[] = []
-  const push = (color: ResourceColor, count: number | undefined) => {
-    const n = Math.max(0, Math.floor(count ?? 0))
-    for (let i = 0; i < n; i++) out.push(color)
+  const push = (color: ResourceColor, count: number) => {
+    for (let i = 0; i < count; i++) out.push(color)
   }
-  push("RAM", pilot.card.ram_capacity)
-  push("POW", pilot.card.power_capacity)
-  push("MET", pilot.card.metal_capacity)
-  push("LIF", pilot.card.spirit_capacity)
-  push("TIM", pilot.card.time_capacity)
-  push("STL", pilot.card.steel_capacity)
+  const card = pilot.card as { [key: string]: unknown }
+  push("RAM", capacityOn(card, ["ram_capacity"]))
+  push("POW", capacityOn(card, ["power_capacity"]))
+  push("MET", capacityOn(card, ["metal_capacity"]))
+  push("LIF", capacityOn(card, ["spirit_capacity"]))
+  push("TIM", capacityOn(card, ["time_capacity", "tim_capacity"]))
+  push("STL", capacityOn(card, ["steel_capacity"]))
   return out
 }
 
@@ -52,6 +68,17 @@ export function startingLifeFromPilot(
   pilot: DeckCardEntry | null | undefined
 ): number {
   return Math.max(0, Math.floor(pilot?.card.lif_capacity ?? 0))
+}
+
+/**
+ * Victory number printed on the pilot (VP needed to win).
+ * Catalogue has no `vp_capacity` column yet — `lif_capacity` is the numeric
+ * pilot stat we already load, so the denominator uses that until they split.
+ */
+export function victoryNumberFromPilot(
+  pilot: DeckCardEntry | null | undefined
+): number {
+  return startingLifeFromPilot(pilot)
 }
 
 /**
@@ -199,6 +226,196 @@ export function setupOpeningSession(
   )
 
   return session
+}
+
+/**
+ * Colours both pilots will request at opening. Host uses own + opponent;
+ * guest only has their own deck JSON.
+ */
+export function neededResourceColorsFromDecks(
+  decks: Array<DeckDetail | null | undefined>
+): ResourceColor[] {
+  const seen = new Set<ResourceColor>()
+  const needed: ResourceColor[] = []
+  for (const deck of decks) {
+    if (!deck) continue
+    const colors = startingResourceColorsFromPilot(
+      pilotCard(deck.cards, deck.categories)
+    )
+    for (const color of colors) {
+      if (seen.has(color)) continue
+      seen.add(color)
+      needed.push(color)
+    }
+  }
+  return needed
+}
+
+export function openingTimCoverage(args: {
+  requestedColors: readonly ResourceColor[]
+  resourceByColor: Map<ResourceColor, unknown>
+  stockpile: Array<{ cost?: string[] | null }>
+}): {
+  pilotAsksTim: boolean
+  mapHasTim: boolean
+  stockpileTimCount: number
+} {
+  let stockpileTimCount = 0
+  for (const card of args.stockpile) {
+    const hasTim = (card.cost ?? []).some(
+      (pip) => pip.trim().toUpperCase() === "TIM"
+    )
+    if (hasTim) stockpileTimCount += 1
+  }
+  return {
+    pilotAsksTim: args.requestedColors.includes("TIM"),
+    mapHasTim: args.resourceByColor.has("TIM"),
+    stockpileTimCount,
+  }
+}
+
+function stockpileColorCounts(
+  stockpile: Array<{ cost?: string[] | null }>
+): Map<ResourceColor, number> {
+  const have = new Map<ResourceColor, number>()
+  for (const card of stockpile) {
+    let color: ResourceColor | null = null
+    for (const raw of card.cost ?? []) {
+      const pip = raw.trim().toUpperCase()
+      if (pip === "GEN") {
+        color = "STL"
+        break
+      }
+      if ((RESOURCE_COLORS as readonly string[]).includes(pip)) {
+        color = pip as ResourceColor
+        break
+      }
+    }
+    if (!color) continue
+    have.set(color, (have.get(color) ?? 0) + 1)
+  }
+  return have
+}
+
+/** Map gained a needed colour the placeholder stockpile does not have yet. */
+export function guestPlaceholderCoverageImproved(args: {
+  needed: readonly ResourceColor[]
+  resourceByColor: Map<ResourceColor, unknown>
+  stockpile: Array<{ cost?: string[] | null }>
+}): boolean {
+  return missingStartingResourceColors(args).length > 0
+}
+
+/**
+ * Colours the pilot asked for that the catalogue can spawn but the
+ * stockpile does not yet have. Same identity as Generate resource.
+ */
+export function missingStartingResourceColors(args: {
+  needed: readonly ResourceColor[]
+  resourceByColor: Map<ResourceColor, unknown>
+  stockpile: Array<{ cost?: string[] | null }>
+}): ResourceColor[] {
+  const want = new Map<ResourceColor, number>()
+  for (const color of args.needed) {
+    want.set(color, (want.get(color) ?? 0) + 1)
+  }
+  const have = stockpileColorCounts(args.stockpile)
+  const missing: ResourceColor[] = []
+  for (const [color, count] of want) {
+    if (!args.resourceByColor.has(color)) continue
+    const spawned = have.get(color) ?? 0
+    for (let i = spawned; i < count; i++) missing.push(color)
+  }
+  return missing
+}
+
+/**
+ * Guest local deal is only a placeholder until host fog arrives.
+ * Rebuild once if the catalogue later covers a colour the first stamp skipped.
+ */
+export function guestMayPlaceholderDeal(args: {
+  hasFog: boolean
+  resourcesReady: boolean
+  alreadyDealt: boolean
+  coverageImproved?: boolean
+}): boolean {
+  if (args.hasFog) return false
+  if (!args.resourcesReady) return false
+  if (!args.alreadyDealt) return true
+  return Boolean(args.coverageImproved)
+}
+
+/**
+ * Host waits until resources are fetched and, in a room, the opponent deck
+ * JSON exists. Missing pips are skipped at spawn — do not block the whole
+ * opening for one colour (that left both seats with no library).
+ */
+export function hostOpeningMayCommit(args: {
+  resourcesReady: boolean
+  hasOpponentDeck: boolean
+  requiresOpponentDeck: boolean
+}): boolean {
+  if (!args.resourcesReady) return false
+  if (args.requiresOpponentDeck && !args.hasOpponentDeck) return false
+  return true
+}
+
+/**
+ * Seq-0 fog is the opening replace. If the host omitted a starting pip the
+ * guest already spawned (same identity as Generate resource), keep those
+ * tokens and stamp them into the same world fan as the fog stockpile so
+ * Life/Time sit in one row. Later seq updates are host-authoritative.
+ */
+export function mergeOpeningStockpilePips(args: {
+  seq: number
+  owner: PlayerSlot
+  incoming: PlayingCardInstance[]
+  previous: PlayingCardInstance[]
+}): PlayingCardInstance[] {
+  if (args.seq !== 0) return args.incoming
+  const prevStock = args.previous.filter(
+    (card) => card.zone === "stockpile" && card.owner === args.owner
+  )
+  if (prevStock.length === 0) return args.incoming
+
+  const incomingStock = args.incoming.filter(
+    (card) => card.zone === "stockpile" && card.owner === args.owner
+  )
+  const have = stockpileColorCounts(incomingStock)
+  const extra: PlayingCardInstance[] = []
+  const seen = new Set(args.incoming.map((card) => card.instanceId))
+  for (const card of prevStock) {
+    if (seen.has(card.instanceId)) continue
+    const counts = stockpileColorCounts([card])
+    let missing = false
+    for (const [color, n] of counts) {
+      if ((have.get(color) ?? 0) < n) missing = true
+    }
+    if (!missing) continue
+    extra.push(card)
+    for (const [color, n] of counts) {
+      have.set(color, (have.get(color) ?? 0) + n)
+    }
+  }
+  if (extra.length === 0) return args.incoming
+
+  const laidOut = stampStockpileWorldHomes(
+    [...incomingStock, ...extra].map((card) => ({
+      ...card,
+      x: undefined,
+      y: undefined,
+    })),
+    args.owner
+  )
+  const homeById = new Map(
+    laidOut.map((card) => [card.instanceId, card] as const)
+  )
+  const placedExtra = extra.map((card) => {
+    const home = homeById.get(card.instanceId)
+    if (!home || home.x == null || home.y == null) return card
+    return { ...card, x: home.x, y: home.y }
+  })
+  return [...args.incoming, ...placedExtra]
 }
 
 /**

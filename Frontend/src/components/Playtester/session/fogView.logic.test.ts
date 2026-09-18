@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  applySharedSelection,
   materializeFog,
+  sharedSelectionIds,
   viewFor,
   withPeerSelectionChrome,
   withPreservedSelection,
@@ -63,14 +65,13 @@ describe("fog view augments", () => {
     expect(seen?.selected).toBe(false)
   })
 
-  it("preserves only the viewer's optimistic selection across fog", () => {
+  it("preserves local selection on own and opponent cards across fog", () => {
     const mine = augment("p1", { selected: false, instanceId: "p1-a" })
     const peer = augment("p2", { selected: true, instanceId: "p2-a" })
     const fogged = materializeFog(viewFor("p1", stateWith([mine, peer])))
-    const kept = withPreservedSelection(fogged, new Set(["p1-a"]), "p1")
+    const kept = withPreservedSelection(fogged, new Set(["p1-a", "p2-a"]), "p1")
     expect(kept.find((c) => c.instanceId === "p1-a")?.selected).toBe(true)
-    // Opponent selected was stripped by viewFor.
-    expect(kept.find((c) => c.instanceId === "p2-a")?.selected).toBe(false)
+    expect(kept.find((c) => c.instanceId === "p2-a")?.selected).toBe(true)
   })
 
   it("withPeerSelectionChrome can force peer selected flags (unused in UI)", () => {
@@ -80,5 +81,38 @@ describe("fog view augments", () => {
     expect(cleared.find((c) => c.instanceId === peer.instanceId)?.selected).toBe(
       false
     )
+  })
+})
+
+describe("sharedSelectionIds / applySharedSelection", () => {
+  it("drops hand and library ids so private clicks never leave this client", () => {
+    const cards = [
+      augment("p1", { instanceId: "bf", zone: "battlefield" }),
+      augment("p1", { instanceId: "hd", zone: "hand" }),
+      augment("p1", { instanceId: "lb", zone: "library" }),
+    ]
+    expect(sharedSelectionIds(cards, ["bf", "hd", "lb"])).toEqual(["bf"])
+  })
+
+  it("paints public rings without touching a private-zone card", () => {
+    const cards = [
+      augment("p1", { instanceId: "bf", zone: "battlefield", selected: false }),
+      augment("p2", { instanceId: "opp", zone: "battlefield", selected: false }),
+      augment("p1", { instanceId: "hd", zone: "hand", selected: true }),
+    ]
+    const next = applySharedSelection(cards, new Set(["opp"]))
+    expect(next.find((c) => c.instanceId === "bf")?.selected).toBe(false)
+    expect(next.find((c) => c.instanceId === "opp")?.selected).toBe(true)
+    expect(next.find((c) => c.instanceId === "hd")?.selected).toBe(true)
+  })
+
+  it("empty ids clear every public ring", () => {
+    const cards = [
+      augment("p2", { instanceId: "opp", selected: true }),
+      augment("p1", { instanceId: "hd", zone: "hand", selected: true }),
+    ]
+    const next = applySharedSelection(cards, new Set())
+    expect(next.find((c) => c.instanceId === "opp")?.selected).toBe(false)
+    expect(next.find((c) => c.instanceId === "hd")?.selected).toBe(true)
   })
 })

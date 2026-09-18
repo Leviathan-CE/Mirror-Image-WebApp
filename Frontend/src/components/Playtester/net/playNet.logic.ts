@@ -9,9 +9,19 @@ import type { FlipFlyMode } from "@/components/Playtester/constants";
 
 export const PLAY_ICE_SERVERS: RTCIceServer[] = [
   { urls: "stun:stun.l.google.com:19302" },
-];
+]
 
-export const PLAY_ICE_TIMEOUT_MS = 8000;
+export const PLAY_ICE_TIMEOUT_MS = 8000
+
+/**
+ * When true, skip WebRTC. ICE candidates would otherwise show each seat's
+ * public IP to the other player. Set `VITE_PLAY_RELAY_ONLY=true` to hide that.
+ */
+export const PLAY_RELAY_ONLY =
+  String(import.meta.env.VITE_PLAY_RELAY_ONLY ?? "").toLowerCase() === "true"
+
+/** Host ignores snapshot requests closer together than this (ms). */
+export const PLAY_SNAPSHOT_MIN_MS = 2000
 
 export type SignalPayload =
   | { kind: "offer"; sdp: RTCSessionDescriptionInit }
@@ -73,7 +83,7 @@ export type PlayNetMessage =
   | { type: "browse"; pile: "library-top"; count: number }
   | { type: "browse"; pile: "trashyard" }
   | { type: "browse"; pile: "dismantled" }
-  /** Immediate selection chrome — not stored on `card.selected`. */
+  /** Immediate public-zone selection chrome — not stored in fog. */
   | { type: "selection"; ids: string[]; seat?: PlayerSlot }
   | { type: "fx"; fx: PlayFx }
   | {
@@ -118,6 +128,7 @@ const ACTOR_SEAT_TAGS = new Set<SessionAction["t"]>([
   "dg",
   "rdy",
   "lf",
+  "vp",
   "ma",
   "tb",
   "ro",

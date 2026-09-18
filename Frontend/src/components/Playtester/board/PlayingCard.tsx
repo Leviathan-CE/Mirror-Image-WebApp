@@ -19,13 +19,18 @@ import type { CardCounterKind, PlayingCardInstance } from "../types"
 const FLIP_MS = 450
 
 const faceShell =
-  "absolute inset-0 overflow-hidden border bg-black/70 clip-angled [backface-visibility:hidden]"
+  "absolute inset-0 overflow-hidden border bg-black/70 clip-angled"
 
 export type PlayingCardProps = {
   card: PlayingCardInstance
   className?: string
   isSelected?: boolean
   isExpended?: boolean
+  /**
+   * Skip the 3D flip layer. A parent `transform: scale()` rasterizes
+   * `preserve-3d` as a bitmap, then squashes it — that is the soft hand art.
+   */
+  flat?: boolean
   /** Left-click +1 / right-click −1 on a counter badge. */
   onCounterAdjust?: (kind: CardCounterKind, delta: number) => void
 }
@@ -35,6 +40,7 @@ export function PlayingCard({
   className,
   isSelected,
   onCounterAdjust,
+  flat,
 }: PlayingCardProps) {
   const faceDown = Boolean(card.faceDown)
   // Skip the first paint's transform transition so a card that lands already
@@ -63,6 +69,8 @@ export function PlayingCard({
     generic > 0 ||
     depletion > 0
   const interactive = Boolean(onCounterAdjust)
+  const showFront = !flat || !faceDown
+  const showBack = !flat || faceDown
 
   function adjust(kind: CardCounterKind, delta: number) {
     onCounterAdjust?.(kind, delta)
@@ -84,7 +92,8 @@ export function PlayingCard({
   return (
     <div
       className={cn(
-        "relative h-36 w-28 shrink-0 [perspective:800px]",
+        "relative h-36 w-28 shrink-0",
+        !flat && "[perspective:800px]",
         className
       )}
       aria-label={
@@ -98,54 +107,67 @@ export function PlayingCard({
       }
     >
       <div
-        className="relative h-full w-full [transform-style:preserve-3d]"
-        style={{
-          transform: faceDown ? "rotateY(180deg)" : "rotateY(0deg)",
-          transition: flipReady
-            ? `transform ${FLIP_MS}ms ease-in-out`
-            : undefined,
-        }}
+        className={cn(
+          "relative h-full w-full",
+          !flat && "[transform-style:preserve-3d]"
+        )}
+        style={
+          flat
+            ? undefined
+            : {
+                transform: faceDown ? "rotateY(180deg)" : "rotateY(0deg)",
+                transition: flipReady
+                  ? `transform ${FLIP_MS}ms ease-in-out`
+                  : undefined,
+              }
+        }
       >
-        {/* Front (art) */}
-        <div
-          className={cn(
-            faceShell,
-            borderClass,
-            isSelected && selectedBorder
-          )}
-        >
-          {classification ? (
-            <ClassifiedCardFace
-              name={card.name}
-              classification={classification}
-              size="stack"
-              className="!rounded-none"
-            />
-          ) : faceSrc ? (
-            <img
-              src={faceSrc}
-              alt=""
-              className="h-full w-full object-cover"
-              draggable={false}
-            />
-          ) : (
-            <span className="flex h-full items-center justify-center px-2 text-center font-mono text-[10px] text-cyan-100/80">
-              {card.name}
-            </span>
-          )}
-        </div>
+        {/* Front (art) — flat face-down skips this so we never keep a 3D pair. */}
+        {showFront && (
+          <div
+            className={cn(
+              faceShell,
+              !flat && "[backface-visibility:hidden]",
+              borderClass,
+              isSelected && selectedBorder
+            )}
+          >
+            {classification ? (
+              <ClassifiedCardFace
+                name={card.name}
+                classification={classification}
+                size="stack"
+                className="!rounded-none"
+              />
+            ) : faceSrc ? (
+              <img
+                src={faceSrc}
+                alt=""
+                className="h-full w-full object-cover"
+                draggable={false}
+              />
+            ) : (
+              <span className="flex h-full items-center justify-center px-2 text-center font-mono text-[10px] text-cyan-100/80">
+                {card.name}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Back */}
-        <div
-          className={cn(
-            faceShell,
-            "border-cyan-500/40",
-            isSelected && "border-cyan-300/90"
-          )}
-          style={{ transform: "rotateY(180deg)" }}
-        >
-          <CardBackImg />
-        </div>
+        {showBack && (
+          <div
+            className={cn(
+              faceShell,
+              !flat && "[backface-visibility:hidden]",
+              "border-cyan-500/40",
+              isSelected && "border-cyan-300/90"
+            )}
+            style={flat ? undefined : { transform: "rotateY(180deg)" }}
+          >
+            <CardBackImg />
+          </div>
+        )}
       </div>
 
       {/*

@@ -40,6 +40,8 @@ export type FogView = {
   handCount: SeatRecord<number>
   libraryCount: SeatRecord<number>
   life: SeatRecord<number>
+  vp?: SeatRecord<number>
+  vpGoal?: SeatRecord<number>
   turn: number
   turnSeat: PlayerSlot
   pilotGenBonus: SeatRecord<number>
@@ -78,6 +80,37 @@ function asFaceDownStub(card: PlayingCardInstance): FogStub {
     isAugment: card.isAugment ?? card.isObjective,
     selected: card.selected,
   }
+}
+
+/** Public-zone ids from a local selection — never hand/library instance ids. */
+export function sharedSelectionIds(
+  cards: PlayingCardInstance[],
+  selectedIds: readonly string[]
+): string[] {
+  if (selectedIds.length === 0) return []
+  const want = new Set(selectedIds)
+  const out: string[] = []
+  for (const card of cards) {
+    if (!want.has(card.instanceId)) continue
+    if (PRIVATE_ZONES.has(card.zone)) continue
+    out.push(card.instanceId)
+  }
+  return out
+}
+
+/**
+ * Apply a peer's public click-highlight. Private zones stay this client's.
+ * Empty `selectedIds` clears every public ring.
+ */
+export function applySharedSelection(
+  cards: PlayingCardInstance[],
+  selectedIds: ReadonlySet<string>
+): PlayingCardInstance[] {
+  return cards.map((card) => {
+    if (PRIVATE_ZONES.has(card.zone)) return card
+    const next = selectedIds.has(card.instanceId)
+    return card.selected === next ? card : { ...card, selected: next }
+  })
 }
 
 /** First (topmost) library instance per owner, in deck order. */
@@ -133,6 +166,8 @@ export function viewFor(seat: PlayerSlot, state: PlaySessionState): FogView {
       p2: countZone(state.cards, PLAY_ZONE.library, "p2"),
     },
     life: state.life,
+    vp: state.vp,
+    vpGoal: state.vpGoal,
     turn: state.turn,
     turnSeat: state.turnSeat,
     pilotGenBonus: state.pilotGenBonus,
@@ -200,16 +235,15 @@ export function materializeFog(view: FogView): PlayingCardInstance[] {
 }
 
 /**
- * After fog, keep *this seat's* optimistic selection so a host fog tick
- * cannot clear local cyan rings mid-click.
+ * After fog, keep this client's click-highlight (own *and* opponent cards)
+ * so a host fog tick cannot clear local cyan rings mid-click.
  */
 export function withPreservedSelection(
   cards: PlayingCardInstance[],
   selectedIds: ReadonlySet<string>,
-  localSeat: PlayerSlot
+  _localSeat?: PlayerSlot
 ): PlayingCardInstance[] {
   return cards.map((card) => {
-    if (card.owner !== localSeat) return card
     const next = selectedIds.has(card.instanceId)
     return card.selected === next ? card : { ...card, selected: next }
   })

@@ -134,6 +134,8 @@ export type CardLibraryQuery = {
   sort?: CardLibrarySortMode
   limit?: number
   offset?: number
+  /** Playtest room code — seated Resource fetches can see unpublished pip tokens. */
+  room?: string | null
 }
 
 export async function searchCards(
@@ -179,6 +181,8 @@ export async function fetchCardLibrary(
   const subType = query.subType?.trim()
   if (subType) url.searchParams.set("sub_type", subType)
   if (query.sort) url.searchParams.set("sort", query.sort)
+  const room = query.room?.trim()
+  if (room) url.searchParams.set("room", room)
   url.searchParams.set("limit", String(query.limit ?? 48))
   url.searchParams.set("offset", String(query.offset ?? 0))
 

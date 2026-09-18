@@ -114,10 +114,11 @@ export type HomeLayout = {
   pad: number
 }
 
-/** Local: bottom-right. Opp: top-left (mirrored).
+/** Local: bottom-right, inset by the overlay pile column so they sit in the
+ *  open field instead of under dismantled/deck. Opp: top-left (mirrored).
  *  Keep `offset.y` at 0 for a flat row — any non-zero value stairs each copy. */
 export const AUGMENT_LAYOUT: HomeLayout = {
-  start: { x: 0, y: -220 },
+  start: { x: -(FACE.w + 8), y: -220 },
   offset: { x: -(FACE.w + 20), y: 0 },
   pad: 0,
 }
@@ -246,9 +247,11 @@ export function placedStockpileCount(
 }
 
 function tokenColor(card: PlayingCardInstance): ResourceColor | "other" {
-  for (const color of RESOURCE_COLORS) {
-    if (card.cost.some((pip) => pip.trim().toUpperCase() === color)) {
-      return color
+  for (const raw of card.cost) {
+    const pip = raw.trim().toUpperCase()
+    if (pip === "GEN") return "STL"
+    for (const color of RESOURCE_COLORS) {
+      if (pip === color) return color
     }
   }
   return "other"

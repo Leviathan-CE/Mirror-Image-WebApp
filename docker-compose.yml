@@ -64,6 +64,7 @@ services:
       args:
         # Baked into the JS bundle at build time (Vite). Rebuild frontend after API URL changes.
         VITE_API_URL: ${VITE_API_URL:-http://127.0.0.1:8001}
+        VITE_PLAY_RELAY_ONLY: ${VITE_PLAY_RELAY_ONLY:-false}
     depends_on:
       - api
     ports:

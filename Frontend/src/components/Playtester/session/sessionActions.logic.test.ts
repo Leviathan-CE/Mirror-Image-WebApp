@@ -107,7 +107,7 @@ describe("applyAction replay", () => {
     expect(next.cards[1]?.owner).toBe("p1")
   })
 
-  it("sel replaces only that seat's selection", () => {
+  it("sel replaces the whole local highlight, including the other seat", () => {
     const cards = [
       card({ instanceId: "p1-a", zone: PLAY_ZONE.stockpile, selected: true }),
       card({ instanceId: "p1-b", zone: PLAY_ZONE.stockpile }),
@@ -127,6 +127,28 @@ describe("applyAction replay", () => {
       false
     )
     expect(next.cards.find((c) => c.instanceId === "p1-b")?.selected).toBe(true)
+    expect(next.cards.find((c) => c.instanceId === "p2-a")?.selected).toBe(
+      false
+    )
+  })
+
+  it("sel can highlight an opponent battlefield card", () => {
+    const cards = [
+      card({ instanceId: "p1-a", zone: PLAY_ZONE.battlefield, selected: true }),
+      card({
+        instanceId: "p2-a",
+        zone: PLAY_ZONE.battlefield,
+        owner: "p2",
+      }),
+    ]
+    const next = applyAction(createPlaySessionState({ cards }), {
+      t: "sel",
+      seat: "p1",
+      i: ["p2-a"],
+    })
+    expect(next.cards.find((c) => c.instanceId === "p1-a")?.selected).toBe(
+      false
+    )
     expect(next.cards.find((c) => c.instanceId === "p2-a")?.selected).toBe(true)
   })
 
@@ -251,5 +273,16 @@ describe("viewFor fog", () => {
     expect(cards.some((c) => c.name === "Secret")).toBe(false)
     expect(cards.filter((c) => c.zone === PLAY_ZONE.hand && c.owner === "p1")).toHaveLength(1)
     expect(cards.find((c) => c.instanceId === "p2-h")?.name).toBe("Guest")
+  })
+})
+
+describe("vp", () => {
+  it("starts at 0 and floors at 0", () => {
+    const state = createPlaySessionState({ cards: [] })
+    expect(state.vp.p1).toBe(0)
+    const up = applyAction(state, { t: "vp", seat: "p1", d: 2 })
+    expect(up.vp.p1).toBe(2)
+    const down = applyAction(up, { t: "vp", seat: "p1", d: -5 })
+    expect(down.vp.p1).toBe(0)
   })
 })
