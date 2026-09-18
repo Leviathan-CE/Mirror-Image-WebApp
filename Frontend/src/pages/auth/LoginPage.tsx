@@ -12,6 +12,7 @@ import { useCallback, useState, type SubmitEvent } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
+import { useComingSoon } from "@/app/providers/ComingSoonProvider"
 import { safeNextPath } from "@/app/RequireAuth"
 import { sharedImages } from "@/assets"
 import { LoginBootScreen } from "@/components/auth/loginBoot"
@@ -60,6 +61,7 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { setSession } = useAuth()
+  const { comingSoon } = useComingSoon()
   const nextFromQuery = safeNextPath(
     new URLSearchParams(location.search).get("next")
   )
@@ -336,14 +338,18 @@ export function LoginPage() {
               >
                 FORGOT PASSWORD
               </Link>
-              {" · "}
-              Need an account?{" "}
-              <Link
-                to={ROUTES.REGISTER}
-                className="text-cyan-300 underline hover:text-cyan-200"
-              >
-                CREATE ACCOUNT
-              </Link>
+              {comingSoon ? null : (
+                <>
+                  {" · "}
+                  Need an account?{" "}
+                  <Link
+                    to={ROUTES.REGISTER}
+                    className="text-cyan-300 underline hover:text-cyan-200"
+                  >
+                    CREATE ACCOUNT
+                  </Link>
+                </>
+              )}
             </p>
 
             {needsVerify ? (

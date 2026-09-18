@@ -198,6 +198,88 @@ export function buildResourceTokenMap(
   return map
 }
 
+/** One library page of Resource tokens. */
+export const RESOURCE_LIBRARY_PAGE_SIZE = 200
+const RESOURCE_LIBRARY_MAX_PAGES = 25
+
+export function catalogueCoversColors(
+  map: Map<ResourceColor, unknown>,
+  needed: readonly ResourceColor[]
+): boolean {
+  for (const color of needed) {
+    if (!map.has(color)) return false
+  }
+  return true
+}
+
+export type ResourceLibraryPage = {
+  items: CardLibraryItem[]
+  total: number
+}
+
+function mergeLibraryItems(
+  into: Map<number, CardLibraryItem>,
+  items: CardLibraryItem[]
+) {
+  for (const item of items) into.set(item.id, item)
+}
+
+/**
+ * Page Resource catalogue until `needed` colours are in the token map,
+ * or the catalogue is exhausted. Optional TIM pip shortcut is identity
+ * (`colors=TIM`), never a card name.
+ */
+export async function collectResourceCatalogue(args: {
+  needed: readonly ResourceColor[]
+  pageSize?: number
+  fetchPage: (offset: number, limit: number) => Promise<ResourceLibraryPage>
+  fetchTimShortcut?: () => Promise<{ items: CardLibraryItem[] }>
+}): Promise<{
+  tokens: CardLibraryItem[]
+  exhausted: boolean
+  covered: boolean
+}> {
+  const pageSize = args.pageSize ?? RESOURCE_LIBRARY_PAGE_SIZE
+  const byId = new Map<number, CardLibraryItem>()
+
+  const [first, shortcut] = await Promise.all([
+    args.fetchPage(0, pageSize),
+    args.fetchTimShortcut?.() ?? Promise.resolve({ items: [] }),
+  ])
+  mergeLibraryItems(byId, first.items)
+  mergeLibraryItems(byId, shortcut.items)
+
+  let offset = first.items.length
+  const total = Math.max(0, Number(first.total) || 0)
+  let pages = 1
+
+  while (true) {
+    const map = buildResourceTokenMap([...byId.values()])
+    const covered = catalogueCoversColors(map, args.needed)
+    const exhausted =
+      first.items.length === 0 ||
+      total === 0 ||
+      offset >= total ||
+      pages >= RESOURCE_LIBRARY_MAX_PAGES
+    if (covered || exhausted) {
+      return { tokens: [...byId.values()], exhausted, covered }
+    }
+
+    const page = await args.fetchPage(offset, pageSize)
+    pages += 1
+    if (page.items.length === 0) {
+      const finalMap = buildResourceTokenMap([...byId.values()])
+      return {
+        tokens: [...byId.values()],
+        exhausted: true,
+        covered: catalogueCoversColors(finalMap, args.needed),
+      }
+    }
+    mergeLibraryItems(byId, page.items)
+    offset += page.items.length
+  }
+}
+
 export function spawnResourceTokenInstance(
   template: CardLibraryItem,
   x: number | undefined,

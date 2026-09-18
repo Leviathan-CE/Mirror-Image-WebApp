@@ -47,6 +47,123 @@ export type CtxMenuState =
       y: number
     }
 
+/** Shared "Add 1 time counter" row — usable on your own or the opponent's card. */
+function buildAddTimeCounterItem(
+  targets: string[],
+  onAdjust: PlayContextMenuActions["adjustCounter"]
+): DropdownMenuItem {
+  return {
+    id: CTX_MENU_ACTION.addTime,
+    label: (
+      <>
+        Add{" "}
+        <span
+          aria-hidden
+          className="inline-flex min-h-6 min-w-6 items-center justify-center border border-emerald-400/70 bg-emerald-950/90 px-1 font-glitch text-sm leading-none text-emerald-200"
+        >
+          1
+        </span>{" "}
+        time counter
+      </>
+    ),
+    onSelect: () => onAdjust(targets, "time", 1),
+  }
+}
+
+/** Shared "Add 1 damage counter" row — usable on your own or the opponent's card. */
+function buildAddDamageCounterItem(
+  targets: string[],
+  onAdjust: PlayContextMenuActions["adjustCounter"]
+): DropdownMenuItem {
+  return {
+    id: CTX_MENU_ACTION.addDamage,
+    label: (
+      <>
+        Add{" "}
+        <span
+          aria-hidden
+          className="inline-flex min-h-6 min-w-6 items-center justify-center border border-red-400/70 bg-red-950/90 px-1 font-glitch text-sm leading-none text-red-200"
+        >
+          1
+        </span>{" "}
+        damage counter
+      </>
+    ),
+    onSelect: () => onAdjust(targets, "damage", 1),
+  }
+}
+
+/** Shared "Add other counter" submenu — usable on your own or the opponent's card. */
+function buildAddOtherCounterItem(
+  targets: string[],
+  onAdjust: PlayContextMenuActions["adjustCounter"]
+): DropdownMenuItem {
+  return {
+    id: CTX_MENU_ACTION.addOtherCounter,
+    label: "Add other counter",
+    submenu: [
+      {
+        id: CTX_MENU_ACTION.addGeneric,
+        label: (
+          <>
+            Add{" "}
+            <span
+              aria-hidden
+              className={cn(
+                "clip-angled inline-flex min-h-6 min-w-6 items-center justify-center border px-1 font-glitch text-sm leading-none",
+                "border-zinc-300/70 bg-zinc-800/90 text-zinc-100"
+              )}
+            >
+              1
+            </span>{" "}
+            generic counter
+          </>
+        ),
+        onSelect: () => onAdjust(targets, "generic", 1),
+      },
+      {
+        id: CTX_MENU_ACTION.addDepletion,
+        label: (
+          <>
+            Add{" "}
+            <span
+              aria-hidden
+              className={cn(
+                "clip-angled inline-flex min-h-6 min-w-6 items-center justify-center border px-1 font-glitch text-sm leading-none",
+                "border-orange-400/80 bg-orange-950/90 text-orange-200"
+              )}
+            >
+              1
+            </span>{" "}
+            depletion counter
+          </>
+        ),
+        onSelect: () => onAdjust(targets, "depletion", 1),
+      },
+      {
+        id: CTX_MENU_ACTION.addTlv,
+        label: (
+          <>
+            Add +1 <GameIcon name="threat_lvl" className="h-4 w-auto" />{" "}
+            counter
+          </>
+        ),
+        onSelect: () => onAdjust(targets, "tlv", 1),
+      },
+      {
+        id: CTX_MENU_ACTION.addTlvMinus,
+        label: (
+          <>
+            Add −1 <GameIcon name="threat_lvl" className="h-4 w-auto" />{" "}
+            counter
+          </>
+        ),
+        onSelect: () => onAdjust(targets, "tlvMinus", 1),
+      },
+    ],
+  }
+}
+
 /** Shared "Move all" submenu — omits the pile you are already on. */
 function buildMoveAllMenuItem(
   from: MoveAllSourceZone,
@@ -121,10 +238,6 @@ export type PlayContextMenuActions = {
   moveAllFromZone: (
     from: MoveAllSourceZone,
     to: MoveAllDestinationZone
-  ) => void
-  moveInPlayToZone: (
-    instanceIds: string[],
-    zone: typeof PLAY_ZONE.battlefield | typeof PLAY_ZONE.stockpile
   ) => void
 }
 
@@ -310,6 +423,22 @@ export function usePlayContextMenu({
     onSelect: () => actions.inspectCard(card),
   }
 
+  // Opponent-owned cards: combat damage and timers are things either side
+  // can cause, so battlefield/stockpile cards keep those two counter rows.
+  // Everything else about their card (moving it, flipping it, deleting it,
+  // …) is off-limits from this seat.
+  if (card.owner !== owner) {
+    const onBattlefieldOrStockpile =
+      card.zone === PLAY_ZONE.battlefield || card.zone === PLAY_ZONE.stockpile
+    if (!onBattlefieldOrStockpile) return [viewCardDetails]
+    return [
+      buildAddTimeCounterItem([card.instanceId], actions.adjustCounter),
+      buildAddDamageCounterItem([card.instanceId], actions.adjustCounter),
+      buildAddOtherCounterItem([card.instanceId], actions.adjustCounter),
+      viewCardDetails,
+    ]
+  }
+
   // Cards still in the deck are only reachable from deck search / peek, where
   // zone actions do not apply — inspecting them is all that makes sense.
   if (card.zone === PLAY_ZONE.library) return [viewCardDetails]
@@ -377,89 +506,9 @@ export function usePlayContextMenu({
   ) {
     const counterTargets = selectableActionTargets(sessionCards, card)
     return [
-      {
-        id: CTX_MENU_ACTION.addTime,
-        label: (
-          <>
-            Add{" "}
-            <span
-              aria-hidden
-              className="inline-flex min-h-6 min-w-6 items-center justify-center border border-emerald-400/70 bg-emerald-950/90 px-1 font-glitch text-sm leading-none text-emerald-200"
-            >
-              1
-            </span>{" "}
-            time counter
-          </>
-        ),
-        onSelect: () => actions.adjustCounter(counterTargets, "time", 1),
-      },
-      {
-        id: CTX_MENU_ACTION.addDamage,
-        label: (
-          <>
-            Add{" "}
-            <span
-              aria-hidden
-              className="inline-flex min-h-6 min-w-6 items-center justify-center border border-red-400/70 bg-red-950/90 px-1 font-glitch text-sm leading-none text-red-200"
-            >
-              1
-            </span>{" "}
-            damage counter
-          </>
-        ),
-        onSelect: () => actions.adjustCounter(counterTargets, "damage", 1),
-      },
-      
-     
-      {
-        id: CTX_MENU_ACTION.addOtherCounter,
-        label: "Add other counter",
-        submenu: [
-          {
-            id: CTX_MENU_ACTION.addGeneric,
-            label: (
-              <>
-                Add <span aria-hidden className={cn("clip-angled inline-flex min-h-6 min-w-6 items-center justify-center border px-1 font-glitch text-sm leading-none", "border-zinc-300/70 bg-zinc-800/90 text-zinc-100")}>1</span>{" "}
-                generic counter
-              </>
-            ),
-            onSelect: () =>
-              actions.adjustCounter(counterTargets, "generic", 1),
-          },
-          {
-            id: CTX_MENU_ACTION.addDepletion,
-            label: (
-              <>
-                Add{" "}
-                <span aria-hidden className={cn("clip-angled inline-flex min-h-6 min-w-6 items-center justify-center border px-1 font-glitch text-sm leading-none", "border-orange-400/80 bg-orange-950/90 text-orange-200")}>1</span>{" "}
-                depletion counter
-              </>
-            ),
-            onSelect: () =>
-              actions.adjustCounter(counterTargets, "depletion", 1),
-          },
-          {
-            id: CTX_MENU_ACTION.addTlv,
-            label: (
-              <>
-                Add +1 <GameIcon name="threat_lvl" className="h-4 w-auto" />{" "}
-                counter
-              </>
-            ),
-            onSelect: () => actions.adjustCounter(counterTargets, "tlv", 1),
-          },
-          {
-            id: CTX_MENU_ACTION.addTlvMinus,
-            label: (
-              <>
-                Add −1 <GameIcon name="threat_lvl" className="h-4 w-auto" />{" "}
-                counter
-              </>
-            ),
-            onSelect: () => actions.adjustCounter(counterTargets, "tlvMinus", 1),
-          },
-        ],
-      },
+      buildAddTimeCounterItem(counterTargets, actions.adjustCounter),
+      buildAddDamageCounterItem(counterTargets, actions.adjustCounter),
+      buildAddOtherCounterItem(counterTargets, actions.adjustCounter),
       {
         id: CTX_MENU_ACTION.createCopy,
         label:
@@ -469,20 +518,6 @@ export function usePlayContextMenu({
         onSelect: () => actions.duplicateCard(counterTargets),
       },
       generateResourceItem,
-      {
-        id: CTX_MENU_ACTION.sendToStockpile,
-        label: "Send to stockpile",
-        disabled: card.zone === PLAY_ZONE.stockpile,
-        onSelect: () =>
-          actions.moveInPlayToZone(counterTargets, PLAY_ZONE.stockpile),
-      },
-      {
-        id: CTX_MENU_ACTION.sendToBattlefield,
-        label: "Send to battlefield",
-        disabled: card.zone === PLAY_ZONE.battlefield,
-        onSelect: () =>
-          actions.moveInPlayToZone(counterTargets, PLAY_ZONE.battlefield),
-      },
       putOnBottomItem,
       flipFaceItem,
       viewCardDetails,

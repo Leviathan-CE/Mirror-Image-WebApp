@@ -35,6 +35,8 @@ export type DeckPileProps = {
   count: number
   className?: string
   label?: string
+  /** Peer browse chrome — shown above the face, not instead of `label`. */
+  statusLabel?: string | null
   /** True while a flip animation is running. */
   busy?: boolean
   /** Click with no drag — usually draw top card to hand. */
@@ -163,6 +165,7 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
       count,
       className,
       label = "Deck",
+      statusLabel = null,
       busy = false,
       onClickDraw,
       onTopCardRelease,
@@ -324,6 +327,11 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
               className="absolute bottom-0 left-0"
               style={{ width: CARD_W, height: CARD_H }}
             >
+              {statusLabel ? (
+                <p className="pointer-events-none absolute inset-x-0 top-1/2 z-30 -translate-y-1/2 border border-cyan-400/70 bg-cyan-700 px-2 py-2 text-center font-glitch text-lg break-words whitespace-normal text-white shadow-lg shadow-cyan-950/50 clip-angled">
+                  {statusLabel}
+                </p>
+              ) : null}
               <div className="pointer-events-none absolute inset-0" aria-hidden>
                 {Array.from({ length: underCount }, (_, i) => {
                   const depth = underCount - i

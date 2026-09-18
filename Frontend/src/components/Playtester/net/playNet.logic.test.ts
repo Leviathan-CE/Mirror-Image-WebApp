@@ -22,4 +22,14 @@ describe("playNet messages", () => {
       )
     ).toBe(false)
   })
+
+  it("allows counter and expend/ready intents on the other seat's cards", () => {
+    const ownerOf = (id: string) => (id.startsWith("p1") ? "p1" : "p2")
+    expect(
+      intentAllowed({ t: "ct", i: ["p1-card"], k: "damage", d: 1 }, "p2", ownerOf)
+    ).toBe(true)
+    expect(intentAllowed({ t: "xp", i: ["p1-card"] }, "p2", ownerOf)).toBe(true)
+    // Still rejected for actions that are not counter/expend, e.g. delete.
+    expect(intentAllowed({ t: "rm", i: ["p1-card"] }, "p2", ownerOf)).toBe(false)
+  })
 })

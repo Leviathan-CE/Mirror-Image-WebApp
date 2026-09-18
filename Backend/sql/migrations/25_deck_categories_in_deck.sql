@@ -9,4 +9,4 @@ COMMENT ON COLUMN deck_categories.in_deck IS
 -- Historical Side / Maybe / Extra piles, plus reserved slots, stay out of the RIG.
 UPDATE deck_categories
    SET in_deck = FALSE
- WHERE lower(btrim(name)) IN ('side', 'maybe', 'extra', 'pilot', 'augments');
+ WHERE lower(btrim(name)) IN ('side', 'maybe', 'extra', 'pilot', 'augments', 'objectives');

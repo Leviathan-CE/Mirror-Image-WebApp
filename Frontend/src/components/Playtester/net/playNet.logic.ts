@@ -9,9 +9,19 @@ import type { FlipFlyMode } from "@/components/Playtester/constants";
 
 export const PLAY_ICE_SERVERS: RTCIceServer[] = [
   { urls: "stun:stun.l.google.com:19302" },
-];
+]
 
-export const PLAY_ICE_TIMEOUT_MS = 8000;
+export const PLAY_ICE_TIMEOUT_MS = 8000
+
+/**
+ * When true, skip WebRTC. ICE candidates would otherwise show each seat's
+ * public IP to the other player. Set `VITE_PLAY_RELAY_ONLY=true` to hide that.
+ */
+export const PLAY_RELAY_ONLY =
+  String(import.meta.env.VITE_PLAY_RELAY_ONLY ?? "").toLowerCase() === "true"
+
+/** Host ignores snapshot requests closer together than this (ms). */
+export const PLAY_SNAPSHOT_MIN_MS = 2000
 
 export type SignalPayload =
   | { kind: "offer"; sdp: RTCSessionDescriptionInit }
@@ -64,7 +74,16 @@ export type PlayNetMessage =
   /** UI-only peer chrome (fog hands have no shared ids; library is a boolean lift). */
   | { type: "hover"; zone: "hand"; index: number | null }
   | { type: "hover"; zone: "library"; active: boolean }
-  /** Immediate selection chrome — not stored on `card.selected`. */
+  /**
+   * UI-only: peer opened a private browse/peek overlay.
+   * No card ids or faces — just which pile and (for look-at-top) how many.
+   */
+  | { type: "browse"; pile: null }
+  | { type: "browse"; pile: "library" }
+  | { type: "browse"; pile: "library-top"; count: number }
+  | { type: "browse"; pile: "trashyard" }
+  | { type: "browse"; pile: "dismantled" }
+  /** Immediate public-zone selection chrome — not stored in fog. */
   | { type: "selection"; ids: string[]; seat?: PlayerSlot }
   | { type: "fx"; fx: PlayFx }
   | {
@@ -109,13 +128,22 @@ const ACTOR_SEAT_TAGS = new Set<SessionAction["t"]>([
   "dg",
   "rdy",
   "lf",
+  "vp",
   "ma",
   "tb",
   "ro",
   "pg",
   "tk",
   "sel",
+  "rv",
 ]);
+
+/**
+ * Counters and expend/ready mark battlefield state that either player can
+ * cause (combat damage, a timer, tapping something) — unlike moves, deletes,
+ * or flips, they are not restricted to the target card's own seat.
+ */
+const ANY_OWNER_TARGET_TAGS = new Set<SessionAction["t"]>(["ct", "xp"]);
 
 /** Host-side: guest may only touch their seat and their instance ids. */
 export function intentAllowed(
@@ -130,6 +158,7 @@ export function intentAllowed(
   ) {
     return false;
   }
+  if (ANY_OWNER_TARGET_TAGS.has(action.t)) return true;
   if (!ownerOf || !("i" in action) || !Array.isArray(action.i)) return true;
   const ids = action.i.map((item) =>
     typeof item === "string" ? item : item.id,

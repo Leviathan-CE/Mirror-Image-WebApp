@@ -16,6 +16,7 @@ from app.routers import decks
 from app.routers import media
 from app.routers import assets
 from app.routers import play_rooms
+from app.routers import site_settings
 from app.analytics import (
     LOGIN_PATHS,
     host_sampler,
@@ -106,6 +107,7 @@ async def record_app_activity(request, call_next):
 
 
 app.include_router(health.router)
+app.include_router(site_settings.router)
 app.include_router(auth.router)
 app.include_router(email_auth.router)
 app.include_router(billing.router)

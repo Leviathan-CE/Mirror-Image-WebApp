@@ -6,6 +6,8 @@ WORKDIR /app
 # Google client id is NOT baked here — the UI loads it from GET /auth/google/config.
 ARG VITE_API_URL=http://127.0.0.1:8001
 ENV VITE_API_URL=$VITE_API_URL
+ARG VITE_PLAY_RELAY_ONLY=false
+ENV VITE_PLAY_RELAY_ONLY=$VITE_PLAY_RELAY_ONLY
 
 COPY package*.json ./
 RUN npm ci

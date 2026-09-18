@@ -53,6 +53,10 @@ export type SeatRecord<T> = Record<PlayerSlot, T>
 export type PlaySessionState = {
   cards: PlayingCardInstance[]
   life: SeatRecord<number>
+  /** Current VP (starts at 0). */
+  vp: SeatRecord<number>
+  /** VP needed to win (printed on the pilot). */
+  vpGoal: SeatRecord<number>
   turn: number
   turnSeat: PlayerSlot
   pilotGenBonus: SeatRecord<number>
@@ -62,6 +66,8 @@ export type PlaySessionState = {
   nextId: number
   /** Host sequence — every applied action bumps this. */
   seq: number
+  /** True while a seat's deck top is publicly revealed (both sides see it). */
+  topRevealedBySeat: SeatRecord<boolean>
 }
 
 export function seatRecord<T>(p1: T, p2: T = p1): SeatRecord<T> {
@@ -73,12 +79,15 @@ export function createPlaySessionState(
 ): PlaySessionState {
   return {
     life: seatRecord(0),
+    vp: seatRecord(0),
+    vpGoal: seatRecord(0),
     turn: 1,
     turnSeat: LOCAL_SEAT,
     pilotGenBonus: seatRecord(0),
     rng: 1,
     nextId: 1,
     seq: 0,
+    topRevealedBySeat: seatRecord(false),
     ...partial,
   }
 }
@@ -101,6 +110,7 @@ export type SessionAction =
   | { t: "dg"; seat: PlayerSlot; n: number }
   | { t: "rdy"; seat: PlayerSlot }
   | { t: "lf"; seat: PlayerSlot; d: number }
+  | { t: "vp"; seat: PlayerSlot; d: number }
   | { t: "xp"; i: string[] }
   /** Replace this seat's selection (other seats untouched). */
   | { t: "sel"; seat: PlayerSlot; i: string[] }
@@ -122,6 +132,8 @@ export type SessionAction =
   | { t: "ps"; i: Array<{ id: string; x: number; y: number }> }
   | { t: "pg"; seat: PlayerSlot; d: number }
   | { t: "ts"; seat: PlayerSlot }
+  /** Toggle public reveal of this seat's deck top (both sides then see it). */
+  | { t: "rv"; seat: PlayerSlot }
   | {
       t: "tk"
       seat: PlayerSlot
@@ -229,17 +241,26 @@ export function applyAction(
         seq: state.seq + 1,
       }
     }
+    case "vp": {
+      const next = Math.max(0, (state.vp[action.seat] ?? 0) + action.d)
+      return {
+        ...state,
+        vp: { ...state.vp, [action.seat]: next },
+        seq: state.seq + 1,
+      }
+    }
     case "xp": {
       let cards = state.cards
       for (const id of action.i) cards = toggleExpended(cards, id)
       return bump(state, cards)
     }
     case "sel": {
+      // Full replace across both seats — rings are local chrome. Fog never
+      // carries `selected`; the other client restores its own set.
       const ids = new Set(action.i)
       return bump(
         state,
         state.cards.map((card) => {
-          if (card.owner !== action.seat) return card
           const next = ids.has(card.instanceId)
           return card.selected === next ? card : { ...card, selected: next }
         })
@@ -324,6 +345,14 @@ export function applyAction(
         turnSeat: action.seat,
         seq: state.seq + 1,
       }
+    case "rv": {
+      const next = !state.topRevealedBySeat[action.seat]
+      return {
+        ...state,
+        topRevealedBySeat: { ...state.topRevealedBySeat, [action.seat]: next },
+        seq: state.seq + 1,
+      }
+    }
     case "tk": {
       const token: PlayingCardInstance = {
         instanceId: `tok-${state.nextId}`,

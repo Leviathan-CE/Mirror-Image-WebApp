@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from "react"
 
 import { useAuth } from "@/app/providers/AuthProvider"
+import { useComingSoon } from "@/app/providers/ComingSoonProvider"
 import { ApiError } from "@/lib/api/client"
 import {
   fetchAdminAnalytics,
@@ -13,6 +14,7 @@ import {
   type AnalyticsActivityPoint,
   type AnalyticsRange,
 } from "@/lib/api/analytics_admin"
+import { patchComingSoon } from "@/lib/api/site"
 import { cn } from "@/lib/utils"
 import { AdminPageShell } from "@/pages/admin/AdminPageShell"
 
@@ -91,12 +93,35 @@ function ActivityChart({
 
 export function AdminAnalyticsPage() {
   const { token } = useAuth()
+  const { comingSoon, setComingSoonEnabled } = useComingSoon()
   const [range, setRange] = useState<AnalyticsRange>("week")
   const [data, setData] = useState<AdminAnalytics | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [metric, setMetric] = useState<"unique_users" | "requests">(
     "unique_users"
   )
+  const [flagBusy, setFlagBusy] = useState(false)
+  const [flagError, setFlagError] = useState<string | null>(null)
+
+  async function onToggleComingSoon(next: boolean) {
+    if (!token || flagBusy) return
+    setFlagBusy(true)
+    setFlagError(null)
+    try {
+      const status = await patchComingSoon(token, next)
+      setComingSoonEnabled(status.coming_soon)
+    } catch (err) {
+      setFlagError(
+        err instanceof ApiError
+          ? err.status === 503
+            ? "Run database migration 31_site_settings, then try again."
+            : err.detail
+          : "Could not update coming soon."
+      )
+    } finally {
+      setFlagBusy(false)
+    }
+  }
 
   const load = useCallback(async () => {
     if (!token) return
@@ -142,6 +167,50 @@ export function AdminAnalyticsPage() {
           {error}
         </p>
       ) : null}
+
+      <section className="mb-8 border border-cyan-500/25 bg-black/50 p-5">
+        <h2 className="font-buahs93 text-sm tracking-wide text-cyan-100">
+          COMING SOON PAGE
+        </h2>
+        <p className="mt-1 font-mono text-[11px] text-cyan-100/45">
+          When on, visitors see a splash instead of the app. Admins still reach
+          this console and the rest of the site. Login stays open so you can
+          turn it off.
+        </p>
+        {flagError ? (
+          <p className="mt-3 font-mono text-sm text-red-400" role="alert">
+            {flagError}
+          </p>
+        ) : null}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={flagBusy}
+            className={cn(
+              "font-buahs93 border px-3 py-1.5 text-[10px]",
+              comingSoon
+                ? "border-cyan-300 bg-cyan-500/20 text-cyan-50"
+                : "border-cyan-500/30 text-cyan-100/70"
+            )}
+            onClick={() => void onToggleComingSoon(true)}
+          >
+            ON
+          </button>
+          <button
+            type="button"
+            disabled={flagBusy}
+            className={cn(
+              "font-buahs93 border px-3 py-1.5 text-[10px]",
+              !comingSoon
+                ? "border-cyan-300 bg-cyan-500/20 text-cyan-50"
+                : "border-cyan-500/30 text-cyan-100/70"
+            )}
+            onClick={() => void onToggleComingSoon(false)}
+          >
+            OFF
+          </button>
+        </div>
+      </section>
 
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {kpis.map((metricCard) => (

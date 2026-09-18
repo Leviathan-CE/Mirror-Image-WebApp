@@ -6,12 +6,22 @@ visibility across the players sitting in a room.
 
 from __future__ import annotations
 
+import asyncio
+import json
 import time
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel, Field
 
+from app.play_room_limits import (
+    WS_AUTH_TIMEOUT_S,
+    WS_MAX_BYTES,
+    allow_room_get,
+    allow_snapshot,
+    allow_ws_connect,
+    allow_ws_handshake,
+)
 from app.play_rooms_state import (
     PlayRoom,
     RoomSeat,
@@ -88,6 +98,9 @@ async def get_room(
     code: str,
     user_id: int = Depends(get_current_user_id),
 ) -> dict[str, Any]:
+    # Count misses too — probing unknown codes must not be free.
+    if not allow_room_get(user_id):
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="rate_limited")
     async with lock:
         room = live_room(code)
         if not room:
@@ -117,17 +130,78 @@ async def _broadcast(room: PlayRoom, message: dict[str, Any], skip: WebSocket | 
             holder.ws = None
 
 
-@router.websocket("/play/ws/rooms/{code}")
-async def room_socket(ws: WebSocket, code: str, token: str | None = None) -> None:
-    """JWT via `?token=`. Forwards signaling and compact action/fog payloads."""
-    await ws.accept()
-    if not token:
-        await ws.close(code=4401)
-        return
+async def _receive_capped(ws: WebSocket) -> dict[str, Any]:
+    """JSON object, or disconnect. Drops frames larger than ``WS_MAX_BYTES``."""
+    message = await ws.receive()
+    kind = message.get("type")
+    if kind == "websocket.disconnect":
+        raise WebSocketDisconnect(message.get("code") or 1000)
+    if kind != "websocket.receive":
+        raise WebSocketDisconnect(1003)
+    text = message.get("text")
+    if text is None:
+        raw = message.get("bytes") or b""
+        if len(raw) > WS_MAX_BYTES:
+            await ws.close(code=4408)
+            raise WebSocketDisconnect(4408)
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise WebSocketDisconnect(1003) from exc
+        if not isinstance(parsed, dict):
+            raise WebSocketDisconnect(1003)
+        return parsed
+    if len(text.encode("utf-8")) > WS_MAX_BYTES:
+        await ws.close(code=4408)
+        raise WebSocketDisconnect(4408)
     try:
-        user_id = _user_id_from_token(token)
+        parsed = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise WebSocketDisconnect(1003) from exc
+    if not isinstance(parsed, dict):
+        raise WebSocketDisconnect(1003)
+    return parsed
+
+
+async def _auth_first_frame(ws: WebSocket) -> int | None:
+    """JWT in the first JSON frame — never on the URL (query strings hit logs)."""
+    try:
+        first = await asyncio.wait_for(
+            _receive_capped(ws),
+            timeout=WS_AUTH_TIMEOUT_S,
+        )
+    except TimeoutError:
+        await ws.close(code=4401)
+        return None
+    except WebSocketDisconnect:
+        return None
+    if first.get("type") != "auth":
+        await ws.close(code=4401)
+        return None
+    token = first.get("token")
+    if not isinstance(token, str) or not token:
+        await ws.close(code=4401)
+        return None
+    try:
+        return _user_id_from_token(token)
     except HTTPException:
         await ws.close(code=4401)
+        return None
+
+
+@router.websocket("/play/ws/rooms/{code}")
+async def room_socket(ws: WebSocket, code: str) -> None:
+    """First frame ``{type, token}`` then relay. Query-string JWT is rejected."""
+    await ws.accept()
+    ip = ws.client.host if ws.client else "unknown"
+    if not allow_ws_handshake(ip):
+        await ws.close(code=4429)
+        return
+    user_id = await _auth_first_frame(ws)
+    if user_id is None:
+        return
+    if not allow_ws_connect(user_id):
+        await ws.close(code=4429)
         return
 
     code = code.upper()
@@ -212,9 +286,7 @@ async def room_socket(ws: WebSocket, code: str, token: str | None = None) -> Non
 
     try:
         while True:
-            raw = await ws.receive_json()
-            if not isinstance(raw, dict):
-                continue
+            raw = await _receive_capped(ws)
             kind = raw.get("type")
             if kind == "join":
                 deck_id = raw.get("deckId") or raw.get("deck_id")
@@ -232,7 +304,23 @@ async def room_socket(ws: WebSocket, code: str, token: str | None = None) -> Non
                     skip=ws,
                 )
                 continue
-            if kind in ("signal", "action", "intent", "event", "fog", "snapshot", "hover", "fx", "selection"):
+            if kind == "snapshot":
+                if not allow_snapshot(code, str(seat)):
+                    continue
+                payload = {**raw, "fromSeat": seat}
+                await _broadcast(room, payload, skip=ws)
+                continue
+            if kind in (
+                "signal",
+                "action",
+                "intent",
+                "event",
+                "fog",
+                "hover",
+                "browse",
+                "fx",
+                "selection",
+            ):
                 payload = {**raw, "fromSeat": seat}
                 await _broadcast(room, payload, skip=ws)
                 continue

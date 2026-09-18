@@ -36,6 +36,7 @@ def test_fill_year_is_twelve_months():
 def test_skip_analytics_path():
     assert should_skip_path("/admin/analytics") is True
     assert should_skip_path("/health") is True
+    assert should_skip_path("/site/coming-soon") is True
     assert should_skip_path("/decks/1") is False
 
 

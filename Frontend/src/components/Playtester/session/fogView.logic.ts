@@ -25,7 +25,9 @@ export type FogStub = {
   x?: number
   y?: number
   expended: boolean
-  /** Kept so a face-down augment still renders in its owner's augment row. */
+  /** Kept so a face-down objective still renders in its owner's objective row. */
+  isObjective?: boolean
+  /** @deprecated Use {@link isObjective}. */
   isAugment?: boolean
   selected?: boolean
 }
@@ -38,10 +40,14 @@ export type FogView = {
   handCount: SeatRecord<number>
   libraryCount: SeatRecord<number>
   life: SeatRecord<number>
+  vp?: SeatRecord<number>
+  vpGoal?: SeatRecord<number>
   turn: number
   turnSeat: PlayerSlot
   pilotGenBonus: SeatRecord<number>
   seq: number
+  /** True while a seat's deck top is publicly revealed (both sides see it). */
+  topRevealedBySeat: SeatRecord<boolean>
 }
 
 export function isFogStub(card: FogCard): card is FogStub {
@@ -70,24 +76,76 @@ function asFaceDownStub(card: PlayingCardInstance): FogStub {
     x: card.x,
     y: card.y,
     expended: card.expended,
-    isAugment: card.isAugment,
+    isObjective: card.isObjective ?? card.isAugment,
+    isAugment: card.isAugment ?? card.isObjective,
     selected: card.selected,
   }
 }
 
+/** Public-zone ids from a local selection — never hand/library instance ids. */
+export function sharedSelectionIds(
+  cards: PlayingCardInstance[],
+  selectedIds: readonly string[]
+): string[] {
+  if (selectedIds.length === 0) return []
+  const want = new Set(selectedIds)
+  const out: string[] = []
+  for (const card of cards) {
+    if (!want.has(card.instanceId)) continue
+    if (PRIVATE_ZONES.has(card.zone)) continue
+    out.push(card.instanceId)
+  }
+  return out
+}
+
+/**
+ * Apply a peer's public click-highlight. Private zones stay this client's.
+ * Empty `selectedIds` clears every public ring.
+ */
+export function applySharedSelection(
+  cards: PlayingCardInstance[],
+  selectedIds: ReadonlySet<string>
+): PlayingCardInstance[] {
+  return cards.map((card) => {
+    if (PRIVATE_ZONES.has(card.zone)) return card
+    const next = selectedIds.has(card.instanceId)
+    return card.selected === next ? card : { ...card, selected: next }
+  })
+}
+
+/** First (topmost) library instance per owner, in deck order. */
+function topLibraryIdsByOwner(
+  cards: PlayingCardInstance[]
+): Partial<Record<PlayerSlot, string>> {
+  const ids: Partial<Record<PlayerSlot, string>> = {}
+  for (const card of cards) {
+    if (card.zone !== PLAY_ZONE.library) continue
+    if (ids[card.owner]) continue
+    ids[card.owner] = card.instanceId
+  }
+  return ids
+}
+
 /**
  * Filter full host state for `seat`.
- * Private opponent zones are omitted (counts live on the view object).
+ * Private opponent zones are omitted (counts live on the view object) —
+ * except a seat's revealed deck top, which is a public action and must
+ * carry its real identity across so both sides see the same card.
  * Opponent `selected` is stripped — selection is local-only per client.
  */
 export function viewFor(seat: PlayerSlot, state: PlaySessionState): FogView {
+  const topLibraryIds = topLibraryIdsByOwner(state.cards)
   const cards: FogCard[] = []
   for (const card of state.cards) {
     if (card.owner === seat) {
       cards.push(card)
       continue
     }
-    if (PRIVATE_ZONES.has(card.zone)) continue
+    const isRevealedTop =
+      card.zone === PLAY_ZONE.library &&
+      state.topRevealedBySeat[card.owner] &&
+      topLibraryIds[card.owner] === card.instanceId
+    if (PRIVATE_ZONES.has(card.zone) && !isRevealedTop) continue
     if (card.faceDown) {
       const stub = asFaceDownStub(card)
       cards.push(stub.selected ? { ...stub, selected: false } : stub)
@@ -108,10 +166,13 @@ export function viewFor(seat: PlayerSlot, state: PlaySessionState): FogView {
       p2: countZone(state.cards, PLAY_ZONE.library, "p2"),
     },
     life: state.life,
+    vp: state.vp,
+    vpGoal: state.vpGoal,
     turn: state.turn,
     turnSeat: state.turnSeat,
     pilotGenBonus: state.pilotGenBonus,
     seq: state.seq,
+    topRevealedBySeat: state.topRevealedBySeat,
   }
 }
 
@@ -129,7 +190,8 @@ export function stubToInstance(stub: FogStub): PlayingCardInstance {
     y: stub.y,
     expended: stub.expended,
     faceDown: true,
-    isAugment: stub.isAugment,
+    isObjective: stub.isObjective ?? stub.isAugment,
+    isAugment: stub.isAugment ?? stub.isObjective,
     selected: stub.selected,
   }
 }
@@ -173,16 +235,14 @@ export function materializeFog(view: FogView): PlayingCardInstance[] {
 }
 
 /**
- * After fog, keep *this seat's* optimistic selection so a host fog tick
- * cannot clear local cyan rings mid-click.
+ * After fog, keep this client's click-highlight (own *and* opponent cards)
+ * so a host fog tick cannot clear local cyan rings mid-click.
  */
 export function withPreservedSelection(
   cards: PlayingCardInstance[],
-  selectedIds: ReadonlySet<string>,
-  localSeat: PlayerSlot
+  selectedIds: ReadonlySet<string>
 ): PlayingCardInstance[] {
   return cards.map((card) => {
-    if (card.owner !== localSeat) return card
     const next = selectedIds.has(card.instanceId)
     return card.selected === next ? card : { ...card, selected: next }
   })

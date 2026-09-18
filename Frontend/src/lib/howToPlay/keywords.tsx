@@ -1,5 +1,5 @@
 /**
- * Shared keyword ability definitions — used by How To Play and card library help.
+ * Shared keyword ability definitions: used by How To Play and card library help.
  */
 
 import type { ReactNode } from "react"
@@ -14,7 +14,7 @@ export type KeywordAbility = {
 export const KEYWORD_ABILITIES: KeywordAbility[] = [
   {
     name: "AIRBORNE",
-    text: "Only assets with Airborne or Long Range can attack this entity.",
+    text: "Only Airborne or Long Range can attack this entity. To declare an attack at an objective that has at least one Airborne unit, at least one attacking unit must have Airborne or Long Range.",
   },
   {
     name: "BLITZ",
@@ -39,23 +39,15 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
   //       This unit can take X more marked damage than its health value before being defeated.
   //     </>
   //   ),
-  // },
+  //   },
   {
     name: "PREEMPTIVE STRIKE",
     text: "When this entity deals damage in a fight, it deals damage first, unless the opposing entity also has Preemptive Strike.",
   },
   // {
-  //   name: "HARDENED X",
-  //   text: "Whenever this entity takes damage, reduce that damage by X.",
+  //   name: "INSATIABLE HUNGER",
+  //   text: "Attacks must target a unit the defender controls if they control one.",
   // },
-  // {
-  //   name: "HARD POINT",
-  //   text: "You may include a second copy of this card in your deck (in addition to the normal copy limit).",
-  // },
-  {
-    name: "INSATIABLE HUNGER",
-    text: "Attacks must target a unit the defender controls if they control one.",
-  },
   // {
   //   name: "INVULNERABLE",
   //   text: "This entity cannot be dismantled, trashed, or destroyed by effects that say to trash, dismantle, or destroy. Players cannot choose it as a valid target for those effects or costs.",
@@ -66,16 +58,16 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
   // },
   {
     name: "LONG RANGE",
-    text: "This asset can attack units with Airborne.",
+    text: "This asset can attack Airborne units.",
   },
   {
     name: "PEER X",
     text: "Look at the top X cards of your deck. You may put any of them into your discard pile, then put the rest back on top of your deck in any order.",
   },
-  {
-    name: "PIERCE",
-    text: "Any excess damage this asset deals to its target is redirected to the target's controller.",
-  },
+  // {
+  //   name: "PIERCE",
+  //   text: "Any excess damage this asset deals to its target is redirected to the target's controller.",
+  // },
   {
     name: "RECURSIVE",
     text: "You may play this asset from your discard pile by paying its invoke cost. If you do, allocate the top card of your deck face down to the played card; the next time this asset would go to the discard pile, dismantle it and the face-down card instead.",
@@ -104,7 +96,7 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
   },
   {
     name: "STEALTH X",
-    text: "As an additional cost to target or attack this entity, the controller of the attack or targeted effect must pay X for each cyberspell, ability, or attack. If they do not pay it, that action does nothing.",
+    text: "As an additional cost to target this entity with a cyberspell or ability, or to declare an attack at an objective that has Stealth, the controller of that action must pay X. For an attack, pay once for the entire attack force. If they do not pay, that action does nothing.",
   },
   {
     name: "STURDY",
@@ -122,7 +114,7 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
 ]
 
 const KEYWORD_ALIASES: Record<string, string> = {
-  PEIRCE: "PIERCE",
+  // PEIRCE: "PIERCE",
   REFURBISH: "REFURBISHED",
   SPRITLINK: "SPIRIT LINK",
   HARDPOINT: "HARD POINT",
@@ -131,7 +123,7 @@ const KEYWORD_ALIASES: Record<string, string> = {
   PREEMPTIVE_STRIKE: "PREEMPTIVE STRIKE",
   LONG_RANGE: "LONG RANGE",
   LONGRANGE: "LONG RANGE",
-  INSATIABLE_HUNGER: "INSATIABLE HUNGER",
+  // INSATIABLE_HUNGER: "INSATIABLE HUNGER",
   SPIRITLINK: "SPIRIT LINK",
 }
 

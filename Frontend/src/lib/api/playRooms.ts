@@ -14,12 +14,10 @@ export type PlayRoomCreated = {
   deck_id: number
 }
 
-export function playWsUrl(code: string, token: string): string {
+export function playWsUrl(code: string): string {
   const http = apiBaseUrl()
   const ws = http.replace(/^http/i, "ws")
-  const url = new URL(`${ws}/play/ws/rooms/${code}`)
-  url.searchParams.set("token", token)
-  return url.toString()
+  return `${ws}/play/ws/rooms/${encodeURIComponent(code)}`
 }
 
 export async function createPlayRoom(

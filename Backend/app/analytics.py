@@ -25,6 +25,7 @@ HOST_SAMPLE_HISTORY = 240  # 15s × 240 ≈ 1 hour
 
 SKIP_PATH_PREFIXES = (
     "/health",
+    "/site/coming-soon",
     "/admin/analytics",
     "/docs",
     "/openapi.json",
