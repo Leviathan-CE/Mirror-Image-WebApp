@@ -621,11 +621,15 @@ def browse_card_library(
                     cur, code=room, user_id=user_id
                 )
                 is_resource = (super_type or "").strip().lower() == "resource"
+                # Pooling is scoped to Resource tokens only (see the `room`
+                # query docs above) — a peer's preview entitlement must not
+                # leak into browsing the rest of the catalogue.
+                pooled_unlock = pooled is not None and is_resource
                 visibility = catalogue_visibility_sql(
                     "cards",
-                    bypass=is_admin or (pooled is not None and is_resource),
+                    bypass=is_admin or pooled_unlock,
                     include_preview=(
-                        include_preview or bool(pooled and pooled.include_preview)
+                        include_preview or (pooled_unlock and pooled.include_preview)
                     ),
                 )
                 where_sql = " AND ".join(
