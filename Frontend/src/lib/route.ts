@@ -40,4 +40,9 @@ export const ROUTES = {
   PLAY_TESTER_VS_PATTERN: "/play_tester/:deckId/vs/:vsDeckId",
 } as const
 
-export const ADMIN_ROLE = "admin" as const
+export {
+  ADMIN_ROLE,
+  DEVELOPER_ROLE,
+  canManageCards,
+  isAdminRole,
+} from "@/lib/roles.logic"

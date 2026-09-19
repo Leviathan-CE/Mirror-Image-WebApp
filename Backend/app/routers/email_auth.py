@@ -7,7 +7,10 @@ import re
 import time
 from collections import defaultdict
 
+from urllib.parse import urlencode
+
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from psycopg2 import OperationalError
 from psycopg2.errors import UniqueViolation
@@ -24,6 +27,7 @@ from app.email_tokens import (
     mark_email_verified,
 )
 from app.security import hash_password
+from app.settings import frontend_url
 
 logger = logging.getLogger(__name__)
 
@@ -71,18 +75,17 @@ class AcceptInviteBody(BaseModel):
 
     token: str = Field(min_length=10, max_length=200)
     password: str = Field(min_length=8, max_length=128)
-    user_name: str | None = Field(default=None, min_length=3, max_length=32)
+    # Optional — do not put min_length on the field. Blank or autofilled junk
+    # must not 422 before the handler can return a string error.
+    user_name: str | None = None
 
     @field_validator("user_name")
     @classmethod
-    def _valid_username(cls, value: str | None) -> str | None:
-        if value is None or value == "":
+    def _empty_username_to_none(cls, value: str | None) -> str | None:
+        if value is None:
             return None
-        if not _USERNAME_RE.fullmatch(value):
-            raise ValueError(
-                "user_name must be 3–32 chars: letters, numbers, underscore only"
-            )
-        return value
+        cleaned = value.strip()
+        return cleaned or None
 
 
 class OkResponse(BaseModel):
@@ -232,8 +235,30 @@ def reset_password(body: ResetPasswordBody):
     return OkResponse()
 
 
+@router.get("/accept-invite")
+def accept_invite_via_get(token: str = ""):
+    """
+    Email clients and the address bar GET this URL. The form lives on the
+    site, so send them there instead of FastAPI's 405.
+    """
+    dest = f"{frontend_url()}/accept-invite"
+    cleaned = token.strip()
+    if cleaned:
+        dest = f"{dest}?{urlencode({'token': cleaned})}"
+    return RedirectResponse(dest, status_code=303)
+
+
+def _optional_invite_username(user_name: str | None) -> str | None:
+    if user_name is None:
+        return None
+    if not _USERNAME_RE.fullmatch(user_name):
+        raise HTTPException(status_code=400, detail="invalid_username")
+    return user_name
+
+
 @router.post("/accept-invite", response_model=OkResponse)
 def accept_invite(body: AcceptInviteBody):
+    user_name = _optional_invite_username(body.user_name)
     password_hash = hash_password(body.password)
     try:
         with get_connection() as conn:
@@ -245,7 +270,7 @@ def accept_invite(body: AcceptInviteBody):
                     raise HTTPException(
                         status_code=400, detail="invalid_or_expired_token"
                     )
-                if body.user_name:
+                if user_name:
                     cur.execute(
                         """
                         UPDATE users
@@ -257,7 +282,7 @@ def accept_invite(body: AcceptInviteBody):
                         """,
                         {
                             "password": password_hash,
-                            "user_name": body.user_name,
+                            "user_name": user_name,
                             "id": user_id,
                         },
                     )

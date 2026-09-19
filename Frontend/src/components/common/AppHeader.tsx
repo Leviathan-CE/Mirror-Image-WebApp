@@ -12,7 +12,7 @@ import { useAuth } from "@/app/providers/AuthProvider"
 import { AdminHeader } from "@/components/common/AdminHeader"
 import { PublicHeader } from "@/components/common/PublicHeader"
 import { Userheader } from "@/components/common/UserHeader"
-import { ADMIN_ROLE, ROUTES } from "@/lib/route"
+import { ROUTES, canManageCards, isAdminRole } from "@/lib/route"
 
 export function AppHeader() {
   const { isAuthenticated, user } = useAuth()
@@ -27,9 +27,12 @@ export function AppHeader() {
   }
 
   const onAdminRoute = pathname.startsWith(ROUTES.ADMIN)
-  const isAdmin = user?.role === ADMIN_ROLE
+  const showAdminChrome =
+    onAdminRoute &&
+    isAuthenticated &&
+    (isAdminRole(user?.role) || canManageCards(user?.role))
 
-  if (onAdminRoute && isAuthenticated && isAdmin) {
+  if (showAdminChrome) {
     return <AdminHeader />
   }
 

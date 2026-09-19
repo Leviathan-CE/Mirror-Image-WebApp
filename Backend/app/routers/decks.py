@@ -98,7 +98,7 @@ from app.profanity import reject_if_profane
 from app.user_preferences import fetch_user_preferences, normalize_user_preferences
 from app.security import (
     get_current_user_id,
-    get_optional_is_admin,
+    get_optional_can_manage_cards,
     get_optional_user_id,
 )
 
@@ -525,7 +525,7 @@ def get_deck(
         ),
     ),
     user_id: int | None = Depends(get_optional_user_id),
-    is_admin: bool = Depends(get_optional_is_admin),
+    is_admin: bool = Depends(get_optional_can_manage_cards),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """
@@ -990,7 +990,7 @@ def list_deck_cards(
     deck_id: int,
     category_id: int | None = Query(default=None, gt=0),
     user_id: int | None = Depends(get_optional_user_id),
-    is_admin: bool = Depends(get_optional_is_admin),
+    is_admin: bool = Depends(get_optional_can_manage_cards),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """List cards in a readable deck (public or owned), optionally by category."""
@@ -1020,7 +1020,7 @@ def add_card_to_deck(
     deck_id: int,
     body: AddCardRequest,
     user_id: int = Depends(get_current_user_id),
-    is_admin: bool = Depends(get_optional_is_admin),
+    is_admin: bool = Depends(get_optional_can_manage_cards),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """
@@ -1112,7 +1112,7 @@ def update_deck_card(
         description="Current category of the entry to update",
     ),
     user_id: int = Depends(get_current_user_id),
-    is_admin: bool = Depends(get_optional_is_admin),
+    is_admin: bool = Depends(get_optional_can_manage_cards),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """Update quantity, move category, and/or set sort_order for one entry."""
@@ -1266,7 +1266,7 @@ def reorder_deck_cards(
     deck_id: int,
     body: ReorderCardsRequest,
     user_id: int = Depends(get_current_user_id),
-    is_admin: bool = Depends(get_optional_is_admin),
+    is_admin: bool = Depends(get_optional_can_manage_cards),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """

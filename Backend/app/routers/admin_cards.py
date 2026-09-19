@@ -13,7 +13,7 @@ from app.card_library_query import apply_catalogue_filters, catalogue_order_sql
 from app.cards.schemas import CardLibraryItem
 from app.db import get_connection
 from app.media_urls import signed_media_path
-from app.security import get_current_admin_user_id
+from app.security import get_current_card_manager_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +132,7 @@ def admin_browse_cards(
         default="name",
         description="Result order: name | name_desc | invoke | invoke_desc | relevance",
     ),
-    _admin_id: int = Depends(get_current_admin_user_id),
+    _admin_id: int = Depends(get_current_card_manager_user_id),
 ):
     """
     Admin catalogue browse.
@@ -250,7 +250,7 @@ class AdminCardDetail(CardLibraryItem):
 @router.get("/library/{card_id}", response_model=AdminCardDetail)
 def admin_get_card(
     card_id: int,
-    _admin_id: int = Depends(get_current_admin_user_id),
+    _admin_id: int = Depends(get_current_card_manager_user_id),
 ):
     """Full card detail for the admin DB overlay (no publish gate)."""
     if card_id <= 0:
@@ -346,7 +346,7 @@ def admin_get_card(
 @router.patch("/bulk", response_model=AdminCardBulkResult)
 def admin_bulk_update_cards(
     body: AdminCardBulkUpdate,
-    _admin_id: int = Depends(get_current_admin_user_id),
+    _admin_id: int = Depends(get_current_card_manager_user_id),
 ):
     """Set publish status and/or lagality on selected catalogue cards."""
     if body.published is None and body.lagality is None:
@@ -395,7 +395,7 @@ def admin_bulk_update_cards(
 @router.post("/delete", response_model=AdminCardDeleteResult)
 def admin_delete_cards(
     body: AdminCardDeleteRequest,
-    _admin_id: int = Depends(get_current_admin_user_id),
+    _admin_id: int = Depends(get_current_card_manager_user_id),
 ):
     """Permanently delete selected catalogue cards (skips ids that no longer exist)."""
     try:

@@ -12,6 +12,11 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from psycopg2 import OperationalError
 from psycopg2.errors import UniqueViolation
 
+from app.account_delete import (
+    AccountDeleteError,
+    delete_own_account,
+    leave_play_rooms,
+)
 from app.db import get_connection
 from app.email_tokens import email_http_error, issue_and_send_verify
 from app.features import (
@@ -36,6 +41,17 @@ from app.security import (
     verify_password,
 )
 from app.subscription import is_subscription_entitled
+from app.two_factor import (
+    TwoFactorError,
+    create_challenge,
+    consume_challenge,
+    dest_hint,
+    disable_two_factor,
+    email_2fa_available,
+    enable_two_factor,
+    http_detail,
+    load_user_2fa,
+)
 from app.user_preferences import (
     fetch_user_preferences,
     fetch_user_preferences_raw,
@@ -126,14 +142,65 @@ class UserPublic(BaseModel):
     features: list[str] = Field(default_factory=list)
     # Stored blob: {} until the user has saved prefs (client hydrates defaults).
     preferences: dict = Field(default_factory=dict)
+    two_factor_enabled: bool = False
+    two_factor_method: str | None = None
+    two_factor_dest_hint: str | None = None
 
 
 class AuthResponse(BaseModel):
-    access_token: str
+    access_token: str | None = None
     token_type: str = "bearer"
-    user: UserPublic
+    user: UserPublic | None = None
     # Seconds until JWT expiry (handy for Unity session UI).
     expires_in: int | None = None
+    requires_2fa: bool = False
+    challenge_id: str | None = None
+    two_factor_method: str | None = None
+    dest_hint: str | None = None
+
+
+class TwoFactorStartRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    method: str = Field(min_length=3, max_length=8)
+    phone: str | None = Field(default=None, max_length=20)
+
+
+class TwoFactorCodeRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    challenge_id: str = Field(min_length=8, max_length=64)
+    code: str = Field(min_length=4, max_length=12)
+    client: str = Field(default="", max_length=32)
+
+
+class TwoFactorResendRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    challenge_id: str = Field(min_length=8, max_length=64)
+
+
+class TwoFactorDisableRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    password: str = Field(default="", max_length=128)
+    challenge_id: str = Field(default="", max_length=64)
+    code: str = Field(default="", max_length=12)
+
+
+class TwoFactorStatusOut(BaseModel):
+    enabled: bool = False
+    method: str | None = None
+    dest_hint: str | None = None
+    email_available: bool = False
+    requires_code: bool = False
+    challenge_id: str | None = None
+
+
+class DeleteAccountRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    user_name: str = Field(min_length=1, max_length=32)
 
 
 class GoogleAuthConfig(BaseModel):
@@ -157,6 +224,9 @@ def _user_public_from_row(
     email_verified: bool = False,
     features: list[str] | None = None,
     preferences: dict | None = None,
+    two_factor_enabled: bool = False,
+    two_factor_method: str | None = None,
+    two_factor_dest_hint: str | None = None,
 ) -> UserPublic:
     """
     Map a users SELECT row:
@@ -178,6 +248,9 @@ def _user_public_from_row(
         email_verified=email_verified,
         features=features or [],
         preferences=preferences if isinstance(preferences, dict) else {},
+        two_factor_enabled=two_factor_enabled,
+        two_factor_method=two_factor_method,
+        two_factor_dest_hint=two_factor_dest_hint,
     )
 
 
@@ -185,7 +258,8 @@ def _fetch_user_by_login(cur, identifier: str) -> tuple | None:
     sql = """
         SELECT id, user_name, email, password, role,
                subscription_status, subscription_type,
-               is_active, email_verification_received
+               is_active, email_verification_received,
+               two_factor_enabled
         FROM users
         WHERE lower(email) = lower(%(id)s)
            OR lower(user_name) = lower(%(id)s)
@@ -236,6 +310,64 @@ def _auth_response_for_user(
     )
     expires_in = UNITY_TOKEN_EXPIRE_MINUTES * 60 if unity else None
     return AuthResponse(access_token=token, user=public, expires_in=expires_in)
+
+
+def _two_factor_http_error(exc: Exception) -> HTTPException:
+    detail = http_detail(exc)
+    if detail in {"email_not_configured", "2fa_send_failed"}:
+        code = status.HTTP_503_SERVICE_UNAVAILABLE
+    elif detail == "2fa_rate_limited":
+        code = status.HTTP_429_TOO_MANY_REQUESTS
+    elif detail in {
+        "invalid_2fa_method",
+        "invalid_2fa_purpose",
+        "2fa_destination_missing",
+    }:
+        code = status.HTTP_400_BAD_REQUEST
+    elif detail in {"email_not_verified", "2fa_not_enabled"}:
+        code = status.HTTP_403_FORBIDDEN
+    elif detail == "user_not_found":
+        code = status.HTTP_404_NOT_FOUND
+    else:
+        code = status.HTTP_401_UNAUTHORIZED
+    return HTTPException(status_code=code, detail=detail)
+
+
+def _issue_login_challenge(cur, user_id: int) -> AuthResponse:
+    enabled, method, phone, email, user_name, sent_at, _verified, _password = (
+        load_user_2fa(cur, user_id)
+    )
+    if not enabled:
+        raise TwoFactorError("2fa_not_enabled")
+    hint = dest_hint("email", email=email, phone=None)
+    challenge = create_challenge(
+        cur,
+        user_id=int(user_id),
+        purpose="login",
+        method="email",
+        dest=email or "",
+        dest_hint_text=hint,
+        user_name=user_name,
+        last_sent_at=sent_at,
+    )
+    return AuthResponse(
+        requires_2fa=True,
+        challenge_id=challenge.challenge_id,
+        two_factor_method=challenge.method,
+        dest_hint=challenge.dest_hint,
+    )
+
+
+def _public_with_2fa(cur, public: UserPublic) -> UserPublic:
+    enabled, method, phone, email, _name, _sent, _verified, _pw = load_user_2fa(
+        cur, public.id
+    )
+    public.two_factor_enabled = bool(enabled)
+    public.two_factor_method = method
+    public.two_factor_dest_hint = (
+        dest_hint(method or "email", email=email, phone=phone) if enabled else None
+    )
+    return public
 
 
 def _http_for_google_token_error(exc: GoogleTokenError) -> HTTPException:
@@ -340,6 +472,7 @@ def login(body: LoginRequest):
                     sub_type,
                     is_active,
                     email_verified,
+                    two_factor_on,
                 ) = row
                 if not password_hash or not verify_password(
                     body.password, password_hash
@@ -358,6 +491,13 @@ def login(body: LoginRequest):
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="email_not_verified",
                     )
+                if two_factor_on:
+                    try:
+                        challenge = _issue_login_challenge(cur, int(user_id))
+                    except TwoFactorError as exc:
+                        raise _two_factor_http_error(exc) from exc
+                    conn.commit()
+                    return challenge
                 features = _features_for_user(
                     cur, int(user_id), role, sub_status or "none"
                 )
@@ -457,6 +597,14 @@ def login_with_google(body: GoogleLoginRequest):
                     resolved.subscription_status or "none",
                 )
                 prefs = fetch_user_preferences_raw(cur, int(resolved.user_id))
+                enabled, *_rest = load_user_2fa(cur, int(resolved.user_id))
+                if enabled:
+                    try:
+                        challenge = _issue_login_challenge(cur, int(resolved.user_id))
+                    except TwoFactorError as exc:
+                        raise _two_factor_http_error(exc) from exc
+                    conn.commit()
+                    return challenge
             conn.commit()
     except HTTPException:
         raise
@@ -528,6 +676,14 @@ def link_google_account_with_password(body: GoogleLinkWithPasswordRequest):
                     resolved.subscription_status or "none",
                 )
                 prefs = fetch_user_preferences_raw(cur, int(resolved.user_id))
+                enabled, *_rest = load_user_2fa(cur, int(resolved.user_id))
+                if enabled:
+                    try:
+                        challenge = _issue_login_challenge(cur, int(resolved.user_id))
+                    except TwoFactorError as exc:
+                        raise _two_factor_http_error(exc) from exc
+                    conn.commit()
+                    return challenge
             conn.commit()
     except HTTPException:
         raise
@@ -556,7 +712,8 @@ def me(user_id: int = Depends(get_current_user_id)):
     """Return the current user from the Bearer token."""
     sql = """
         SELECT id, user_name, email, role, subscription_status, subscription_type,
-               email_verification_received, is_active
+               email_verification_received, is_active,
+               two_factor_enabled, two_factor_method, phone_e164
         FROM users
         WHERE id = %(user_id)s
     """
@@ -579,11 +736,19 @@ def me(user_id: int = Depends(get_current_user_id)):
                     cur, int(row[0]), row[3], row[4] or "none"
                 )
                 prefs = fetch_user_preferences_raw(cur, int(row[0]))
+                method = row[9]
                 public = _user_public_from_row(
                     row[:6],
                     email_verified=bool(row[6]),
                     features=features,
                     preferences=prefs,
+                    two_factor_enabled=bool(row[8]),
+                    two_factor_method=method,
+                    two_factor_dest_hint=(
+                        dest_hint(method or "email", email=row[2], phone=row[10])
+                        if row[8]
+                        else None
+                    ),
                 )
     except HTTPException:
         raise
@@ -595,6 +760,336 @@ def me(user_id: int = Depends(get_current_user_id)):
         ) from e
 
     return public
+
+
+@router.get("/2fa/status", response_model=TwoFactorStatusOut)
+def two_factor_status(user_id: int = Depends(get_current_user_id)):
+    """Current 2FA setting plus whether email codes can be sent."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                enabled, method, phone, email, _name, _sent, _verified, _pw = (
+                    load_user_2fa(cur, user_id)
+                )
+    except TwoFactorError as exc:
+        raise _two_factor_http_error(exc) from exc
+    except OperationalError as e:
+        logger.warning("db error on 2fa status: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="database_unavailable",
+        ) from e
+
+    hint = dest_hint(method or "email", email=email, phone=phone) if enabled else None
+    return TwoFactorStatusOut(
+        enabled=bool(enabled),
+        method=method,
+        dest_hint=hint,
+        email_available=email_2fa_available(),
+    )
+
+
+@router.post("/2fa/start", response_model=AuthResponse)
+def start_two_factor(
+    body: TwoFactorStartRequest,
+    user_id: int = Depends(get_current_user_id),
+):
+    """Send a code to the account email so the user can confirm enabling 2FA."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                (
+                    _enabled,
+                    _method,
+                    _stored_phone,
+                    email,
+                    user_name,
+                    sent_at,
+                    email_verified,
+                    _password,
+                ) = load_user_2fa(cur, user_id)
+                if not email_verified:
+                    raise TwoFactorError("email_not_verified")
+                hint = dest_hint("email", email=email)
+                challenge = create_challenge(
+                    cur,
+                    user_id=user_id,
+                    purpose="enable",
+                    method="email",
+                    dest=email or "",
+                    dest_hint_text=hint,
+                    user_name=user_name,
+                    last_sent_at=sent_at,
+                )
+            conn.commit()
+    except TwoFactorError as exc:
+        raise _two_factor_http_error(exc) from exc
+    except HTTPException:
+        raise
+    except OperationalError as e:
+        logger.warning("db error on 2fa start: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="database_unavailable",
+        ) from e
+
+    return AuthResponse(
+        requires_2fa=True,
+        challenge_id=challenge.challenge_id,
+        two_factor_method=challenge.method,
+        dest_hint=challenge.dest_hint,
+    )
+
+
+@router.post("/2fa/confirm", response_model=TwoFactorStatusOut)
+def confirm_two_factor(
+    body: TwoFactorCodeRequest,
+    user_id: int = Depends(get_current_user_id),
+):
+    """Confirm the Settings code and turn 2FA on."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                consume_challenge(
+                    cur,
+                    challenge_id=body.challenge_id,
+                    code=body.code,
+                    purpose="enable",
+                    expected_user_id=user_id,
+                )
+                cur.execute(
+                    """
+                    SELECT method, dest_hint
+                      FROM two_factor_challenges
+                     WHERE id = %(id)s
+                    """,
+                    {"id": body.challenge_id.strip()},
+                )
+                row = cur.fetchone()
+                method = "email"
+                dest_hint_text = row[1] if row else ""
+                enable_two_factor(cur, user_id=user_id, method="email")
+            conn.commit()
+    except TwoFactorError as exc:
+        raise _two_factor_http_error(exc) from exc
+    except OperationalError as e:
+        logger.warning("db error on 2fa confirm: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="database_unavailable",
+        ) from e
+
+    return TwoFactorStatusOut(
+        enabled=True,
+        method=method,
+        dest_hint=dest_hint_text,
+        email_available=email_2fa_available(),
+    )
+
+
+@router.post("/2fa/disable", response_model=TwoFactorStatusOut)
+def disable_two_factor_route(
+    body: TwoFactorDisableRequest,
+    user_id: int = Depends(get_current_user_id),
+):
+    """Turn 2FA off. Password accounts prove password; others use a fresh code."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                (
+                    enabled,
+                    method,
+                    phone,
+                    email,
+                    user_name,
+                    sent_at,
+                    _verified,
+                    password_hash,
+                ) = load_user_2fa(cur, user_id)
+                if not enabled:
+                    conn.commit()
+                    return TwoFactorStatusOut(
+                        enabled=False,
+                        email_available=email_2fa_available(),
+                    )
+                if body.challenge_id and body.code:
+                    consume_challenge(
+                        cur,
+                        challenge_id=body.challenge_id,
+                        code=body.code,
+                        purpose="disable",
+                        expected_user_id=user_id,
+                    )
+                elif password_hash and body.password:
+                    if not verify_password(body.password, password_hash):
+                        raise HTTPException(
+                            status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="invalid_credentials",
+                        )
+                else:
+                    dest = email
+                    hint = dest_hint("email", email=email)
+                    challenge = create_challenge(
+                        cur,
+                        user_id=user_id,
+                        purpose="disable",
+                        method=method or "email",
+                        dest=dest or "",
+                        dest_hint_text=hint,
+                        user_name=user_name,
+                        last_sent_at=sent_at,
+                    )
+                    conn.commit()
+                    return TwoFactorStatusOut(
+                        enabled=True,
+                        method=method,
+                        dest_hint=challenge.dest_hint,
+                        email_available=email_2fa_available(),
+                        requires_code=True,
+                        challenge_id=challenge.challenge_id,
+                    )
+                disable_two_factor(cur, user_id=user_id)
+            conn.commit()
+    except HTTPException:
+        raise
+    except TwoFactorError as exc:
+        raise _two_factor_http_error(exc) from exc
+    except OperationalError as e:
+        logger.warning("db error on 2fa disable: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="database_unavailable",
+        ) from e
+
+    return TwoFactorStatusOut(
+        enabled=False,
+        email_available=email_2fa_available(),
+    )
+
+
+@router.post("/2fa/login", response_model=AuthResponse)
+def complete_two_factor_login(body: TwoFactorCodeRequest):
+    """Finish password/Google login after the user types the emailed code."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                user_id = consume_challenge(
+                    cur,
+                    challenge_id=body.challenge_id,
+                    code=body.code,
+                    purpose="login",
+                )
+                cur.execute(
+                    """
+                    SELECT id, user_name, email, role,
+                           subscription_status, subscription_type,
+                           is_active
+                      FROM users
+                     WHERE id = %(user_id)s
+                    """,
+                    {"user_id": user_id},
+                )
+                row = cur.fetchone()
+                if row is None or not row[6]:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="account_disabled",
+                    )
+                features = _features_for_user(
+                    cur, int(row[0]), row[3], row[4] or "none"
+                )
+                prefs = fetch_user_preferences_raw(cur, int(row[0]))
+                public = _public_with_2fa(
+                    cur,
+                    _user_public_from_row(
+                        row[:6],
+                        email_verified=True,
+                        features=features,
+                        preferences=prefs,
+                    ),
+                )
+            conn.commit()
+    except HTTPException:
+        raise
+    except TwoFactorError as exc:
+        raise _two_factor_http_error(exc) from exc
+    except OperationalError as e:
+        logger.warning("db error on 2fa login: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="database_unavailable",
+        ) from e
+
+    return _auth_response_for_user(
+        user_id=int(row[0]),
+        user_name=row[1],
+        email=row[2],
+        role=row[3],
+        sub_status=row[4] or "none",
+        sub_type=row[5] or "",
+        features=features,
+        client=body.client,
+        preferences=prefs,
+    )
+
+
+@router.post("/2fa/resend", response_model=AuthResponse)
+def resend_two_factor(body: TwoFactorResendRequest):
+    """Send a new login/enable/disable code for an unused challenge."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT user_id, purpose, method, used_at
+                      FROM two_factor_challenges
+                     WHERE id = %(id)s
+                     LIMIT 1
+                    """,
+                    {"id": body.challenge_id.strip()},
+                )
+                row = cur.fetchone()
+                if row is None or row[3] is not None:
+                    raise TwoFactorError("invalid_2fa_code")
+                user_id, purpose, method, _used = row
+                (
+                    _en,
+                    _m,
+                    phone,
+                    email,
+                    user_name,
+                    sent_at,
+                    _ver,
+                    _pw,
+                ) = load_user_2fa(cur, int(user_id))
+                dest = email
+                hint = dest_hint("email", email=email)
+                challenge = create_challenge(
+                    cur,
+                    user_id=int(user_id),
+                    purpose=purpose,
+                    method="email",
+                    dest=dest or "",
+                    dest_hint_text=hint,
+                    user_name=user_name,
+                    last_sent_at=sent_at,
+                )
+            conn.commit()
+    except TwoFactorError as exc:
+        raise _two_factor_http_error(exc) from exc
+    except OperationalError as e:
+        logger.warning("db error on 2fa resend: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="database_unavailable",
+        ) from e
+
+    return AuthResponse(
+        requires_2fa=True,
+        challenge_id=challenge.challenge_id,
+        two_factor_method=challenge.method,
+        dest_hint=challenge.dest_hint,
+    )
 
 
 @router.patch("/me/preferences", response_model=UserPreferencesOut)
@@ -619,4 +1114,52 @@ def patch_my_preferences(
         ) from e
 
     return UserPreferencesOut(**saved)
+
+
+def _account_delete_http_error(exc: AccountDeleteError) -> HTTPException:
+    detail = exc.detail
+    if detail == "username_mismatch":
+        return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+    if detail == "cannot_remove_last_admin":
+        return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+    if detail == "user_not_found":
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
+    if detail == "stripe_cancel_failed":
+        return HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=detail,
+        )
+    return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_my_account(
+    body: DeleteAccountRequest,
+    user_id: int = Depends(get_current_user_id),
+):
+    """
+    Permanently delete the signed-in account.
+
+    Caller must type their username. Stripe subscriptions are canceled first.
+    Owned public and private decks are removed with the user.
+    """
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                delete_own_account(
+                    cur,
+                    user_id=user_id,
+                    typed_user_name=body.user_name,
+                )
+            conn.commit()
+    except AccountDeleteError as exc:
+        raise _account_delete_http_error(exc) from exc
+    except OperationalError as e:
+        logger.warning("db error on delete account: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="database_unavailable",
+        ) from e
+
+    leave_play_rooms(user_id)
 

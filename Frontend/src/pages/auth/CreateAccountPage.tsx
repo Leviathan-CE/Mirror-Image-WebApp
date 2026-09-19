@@ -23,7 +23,9 @@ import {
   createAccount,
   googleLinkWithPasswordRequest,
   googleLoginRequest,
+  isTwoFactorChallenge,
   type AuthUser,
+  type LoginResult,
 } from "@/lib/api/auth"
 import { ApiError } from "@/lib/api/client"
 import { isPublicTextClean } from "@/lib/profanity"
@@ -89,6 +91,17 @@ export function CreateAccountPage() {
     [setSession]
   )
 
+  function applyLoginResult(result: LoginResult) {
+    if (isTwoFactorChallenge(result) || !result.access_token || !result.user) {
+      setHelpTone("error")
+      setHelpText(
+        "This account has two-factor sign-in. Use the login page to enter the code."
+      )
+      return
+    }
+    beginSession(result.access_token, result.user)
+  }
+
   const onGoogleCredential = useCallback(
     async (idToken: string) => {
       setSubmitting(true)
@@ -96,7 +109,7 @@ export function CreateAccountPage() {
       setHelpText("Continuing with Google…")
       try {
         const result = await googleLoginRequest(idToken)
-        beginSession(result.access_token, result.user)
+        applyLoginResult(result)
       } catch (error) {
         setHelpTone("error")
         if (error instanceof ApiError) {
@@ -132,7 +145,7 @@ export function CreateAccountPage() {
           pendingGoogleToken,
           password
         )
-        beginSession(result.access_token, result.user)
+        applyLoginResult(result)
       } catch (error) {
         setHelpTone("error")
         if (error instanceof ApiError) {

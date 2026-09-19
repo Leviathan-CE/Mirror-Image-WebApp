@@ -23,8 +23,11 @@ CREATE TABLE IF NOT EXISTS users (
     email_verified_at TIMESTAMPTZ DEFAULT NULL,
 
     two_factor_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    two_factor_method TEXT DEFAULT NULL,
     two_factor_code_sent_at TIMESTAMPTZ DEFAULT NULL,
     two_factor_verified_at TIMESTAMPTZ DEFAULT NULL,
+    phone_e164 TEXT DEFAULT NULL,
+    phone_verified_at TIMESTAMPTZ DEFAULT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -38,7 +41,10 @@ CREATE TABLE IF NOT EXISTS users (
     CONSTRAINT users_password_not_blank CHECK (
         password IS NULL OR length(trim(password)) > 0
     ),
-    CONSTRAINT users_role_allowed CHECK (role IN ('user', 'admin', 'distributor')),
+    CONSTRAINT users_role_allowed CHECK (role IN ('user', 'admin', 'distributor', 'developer')),
+    CONSTRAINT users_two_factor_method_allowed CHECK (
+        two_factor_method IS NULL OR two_factor_method IN ('email', 'sms')
+    ),
     CONSTRAINT users_subscription_status_allowed CHECK (
         subscription_status IN (
             'none',

@@ -33,6 +33,7 @@ Created on **first** DB init (empty volume), or by running `Backend/sql/09_seed_
 | Role | Username | Email | Password |
 |------|----------|-------|----------|
 | admin | `admin` | `admin@localhost` | `admin123` |
+| developer | `developer` | `developer@localhost` | `dev123` |
 | distributor | `distributor` | `store@localhost` | `store123` |
 | user | `user` | `user@localhost` | `user123` |
 

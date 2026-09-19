@@ -11,6 +11,8 @@ import { nextNewSectionName } from "@/components/decks/deck.logic"
 import { DeckCardSortControls } from "@/components/decks/DeckCardSortControls"
 import { DeckCardViewControls } from "@/components/decks/DeckCardViewControls"
 import { GlitchFx } from "@/components/effects/GlitchFx"
+import { DeleteAccountPanel } from "@/pages/account/DeleteAccountPanel"
+import { TwoFactorSettingsPanel } from "@/pages/account/TwoFactorSettingsPanel"
 import {
   BROWSE_WIDTH_MAX,
   BROWSE_WIDTH_MIN,
@@ -70,6 +72,8 @@ export function AccountSettingsPage() {
             {user ? ` (${user.user_name})` : ""}.
           </p>
         </header>
+
+        <TwoFactorSettingsPanel />
 
         <section className="mb-6 border border-cyan-500/25 bg-black/50 p-5">
           <h2 className="font-buahs93 text-sm tracking-wide text-cyan-100">
@@ -255,6 +259,8 @@ export function AccountSettingsPage() {
             </label>
           </div>
         </section>
+
+        <DeleteAccountPanel />
       </div>
     </section>
   )

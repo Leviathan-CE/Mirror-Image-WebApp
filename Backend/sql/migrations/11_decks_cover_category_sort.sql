@@ -14,13 +14,23 @@ ALTER TABLE deck_has_cards
     ADD COLUMN IF NOT EXISTS sort_order INT NOT NULL DEFAULT 0;
 
 -- Recreate PK as (deck_id, card_id, category) so a card can sit in main + side.
+-- Skip if the key is already there. Dropping it and re-adding fails on
+-- existing volumes that already have duplicate (deck_id, card_id, category).
 DO $$
 BEGIN
-    ALTER TABLE deck_has_cards DROP CONSTRAINT IF EXISTS deck_has_cards_pkey;
+    IF EXISTS (
+        SELECT 1
+          FROM pg_constraint
+         WHERE conname = 'deck_has_cards_pkey'
+    ) THEN
+        RETURN;
+    END IF;
     ALTER TABLE deck_has_cards
         ADD CONSTRAINT deck_has_cards_pkey PRIMARY KEY (deck_id, card_id, category);
 EXCEPTION
     WHEN duplicate_object THEN
+        NULL;
+    WHEN unique_violation THEN
         NULL;
 END $$;
 

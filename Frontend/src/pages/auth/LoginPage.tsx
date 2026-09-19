@@ -23,10 +23,14 @@ import { GlitchFx } from "@/components/effects/GlitchFx"
 import { Button } from "@/components/ui/button"
 import { EditBox } from "@/components/ui/EditBox"
 import {
+  completeTwoFactorLogin,
   googleLinkWithPasswordRequest,
   googleLoginRequest,
+  isTwoFactorChallenge,
   loginRequest,
+  resendTwoFactor,
   type AuthUser,
+  type LoginResult,
 } from "@/lib/api/auth"
 import { resendVerificationRequest } from "@/lib/api/email_auth"
 import { ApiError } from "@/lib/api/client"
@@ -51,6 +55,13 @@ function helpMessageForError(detail: string): string {
       return "Google sign-in failed. Try again or use your password."
     case "password_account_exists":
       return "An account with this Google email already exists. Enter that account’s password to link Google and continue."
+    case "invalid_2fa_code":
+      return "That code is wrong or expired."
+    case "2fa_rate_limited":
+      return "Wait a minute before requesting another code."
+    case "email_not_configured":
+    case "2fa_send_failed":
+      return "Could not send a sign-in code. Try again shortly."
     default:
       return "Login failed. Check your details and try again."
   }
@@ -84,6 +95,9 @@ export function LoginPage() {
   const [pendingGoogleToken, setPendingGoogleToken] = useState<string | null>(
     null
   )
+  const [challengeId, setChallengeId] = useState<string | null>(null)
+  const [challengeHint, setChallengeHint] = useState("")
+  const [otpCode, setOtpCode] = useState("")
 
   const finishBoot = useCallback(() => {
     navigate(redirectTo, { replace: true })
@@ -97,8 +111,30 @@ export function LoginPage() {
       setBootName(user.user_name)
       setBooting(true)
       setPendingGoogleToken(null)
+      setChallengeId(null)
+      setOtpCode("")
     },
     [setSession]
+  )
+
+  const applyLoginResult = useCallback(
+    (result: LoginResult) => {
+      if (isTwoFactorChallenge(result)) {
+        setChallengeId(result.challenge_id)
+        setChallengeHint(result.dest_hint)
+        setOtpCode("")
+        setHelpTone("pending")
+        setHelpText(`Enter the code sent to ${result.dest_hint}.`)
+        return
+      }
+      if (!result.access_token || !result.user) {
+        setHelpTone("error")
+        setHelpText("Login failed. Check your details and try again.")
+        return
+      }
+      beginSession(result.access_token, result.user)
+    },
+    [beginSession]
   )
 
   const onGoogleCredential = useCallback(
@@ -110,7 +146,7 @@ export function LoginPage() {
 
       try {
         const result = await googleLoginRequest(idToken)
-        beginSession(result.access_token, result.user)
+        applyLoginResult(result)
       } catch (error) {
         setHelpTone("error")
         if (error instanceof ApiError) {
@@ -126,7 +162,7 @@ export function LoginPage() {
         setSubmitting(false)
       }
     },
-    [beginSession]
+    [applyLoginResult]
   )
 
 
@@ -171,6 +207,31 @@ export function LoginPage() {
           pendingGoogleToken,
           password
         )
+        applyLoginResult(result)
+      } catch (error) {
+        setHelpTone("error")
+        if (error instanceof ApiError) {
+          setHelpText(helpMessageForError(error.detail))
+        } else {
+          setHelpText("Could not reach the server. Is the API running?")
+        }
+      } finally {
+        setSubmitting(false)
+      }
+      return
+    }
+
+    if (challengeId) {
+      if (!otpCode.trim()) {
+        setHelpTone("error")
+        setHelpText("Enter the code we sent you.")
+        return
+      }
+      setSubmitting(true)
+      setHelpTone("pending")
+      setHelpText("Checking code…")
+      try {
+        const result = await completeTwoFactorLogin(challengeId, otpCode.trim())
         beginSession(result.access_token, result.user)
       } catch (error) {
         setHelpTone("error")
@@ -198,7 +259,7 @@ export function LoginPage() {
 
     try {
       const result = await loginRequest(identifier.trim(), password)
-      beginSession(result.access_token, result.user)
+      applyLoginResult(result)
     } catch (error) {
       setHelpTone("error")
       if (error instanceof ApiError) {
@@ -217,6 +278,7 @@ export function LoginPage() {
 
   const formLocked = submitting || booting
   const linkingGoogle = Boolean(pendingGoogleToken)
+  const awaitingCode = Boolean(challengeId)
 
   return (
     <>
@@ -239,7 +301,22 @@ export function LoginPage() {
             onSubmit={onSubmit}
             className="flex flex-col gap-4 border border-cyan-500/20 bg-black/50 p-6"
           >
-            {linkingGoogle ? (
+            {awaitingCode ? (
+              <label className="flex flex-col gap-2">
+                <span className="font-buahs93 text-sm text-cyan-200/80">
+                  ONE-TIME CODE
+                  {challengeHint ? ` · ${challengeHint}` : ""}
+                </span>
+                <EditBox
+                  name="otp"
+                  autoComplete="one-time-code"
+                  placeholder="6-digit code"
+                  value={otpCode}
+                  onChange={(event) => setOtpCode(event.target.value)}
+                  disabled={formLocked}
+                />
+              </label>
+            ) : linkingGoogle ? (
               <p className="border border-amber-500/30 bg-black/40 p-3 text-sm text-amber-100/90">
                 Security check: this Google email already belongs to a verified
                 password account. Enter that password to link Google — a stranger
@@ -261,20 +338,22 @@ export function LoginPage() {
               </label>
             )}
 
-            <label className="flex flex-col gap-2">
-              <span className="font-buahs93 text-sm text-cyan-200/80">
-                PASSWORD
-              </span>
-              <EditBox
-                password
-                name="password"
-                autoComplete="current-password"
-                placeholder="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                disabled={formLocked}
-              />
-            </label>
+            {awaitingCode ? null : (
+              <label className="flex flex-col gap-2">
+                <span className="font-buahs93 text-sm text-cyan-200/80">
+                  PASSWORD
+                </span>
+                <EditBox
+                  password
+                  name="password"
+                  autoComplete="current-password"
+                  placeholder="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  disabled={formLocked}
+                />
+              </label>
+            )}
 
             <p
               role="status"
@@ -291,17 +370,48 @@ export function LoginPage() {
               type="submit"
               label={
                 submitting
-                  ? linkingGoogle
-                    ? "LINKING…"
-                    : "LOGGING IN…"
-                  : linkingGoogle
-                    ? "LINK GOOGLE & LOGIN"
-                    : "LOGIN"
+                  ? awaitingCode
+                    ? "CHECKING CODE…"
+                    : linkingGoogle
+                      ? "LINKING…"
+                      : "LOGGING IN…"
+                  : awaitingCode
+                    ? "VERIFY CODE"
+                    : linkingGoogle
+                      ? "LINK GOOGLE & LOGIN"
+                      : "LOGIN"
               }
               disabled={formLocked}
               size="lg"
               className="font-buahs93 h-10 w-full rounded-none bg-cyan-700 px-8 hover:bg-cyan-900 active:bg-cyan-400 disabled:opacity-60"
             />
+
+            {awaitingCode ? (
+              <Button
+                type="button"
+                disabled={formLocked}
+                className="font-buahs93 h-9 w-full rounded-none border border-white/20 bg-transparent text-sm text-white/70 hover:bg-white/5"
+                onClick={() => {
+                  void resendTwoFactor(challengeId as string)
+                    .then((next) => {
+                      setChallengeId(next.challenge_id)
+                      setChallengeHint(next.dest_hint)
+                      setHelpTone("success")
+                      setHelpText(`New code sent to ${next.dest_hint}.`)
+                    })
+                    .catch((error: unknown) => {
+                      setHelpTone("error")
+                      setHelpText(
+                        error instanceof ApiError
+                          ? helpMessageForError(error.detail)
+                          : "Could not resend the code."
+                      )
+                    })
+                }}
+              >
+                RESEND CODE
+              </Button>
+            ) : null}
 
             {linkingGoogle ? (
               <Button
@@ -321,7 +431,7 @@ export function LoginPage() {
             ) : null}
 
             <GoogleSignInButton
-              disabled={formLocked || linkingGoogle}
+              disabled={formLocked || linkingGoogle || awaitingCode}
               onCredential={(token) => void onGoogleCredential(token)}
               onLoadError={() => {
                 setHelpTone("error")

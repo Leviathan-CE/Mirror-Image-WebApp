@@ -26,6 +26,34 @@ def require_email_tables(require_db: None) -> None:
                 pytest.skip("email_tokens table missing — run migration 21")
 
 
+def test_accept_invite_get_redirects_to_site(client, monkeypatch):
+    monkeypatch.setattr(
+        "app.routers.email_auth.frontend_url",
+        lambda: "https://www.mirrorimagetcg.net",
+    )
+    response = client.get(
+        "/auth/email/accept-invite?token=abc123xyz0",
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    assert response.headers["location"] == (
+        "https://www.mirrorimagetcg.net/accept-invite?token=abc123xyz0"
+    )
+
+
+def test_accept_invite_invalid_username_is_string_400(client):
+    response = client.post(
+        "/auth/email/accept-invite",
+        json={
+            "token": "longenoughtoken12",
+            "password": "password1",
+            "user_name": "not valid!",
+        },
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "invalid_username"
+
+
 def test_hash_token_stable():
     assert hash_token("abc") == hash_token("abc")
     assert hash_token("abc") != hash_token("abd")

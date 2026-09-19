@@ -11,6 +11,13 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from psycopg2 import OperationalError
 from psycopg2.errors import UniqueViolation
 
+from app.account_delete import (
+    AccountDeleteError,
+    cancel_stripe_for_user,
+    leave_play_rooms,
+    load_account_delete_row,
+    purge_user_account,
+)
 from app.db import get_connection
 from app.email_tokens import email_http_error, issue_and_send_invite, issue_and_send_verify
 from app.features import (
@@ -25,7 +32,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin-users"])
 
 _USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{3,32}$")
-ALLOWED_ROLES = frozenset({"user", "admin", "distributor"})
+ALLOWED_ROLES = frozenset({"user", "admin", "distributor", "developer"})
 
 
 class FeatureCatalogItem(BaseModel):
@@ -501,10 +508,22 @@ def delete_user(
                     raise HTTPException(
                         status_code=400, detail="cannot_remove_last_admin"
                     )
-                cur.execute("DELETE FROM users WHERE id = %(id)s", {"id": user_id})
+                billing = load_account_delete_row(cur, user_id)
+                if billing is not None:
+                    cancel_stripe_for_user(
+                        customer_id=billing[4],
+                        subscription_id=billing[5],
+                    )
+                purge_user_account(cur, user_id)
             conn.commit()
     except HTTPException:
         raise
+    except AccountDeleteError as exc:
+        if exc.detail == "stripe_cancel_failed":
+            raise HTTPException(status_code=503, detail=exc.detail) from exc
+        raise HTTPException(status_code=400, detail=exc.detail) from exc
     except OperationalError as e:
         logger.warning("db error on admin delete user: %s", e)
         raise HTTPException(status_code=409, detail="user_delete_blocked") from e
+
+    leave_play_rooms(user_id)

@@ -5,12 +5,13 @@ import { AccountMenu } from "@/components/common/AccountMenu"
 import { HeaderShell } from "@/components/common/HeaderShell"
 import { navButtonClassName } from "@/components/common/headerStyles"
 import { Button } from "@/components/ui/button"
-import { ADMIN_ROLE, ROUTES } from "@/lib/route"
+import { ROUTES, canManageCards, isAdminRole } from "@/lib/route"
 
 export function Userheader() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const isAdmin = user?.role === ADMIN_ROLE
+  const isAdmin = isAdminRole(user?.role)
+  const showCardsDb = canManageCards(user?.role) && !isAdmin
 
   return (
     <HeaderShell
@@ -47,6 +48,14 @@ export function Userheader() {
               onClick={() => navigate(ROUTES.ADMIN)}
             >
               ADMIN
+            </Button>
+          ) : null}
+          {showCardsDb ? (
+            <Button
+              className={navButtonClassName}
+              onClick={() => navigate(ROUTES.ADMIN_CARDS)}
+            >
+              CARDS DB
             </Button>
           ) : null}
         </>

@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils"
 import { AdminPageShell } from "@/pages/admin/AdminPageShell"
 
 const PAGE_SIZE = 48
-const ROLES: UserRole[] = ["user", "distributor", "admin"]
+const ROLES: UserRole[] = ["user", "distributor", "developer", "admin"]
 
 const primaryActionClassName =
   "font-buahs93 h-9 rounded-none bg-cyan-700 px-4 text-sm text-white hover:bg-cyan-900 disabled:opacity-60"

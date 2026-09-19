@@ -10,6 +10,7 @@ import { EditBox } from "@/components/ui/EditBox"
 import { acceptInviteRequest } from "@/lib/api/email_auth"
 import { ApiError } from "@/lib/api/client"
 import { ROUTES } from "@/lib/route"
+import { acceptInviteErrorText } from "@/pages/auth/acceptInvite.logic"
 import { cn } from "@/lib/utils"
 import { AuthUtilityShell } from "@/pages/auth/AuthUtilityShell"
 
@@ -47,9 +48,7 @@ export function AcceptInvitePage() {
       setTone("error")
       setText(
         error instanceof ApiError
-          ? error.detail === "invalid_or_expired_token"
-            ? "This invite is invalid or expired."
-            : error.detail
+          ? acceptInviteErrorText(error.detail)
           : "Invite failed."
       )
     } finally {
@@ -75,7 +74,7 @@ export function AcceptInvitePage() {
             value={userName}
             onChange={(e) => setUserName(e.target.value)}
             placeholder="username (optional)"
-            autoComplete="username"
+            autoComplete="off"
             disabled={submitting}
           />
           <EditBox

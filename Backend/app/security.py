@@ -11,6 +11,8 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.roles import can_manage_cards, is_admin_role
+
 _bearer = HTTPBearer(auto_error=False)
 
 ALGORITHM = "HS256"
@@ -118,7 +120,44 @@ def get_optional_is_admin(
     if credentials is None or credentials.scheme.lower() != "bearer":
         return False
     payload = decode_access_token(credentials.credentials)
-    return payload.get("role") == "admin"
+    return is_admin_role(payload.get("role") if isinstance(payload.get("role"), str) else None)
+
+
+def get_optional_can_manage_cards(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+) -> bool:
+    """True when JWT role may upload/edit catalogue cards (admin or developer)."""
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        return False
+    payload = decode_access_token(credentials.credentials)
+    role = payload.get("role")
+    return can_manage_cards(role if isinstance(role, str) else None)
+
+
+def get_current_card_manager_user_id(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+) -> int:
+    """Require Bearer JWT with admin or developer role."""
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="missing_bearer_token",
+        )
+    payload = decode_access_token(credentials.credentials)
+    try:
+        user_id = int(payload["sub"])
+    except (KeyError, TypeError, ValueError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid_token_subject",
+        ) from e
+    role = payload.get("role")
+    if not can_manage_cards(role if isinstance(role, str) else None):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="card_manager_required",
+        )
+    return user_id
 
 
 def get_current_admin_user_id(
@@ -138,7 +177,7 @@ def get_current_admin_user_id(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="invalid_token_subject",
         ) from e
-    if payload.get("role") != "admin":
+    if not is_admin_role(payload.get("role") if isinstance(payload.get("role"), str) else None):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="admin_required",

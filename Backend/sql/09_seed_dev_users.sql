@@ -1,9 +1,10 @@
 -- Dev-only seed accounts for local testing.
 -- Runs on first DB init (empty volume). Safe to re-run (idempotent).
 --
---   admin@localhost  / admin123   → role admin
---   store@localhost  / store123   → role distributor
---   user@localhost   / user123    → role user
+--   admin@localhost      / admin123   → role admin
+--   developer@localhost  / dev123     → role developer (card upload)
+--   store@localhost      / store123   → role distributor
+--   user@localhost       / user123    → role user
 --
 -- Seed accounts are email-verified so local login works without SMTP.
 -- Do NOT use these passwords in production.
@@ -29,6 +30,29 @@ SELECT
     NOW()
 WHERE NOT EXISTS (
     SELECT 1 FROM users WHERE lower(email) = 'admin@localhost'
+);
+
+INSERT INTO users (
+    user_name,
+    email,
+    password,
+    role,
+    is_active,
+    email_verification_sent,
+    email_verification_received,
+    email_verified_at
+)
+SELECT
+    'developer',
+    'developer@localhost',
+    '$2b$12$ApUdyNRi8G.ufv3iGvLJyecQaElj2a3BkRWIUAupvb8Bpys/Xzxn2',
+    'developer',
+    TRUE,
+    TRUE,
+    TRUE,
+    NOW()
+WHERE NOT EXISTS (
+    SELECT 1 FROM users WHERE lower(email) = 'developer@localhost'
 );
 
 INSERT INTO users (
@@ -83,4 +107,9 @@ UPDATE users
        email_verification_received = TRUE,
        email_verified_at = COALESCE(email_verified_at, NOW()),
        is_active = TRUE
- WHERE lower(email) IN ('admin@localhost', 'store@localhost', 'user@localhost');
+ WHERE lower(email) IN (
+    'admin@localhost',
+    'developer@localhost',
+    'store@localhost',
+    'user@localhost'
+);

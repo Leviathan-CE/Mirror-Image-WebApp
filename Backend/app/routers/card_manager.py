@@ -16,7 +16,10 @@ from app.card_library_query import apply_catalogue_filters, catalogue_order_sql
 from app.card_publish import catalogue_visibility_sql, get_optional_include_preview
 from app.cards.schemas import CardLibraryItem
 from app.media_urls import signed_media_path
-from app.security import get_current_admin_user_id, get_optional_is_admin
+from app.security import (
+    get_current_card_manager_user_id,
+    get_optional_can_manage_cards,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -231,9 +234,9 @@ def _slugify(value: str) -> str:
 @router.post("/", response_model=CardCreated, status_code=201)
 def create_card(
     body: CardCreate,
-    _admin_id: int = Depends(get_current_admin_user_id),
+    _admin_id: int = Depends(get_current_card_manager_user_id),
 ):
-    """Create a card row in Postgres and return its id and name. Admin only."""
+    """Create a card row in Postgres and return its id and name. Admin or developer."""
 
     insert_cols = {
         "id": body.id,
@@ -328,7 +331,7 @@ class CardSearchHit(BaseModel):
 def search_cards(
     q: str = Query(min_length=1, max_length=80),
     limit: int = Query(default=12, ge=1, le=40),
-    is_admin: bool = Depends(get_optional_is_admin),
+    is_admin: bool = Depends(get_optional_can_manage_cards),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """
@@ -421,7 +424,7 @@ _COLOR_COST_TOKENS = ("LIF", "MET", "POW", "RAM", "TIM", "STL")
 
 @router.get("/facets", response_model=CardLibraryFacets)
 def card_library_facets(
-    is_admin: bool = Depends(get_optional_is_admin),
+    is_admin: bool = Depends(get_optional_can_manage_cards),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """Distinct filter values for the card library UI."""
@@ -519,7 +522,7 @@ def browse_card_library(
         default="name",
         description="Result order: name | name_desc | invoke | invoke_desc | relevance",
     ),
-    is_admin: bool = Depends(get_optional_is_admin),
+    is_admin: bool = Depends(get_optional_can_manage_cards),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """
@@ -650,7 +653,7 @@ def browse_card_library(
 @router.get("/{card_id}", response_model=CardByNameResponse)
 def get_card_by_id(
     card_id: int,
-    is_admin: bool = Depends(get_optional_is_admin),
+    is_admin: bool = Depends(get_optional_can_manage_cards),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """Fetch a card by primary key (Unity barcode id)."""
@@ -682,7 +685,7 @@ def get_card_by_id(
 @router.get("/by-name/{card_name}", response_model=CardByNameResponse)
 def get_card_by_name(
     card_name: str,
-    is_admin: bool = Depends(get_optional_is_admin),
+    is_admin: bool = Depends(get_optional_can_manage_cards),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """Fetch a card by exact card name (case-insensitive)."""
@@ -718,7 +721,7 @@ def get_card_by_name(
 async def upload_card_thumbnail(
     card_id: int,
     file: UploadFile = File(...),
-    _admin_id: int = Depends(get_current_admin_user_id),
+    _admin_id: int = Depends(get_current_card_manager_user_id),
 ):
     """
     Upload a full-card PNG from Unity ``Assets/!thumbnail``.
@@ -745,7 +748,7 @@ async def upload_card_thumbnail(
 async def upload_card_art(
     card_id: int,
     file: UploadFile = File(...),
-    _admin_id: int = Depends(get_current_admin_user_id),
+    _admin_id: int = Depends(get_current_card_manager_user_id),
 ):
     """
     Upload illustration-only art from Unity ``Assets/!thumb_art``.
