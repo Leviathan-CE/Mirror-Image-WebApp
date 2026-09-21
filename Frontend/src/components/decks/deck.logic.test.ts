@@ -30,6 +30,7 @@ import {
   totalCopiesOfCard,
   withCardEntry,
   cardHasSuperType,
+  isObjectiveCard,
 } from "./deck.logic"
 import type { DeckCategoryOut, DeckDetail } from "@/lib/api/decks"
 import { deckEntry } from "@/test/deckEntry.fixture"
@@ -46,10 +47,11 @@ function cat(
 const card = deckEntry
 
 describe("reserved categories", () => {
-  it("detects pilot and augment names; only pilot is reserved", () => {
+  it("detects pilot and objective names; only pilot is reserved", () => {
     expect(isPilotCategory(cat(1, "Pilot"))).toBe(true)
     expect(isPilotCategory(cat(1, " pilot "))).toBe(true)
     expect(isAugmentCategory(cat(2, "Augments"))).toBe(true)
+    expect(isAugmentCategory(cat(3, "Objectives"))).toBe(true)
     expect(isReservedCategory(cat(1, "Pilot"))).toBe(true)
     expect(isReservedCategory(cat(2, "Augments"))).toBe(false)
     expect(isReservedCategory(cat(3, "Main"))).toBe(false)
@@ -291,6 +293,15 @@ describe("quantity rules", () => {
     expect(
       maxCopiesForDeckCard(cat(1, "Main"), { super_types: ["Token"] })
     ).toBe(DECK_CARD_MAX_COPIES_UNLIMITED)
+  })
+
+  it("detects Objective super-type for the reserved Objectives section", () => {
+    expect(
+      isObjectiveCard({ super_types: ["Objective"] })
+    ).toBe(true)
+    expect(
+      isObjectiveCard({ super_types: ["Entity", "Unit"] })
+    ).toBe(false)
   })
 
   it("returns 0 when decrementing the last copy", () => {

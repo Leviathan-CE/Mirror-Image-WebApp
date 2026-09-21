@@ -44,6 +44,7 @@ export {
 export {
   DEFAULT_DECK_CATEGORY_NAMES,
   PILOT_SECTION_NAME,
+  OBJECTIVE_SECTION_NAME,
   AUGMENT_SECTION_NAME,
   addDeckCard,
   createDeck,

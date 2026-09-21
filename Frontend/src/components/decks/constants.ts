@@ -6,17 +6,23 @@
 /** HTML5 drag MIME for in-app card moves. */
 export const DECK_CARD_DRAG_MIME = "application/x-mi-deck-card"
 
-/** Max copies of a card in a normal (non-augment, non-token) section. */
+/** Max copies of a card in a normal (non-objective, non-token) section. */
 export const DECK_CARD_MAX_COPIES = 3
 
 /** Max copies for Token super-type (matches backend `le=99`). */
 export const DECK_CARD_MAX_COPIES_UNLIMITED = 99
 
+/** Exactly three objective cards per deck (not part of the 40-card RIG). */
+export const DECK_OBJECTIVE_SLOT_COUNT = 3
+
 /**
- * When false: hide reserved Augments on the deck board and do not deal them
+ * When false: hide reserved Objectives on the deck board and do not deal them
  * into playtester opening sessions. Flip true to restore both.
  */
-export const SHOW_DECK_AUGMENT_SLOT = false
+export const SHOW_DECK_OBJECTIVE_SLOT = true
+
+/** @deprecated Use {@link SHOW_DECK_OBJECTIVE_SLOT}. */
+export const SHOW_DECK_AUGMENT_SLOT = SHOW_DECK_OBJECTIVE_SLOT
 
 /** Sentinel `fromCategoryId` for drags that originate in the card library browser. */
 export const LIBRARY_DRAG_CATEGORY_ID = -1

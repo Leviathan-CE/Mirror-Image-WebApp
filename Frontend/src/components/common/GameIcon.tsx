@@ -46,6 +46,7 @@ const ICON_SOURCES = {
   threat_lvl: { src: "/images/icons/TLV.png", label: "Threat level", shape: "token" },
   hand_size: { src: "/images/icons/HS.png", label: "Hand size", shape: "token" },
   hp: { src: "/images/icons/HP.png", label: "HP", shape: "token" },
+  vp: { src: "/images/icons/VP.png", label: "Victory points (VP)", shape: "token" },
 
   // Card actions (root icons/).
   recycle: { src: "/images/icons/RE.png", label: "Recycle", shape: "token" },

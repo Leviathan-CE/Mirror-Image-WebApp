@@ -22,6 +22,14 @@ vi.mock("@/app/providers/AuthProvider", () => ({
   useAuth: () => useAuthMock(),
 }))
 
+vi.mock("@/app/providers/ComingSoonProvider", () => ({
+  useComingSoon: () => ({
+    comingSoon: false,
+    ready: true,
+    setComingSoonEnabled: vi.fn(),
+  }),
+}))
+
 function renderAppHeader() {
   return render(
     <MemoryRouter>

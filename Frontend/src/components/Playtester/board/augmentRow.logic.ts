@@ -114,10 +114,11 @@ export type HomeLayout = {
   pad: number
 }
 
-/** Local: bottom-right. Opp: top-left (mirrored).
+/** Local: bottom-right, inset by the overlay pile column so they sit in the
+ *  open field instead of under dismantled/deck. Opp: top-left (mirrored).
  *  Keep `offset.y` at 0 for a flat row — any non-zero value stairs each copy. */
 export const AUGMENT_LAYOUT: HomeLayout = {
-  start: { x: 0, y: -220 },
+  start: { x: -(FACE.w + 8), y: -220 },
   offset: { x: -(FACE.w + 20), y: 0 },
   pad: 0,
 }
@@ -127,9 +128,10 @@ export const AUGMENT_LAYOUT: HomeLayout = {
  * Tune `start` to slide the whole fan; tune `offset` for spacing inside a pile.
  */
 export const RESOURCE_FAN_LAYOUT: HomeLayout = {
-  start: { x: 100, y: 10 },
+  // y negative = up off the hand; pad widens colour-pile step (FACE.w + pad)
+  start: { x: 100, y: -0 },
   offset: { x: -22, y: -22 },
-  pad: 28,
+  pad: 100,
 }
 
 /** Local: bot-center. Opp: top-center. */
@@ -245,9 +247,11 @@ export function placedStockpileCount(
 }
 
 function tokenColor(card: PlayingCardInstance): ResourceColor | "other" {
-  for (const color of RESOURCE_COLORS) {
-    if (card.cost.some((pip) => pip.trim().toUpperCase() === color)) {
-      return color
+  for (const raw of card.cost) {
+    const pip = raw.trim().toUpperCase()
+    if (pip === "GEN") return "STL"
+    for (const color of RESOURCE_COLORS) {
+      if (pip === color) return color
     }
   }
   return "other"
@@ -334,7 +338,7 @@ export function placeAugmentsForView(
     const unbound = cards
       .filter(
         (card) =>
-          card.isAugment &&
+          (card.isObjective || card.isAugment) &&
           card.x == null &&
           card.y == null &&
           (card.owner === localSeat) === nearLocal

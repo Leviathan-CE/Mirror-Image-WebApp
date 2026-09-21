@@ -5,14 +5,9 @@
  * Every client lays the same chrome out in that space, then one CSS fit-scale
  * paints it into the real viewport — so piles/hands/field stay in sync.
  *
- * Card x/y live on the *float* rectangle: whatever is left after chrome.
- * That float size is derived and stable (always assumes two-seat chrome).
+ * Card x/y live on that same rectangle: the float layer is the full screen,
+ * and pile/hand chrome paints on top (empty chrome gaps are pass-through).
  */
-
-import {
-  HAND_DOCK_HEIGHT_PX,
-  PLAY_PILE_SIZE,
-} from "@/components/Playtester/constants"
 
 /** Design canvas for the whole play row (not just the float surface). */
 export const PLAY_FIELD_LOGICAL = {
@@ -25,12 +20,12 @@ export type FieldSize = {
   height: number
 }
 
-/** Tailwind `gap-2` × 2 between three columns. */
+/** Tailwind `gap-2` between overlay chrome columns. */
 export const PLAY_BOARD_GAP_X_PX = 16
-/** Tailwind `gap-1` × 2 between opp-hand / field / local-hand. */
+/** Tailwind `gap-1` between overlay hand strips and the pass-through middle. */
 export const PLAY_BOARD_GAP_Y_PX = 8
 
-/** Two-seat chrome footprint used to size the float (keeps coords stable). */
+/** Two-seat chrome footprint (overlay columns / hand strips). */
 export const PLAY_BOARD_SIDE_COLUMNS = 2
 export const PLAY_BOARD_HAND_STRIPS = 2
 
@@ -39,27 +34,15 @@ function finitePositive(n: number): boolean {
 }
 
 /**
- * Float surface size inside the design screen after side piles + hand docks.
- * Card x/y / clamp / pointer mapping all use this, not the full screen.
+ * Float surface size. Matches the design screen — chrome overlays it, it
+ * does not shrink the playable x/y space.
  */
 export function playFloatLogicalSize(
-  screen: FieldSize = PLAY_FIELD_LOGICAL,
-  pileFaceW: number = PLAY_PILE_SIZE.lg.w,
-  handDockPx: number = HAND_DOCK_HEIGHT_PX
+  screen: FieldSize = PLAY_FIELD_LOGICAL
 ): FieldSize {
   return {
-    width: Math.max(
-      1,
-      screen.width -
-        PLAY_BOARD_SIDE_COLUMNS * pileFaceW -
-        PLAY_BOARD_GAP_X_PX
-    ),
-    height: Math.max(
-      1,
-      screen.height -
-        PLAY_BOARD_HAND_STRIPS * handDockPx -
-        PLAY_BOARD_GAP_Y_PX
-    ),
+    width: Math.max(1, screen.width),
+    height: Math.max(1, screen.height),
   }
 }
 

@@ -8,10 +8,6 @@ import {
   playFieldFitScale,
   playFloatLogicalSize,
 } from "@/components/Playtester/board/playFieldScale.logic"
-import {
-  HAND_DOCK_HEIGHT_PX,
-  PLAY_PILE_SIZE,
-} from "@/components/Playtester/constants"
 
 describe("playFieldFitScale", () => {
   it("is 1 when the host matches the design screen", () => {
@@ -66,20 +62,20 @@ describe("playFieldFitScale", () => {
 })
 
 describe("playFloatLogicalSize", () => {
-  it("is the screen minus two-seat chrome", () => {
+  it("matches the design screen (chrome overlays the float)", () => {
     const float = playFloatLogicalSize()
-    expect(float.width).toBe(
-      PLAY_FIELD_LOGICAL.width - 2 * PLAY_PILE_SIZE.lg.w - 16
-    )
-    expect(float.height).toBe(
-      PLAY_FIELD_LOGICAL.height - 2 * HAND_DOCK_HEIGHT_PX - 8
-    )
+    expect(float).toEqual({
+      width: PLAY_FIELD_LOGICAL.width,
+      height: PLAY_FIELD_LOGICAL.height,
+    })
     expect(PLAY_FLOAT_LOGICAL).toEqual(float)
   })
 
-  it("is smaller than the design screen", () => {
-    expect(PLAY_FLOAT_LOGICAL.width).toBeLessThan(PLAY_FIELD_LOGICAL.width)
-    expect(PLAY_FLOAT_LOGICAL.height).toBeLessThan(PLAY_FIELD_LOGICAL.height)
+  it("follows a custom screen size", () => {
+    expect(playFloatLogicalSize({ width: 800, height: 600 })).toEqual({
+      width: 800,
+      height: 600,
+    })
   })
 })
 

@@ -125,9 +125,8 @@ def test_room_opponent_reads_the_seated_private_deck(
     )
 
     try:
-        with client.websocket_connect(
-            f"/play/ws/rooms/{code}?token={guest_token}"
-        ) as guest:
+        with client.websocket_connect(f"/play/ws/rooms/{code}") as guest:
+            guest.send_json({"type": "auth", "token": guest_token})
             assert guest.receive_json()["seat"] == "p2"
 
             pooled = client.get(

@@ -88,7 +88,7 @@ export const DECK_SEARCH_SIZE = {
 
 /**
  * Hand window sizing (px). Used as the default footprint for opening homes
- * on the field, and `defaultHeight` is the docked hand strip height.
+ * on the field.
  */
 export const HAND_FLOAT_SIZE = {
   minWidth: 280,
@@ -99,8 +99,20 @@ export const HAND_FLOAT_SIZE = {
   defaultHeight: 176,
 } as const
 
-/** Layout height of the docked hand strip (card row; label floats on top). */
-export const HAND_DOCK_HEIGHT_PX = HAND_FLOAT_SIZE.defaultHeight
+/**
+ * Docked hand strip footprint (px) in the shared two-seat layout.
+ *
+ * `HAND_DOCK_HEIGHT_PX` is the collapsed/peek height of the overlay strip.
+ * `HAND_DOCK_EXPANDED_PX` is the raised, fully-visible card height shown in
+ * a floating overlay while the strip is hovered (see `PlayerHand`'s `peek`
+ * prop). Larger than the old dock so looking at the hand actually enlarges
+ * the faces, not just unclips them.
+ *
+ * These do not inset the shared float coordinate space — the battlefield
+ * is the full screen and this chrome sits on top.
+ */
+export const HAND_DOCK_HEIGHT_PX = 64
+export const HAND_DOCK_EXPANDED_PX = 252
 
 /**
  * Hand card footprint (px). Height tracks the window; width follows 3:4.

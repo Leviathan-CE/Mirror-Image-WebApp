@@ -26,11 +26,13 @@ services:
       db:
         condition: service_healthy
     environment:
+      # In-network only. Do not copy POSTGRES_PORT here — that is the host
+      # publish port (5433). The API talks to service `db` on 5432.
       DB_HOST: db
-      DB_PORT: 5432
-      DB_USER: ${POSTGRES_USER:-postgres}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      DB_NAME: ${POSTGRES_DB:-mirror_image}
+      DB_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-mirror_image}
       JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-mirror-image}
       JWT_EXPIRE_HOURS: ${JWT_EXPIRE_HOURS:-168}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
@@ -64,6 +66,7 @@ services:
       args:
         # Baked into the JS bundle at build time (Vite). Rebuild frontend after API URL changes.
         VITE_API_URL: ${VITE_API_URL:-http://127.0.0.1:8001}
+        VITE_PLAY_RELAY_ONLY: ${VITE_PLAY_RELAY_ONLY:-false}
     depends_on:
       - api
     ports:

@@ -31,6 +31,8 @@ export type TrashyardPileProps = {
   cards: PlayingCardInstance[]
   className?: string
   label?: string
+  /** Peer browse chrome — shown above the face, not instead of `label`. */
+  statusLabel?: string | null
   size?: PlayPileSize
   onReleaseCards: (
     instanceIds: string[],
@@ -50,6 +52,8 @@ export type TrashyardPileProps = {
   scale?: number
   /** Kept for call-site compatibility; fan UI removed in favour of browser. */
   fanDirection?: "up" | "down"
+  /** Drop the `label · count` caption — for tight spots (e.g. the peeked pilot slot). */
+  hideLabel?: boolean
 }
 
 type TrashDrag = {
@@ -70,6 +74,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       cards,
       className,
       label = "Trashyard",
+      statusLabel = null,
       size = "md",
       onReleaseCards,
       onBrowse,
@@ -78,6 +83,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       cardOverlay,
       onToggleExpended,
       scale = 1,
+      hideLabel = false,
     },
     ref
   ) {
@@ -221,6 +227,11 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
             className="relative shrink-0 overflow-visible"
             style={{ width: cardW, height: cardH }}
           >
+            {statusLabel ? (
+              <p className="pointer-events-none absolute inset-x-0 top-1/2 z-30 -translate-y-1/2 border border-cyan-400/70 bg-cyan-700 px-2 py-2 text-center font-glitch text-lg break-words whitespace-normal text-white shadow-lg shadow-cyan-950/50 clip-angled">
+                {statusLabel}
+              </p>
+            ) : null}
             {cards.length === 0 ? (
               <div
                 className="absolute inset-x-0 bottom-0 flex items-center justify-center border border-dashed border-cyan-500/25 bg-black/40 clip-angled"
@@ -272,9 +283,11 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
               </div>
             ) : null}
           </div>
-          <p className="pointer-events-none mt-1 whitespace-nowrap font-mono text-[10px] tracking-wide text-cyan-100/70">
-            {label} · {cards.length}
-          </p>
+          {hideLabel ? null : (
+            <p className="pointer-events-none mt-1 whitespace-nowrap font-mono text-[10px] tracking-wide text-cyan-100/70">
+              {label} · {cards.length}
+            </p>
+          )}
         </div>
 
         {ghostCard && dragging?.moved

@@ -14,6 +14,7 @@ from app.play_rooms_state import (
 from app.play_visibility import (
     UserEntitlement,
     pooled_publish_gate,
+    resolve_room_member_visibility,
     resolve_room_visibility,
     room_pool_facts,
 )
@@ -173,6 +174,8 @@ def test_opponent_may_read_the_private_deck_across_the_table() -> None:
 
     assert pooled is not None
     assert pooled.allow_private is True
+    assert pooled.bypass is True
+    assert pooled.include_preview is True
 
 
 def test_seating_a_stranger_deck_does_not_open_it() -> None:
@@ -254,3 +257,27 @@ def test_grant_on_either_seat_unlocks_preview() -> None:
 
     assert pooled is not None
     assert pooled.include_preview is True
+
+
+def test_member_visibility_requires_a_live_seat() -> None:
+    _seated_room()
+    assert resolve_room_member_visibility(
+        _cursor(), code="ABC123", user_id=99
+    ) is None
+    seated = resolve_room_member_visibility(
+        _cursor(), code="ABC123", user_id=HOST_ID
+    )
+    assert seated is not None
+
+
+def test_host_reading_guest_deck_is_a_full_playtest_read() -> None:
+    """Starting resources (time_capacity) must not be classified stubs."""
+    _seated_room()
+    pooled = resolve_room_visibility(
+        _cursor(), code="ABC123", deck_id=GUEST_DECK, user_id=HOST_ID
+    )
+    own = resolve_room_visibility(
+        _cursor(), code="ABC123", deck_id=HOST_DECK, user_id=HOST_ID
+    )
+    assert pooled is not None and pooled.bypass is True
+    assert own is not None and own.bypass is False

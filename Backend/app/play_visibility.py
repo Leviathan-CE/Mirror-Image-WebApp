@@ -7,7 +7,10 @@ or unpublished card, both do.
 
 The scope is deliberately narrow, because pooling is an entitlement bypass:
 
-- only decks **seated in a room the caller sits in** (never `/cards/*`),
+- decks **seated in a room the caller sits in**,
+- Resource catalogue (`/cards/library?super_type=Resource`) while seated, so
+  opening pip tokens exist on both clients,
+- never the rest of `/cards/*`,
 - only while that room is live (30 min TTL),
 - private decks open up only for the deck's **actual owner's opponent**, so
   seating a stranger's deck id cannot be used to read it.
@@ -153,8 +156,35 @@ def resolve_room_visibility(
     # Reading past `is_public` is only for the deck your opponent is actually
     # playing — seating someone else's deck id must not unlock it.
     allow_private = bool(facts.peer_ids) and deck_owner_id(cur, deck_id) in facts.peer_ids
+    # Across the table you must spawn their opening resources (time_capacity
+    # etc.). Classified stubs zero those fields, so the opponent's seated
+    # list is a full playtest read — not a catalogue scrape.
+    return RoomVisibility(
+        bypass=bypass or allow_private,
+        include_preview=include_preview or allow_private,
+        allow_private=allow_private,
+    )
+
+
+def resolve_room_member_visibility(
+    cur, *, code: str | None, user_id: int | None
+) -> RoomVisibility | None:
+    """
+    Seated in a live room, no deck id. Used by Resource catalogue fetches so
+    the host can load the same pip tokens the guest's pilot asked for.
+    """
+    if not code or user_id is None:
+        return None
+    room = live_room(code)
+    if room is None:
+        return None
+    if not any(holder.user_id == user_id for holder in room.occupied_seats()):
+        return None
+    bypass, include_preview = pooled_publish_gate(
+        load_user_entitlement(cur, member_id) for member_id in room.member_ids()
+    )
     return RoomVisibility(
         bypass=bypass,
         include_preview=include_preview,
-        allow_private=allow_private,
+        allow_private=False,
     )
