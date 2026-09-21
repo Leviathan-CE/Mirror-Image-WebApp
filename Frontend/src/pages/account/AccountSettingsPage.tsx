@@ -11,6 +11,7 @@ import { nextNewSectionName } from "@/components/decks/deck.logic"
 import { DeckCardSortControls } from "@/components/decks/DeckCardSortControls"
 import { DeckCardViewControls } from "@/components/decks/DeckCardViewControls"
 import { GlitchFx } from "@/components/effects/GlitchFx"
+import { DeleteAccountPanel } from "@/pages/account/DeleteAccountPanel"
 import {
   BROWSE_WIDTH_MAX,
   BROWSE_WIDTH_MIN,
@@ -255,6 +256,8 @@ export function AccountSettingsPage() {
             </label>
           </div>
         </section>
+
+        <DeleteAccountPanel />
       </div>
     </section>
   )

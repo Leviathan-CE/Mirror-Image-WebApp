@@ -2,7 +2,13 @@
  * Auth / login API client.
  */
 
-import { apiBaseUrl, authHeaders, readJsonOrThrow } from "@/lib/api/client"
+import {
+  apiBaseUrl,
+  authHeaders,
+  parseErrorDetail,
+  readJsonOrThrow,
+  ApiError,
+} from "@/lib/api/client"
 import type {
   UserPreferences,
   UserPreferencesPatch,
@@ -133,4 +139,23 @@ export async function patchUserPreferences(
     body: JSON.stringify(patch),
   })
   return readJsonOrThrow<UserPreferences>(response, "preferences_update_failed")
+}
+
+export async function deleteAccountRequest(
+  token: string,
+  user_name: string
+): Promise<void> {
+  const response = await fetch(`${apiBaseUrl()}/auth/me`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(token),
+    },
+    body: JSON.stringify({ user_name }),
+  })
+  if (response.status === 204 || response.ok) return
+  throw new ApiError(
+    response.status,
+    await parseErrorDetail(response, "account_delete_failed")
+  )
 }

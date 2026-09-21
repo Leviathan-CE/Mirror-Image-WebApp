@@ -16,9 +16,12 @@ PURPOSE_VERIFY = "verify_email"
 PURPOSE_RESET = "password_reset"
 PURPOSE_INVITE = "invite"
 
-# Content-ID for the header logo (must match img src="cid:…").
+# Content-IDs must match img src="cid:…" (no angle brackets).
+_MARK_CID = "mi-mark@mirrorimage"
 _LOGO_CID = "mi-logo@mirrorimage"
-_LOGO_PATH = Path(__file__).resolve().parent / "static" / "email" / "logo.png"
+_EMAIL_STATIC = Path(__file__).resolve().parent / "static" / "email"
+_MARK_PATH = _EMAIL_STATIC / "mark.png"
+_LOGO_PATH = _EMAIL_STATIC / "logo.png"
 
 TOKEN_TTL = {
     PURPOSE_VERIFY: timedelta(hours=48),
@@ -166,28 +169,35 @@ def mark_verification_sent(cur, user_id: int) -> None:
 
 def _logo_inline() -> list[tuple[str, bytes, str]]:
     """
-    Embed logo bytes in the message (CID).
+    Embed emblem + wordmark (CID).
 
     Works in local and production inboxes — clients do not need to fetch
-    http://127.0.0.1 or a live site URL for the header image.
+    a live site URL for the header images.
     """
-    if not _LOGO_PATH.is_file():
-        return []
-    return [(_LOGO_CID, _LOGO_PATH.read_bytes(), "png")]
+    parts: list[tuple[str, bytes, str]] = []
+    if _MARK_PATH.is_file():
+        parts.append((_MARK_CID, _MARK_PATH.read_bytes(), "png"))
+    if _LOGO_PATH.is_file():
+        parts.append((_LOGO_CID, _LOGO_PATH.read_bytes(), "png"))
+    return parts
 
 
 def _html_wrap(title: str, body_html: str) -> str:
-    # CID image travels with the email (see send_email inline_images).
+    # Dark strip so the white M on the emblem stays visible.
     return (
-        "<html><body style='font-family:sans-serif;line-height:1.5;margin:0;padding:0'>"
+        "<html><body style='font-family:sans-serif;line-height:1.5;margin:0;padding:0;"
+        "background:#0a0a0a;color:#e8e8e8'>"
         "<table role='presentation' width='100%' cellpadding='0' cellspacing='0' "
         "style='max-width:560px;margin:0 auto;padding:24px'>"
-        "<tr><td style='padding-bottom:16px'>"
-        f"<img src='cid:{_LOGO_CID}' alt='Mirror Image' width='160' "
-        "style='display:block;width:160px;max-width:100%;height:auto;border:0'>"
+        "<tr><td style='padding:20px 16px 16px;background:#05080c;text-align:center'>"
+        f"<img src='cid:{_MARK_CID}' alt='' width='88' "
+        "style='display:block;margin:0 auto 12px;width:88px;max-width:40%;height:auto;border:0'>"
+        f"<img src='cid:{_LOGO_CID}' alt='Mirror Image' width='200' "
+        "style='display:block;margin:0 auto;width:200px;max-width:90%;height:auto;border:0'>"
         "</td></tr>"
-        f"<tr><td><h2 style='margin:0 0 12px'>{title}</h2>{body_html}</td></tr>"
-        "<tr><td style='padding-top:24px;color:#666;font-size:12px'>Mirror Image</td></tr>"
+        f"<tr><td style='padding:20px 8px 0'><h2 style='margin:0 0 12px;color:#e8e8e8'>"
+        f"{title}</h2>{body_html}</td></tr>"
+        "<tr><td style='padding-top:24px;color:#888;font-size:12px'>Mirror Image</td></tr>"
         "</table></body></html>"
     )
 

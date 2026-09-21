@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from psycopg2 import OperationalError
 from psycopg2.errors import UniqueViolation
 
+from app.account_delete import AccountDeleteError, purge_account
 from app.db import get_connection
 from app.email_tokens import email_http_error, issue_and_send_verify
 from app.features import (
@@ -102,6 +103,12 @@ class UserPreferencesOut(BaseModel):
     deck_start_sections: list[str] = Field(
         default_factory=lambda: ["Entity", "Cyberspell"]
     )
+
+
+class DeleteAccountBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    user_name: str = Field(min_length=1, max_length=32)
 
 
 class UserPreferencesPatch(BaseModel):
@@ -619,4 +626,32 @@ def patch_my_preferences(
         ) from e
 
     return UserPreferencesOut(**saved)
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_my_account(
+    body: DeleteAccountBody,
+    user_id: int = Depends(get_current_user_id),
+):
+    """Cancel Stripe, delete owned decks, then remove this user."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                purge_account(
+                    cur, user_id=user_id, typed_username=body.user_name
+                )
+            conn.commit()
+    except AccountDeleteError as e:
+        code = 400
+        if e.detail == "user_not_found":
+            code = 401
+        if e.detail == "stripe_cancel_failed":
+            code = 502
+        raise HTTPException(status_code=code, detail=e.detail) from e
+    except OperationalError as e:
+        logger.warning("db error on delete /me: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="database_unavailable",
+        ) from e
 

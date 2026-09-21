@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from psycopg2 import OperationalError
 from psycopg2.errors import UniqueViolation
 
+from app.account_delete import AccountDeleteError, purge_account
 from app.db import get_connection
 from app.email_tokens import email_http_error, issue_and_send_invite, issue_and_send_verify
 from app.features import (
@@ -493,15 +494,18 @@ def delete_user(
                 row = _load_user_admin_row(cur, user_id)
                 if row is None:
                     raise HTTPException(status_code=404, detail="user_not_found")
-                if (
-                    row[3] == "admin"
-                    and bool(row[4])
-                    and _count_active_admins(cur) <= 1
-                ):
-                    raise HTTPException(
-                        status_code=400, detail="cannot_remove_last_admin"
-                    )
-                cur.execute("DELETE FROM users WHERE id = %(id)s", {"id": user_id})
+                try:
+                    purge_account(cur, user_id=user_id)
+                except AccountDeleteError as e:
+                    if e.detail == "cannot_remove_last_admin":
+                        raise HTTPException(
+                            status_code=400, detail=e.detail
+                        ) from e
+                    if e.detail == "stripe_cancel_failed":
+                        raise HTTPException(
+                            status_code=502, detail=e.detail
+                        ) from e
+                    raise HTTPException(status_code=400, detail=e.detail) from e
             conn.commit()
     except HTTPException:
         raise
