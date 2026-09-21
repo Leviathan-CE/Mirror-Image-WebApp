@@ -824,15 +824,9 @@ export function useDeckBoardMutations({
     setSaving(true)
     setErrorText("")
     try {
-      if (current) {
-        await removeDeckCard(
-          deck.id,
-          current.card.id,
-          current.category_id,
-          token
-        )
-      }
-
+      // Confirm the new pilot on the server *before* dropping the old one.
+      // Deleting first and only then adding would leave the deck with no
+      // pilot at all if the add/move request failed in between.
       let entry: DeckCardEntry
       if (fromCategoryId != null && fromCategoryId !== pilotCatId) {
         entry = await updateDeckCard(deck.id, cardId, fromCategoryId, token, {
@@ -845,6 +839,21 @@ export function useDeckBoardMutations({
           category_id: pilotCatId,
           quantity: 1,
         })
+      }
+
+      if (
+        current &&
+        !(
+          current.card.id === entry.card.id &&
+          current.category_id === entry.category_id
+        )
+      ) {
+        await removeDeckCard(
+          deck.id,
+          current.card.id,
+          current.category_id,
+          token
+        )
       }
 
       setDeck((prev) => {
