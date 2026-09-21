@@ -22,4 +22,10 @@ describe("CardRulesText", () => {
     expect(screen.getByText(/• Draw a card/)).toBeInTheDocument()
     expect(screen.getByText(/• Peer 1/)).toBeInTheDocument()
   })
+
+  it("renders underscore hybrid sprites as the split cost icon", () => {
+    render(<CardRulesText text="<sprite name=LIF_POW>" />)
+    expect(screen.getByTitle("LIF/POW")).toBeInTheDocument()
+    expect(screen.queryByText("[LIF_POW]")).not.toBeInTheDocument()
+  })
 })

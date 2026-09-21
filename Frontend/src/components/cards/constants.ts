@@ -82,7 +82,7 @@ export const HYBRID_ALIASES: Record<string, GameIconName> = {
 
 /** Resolve a cost JSON token to a GameIcon name, or null if unknown. */
 export function costTokenToIcon(token: string): GameIconName | null {
-  const key = token.trim().toUpperCase()
+  const key = token.trim().toUpperCase().replace(/_/g, "-")
   if (!key) return null
   if (COLOR_ICONS[key]) return COLOR_ICONS[key]
   if (GENERIC_ICONS[key]) return GENERIC_ICONS[key]
