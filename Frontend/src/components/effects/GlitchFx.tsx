@@ -7,6 +7,10 @@ type GlitchFxProps = React.ComponentProps<typeof Button> & {
   label: string
   /** Icon or other node shown before the label. */
   leading?: ReactNode
+  /** Icon or other node shown after the label. */
+  trailing?: ReactNode
+  /** Extra classes on the outer `.glitch-fx` (colors, CSS vars). */
+  fxClassName?: string
   /** Add `clip-angled` (or any shape class) to the inner button. */
   shapeClassName?: string
   /** Corner cut size when using `clip-angled` (e.g. "24px"). */
@@ -20,14 +24,18 @@ type GlitchFxProps = React.ComponentProps<typeof Button> & {
 export function GlitchFx({
   label,
   leading,
+  trailing,
+  fxClassName,
   className,
   shapeClassName = "clip-angled",
   angle,
   style,
   ...props
 }: GlitchFxProps) {
+  const hasAddon = Boolean(leading || trailing)
+
   return (
-    <span className="glitch-fx" data-text={label}>
+    <span className={cn("glitch-fx", fxClassName)} data-text={label}>
       <Button
         className={cn(shapeClassName, className)}
         style={
@@ -37,10 +45,11 @@ export function GlitchFx({
         }
         {...props}
       >
-        {leading ? (
-          <span className="inline-flex items-center gap-1.5">
+        {hasAddon ? (
+          <span className="inline-flex items-center gap-2">
             {leading}
             {label}
+            {trailing}
           </span>
         ) : (
           label
