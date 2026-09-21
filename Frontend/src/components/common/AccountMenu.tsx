@@ -5,6 +5,7 @@
 import { useNavigate } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
+import { StripeWordmark } from "@/components/billing/StripeWordmark"
 import {
   headerUserNameClassName,
   navButtonClassName,
@@ -51,7 +52,12 @@ export function AccountMenu({ suffix }: AccountMenuProps) {
         },
         {
           id: "subscribe",
-          label: "Subscribe",
+          label: (
+            <span className="inline-flex items-center gap-2">
+              Subscribe
+              <StripeWordmark decorative className="h-3 text-[#635BFF]" />
+            </span>
+          ),
           onSelect: () => navigate(ROUTES.SUBSCRIBE),
         },
         { id: "sep-sign-out", separator: true },

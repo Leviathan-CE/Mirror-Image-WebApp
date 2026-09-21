@@ -71,7 +71,7 @@ class AcceptInviteBody(BaseModel):
 
     token: str = Field(min_length=10, max_length=200)
     password: str = Field(min_length=8, max_length=128)
-    user_name: str | None = Field(default=None, min_length=3, max_length=32)
+    user_name: str | None = Field(default=None, max_length=32)
 
     @field_validator("user_name")
     @classmethod

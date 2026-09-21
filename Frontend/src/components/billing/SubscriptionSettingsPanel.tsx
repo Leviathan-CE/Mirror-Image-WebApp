@@ -7,6 +7,7 @@ import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
+import { PayWithStripe, StripeWordmark } from "@/components/billing/StripeWordmark"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { ApiError } from "@/lib/api/client"
 import { fetchCurrentUser } from "@/lib/api/auth"
@@ -291,24 +292,33 @@ export function SubscriptionSettingsPanel() {
         </p>
       ) : null}
 
-      <div className="mt-5 flex flex-wrap gap-3">
-        {!entitled ? (
-          <GlitchFx
-            type="button"
-            label={busy ? "REDIRECTING…" : "BECOME A SUPPORTER"}
-            disabled={busy || !stripeReady}
-            className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900 disabled:opacity-60"
-            onClick={() => void onSubscribe()}
-          />
-        ) : (
-          <GlitchFx
-            type="button"
-            label="MANAGE BILLING"
-            disabled={busy}
-            className="font-buahs93 h-9 rounded-none border border-cyan-500/40 bg-black/70 px-5 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 disabled:opacity-60"
-            onClick={() => void onManage()}
-          />
-        )}
+      <div className="mt-5 flex flex-col items-start gap-2">
+        <div className="flex flex-wrap gap-3">
+          {!entitled ? (
+            <GlitchFx
+              type="button"
+              leading={
+                <StripeWordmark decorative className="h-3.5 text-white" />
+              }
+              label={busy ? "REDIRECTING…" : "BECOME A SUPPORTER"}
+              disabled={busy || !stripeReady}
+              className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900 disabled:opacity-60"
+              onClick={() => void onSubscribe()}
+            />
+          ) : (
+            <GlitchFx
+              type="button"
+              leading={
+                <StripeWordmark decorative className="h-3.5 text-[#635BFF]" />
+              }
+              label="MANAGE BILLING"
+              disabled={busy}
+              className="font-buahs93 h-9 rounded-none border border-cyan-500/40 bg-black/70 px-5 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 disabled:opacity-60"
+              onClick={() => void onManage()}
+            />
+          )}
+        </div>
+        <PayWithStripe verb={entitled ? "Manage" : "Pay"} />
       </div>
 
       {!stripeReady ? (

@@ -3,6 +3,8 @@
  * Login and deck clients import from here — change base URL / errors in one place.
  */
 
+import { detailFromErrorBody } from "@/lib/api/client.logic"
+
 /**
  * API origin the browser should call.
  *
@@ -44,12 +46,10 @@ export async function parseErrorDetail(
   fallback: string
 ): Promise<string> {
   try {
-    const body = (await response.json()) as { detail?: string }
-    if (typeof body.detail === "string") return body.detail
+    return detailFromErrorBody(await response.json(), fallback)
   } catch {
-    /* ignore non-JSON errors */
+    return fallback
   }
-  return fallback
 }
 
 export function authHeaders(token?: string | null): HeadersInit {

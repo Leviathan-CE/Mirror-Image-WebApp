@@ -19,6 +19,11 @@ import {
   type FeatureCatalogItem,
   type UserRole,
 } from "@/lib/api/users_admin"
+import {
+  USERNAME_RULE,
+  createUsernameError,
+  inviteUsernameError,
+} from "@/lib/username.logic"
 import { cn } from "@/lib/utils"
 import { AdminPageShell } from "@/pages/admin/AdminPageShell"
 
@@ -57,6 +62,7 @@ function errorText(error: unknown): string {
       case "user_delete_blocked":
         return "Delete blocked (user still owns related data)."
       default:
+        if (error.detail.includes("user_name")) return USERNAME_RULE
         return error.detail
     }
   }
@@ -127,6 +133,11 @@ export function AdminUsersPage() {
     if (!token) return
     setError(null)
     setMessage(null)
+    const nameIssue = createUsernameError(formName)
+    if (nameIssue) {
+      setError(nameIssue)
+      return
+    }
     try {
       await createAdminUser(token, {
         user_name: formName.trim(),
@@ -152,6 +163,11 @@ export function AdminUsersPage() {
     if (!token) return
     setError(null)
     setMessage(null)
+    const nameIssue = inviteUsernameError(formName)
+    if (nameIssue) {
+      setError(nameIssue)
+      return
+    }
     try {
       await inviteAdminUser(token, {
         email: formEmail.trim(),
@@ -332,6 +348,9 @@ export function AdminUsersPage() {
                 onChange={(e) => setFormName(e.target.value)}
                 required={!inviteOpen}
               />
+              <span className="font-mono text-[10px] text-white/40">
+                {USERNAME_RULE}
+              </span>
             </label>
             <label className="flex flex-col gap-1">
               <span className="font-mono text-[10px] text-white/45">Email</span>

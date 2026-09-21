@@ -85,7 +85,7 @@ class AdminInviteUserRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     email: EmailStr
-    user_name: str | None = Field(default=None, min_length=3, max_length=32)
+    user_name: str | None = Field(default=None, max_length=32)
     role: str = "user"
     feature_keys: list[str] = Field(default_factory=list)
 

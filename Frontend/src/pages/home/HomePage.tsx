@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom"
 
 import { loreImages, sharedImages } from "@/assets"
 import { useAuth } from "@/app/providers/AuthProvider"
+import { StripeWordmark } from "@/components/billing/StripeWordmark"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
@@ -168,6 +169,7 @@ export function HomePage() {
                 ? homeCopy.ctaSubscribe
                 : homeCopy.ctaCreateAccount
             }
+            showStripe={isAuthenticated}
           />
         </div>
       </section>
@@ -213,6 +215,9 @@ export function HomePage() {
               )}
               <GlitchFx
                 label={homeCopy.ctaSubscribe}
+                leading={
+                  <StripeWordmark decorative className="h-3.5 text-[#635BFF]" />
+                }
                 variant="outline"
                 className={secondaryCtaClass}
                 onClick={goSubscribe}
@@ -330,6 +335,7 @@ type PathBeatProps = {
   imageContain?: boolean
   actionLabel: string
   onAction: () => void
+  showStripe?: boolean
 }
 
 /** One section entrance: fade/rise when paths or lore enter the viewport. */
@@ -369,6 +375,7 @@ function PathBeat({
   imageContain,
   actionLabel,
   onAction,
+  showStripe = false,
 }: PathBeatProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -389,6 +396,11 @@ function PathBeat({
       <p className="text-sm leading-relaxed text-cyan-100/70">{body}</p>
       <GlitchFx
         label={actionLabel}
+        leading={
+          showStripe ? (
+            <StripeWordmark decorative className="h-3 text-[#635BFF]" />
+          ) : undefined
+        }
         className={quietCtaClass}
         onClick={onAction}
       />
