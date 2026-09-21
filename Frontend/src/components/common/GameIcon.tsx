@@ -150,8 +150,10 @@ export function GameIcon({ name, className }: GameIconProps) {
     return (
       <span
         title={icon.label}
+        aria-hidden
         className={cn(
           className,
+          "pointer-events-none select-none",
           "clip-corner-tr mx-0.5 inline-flex h-auto w-auto shrink-0 items-center justify-center align-text-bottom",
           "border border-cyan-400/70 bg-cyan-500/35 px-2 py-1",
           "font-glitch text-xs leading-none tracking-wider text-white",
@@ -166,10 +168,12 @@ export function GameIcon({ name, className }: GameIconProps) {
   return (
     <img
       src={icon.src}
-      alt={icon.label}
+      alt=""
       title={icon.label}
+      draggable={false}
+      aria-hidden
       className={cn(
-        "inline-block h-5 w-auto shrink-0 object-contain align-text-bottom lg:h-6 2xl:h-7",
+        "pointer-events-none inline-block h-5 w-auto shrink-0 select-none object-contain align-text-bottom [-webkit-user-drag:none] lg:h-6 2xl:h-7",
         className
       )}
     />

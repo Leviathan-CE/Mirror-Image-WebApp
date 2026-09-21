@@ -7,6 +7,7 @@ import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
+import { PayWithStripe } from "@/components/billing/StripeWordmark"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { ApiError } from "@/lib/api/client"
 import { fetchCurrentUser } from "@/lib/api/auth"
@@ -291,7 +292,7 @@ export function SubscriptionSettingsPanel() {
         </p>
       ) : null}
 
-      <div className="mt-5 flex flex-wrap gap-3">
+      <div className="mt-5 flex flex-wrap items-center gap-3">
         {!entitled ? (
           <GlitchFx
             type="button"
@@ -309,6 +310,7 @@ export function SubscriptionSettingsPanel() {
             onClick={() => void onManage()}
           />
         )}
+        <PayWithStripe verb={entitled ? "Manage with" : "Pay with"} />
       </div>
 
       {!stripeReady ? (
