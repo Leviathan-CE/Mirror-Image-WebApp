@@ -187,6 +187,65 @@ def admin_headers(admin_token: str) -> dict[str, str]:
 
 
 @pytest.fixture
+def developer_headers(client: TestClient, require_db: None) -> dict[str, str]:
+    """JWT for a throwaway developer account."""
+    from app.security import hash_password
+
+    suffix = uuid.uuid4().hex[:8]
+    user_name = f"dev_{suffix}"
+    email = f"dev_{suffix}@example.com"
+    password = "testpass123"
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO users (
+                        user_name, email, password, role, is_active,
+                        email_verification_sent, email_verification_received,
+                        email_verified_at
+                    )
+                    VALUES (
+                        %(user_name)s, %(email)s, %(password)s, 'developer',
+                        TRUE, TRUE, TRUE, NOW()
+                    )
+                    """,
+                    {
+                        "user_name": user_name,
+                        "email": email,
+                        "password": hash_password(password),
+                    },
+                )
+            conn.commit()
+    except Exception as exc:
+        pytest.skip(f"could not create developer: {exc}")
+
+    login = client.post(
+        "/auth/login",
+        json={"identifier": email, "password": password},
+    )
+    if login.status_code != 200:
+        pytest.skip(f"developer login failed: {login.status_code} {login.text}")
+
+    try:
+        yield {"Authorization": f"Bearer {login.json()['access_token']}"}
+    finally:
+        try:
+            with get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        DELETE FROM users
+                         WHERE lower(email) = lower(%(email)s)
+                        """,
+                        {"email": email},
+                    )
+                conn.commit()
+        except OperationalError:
+            pass
+
+
+@pytest.fixture
 def sample_card_id(require_db: None) -> int:
     """A published catalogue card id (add-to-deck rejects unpublished/preview)."""
     with get_connection() as conn:

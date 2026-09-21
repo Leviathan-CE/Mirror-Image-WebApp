@@ -23,7 +23,7 @@ export const ROUTES = {
   /** Logged-in account UI prefs. */
   ACCOUNT: "/account",
 
-  /** Admin console (role: admin). */
+  /** Staff console (admin + developer). Users page is admin-only. */
   ADMIN: "/admin",
   ADMIN_CARDS: "/admin/cards",
   ADMIN_USERS: "/admin/users",
@@ -41,3 +41,12 @@ export const ROUTES = {
 } as const
 
 export const ADMIN_ROLE = "admin" as const
+export const DEVELOPER_ROLE = "developer" as const
+
+export function isAdminRole(role: string | null | undefined): boolean {
+  return role === ADMIN_ROLE
+}
+
+export function isStaffRole(role: string | null | undefined): boolean {
+  return role === ADMIN_ROLE || role === DEVELOPER_ROLE
+}

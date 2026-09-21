@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from app.roles import is_staff_role
 from app.subscription import is_subscription_entitled
 
 # Stable keys — must match rows seeded in features table.
@@ -36,11 +37,11 @@ def user_has_feature(
     """
     True when the user may use ``feature_key``.
 
-    Order: public → admin → explicit grant → subscriber defaults (Stripe entitled).
+    Order: public → staff (admin/developer) → explicit grant → subscriber defaults.
     """
     if feature_key in PUBLIC_FEATURES:
         return True
-    if role == "admin":
+    if is_staff_role(role):
         return True
     granted = {k for k in granted_keys if k}
     if feature_key in granted:

@@ -4,12 +4,13 @@
 
 import { useLocation, useNavigate } from "react-router-dom"
 
+import { useAuth } from "@/app/providers/AuthProvider"
 import { useComingSoon } from "@/app/providers/ComingSoonProvider"
 import { AccountMenu } from "@/components/common/AccountMenu"
 import { HeaderShell } from "@/components/common/HeaderShell"
 import { navButtonClassName } from "@/components/common/headerStyles"
 import { Button } from "@/components/ui/button"
-import { ROUTES } from "@/lib/route"
+import { isAdminRole, ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
 
 function adminNavClass(active: boolean) {
@@ -24,6 +25,9 @@ export function AdminHeader() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const { comingSoon } = useComingSoon()
+  const { user } = useAuth()
+  const canManageUsers = isAdminRole(user?.role)
+  const staffLabel = canManageUsers ? "admin" : "developer"
 
   return (
     <HeaderShell
@@ -43,12 +47,14 @@ export function AdminHeader() {
           >
             CARDS DB
           </Button>
-          <Button
-            className={adminNavClass(pathname.startsWith(ROUTES.ADMIN_USERS))}
-            onClick={() => navigate(ROUTES.ADMIN_USERS)}
-          >
-            USERS
-          </Button>
+          {canManageUsers ? (
+            <Button
+              className={adminNavClass(pathname.startsWith(ROUTES.ADMIN_USERS))}
+              onClick={() => navigate(ROUTES.ADMIN_USERS)}
+            >
+              USERS
+            </Button>
+          ) : null}
           <Button
             className={navButtonClassName}
             onClick={() => navigate(ROUTES.MAIN)}
@@ -62,7 +68,7 @@ export function AdminHeader() {
           ) : null}
         </>
       }
-      actions={<AccountMenu suffix=" · admin" />}
+      actions={<AccountMenu suffix={` · ${staffLabel}`} />}
     />
   )
 }

@@ -11,6 +11,8 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.roles import is_admin_role, is_staff_role
+
 _bearer = HTTPBearer(auto_error=False)
 
 ALGORITHM = "HS256"
@@ -114,17 +116,16 @@ def get_optional_user_id(
 def get_optional_is_admin(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
 ) -> bool:
-    """True when a valid Bearer JWT has role ``admin``; otherwise False."""
+    """True when a valid Bearer JWT is staff (admin or developer)."""
     if credentials is None or credentials.scheme.lower() != "bearer":
         return False
     payload = decode_access_token(credentials.credentials)
-    return payload.get("role") == "admin"
+    return is_staff_role(payload.get("role"))
 
 
-def get_current_admin_user_id(
-    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
-) -> int:
-    """Require Bearer JWT with role ``admin``; return user id."""
+def _require_bearer_user_id(
+    credentials: HTTPAuthorizationCredentials | None,
+) -> tuple[int, str | None]:
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -138,9 +139,31 @@ def get_current_admin_user_id(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="invalid_token_subject",
         ) from e
-    if payload.get("role") != "admin":
+    role = payload.get("role")
+    return user_id, role if isinstance(role, str) else None
+
+
+def get_current_admin_user_id(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+) -> int:
+    """Require Bearer JWT with role ``admin`` (user management)."""
+    user_id, role = _require_bearer_user_id(credentials)
+    if not is_admin_role(role):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="admin_required",
+        )
+    return user_id
+
+
+def get_current_staff_user_id(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+) -> int:
+    """Require Bearer JWT with role ``admin`` or ``developer``."""
+    user_id, role = _require_bearer_user_id(credentials)
+    if not is_staff_role(role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="staff_required",
         )
     return user_id

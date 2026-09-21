@@ -28,7 +28,7 @@ from app.card_publish import (
 from app.cards.schemas import CardLibraryItem
 from app.media_urls import signed_media_path
 from app.security import (
-    get_current_admin_user_id,
+    get_current_staff_user_id,
     get_optional_user_id,
 )
 from app.play_visibility import resolve_room_member_visibility
@@ -291,9 +291,9 @@ def _slugify(value: str) -> str:
 @router.post("/", response_model=CardCreated, status_code=201)
 def create_card(
     body: CardCreate,
-    _admin_id: int = Depends(get_current_admin_user_id),
+    _admin_id: int = Depends(get_current_staff_user_id),
 ):
-    """Create a card row in Postgres and return its id and name. Admin only."""
+    """Create a card row in Postgres and return its id and name. Staff only."""
 
     insert_cols = {
         "id": body.id,
@@ -798,7 +798,7 @@ def get_card_by_name(
 async def upload_card_thumbnail(
     card_id: int,
     file: UploadFile = File(...),
-    _admin_id: int = Depends(get_current_admin_user_id),
+    _admin_id: int = Depends(get_current_staff_user_id),
 ):
     """
     Upload a full-card PNG from Unity ``Assets/!thumbnail``.
@@ -825,7 +825,7 @@ async def upload_card_thumbnail(
 async def upload_card_art(
     card_id: int,
     file: UploadFile = File(...),
-    _admin_id: int = Depends(get_current_admin_user_id),
+    _admin_id: int = Depends(get_current_staff_user_id),
 ):
     """
     Upload illustration-only art from Unity ``Assets/!thumb_art``.

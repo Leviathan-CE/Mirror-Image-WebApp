@@ -41,6 +41,21 @@ describe("userHasFeature", () => {
     ).toBe(true)
   })
 
+  it("developers always pass gated features", () => {
+    expect(
+      userHasFeature(
+        {
+          id: 1,
+          user_name: "a",
+          email: "a@x",
+          role: "developer",
+          features: [],
+        },
+        "unpublished_cards"
+      )
+    ).toBe(true)
+  })
+
   it("admins always pass gated features", () => {
     expect(
       userHasFeature(

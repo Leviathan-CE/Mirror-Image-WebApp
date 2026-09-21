@@ -31,6 +31,22 @@ def test_admin_has_all_catalog_features():
     ]
 
 
+def test_developer_has_all_catalog_features():
+    keys = effective_feature_keys(
+        role="developer",
+        subscription_status="none",
+        granted_keys=[],
+        catalog_keys=[
+            FEATURE_PREVIEW_CARDS,
+            FEATURE_UNPUBLISHED_CARDS,
+            FEATURE_PLAYTESTER,
+            FEATURE_DECK_PRINTOUT,
+        ],
+    )
+    assert FEATURE_UNPUBLISHED_CARDS in keys
+    assert FEATURE_PREVIEW_CARDS in keys
+
+
 def test_playtester_is_always_public():
     assert is_public_feature(FEATURE_PLAYTESTER)
     assert not is_public_feature(FEATURE_PREVIEW_CARDS)

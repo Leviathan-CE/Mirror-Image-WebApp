@@ -6,7 +6,7 @@
  * Everyone else gets the splash.
  */
 
-import { ADMIN_ROLE, ROUTES } from "@/lib/route"
+import { isStaffRole, ROUTES } from "@/lib/route"
 
 function pathIs(pathname: string, route: string): boolean {
   return pathname === route || pathname.startsWith(`${route}/`)
@@ -18,7 +18,7 @@ export function comingSoonBlocksVisitor(args: {
   pathname: string
 }): boolean {
   if (!args.comingSoon) return false
-  if (args.role === ADMIN_ROLE) return false
+  if (isStaffRole(args.role)) return false
 
   const path = args.pathname
   if (pathIs(path, ROUTES.LOGIN)) return false

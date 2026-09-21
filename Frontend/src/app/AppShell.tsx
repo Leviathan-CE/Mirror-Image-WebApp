@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom"
 
 import { RequireAdmin } from "@/app/RequireAdmin"
+import { RequireStaff } from "@/app/RequireStaff"
 import { RequireAuth } from "@/app/RequireAuth"
 import { AppProviders } from "@/app/providers/AppProviders"
 import { PreferencesNavigationFlush } from "@/app/providers/PreferencesProvider"
@@ -86,17 +87,17 @@ export function AppShell() {
             <Route
               path={ROUTES.ADMIN}
               element={
-                <RequireAdmin>
+                <RequireStaff>
                   <AdminAnalyticsPage />
-                </RequireAdmin>
+                </RequireStaff>
               }
             />
             <Route
               path={ROUTES.ADMIN_CARDS}
               element={
-                <RequireAdmin>
+                <RequireStaff>
                   <AdminCardsPage />
-                </RequireAdmin>
+                </RequireStaff>
               }
             />
             <Route

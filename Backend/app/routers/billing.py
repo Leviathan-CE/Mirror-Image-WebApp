@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from psycopg2 import OperationalError
 
 from app.db import get_connection
+from app.roles import is_staff_role
 from app.security import get_current_user_id
 from app.settings import resolve_frontend_origin
 from app.subscription import (
@@ -318,12 +319,12 @@ def create_checkout_session(
                 if is_subscription_entitled(role=role, subscription_status=sub_status):
                     # Already entitled (admin or active sub) — send them to manage portal
                     # instead of double-subscribing when they have a Stripe customer.
-                    if customer_id and role != "admin":
+                    if customer_id and not is_staff_role(role):
                         raise HTTPException(
                             status_code=status.HTTP_409_CONFLICT,
                             detail="already_subscribed",
                         )
-                    if role == "admin":
+                    if is_staff_role(role):
                         raise HTTPException(
                             status_code=status.HTTP_400_BAD_REQUEST,
                             detail="admin_already_entitled",

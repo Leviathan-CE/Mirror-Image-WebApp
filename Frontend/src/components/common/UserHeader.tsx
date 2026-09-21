@@ -5,12 +5,12 @@ import { AccountMenu } from "@/components/common/AccountMenu"
 import { HeaderShell } from "@/components/common/HeaderShell"
 import { navButtonClassName } from "@/components/common/headerStyles"
 import { Button } from "@/components/ui/button"
-import { ADMIN_ROLE, ROUTES } from "@/lib/route"
+import { isStaffRole, ROUTES } from "@/lib/route"
 
 export function Userheader() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const isAdmin = user?.role === ADMIN_ROLE
+  const isAdmin = isStaffRole(user?.role)
 
   return (
     <HeaderShell

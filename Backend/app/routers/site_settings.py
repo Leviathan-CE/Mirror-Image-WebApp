@@ -10,7 +10,7 @@ from psycopg2 import OperationalError
 from psycopg2.errors import UndefinedTable
 
 from app.db import get_connection
-from app.security import get_current_admin_user_id
+from app.security import get_current_staff_user_id
 from app.site_settings import coming_soon_or_false, write_coming_soon
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ def get_coming_soon():
 @router.patch("/admin/site/coming-soon", response_model=ComingSoonStatus)
 def patch_coming_soon(
     body: ComingSoonPatch,
-    _admin_id: int = Depends(get_current_admin_user_id),
+    _staff_id: int = Depends(get_current_staff_user_id),
 ):
     try:
         with get_connection() as conn:

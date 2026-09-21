@@ -27,7 +27,7 @@ Or:
 ## Apply one file
 
 ```bash
-npm run migrate -- 32_unpublished_cards_feature.sql
+npm run migrate -- 33_analytics_hourly.sql
 ```
 
 ## Current patches
@@ -35,6 +35,8 @@ npm run migrate -- 32_unpublished_cards_feature.sql
 | File | Purpose |
 |------|---------|
 | `32_unpublished_cards_feature.sql` | Admin-grantable unpublished catalogue access |
+| `33_analytics_hourly.sql` | Hourly app-activity buckets for admin analytics |
+| `34_users_developer_role.sql` | Allow `developer` on users.role |
 
 New schema that is not yet in init belongs here as `33_…`, `34_…`, and
 must also be copied into the matching init file so empty volumes stay

@@ -4,7 +4,7 @@
 
 import { apiBaseUrl, authHeaders, readJsonOrThrow } from "@/lib/api/client"
 
-export type AnalyticsRange = "week" | "month" | "year"
+export type AnalyticsRange = "hour" | "week" | "month" | "year"
 
 export type AnalyticsActivityPoint = {
   label: string

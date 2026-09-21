@@ -5,7 +5,7 @@
  * Use these for UI gating once features exist.
  */
 
-import { ADMIN_ROLE } from "@/lib/route"
+import { isStaffRole } from "@/lib/route"
 import type { AuthUser } from "@/lib/api/auth"
 
 const ENTITLED_STATUSES = new Set(["active", "trialing"])
@@ -21,7 +21,7 @@ export const FEATURE_DECK_PRINTOUT = "deck_printout"
 export function isUserSubscribed(user: AuthUser | null | undefined): boolean {
   if (!user) return false
   if (typeof user.is_subscribed === "boolean") return user.is_subscribed
-  if (user.role === ADMIN_ROLE) return true
+  if (isStaffRole(user.role)) return true
   return ENTITLED_STATUSES.has(user.subscription_status ?? "none")
 }
 
@@ -32,7 +32,7 @@ export function userHasFeature(
 ): boolean {
   if (PUBLIC_FEATURES.has(featureKey)) return true
   if (!user) return false
-  if (user.role === ADMIN_ROLE) return true
+  if (isStaffRole(user.role)) return true
   if (user.features?.includes(featureKey)) return true
   // Fallback when older /me payloads omit features[]:
   if (

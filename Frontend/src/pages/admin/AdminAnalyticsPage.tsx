@@ -1,6 +1,6 @@
 /**
  * Admin-only usage overview: logged-in users, paid subscribers, host load,
- * and an activity chart (week / month / year).
+ * and an activity chart (hour / week / month / year).
  */
 
 import { useCallback, useEffect, useState } from "react"
@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils"
 import { AdminPageShell } from "@/pages/admin/AdminPageShell"
 
 const RANGES: { id: AnalyticsRange; label: string }[] = [
+  { id: "hour", label: "HOUR" },
   { id: "week", label: "WEEK" },
   { id: "month", label: "MONTH" },
   { id: "year", label: "YEAR" },
@@ -278,9 +279,13 @@ export function AdminAnalyticsPage() {
               APP ACTIVITY
             </h2>
             <p className="mt-1 font-mono text-[11px] text-cyan-100/45">
-              {metric === "unique_users"
-                ? "Daily logged-in users (year = sum of daily uniques per month)."
-                : "HTTP requests counted by the API."}
+              {range === "hour"
+                ? metric === "unique_users"
+                  ? "Unique logged-in users per UTC hour (last 24 hours)."
+                  : "HTTP requests per UTC hour (last 24 hours)."
+                : metric === "unique_users"
+                  ? "Daily logged-in users (year = sum of daily uniques per month)."
+                  : "HTTP requests counted by the API (daily; year = monthly sum)."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, date, datetime
 
 from app.analytics import fill_activity_points, should_skip_path
 
@@ -11,6 +11,19 @@ def test_fill_week_pads_zeros():
     assert points[0]["label"] == "2026-08-28"
     assert points[-1]["unique_users"] == 2
     assert points[-1]["requests"] == 10
+    assert points[0]["unique_users"] == 0
+
+
+def test_fill_hour_pads_twenty_four():
+    now = datetime(2026, 9, 21, 16, 30, tzinfo=UTC)
+    hour = datetime(2026, 9, 21, 16, 0, tzinfo=UTC)
+    rows = {hour: (3, 40, 1)}
+    points = fill_activity_points(rows, range_key="hour", now=now)
+    assert len(points) == 24
+    assert points[0]["label"] == "2026-09-20 17:00"
+    assert points[-1]["label"] == "2026-09-21 16:00"
+    assert points[-1]["unique_users"] == 3
+    assert points[-1]["requests"] == 40
     assert points[0]["unique_users"] == 0
 
 
@@ -59,3 +72,13 @@ def test_analytics_ok_for_admin(client, admin_headers, require_db):
     assert "host" in body
     assert body["activity_range"] == "week"
     assert len(body["activity"]) == 7
+
+
+def test_analytics_hour_range_for_admin(client, admin_headers, require_db):
+    response = client.get("/admin/analytics?range=hour", headers=admin_headers)
+    if response.status_code == 503:
+        return
+    assert response.status_code == 200
+    body = response.json()
+    assert body["activity_range"] == "hour"
+    assert len(body["activity"]) == 24

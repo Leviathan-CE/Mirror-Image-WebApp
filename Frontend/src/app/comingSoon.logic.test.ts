@@ -14,6 +14,16 @@ describe("comingSoonBlocksVisitor", () => {
     ).toBe(false)
   })
 
+  it("lets developers through every path", () => {
+    expect(
+      comingSoonBlocksVisitor({
+        comingSoon: true,
+        role: "developer",
+        pathname: ROUTES.HOME,
+      })
+    ).toBe(false)
+  })
+
   it("lets admins through every path", () => {
     expect(
       comingSoonBlocksVisitor({

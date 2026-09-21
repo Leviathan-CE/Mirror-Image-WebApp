@@ -52,7 +52,7 @@ import {
   unlikeDeck,
   updateDeck,
 } from "@/lib/api/decks"
-import { ROUTES, ADMIN_ROLE } from "@/lib/route"
+import { ROUTES, isStaffRole } from "@/lib/route"
 import {
   FEATURE_DECK_PRINTOUT,
   userHasFeature,
@@ -179,7 +179,7 @@ export function DeckPage() {
   const canEdit =
     Boolean(deck && user && deck.author_name === user.user_name && token)
   const canPrintout = userHasFeature(user, FEATURE_DECK_PRINTOUT)
-  const isAdmin = user?.role === ADMIN_ROLE
+  const isAdmin = isStaffRole(user?.role)
 
   async function onCreatePrintout() {
     if (!deck || printoutBusy) return

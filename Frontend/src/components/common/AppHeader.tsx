@@ -14,14 +14,14 @@ import { AdminHeader } from "@/components/common/AdminHeader"
 import { ComingSoonHeader } from "@/components/common/ComingSoonHeader"
 import { PublicHeader } from "@/components/common/PublicHeader"
 import { Userheader } from "@/components/common/UserHeader"
-import { ADMIN_ROLE, ROUTES } from "@/lib/route"
+import { isStaffRole, ROUTES } from "@/lib/route"
 
 export function AppHeader() {
   const { isAuthenticated, user } = useAuth()
   const { comingSoon } = useComingSoon()
   const { pathname } = useLocation()
 
-  const isAdmin = user?.role === ADMIN_ROLE
+  const isAdmin = isStaffRole(user?.role)
   const playTesterPath =
     pathname === ROUTES.PLAY_TESTER ||
     pathname.startsWith(`${ROUTES.PLAY_TESTER}/`)

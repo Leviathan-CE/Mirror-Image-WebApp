@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS users (
     CONSTRAINT users_password_not_blank CHECK (
         password IS NULL OR length(trim(password)) > 0
     ),
-    CONSTRAINT users_role_allowed CHECK (role IN ('user', 'admin', 'distributor')),
+    CONSTRAINT users_role_allowed CHECK (role IN ('user', 'admin', 'distributor', 'developer')),
     CONSTRAINT users_subscription_status_allowed CHECK (
         subscription_status IN (
             'none',
@@ -65,7 +65,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_users_stripe_customer_id
     WHERE stripe_customer_id IS NOT NULL;
 
 COMMENT ON COLUMN users.subscription_status IS
-    'Stripe subscription status; feature unlocks when active/trialing (admins always entitled).';
+    'Stripe subscription status; feature unlocks when active/trialing (admin and developer always entitled).';
 COMMENT ON COLUMN users.subscription_type IS
     'Human-readable subscription tier label (e.g. standard, premium).';
 COMMENT ON COLUMN users.subscription_cancel_at_period_end IS

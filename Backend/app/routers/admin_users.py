@@ -19,6 +19,7 @@ from app.features import (
     load_granted_feature_keys,
     sync_user_feature_grants,
 )
+from app.roles import ALLOWED_ROLES
 from app.security import get_current_admin_user_id, hash_password
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin-users"])
 
 _USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{3,32}$")
-ALLOWED_ROLES = frozenset({"user", "admin", "distributor"})
 
 
 class FeatureCatalogItem(BaseModel):

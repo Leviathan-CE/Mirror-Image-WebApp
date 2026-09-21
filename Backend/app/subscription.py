@@ -6,6 +6,8 @@ import os
 from datetime import UTC, datetime
 from typing import Any
 
+from app.roles import is_staff_role
+
 
 # Statuses that unlock paid features for normal users.
 ENTITLED_STATUSES = frozenset({"active", "trialing"})
@@ -57,8 +59,8 @@ def is_subscription_entitled(
     role: str,
     subscription_status: str,
 ) -> bool:
-    """Admins always pass; subscribers need an entitled Stripe status."""
-    if role == "admin":
+    """Staff (admin/developer) always pass; subscribers need an entitled Stripe status."""
+    if is_staff_role(role):
         return True
     return subscription_status in ENTITLED_STATUSES
 

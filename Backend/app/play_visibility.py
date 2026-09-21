@@ -30,6 +30,7 @@ from app.features import (
     user_has_feature,
 )
 from app.play_rooms_state import PlayRoom, live_room
+from app.roles import is_staff_role
 
 
 @dataclass(frozen=True)
@@ -119,7 +120,7 @@ def load_user_entitlement(cur, user_id: int) -> UserEntitlement:
     sub_status = row[1] or "none"
     granted = load_granted_feature_keys(cur, user_id)
     return UserEntitlement(
-        is_admin=role == "admin",
+        is_admin=is_staff_role(role),
         include_preview=user_has_feature(
             role=role,
             subscription_status=sub_status,
