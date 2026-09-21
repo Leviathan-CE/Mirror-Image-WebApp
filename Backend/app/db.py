@@ -23,27 +23,35 @@ def _strip_env(value: str | None) -> str:
     return value.strip().strip('"')
 
 
+def _first_env(*names: str, default: str = "") -> str:
+    """First non-empty stripped env value among `names`, else `default`."""
+    for name in names:
+        value = _strip_env(os.environ.get(name))
+        if value:
+            return value
+    return default
+
+
 def _db_config() -> dict[str, str]:
     """
-    Gets the required varaibles from env 
-    and returns them in a dictionary
-    Returns:
-        dict[str, str]: Envirment varaibles
+    Connection fields from the repo-root `.env`.
+
+    Set POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB / POSTGRES_PORT once.
+    DB_* names still work as aliases. DB_HOST / DB_PORT win over POSTGRES_PORT
+    so the API container can use host `db` port 5432 while the host publish
+    port stays 5433.
     """
-    port_raw = os.environ.get("DB_PORT") or os.environ.get("PORT") or "5432"
-    password = _strip_env(
-        os.environ.get("SQL_PSWRD") or os.environ.get("DB_PASSWORD")
-    )
+    host = _first_env("DB_HOST", default="127.0.0.1")
+    port = _first_env("DB_PORT", "POSTGRES_PORT", default="5432")
+
     return {
-        "host": _strip_env(os.environ.get("DB_HOST")) or "127.0.0.1",
-        "port": str(port_raw).strip(),
-        "dbname": _strip_env(os.environ.get("POSTGRES_DB"))
-        or _strip_env(os.environ.get("DB_NAME"))
-        or "mirror_image",
-        "user": _strip_env(os.environ.get("POSTGRES_USER"))
-        or _strip_env(os.environ.get("DB_USER"))
-        or "postgres",
-        "password": password,
+        "host": host,
+        "port": port,
+        "dbname": _first_env("POSTGRES_DB", "DB_NAME", default="mirror_image"),
+        "user": _first_env("POSTGRES_USER", "DB_USER", default="postgres"),
+        "password": _first_env(
+            "POSTGRES_PASSWORD", "DB_PASSWORD", "SQL_PSWRD"
+        ),
     }
 
 

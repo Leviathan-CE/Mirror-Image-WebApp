@@ -75,12 +75,12 @@ docker compose down -v
 docker compose up --build
 ```
 
-Optional environment variables:
+Optional environment variables (set only the `POSTGRES_*` names):
 
-- `SQL_PSWRD` (defaults to `postgres`)
 - `POSTGRES_USER` (defaults to `postgres`)
+- `POSTGRES_PASSWORD` (defaults to `postgres`; required on first db init)
 - `POSTGRES_DB` (defaults to `mirror_image`)
-- `POSTGRES_PORT` (defaults to `5433`)
+- `POSTGRES_PORT` (host publish port, defaults to `5433`; container stays `5432`)
 - `JWT_SECRET` (required for real deployments; used to sign login tokens)
 - `JWT_EXPIRE_HOURS` (defaults to `168` = 7 days)
 
