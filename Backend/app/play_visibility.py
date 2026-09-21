@@ -23,7 +23,12 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from app.features import FEATURE_PREVIEW_CARDS, load_granted_feature_keys, user_has_feature
+from app.features import (
+    FEATURE_PREVIEW_CARDS,
+    FEATURE_UNPUBLISHED_CARDS,
+    load_granted_feature_keys,
+    user_has_feature,
+)
 from app.play_rooms_state import PlayRoom, live_room
 
 
@@ -33,6 +38,7 @@ class UserEntitlement:
 
     is_admin: bool
     include_preview: bool
+    include_unpublished: bool = False
 
 
 @dataclass(frozen=True)
@@ -84,7 +90,11 @@ def pooled_publish_gate(
     bypass = False
     include_preview = False
     for entitlement in entitlements:
-        bypass = bypass or entitlement.is_admin
+        bypass = (
+            bypass
+            or entitlement.is_admin
+            or entitlement.include_unpublished
+        )
         include_preview = include_preview or entitlement.include_preview
     return bypass, include_preview
 
@@ -101,7 +111,9 @@ def load_user_entitlement(cur, user_id: int) -> UserEntitlement:
     )
     row = cur.fetchone()
     if row is None:
-        return UserEntitlement(is_admin=False, include_preview=False)
+        return UserEntitlement(
+            is_admin=False, include_preview=False, include_unpublished=False
+        )
 
     role = row[0] or "user"
     sub_status = row[1] or "none"
@@ -113,6 +125,12 @@ def load_user_entitlement(cur, user_id: int) -> UserEntitlement:
             subscription_status=sub_status,
             granted_keys=granted,
             feature_key=FEATURE_PREVIEW_CARDS,
+        ),
+        include_unpublished=user_has_feature(
+            role=role,
+            subscription_status=sub_status,
+            granted_keys=granted,
+            feature_key=FEATURE_UNPUBLISHED_CARDS,
         ),
     )
 

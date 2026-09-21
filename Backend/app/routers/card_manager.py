@@ -20,12 +20,15 @@ from psycopg2.extras import Json
 
 from app.db import get_connection
 from app.card_library_query import apply_catalogue_filters, catalogue_order_sql
-from app.card_publish import catalogue_visibility_sql, get_optional_include_preview
+from app.card_publish import (
+    catalogue_visibility_sql,
+    get_optional_include_preview,
+    get_optional_publish_bypass,
+)
 from app.cards.schemas import CardLibraryItem
 from app.media_urls import signed_media_path
 from app.security import (
     get_current_admin_user_id,
-    get_optional_is_admin,
     get_optional_user_id,
 )
 from app.play_visibility import resolve_room_member_visibility
@@ -385,7 +388,7 @@ class CardSearchHit(BaseModel):
 def search_cards(
     q: str = Query(min_length=1, max_length=80),
     limit: int = Query(default=12, ge=1, le=40),
-    is_admin: bool = Depends(get_optional_is_admin),
+    publish_bypass: bool = Depends(get_optional_publish_bypass),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """
@@ -393,14 +396,15 @@ def search_cards(
 
     Prefers prefix matches, then substring matches.
     Skips deprecated cards. Non-subscribers only see published cards;
-    subscribers also see preview; admins see the full catalogue.
+    subscribers also see preview; admins and unpublished_cards grantees
+    see the full catalogue.
     """
     needle = q.strip()
     if not needle:
         return []
 
     visibility = catalogue_visibility_sql(
-        "c", bypass=is_admin, include_preview=include_preview
+        "c", bypass=publish_bypass, include_preview=include_preview
     )
 
     try:
@@ -478,15 +482,15 @@ _COLOR_COST_TOKENS = ("LIF", "MET", "POW", "RAM", "TIM", "STL")
 
 @router.get("/facets", response_model=CardLibraryFacets)
 def card_library_facets(
-    is_admin: bool = Depends(get_optional_is_admin),
+    publish_bypass: bool = Depends(get_optional_publish_bypass),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """Distinct filter values for the card library UI."""
     visibility = catalogue_visibility_sql(
-        "cards", bypass=is_admin, include_preview=include_preview
+        "cards", bypass=publish_bypass, include_preview=include_preview
     )
     visibility_c = catalogue_visibility_sql(
-        "c", bypass=is_admin, include_preview=include_preview
+        "c", bypass=publish_bypass, include_preview=include_preview
     )
     try:
         with get_connection() as conn:
@@ -585,7 +589,7 @@ def browse_card_library(
             "are seated in that live room; other super types stay gated."
         ),
     ),
-    is_admin: bool = Depends(get_optional_is_admin),
+    publish_bypass: bool = Depends(get_optional_publish_bypass),
     include_preview: bool = Depends(get_optional_include_preview),
     user_id: int | None = Depends(get_optional_user_id),
 ):
@@ -595,8 +599,8 @@ def browse_card_library(
     `sort=name` (default) is A–Z; `sort=invoke` is invoke cost then name;
     `sort=relevance` uses prefix-first ranking when `q` is set.
     Non-subscribers only see published cards; subscribers also see preview;
-    admins see the full catalogue. A live playtest room unlocks unpublished
-    Resource tokens for seated players only.
+    admins and unpublished_cards grantees see the full catalogue. A live
+    playtest room unlocks unpublished Resource tokens for seated players only.
     """
     filter_where: list[str] = []
     params: dict[str, Any] = {"limit": limit, "offset": offset}
@@ -623,7 +627,7 @@ def browse_card_library(
                 is_resource = (super_type or "").strip().lower() == "resource"
                 visibility = catalogue_visibility_sql(
                     "cards",
-                    bypass=is_admin or (pooled is not None and is_resource),
+                    bypass=publish_bypass or (pooled is not None and is_resource),
                     include_preview=(
                         include_preview or bool(pooled and pooled.include_preview)
                     ),
@@ -726,7 +730,7 @@ def browse_card_library(
 @router.get("/{card_id}", response_model=CardByNameResponse)
 def get_card_by_id(
     card_id: int,
-    is_admin: bool = Depends(get_optional_is_admin),
+    publish_bypass: bool = Depends(get_optional_publish_bypass),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """Fetch a card by primary key (Unity barcode id)."""
@@ -736,7 +740,7 @@ def get_card_by_id(
     sql = (
         _CARD_SELECT_SQL
         + " WHERE id = %(card_id)s"
-        + f" AND {catalogue_visibility_sql('cards', bypass=is_admin, include_preview=include_preview)}"
+        + f" AND {catalogue_visibility_sql('cards', bypass=publish_bypass, include_preview=include_preview)}"
     )
     try:
         with get_connection() as conn:
@@ -758,7 +762,7 @@ def get_card_by_id(
 @router.get("/by-name/{card_name}", response_model=CardByNameResponse)
 def get_card_by_name(
     card_name: str,
-    is_admin: bool = Depends(get_optional_is_admin),
+    publish_bypass: bool = Depends(get_optional_publish_bypass),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """Fetch a card by exact card name (case-insensitive)."""
@@ -767,7 +771,7 @@ def get_card_by_name(
     sql = (
         _CARD_SELECT_SQL
         + " WHERE LOWER(card_name) = LOWER(%(card_name)s)"
-        + f" AND {catalogue_visibility_sql('cards', bypass=is_admin, include_preview=include_preview)}"
+        + f" AND {catalogue_visibility_sql('cards', bypass=publish_bypass, include_preview=include_preview)}"
         + " ORDER BY id DESC LIMIT 1"
     )
     try:

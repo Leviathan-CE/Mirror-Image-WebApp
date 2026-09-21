@@ -86,6 +86,40 @@ describe("userHasFeature", () => {
       )
     ).toBe(false)
   })
+
+  it("subscribers do not unlock unpublished_cards via fallback", () => {
+    expect(
+      userHasFeature(
+        {
+          id: 1,
+          user_name: "a",
+          email: "a@x",
+          role: "user",
+          features: [],
+          is_subscribed: true,
+          subscription_status: "active",
+        },
+        "unpublished_cards"
+      )
+    ).toBe(false)
+  })
+
+  it("explicit grant unlocks unpublished_cards", () => {
+    expect(
+      userHasFeature(
+        {
+          id: 1,
+          user_name: "a",
+          email: "a@x",
+          role: "user",
+          features: ["unpublished_cards"],
+          is_subscribed: false,
+          subscription_status: "none",
+        },
+        "unpublished_cards"
+      )
+    ).toBe(true)
+  })
 })
 
 describe("isUserSubscribed", () => {

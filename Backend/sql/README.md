@@ -24,7 +24,9 @@ the API when a deck is created (`app/deck_defaults.py`), not by SQL.
 
 ### Existing volumes
 
-Use `migrations/` to upgrade older DBs without wiping data:
+Use `migrations/` only for patches added **after** the current init
+baseline (today that is `32_unpublished_cards_feature.sql`). Do not wipe
+the volume (`down -v`) to pick those up.
 
 ```bash
 npm run migrate

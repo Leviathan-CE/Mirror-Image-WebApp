@@ -6,7 +6,12 @@ from fastapi import Depends
 from psycopg2 import OperationalError
 
 from app.db import get_connection
-from app.features import FEATURE_PREVIEW_CARDS, load_granted_feature_keys, user_has_feature
+from app.features import (
+    FEATURE_PREVIEW_CARDS,
+    FEATURE_UNPUBLISHED_CARDS,
+    load_granted_feature_keys,
+    user_has_feature,
+)
 from app.security import get_optional_is_admin, get_optional_user_id
 
 PUBLISHED_STATUS = "published"
@@ -49,7 +54,7 @@ def catalogue_visibility_sql(
     """
     Publish gate for public/user catalogue queries.
 
-    - ``bypass=True`` (admins): all cards visible.
+    - ``bypass=True`` (admins or ``unpublished_cards`` grant): all cards visible.
     - ``include_preview=True`` (subscribers): published + preview.
     - otherwise: published only.
     """
@@ -98,6 +103,49 @@ def get_optional_include_preview(
         subscription_status=sub_status,
         granted_keys=granted,
         feature_key=FEATURE_PREVIEW_CARDS,
+    )
+
+
+def get_optional_publish_bypass(
+    user_id: int | None = Depends(get_optional_user_id),
+    is_admin: bool = Depends(get_optional_is_admin),
+) -> bool:
+    """
+    True when the caller may see unpublished / unlisted catalogue cards.
+
+    Admins always pass. Everyone else needs the ``unpublished_cards`` grant.
+    Stripe does not unlock this.
+    """
+    if is_admin:
+        return True
+    if user_id is None:
+        return False
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT role, subscription_status
+                      FROM users
+                     WHERE id = %(user_id)s
+                    """,
+                    {"user_id": user_id},
+                )
+                row = cur.fetchone()
+                if row is None:
+                    return False
+                role = row[0] or "user"
+                sub_status = row[1] or "none"
+                granted = load_granted_feature_keys(cur, user_id)
+    except OperationalError:
+        return False
+
+    return user_has_feature(
+        role=role,
+        subscription_status=sub_status,
+        granted_keys=granted,
+        feature_key=FEATURE_UNPUBLISHED_CARDS,
     )
 
 

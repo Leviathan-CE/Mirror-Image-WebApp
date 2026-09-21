@@ -105,6 +105,14 @@ def test_gate_takes_the_more_permissive_seat() -> None:
     assert pooled_publish_gate([locked, admin]) == (True, True)
 
 
+def test_gate_unpublished_grant_is_bypass() -> None:
+    locked = UserEntitlement(is_admin=False, include_preview=False)
+    granted = UserEntitlement(
+        is_admin=False, include_preview=False, include_unpublished=True
+    )
+    assert pooled_publish_gate([locked, granted]) == (True, False)
+
+
 def test_facts_reject_a_non_member() -> None:
     room = _seated_room()
     assert room_pool_facts(room, deck_id=HOST_DECK, user_id=99) is None
@@ -244,6 +252,20 @@ def test_room_code_is_normalized() -> None:
 
     assert pooled is not None
     assert pooled.bypass is True
+
+
+def test_unpublished_grant_on_either_seat_unlocks_bypass() -> None:
+    _seated_room()
+    pooled = resolve_room_visibility(
+        _cursor(grants={HOST_ID: ["unpublished_cards"]}),
+        code="ABC123",
+        deck_id=GUEST_DECK,
+        user_id=GUEST_ID,
+    )
+
+    assert pooled is not None
+    assert pooled.bypass is True
+    assert pooled.include_preview is False
 
 
 def test_grant_on_either_seat_unlocks_preview() -> None:

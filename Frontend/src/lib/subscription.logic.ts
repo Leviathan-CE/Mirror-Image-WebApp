@@ -15,6 +15,7 @@ const PUBLIC_FEATURES = new Set(["playtester"])
 
 /** Stripe active/trialing defaults (mirrors backend SUBSCRIBER_DEFAULT_FEATURES). */
 export const FEATURE_PREVIEW_CARDS = "preview_cards"
+export const FEATURE_UNPUBLISHED_CARDS = "unpublished_cards"
 export const FEATURE_DECK_PRINTOUT = "deck_printout"
 
 export function isUserSubscribed(user: AuthUser | null | undefined): boolean {

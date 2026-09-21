@@ -4,6 +4,7 @@ from app.features import (
     FEATURE_DECK_PRINTOUT,
     FEATURE_PLAYTESTER,
     FEATURE_PREVIEW_CARDS,
+    FEATURE_UNPUBLISHED_CARDS,
     effective_feature_keys,
     is_public_feature,
     user_has_feature,
@@ -17,12 +18,14 @@ def test_admin_has_all_catalog_features():
         granted_keys=[],
         catalog_keys=[
             FEATURE_PREVIEW_CARDS,
+            FEATURE_UNPUBLISHED_CARDS,
             FEATURE_PLAYTESTER,
             FEATURE_DECK_PRINTOUT,
         ],
     )
     assert keys == [
         FEATURE_PREVIEW_CARDS,
+        FEATURE_UNPUBLISHED_CARDS,
         FEATURE_PLAYTESTER,
         FEATURE_DECK_PRINTOUT,
     ]
@@ -72,6 +75,21 @@ def test_non_subscriber_needs_grant_for_deck_printout():
         subscription_status="none",
         granted_keys=[FEATURE_DECK_PRINTOUT],
         feature_key=FEATURE_DECK_PRINTOUT,
+    )
+
+
+def test_subscriber_does_not_get_unpublished_cards():
+    assert not user_has_feature(
+        role="user",
+        subscription_status="active",
+        granted_keys=[],
+        feature_key=FEATURE_UNPUBLISHED_CARDS,
+    )
+    assert user_has_feature(
+        role="user",
+        subscription_status="none",
+        granted_keys=[FEATURE_UNPUBLISHED_CARDS],
+        feature_key=FEATURE_UNPUBLISHED_CARDS,
     )
 
 

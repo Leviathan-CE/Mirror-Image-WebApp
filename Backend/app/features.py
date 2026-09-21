@@ -8,6 +8,7 @@ from app.subscription import is_subscription_entitled
 
 # Stable keys — must match rows seeded in features table.
 FEATURE_PREVIEW_CARDS = "preview_cards"
+FEATURE_UNPUBLISHED_CARDS = "unpublished_cards"
 FEATURE_PLAYTESTER = "playtester"
 FEATURE_DECK_PRINTOUT = "deck_printout"
 

@@ -1,12 +1,16 @@
 # Database migrations
 
-Idempotent upgrade scripts for **existing** Postgres volumes that were created
-before the current init schema.
+Patches for **existing** Postgres volumes that were created before the
+current init schema in `Backend/sql/*.sql`.
 
-Fresh installs should rely on `Backend/sql/*.sql` only (see `../README.md`).
-Migrations are for bringing older volumes forward without `down -v`.
+Fresh installs do not need this folder. Postgres runs the init scripts
+once on an empty volume; that is the baseline.
 
-## Apply all migrations (recommended)
+Historical stepping-stones (`07`–`31`) were removed after every live
+volume already matched that baseline. Replaying them was unsafe: `11`
+tried to rebuild an obsolete `deck_has_cards` primary key.
+
+## Apply all remaining patches
 
 From the repo root, with `db` running:
 
@@ -20,23 +24,18 @@ Or:
 ./scripts/migrate-db.sh
 ```
 
-## Apply one migration
+## Apply one file
 
 ```bash
-npm run migrate -- 17_users_stripe_subscription.sql
+npm run migrate -- 32_unpublished_cards_feature.sql
 ```
 
-Or manually:
+## Current patches
 
-```bash
-docker compose exec -T db psql -U postgres -d mirror_image < Backend/sql/migrations/13_publish_cards_published.sql
-```
+| File | Purpose |
+|------|---------|
+| `32_unpublished_cards_feature.sql` | Admin-grantable unpublished catalogue access |
 
-## Apply all migrations (manual loop)
-
-```bash
-for f in Backend/sql/migrations/*.sql; do
-  echo "Applying $f ..."
-  docker compose exec -T db psql -U postgres -d mirror_image < "$f"
-done
-```
+New schema that is not yet in init belongs here as `33_…`, `34_…`, and
+must also be copied into the matching init file so empty volumes stay
+current.

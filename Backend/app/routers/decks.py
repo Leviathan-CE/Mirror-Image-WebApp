@@ -42,6 +42,7 @@ from app.card_library_query import apply_deck_color_filters, escape_like
 from app.card_publish import (
     catalogue_visibility_sql,
     get_optional_include_preview,
+    get_optional_publish_bypass,
 )
 from app.db import get_connection
 from app.deck_community import (
@@ -98,7 +99,6 @@ from app.profanity import reject_if_profane
 from app.user_preferences import fetch_user_preferences, normalize_user_preferences
 from app.security import (
     get_current_user_id,
-    get_optional_is_admin,
     get_optional_user_id,
 )
 
@@ -525,7 +525,7 @@ def get_deck(
         ),
     ),
     user_id: int | None = Depends(get_optional_user_id),
-    is_admin: bool = Depends(get_optional_is_admin),
+    publish_bypass: bool = Depends(get_optional_publish_bypass),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """
@@ -533,7 +533,7 @@ def get_deck(
 
     Public decks: anyone. Private decks: owner only.
     Preview / unpublished cards are classified stubs unless the viewer
-    is entitled (subscriber preview or admin bypass).
+    is entitled (subscriber preview, unpublished_cards grant, or admin).
     Mutations still require ownership on write routes.
 
     Increments `view_count` when a non-owner opens the deck — playtest room
@@ -559,7 +559,7 @@ def get_deck(
                 cards = fetch_deck_cards(
                     cur,
                     deck_id,
-                    bypass=is_admin or bool(pooled and pooled.bypass),
+                    bypass=publish_bypass or bool(pooled and pooled.bypass),
                     include_preview=(
                         include_preview or bool(pooled and pooled.include_preview)
                     ),
@@ -990,7 +990,7 @@ def list_deck_cards(
     deck_id: int,
     category_id: int | None = Query(default=None, gt=0),
     user_id: int | None = Depends(get_optional_user_id),
-    is_admin: bool = Depends(get_optional_is_admin),
+    publish_bypass: bool = Depends(get_optional_publish_bypass),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """List cards in a readable deck (public or owned), optionally by category."""
@@ -1004,7 +1004,7 @@ def list_deck_cards(
                     cur,
                     deck_id,
                     category_id,
-                    bypass=is_admin,
+                    bypass=publish_bypass,
                     include_preview=include_preview,
                 )
     except OperationalError as e:
@@ -1020,7 +1020,7 @@ def add_card_to_deck(
     deck_id: int,
     body: AddCardRequest,
     user_id: int = Depends(get_current_user_id),
-    is_admin: bool = Depends(get_optional_is_admin),
+    publish_bypass: bool = Depends(get_optional_publish_bypass),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """
@@ -1028,7 +1028,8 @@ def add_card_to_deck(
 
     If the same card+category already exists, quantities are summed.
     Non-subscribers may only add published cards; subscribers may also add
-    preview cards; admins may add any catalogue card.
+    preview cards; admins and unpublished_cards grantees may add any
+    catalogue card.
     """
     try:
         with get_connection() as conn:
@@ -1040,7 +1041,7 @@ def add_card_to_deck(
                     SELECT card_name
                       FROM cards
                      WHERE id = %(card_id)s
-                       AND {catalogue_visibility_sql("cards", bypass=is_admin, include_preview=include_preview)}
+                       AND {catalogue_visibility_sql("cards", bypass=publish_bypass, include_preview=include_preview)}
                     """,
                     {"card_id": body.card_id},
                 )
@@ -1090,7 +1091,7 @@ def add_card_to_deck(
                     deck_id,
                     int(entry[0]),
                     int(entry[2]),
-                    bypass=is_admin,
+                    bypass=publish_bypass,
                     include_preview=include_preview,
                 )
             conn.commit()
@@ -1112,7 +1113,7 @@ def update_deck_card(
         description="Current category of the entry to update",
     ),
     user_id: int = Depends(get_current_user_id),
-    is_admin: bool = Depends(get_optional_is_admin),
+    publish_bypass: bool = Depends(get_optional_publish_bypass),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """Update quantity, move category, and/or set sort_order for one entry."""
@@ -1213,7 +1214,7 @@ def update_deck_card(
                     deck_id,
                     int(entry[0]),
                     int(entry[2]),
-                    bypass=is_admin,
+                    bypass=publish_bypass,
                     include_preview=include_preview,
                 )
             conn.commit()
@@ -1266,7 +1267,7 @@ def reorder_deck_cards(
     deck_id: int,
     body: ReorderCardsRequest,
     user_id: int = Depends(get_current_user_id),
-    is_admin: bool = Depends(get_optional_is_admin),
+    publish_bypass: bool = Depends(get_optional_publish_bypass),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """
@@ -1304,7 +1305,7 @@ def reorder_deck_cards(
                 cards = fetch_deck_cards(
                     cur,
                     deck_id,
-                    bypass=is_admin,
+                    bypass=publish_bypass,
                     include_preview=include_preview,
                 )
             conn.commit()
