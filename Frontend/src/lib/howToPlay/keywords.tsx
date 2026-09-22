@@ -92,7 +92,7 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
   },
   {
     name: "SPIRIT LINK",
-    text: "Damage this asset deals is gained as life by its controller.",
+    text: "For every 2 damage this unit deals, heal 1 damage from this unit.",
   },
   {
     name: "STALWART",
