@@ -20,6 +20,10 @@ import { PlayingCard } from "@/components/Playtester/board/PlayingCard"
 import { elementCssPaintScale } from "@/components/Playtester/board/playFieldScale.logic"
 import { scalePlayPile } from "@/components/Playtester/board/playPileScale.logic"
 import type { PlayPileSize } from "@/components/Playtester/constants"
+import {
+  beginHandDropCue,
+  endHandDropCue,
+} from "@/components/Playtester/drag/handDropCue"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { useLatestRef } from "@/hooks/useLatestRef"
 import { cardArtUrl } from "@/lib/api/decks"
@@ -54,6 +58,8 @@ export type TrashyardPileProps = {
   fanDirection?: "up" | "down"
   /** Drop the `label · count` caption — for tight spots (e.g. the peeked pilot slot). */
   hideLabel?: boolean
+  /** Light the empty-hand landing zone once this pile's drag picks up. */
+  cueHandDrop?: boolean
 }
 
 type TrashDrag = {
@@ -84,6 +90,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       onToggleExpended,
       scale = 1,
       hideLabel = false,
+      cueHandDrop = false,
     },
     ref
   ) {
@@ -96,6 +103,14 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
     const dragRef = useRef<TrashDrag | null>(null)
     const onReleaseRef = useLatestRef(onReleaseCards)
     const onBrowseRef = useLatestRef(onBrowse)
+    const cueHandDropRef = useLatestRef(cueHandDrop)
+
+    useEffect(() => {
+      return () => {
+        if (!dragRef.current?.moved) return
+        endHandDropCue()
+      }
+    }, [])
 
     const topCard = cards.length > 0 ? cards[cards.length - 1]! : null
     const dragging = drag
@@ -114,6 +129,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
           event.clientY - current.startY
         )
         if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
+        if (!current.moved && cueHandDropRef.current) beginHandDropCue()
         const paint = elementCssPaintScale(measureRef.current)
         const next: TrashDrag = {
           ...current,
@@ -130,7 +146,9 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       function onUp(event: PointerEvent) {
         const current = dragRef.current
         if (!current || current.pointerId !== event.pointerId) return
+        const pickedUp = current.moved && cueHandDropRef.current
         dragRef.current = null
+        if (pickedUp) endHandDropCue()
         setDrag(null)
         if (!current.moved) {
           // Click without drag → open browser (same idea as searching the deck).
@@ -152,7 +170,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
         window.removeEventListener("pointerup", onUp)
         window.removeEventListener("pointercancel", onUp)
       }
-    }, [drag])
+    }, [drag, cueHandDropRef])
 
     useEffect(() => {
       if (!enlarged) return

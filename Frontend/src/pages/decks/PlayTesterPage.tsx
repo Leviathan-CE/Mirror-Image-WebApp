@@ -63,6 +63,7 @@ import {
 } from "@/components/Playtester/net/browseIndicator.logic"
 import { usePlayNet } from "@/components/Playtester/net/usePlayNet"
 import type { SessionAction } from "@/components/Playtester/session/sessionActions.logic"
+import { subscribeHandDropCue } from "@/components/Playtester/drag/handDropCue"
 import { useCardDragDrop } from "@/components/Playtester/drag/useCardDragDrop"
 import { useDrawAnimations } from "@/components/Playtester/anim/useDrawAnimations"
 import {
@@ -282,6 +283,8 @@ export function PlayTesterPage() {
   const stockpileRef = useRef<HTMLDivElement>(null)
   const pilotRef = useRef<HTMLDivElement>(null)
   const handRef = useRef<HTMLDivElement>(null)
+  const [handDropArmed, setHandDropArmed] = useState(false)
+  useEffect(() => subscribeHandDropCue(setHandDropArmed), [])
   const deckRef = useRef<HTMLDivElement>(null)
   const trashRef = useRef<HTMLDivElement>(null)
   const searchPanelRef = useRef<HTMLDivElement>(null)
@@ -1388,7 +1391,7 @@ export function PlayTesterPage() {
                   </div>
                 </div>
                 <DockedHandStrip
-                  className={`min-w-0 flex-1 ${pileHit}`}
+                  className="min-w-0 flex-1"
                   panelRef={oppHandRef}
                   heightPx={handDockPx}
                   bare
@@ -1416,10 +1419,11 @@ export function PlayTesterPage() {
               style={{ height: handDockPx }}
             >
               <DockedHandStrip
-                className={`min-w-0 flex-1 ${pileHit}`}
+                className="min-w-0 flex-1"
                 panelRef={handRef}
                 heightPx={handDockPx}
                 bare
+                dropCue={handDropArmed && visHand.length === 0}
                 label={`Hand · ${visHand.length}`}
               >
                 <PlayerHand
@@ -1452,6 +1456,7 @@ export function PlayTesterPage() {
                   <TrashyardPile
                     ref={dismantledRef}
                     cards={visDismantled}
+                    cueHandDrop
                     label="Dismantled"
                     size="lg"
                     onReleaseCards={onFaceUpPileRelease}
@@ -1482,6 +1487,7 @@ export function PlayTesterPage() {
               <TrashyardPile
                 ref={pilotRef}
                 cards={visPilot}
+                cueHandDrop
                 label="Pilot"
                 size="lg"
                 onReleaseCards={onFaceUpPileRelease}
@@ -1495,6 +1501,7 @@ export function PlayTesterPage() {
             <DeckPile
               ref={deckRef}
               className={pileHit}
+              cueHandDrop
               count={libraryCount}
               size="lg"
               onClickDraw={onDrawFromDeck}
@@ -1516,6 +1523,7 @@ export function PlayTesterPage() {
               ref={trashRef}
               className={pileHit}
               cards={visTrash}
+              cueHandDrop
               label="Trashyard"
               size="lg"
               onReleaseCards={onFaceUpPileRelease}
