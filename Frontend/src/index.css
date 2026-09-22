@@ -579,8 +579,14 @@
   }
 }
 
-/* Lore scrollytelling — sticky stage crossfade */
+/* Lore scrollytelling — sticky stage crossfade.
+   --lore-art-y is how far down the picture the frame starts.
+   0% = the very top of the file. Raise it to start lower and crop more off the top.
+   The bottom of the art is what gets cut off. */
 .lore-scroll-frame {
+  --lore-art-y: 12%;
+  object-position: center var(--lore-art-y);
+  transform-origin: center top;
   opacity: 0;
   transform: scale(1.04);
   transition:

@@ -52,7 +52,7 @@ export function LoreArtScroll() {
             src={loreImages[beat.imageKey]}
             alt=""
             className={cn(
-              "lore-scroll-frame absolute inset-0 h-full w-full object-cover object-center",
+              "lore-scroll-frame absolute inset-0 h-full w-full object-cover",
               i === active && "is-active"
             )}
           />
