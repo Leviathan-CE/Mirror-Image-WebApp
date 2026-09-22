@@ -580,6 +580,10 @@
 > 800.3.22. **Desperate Maneuver X**: When you draw this card, you may reveal it. If you do, dismantle X and play it immediately as though it had Surge without paying its invoke cost. Otherwise you may put it into your hand.
 >
 > 800.3.23. **PEER X**: Look at the top X cards of your deck. You may put any of them into your discard pile, then put the rest back on top of your deck in any order.
+>
+> 800.3.24. **Hit'n Run**: After conquering an objective with this unit, you may move this unit off this objective.
+>
+> 800.3.25. **Counter Attack**: This unit deals damage even while it is expended when defending an objective.
 
 ---
 
