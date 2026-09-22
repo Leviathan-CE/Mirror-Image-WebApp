@@ -579,30 +579,25 @@
   }
 }
 
-/* Lore scrollytelling — sticky stage crossfade */
+/* Lore scrollytelling — sticky stage crossfade.
+   --lore-art-y is how far down the picture the frame starts.
+   0% = the very top of the file. Raise it to start lower and crop more off the top.
+   The bottom of the art is what gets cut off. */
 .lore-scroll-frame {
+  --lore-art-y: 12%;
+  object-position: center var(--lore-art-y);
   opacity: 0;
-  transform: scale(1.04);
-  transition:
-    opacity 0.55s ease,
-    transform 0.85s ease;
-  will-change: opacity, transform;
+  transition: opacity 0.55s ease;
 }
 
 .lore-scroll-frame.is-active {
   opacity: 1;
-  transform: scale(1);
   z-index: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .lore-scroll-frame {
     transition: none;
-    transform: none;
-  }
-
-  .lore-scroll-frame.is-active {
-    transform: none;
   }
 }
 

@@ -10,7 +10,7 @@
 
 100.3. Whenever card text uses the word "this," it refers to the card that printed that text.
 
-100.4. A player wins the game when that player's `[VP]` is greater than or equal to the victory number printed on that player's pilot. Check this whenever a player gains `[VP]` (see rules 250.7 and 400.2.2.3).
+100.4. A player wins the game when that player's `[VP]` is greater than or equal to the victory number printed on that player's pilot. Check this whenever a player gains `[VP]` (see rules 250.7 and 400.2.2.4).
 
 > 100.4.1. Each pilot has its own victory number.
 >
@@ -112,7 +112,7 @@
 >
 > 250.7.1.4. Entering an objective another player still occupies does not cause Conquer until you are the only player with a unit on it.
 
-250.7.2. **Hold.** At the start of your turn (see rule 400.2.2.3), gain 1 `[VP]` per objective you control. Then check win (see rule 100.4). Objectives you do not control score 0.
+250.7.2. **Hold.** At the start of your turn, after start-of-turn abilities resolve (see rule 400.2.2.4), gain 1 `[VP]` per objective you control. Then check win (see rule 100.4). Objectives you do not control score 0.
 
 ### 250.8. Objective cards
 
@@ -156,7 +156,7 @@
 >
 > 300.2.2.1. A unit cannot attack during the turn it entered the battlefield unless it has Blitz (see rule 800.3.3). Moving onto an opponent-controlled objective is an attack (see rule 605.4), so a unit that entered this turn cannot do that unless it has Blitz.
 >
-> 300.2.2.2. A unit that entered the battlefield this turn **may** move onto an objective you **control** (see rule 605.3). It cannot move onto an empty objective that turn unless it has Blitz.
+> 300.2.2.2. A unit that entered the battlefield this turn **may** move onto an empty objective or an objective you **control** (see rules 605.2 and 605.3).
 >
 > 300.2.2.3. If a unit enters the battlefield because the last time counter was removed from it (see rule 700.4.4), it enters **as though it has Blitz**. Apply rules 300.2.2 and 300.2.2.1 as if it had Blitz (it enters readied and may attack this turn). It does not gain the Blitz keyword for other effects.
 >
@@ -186,9 +186,9 @@
 
 ### 300.3. Subtypes
 
-> 300.3.1. **Process [Cyberspell]**: Playable during your main phase while the lock is empty. Cannot attack. See rule 500.8 for full timing.
+> 300.3.1. **Process [Cyberspell]**: Playable during your main phase while the lock is empty. See rule 500.8 for full timing.
 >
-> 300.3.2. **Quick Hack [Cyberspell]**: Playable whenever a Process can be played, plus at end of turn, during an attack, while the lock holds a card, or when an opponent's effect empties the lock. Cannot attack. See rule 500.8 for full timing.
+> 300.3.2. **Quick Hack [Cyberspell]**: Playable whenever a Process can be played, plus at end of turn, during an attack, while the lock holds a card, or when an opponent's effect empties the lock. See rule 500.8 for full timing.
 
 ---
 
@@ -222,13 +222,13 @@
 
 ### 400.1. Setup
 
-> 400.1.1. This game is for 2–4 players. Each player needs a pilot, a deck, three objective cards, life tracking, `[VP]` tracking, damage dice, time-counter dice, and resource tokens.
+> 400.1.1. This game is for 2–4 players. Each player needs a pilot, a deck, three objective cards, `[VP]` tracking, damage dice, time-counter dice, and resource tokens.
 >
-> 400.1.2. Place pilot in the pilot zone; shuffle your deck; place pilot's starting resources readied in stockpile; set life and draw a starting hand per pilot values. Each player starts at 0 `[VP]`. Your victory number is the `[VP]` printed on your pilot. Keep your three objective cards face down beside your deck until they are chosen (see rule 400.1.6).
+> 400.1.2. Place pilot in the pilot zone; shuffle your deck; place pilot's starting resources readied in stockpile; draw a starting hand as printed on your pilot. Each player starts at 0 `[VP]`. Your victory number is the `[VP]` printed on your pilot. Keep your three objective cards face down beside your deck until they are chosen (see rule 400.1.6).
 >
 > 400.1.3. Determine first player randomly; that player chooses whether to go first. Turn order is clockwise from the first player.
 >
-> 400.1.4. Each player may mulligan once (first player mulligans first): put any number of hand cards on the bottom of the deck, then draw that many. There is no maximum hand size after the game begins.
+> 400.1.4. Each player may mulligan once (first player mulligans first): put any number of hand cards on the bottom of the deck, then draw that many. Your maximum hand size is the hand size printed on your pilot.
 >
 > 400.1.5. The player who takes the first turn chooses two resources in their stockpile and `[EXPEND]`s them (turn them 90° horizontal). If that player controls fewer than two resources in their stockpile, they expend all of them. Those resources remain expended during that player's first start-of-turn ready step (see rule 400.2.2.1); they ready normally on later turns. That player also skips the draw phase on their first turn (see rule 400.2.3.2).
 >
@@ -244,9 +244,9 @@
 >
 > 400.2.2.2. **Heal.** Remove 1 marked damage (not below 0) from each unit you control on the battlefield that is **not** on an objective. Units on an objective skip this step. Opponent units do not heal on your turn.
 >
-> 400.2.2.3. **Hold `[VP]`.** Gain 1 `[VP]` for each objective you control. Then check win (see rule 100.4). Objectives you do not control score 0.
+> 400.2.2.3. Trigger all abilities with the start-of-turn tag.
 >
-> 400.2.2.4. Trigger all abilities with the start-of-turn tag.
+> 400.2.2.4. **Hold `[VP]`.** Gain 1 `[VP]` for each objective you control. Then check win (see rule 100.4). Objectives you do not control score 0.
 >
 > 400.2.2.5. Remove one time counter from each card you control in play; resolve effects when the last counter is removed from a stockpile card.
 
@@ -258,7 +258,7 @@
 
 #### 400.2.4. Main phase
 
-> 400.2.4.1. You may play cards, activate abilities, make attacks, move units onto or off objectives, allocate a resource to a unit, or accumulate resources, in any order where timing allows.
+> 400.2.4.1. You may play cards, activate abilities, make attacks, move units onto or off objectives, or accumulate resources, in any order where timing allows.
 >
 > 400.2.4.2. See sections 600–605 for default game actions.
 
@@ -269,6 +269,8 @@
 > 400.2.5.2. Trigger end-of-turn abilities.
 >
 > 400.2.5.3. Lose unspent resources in your resource pool (not stockpile).
+>
+> 400.2.5.4. **Discard to hand size.** This is the last step of the end-of-turn phase. The active player discards cards from their hand until the number of cards in their hand equals the hand size printed on their pilot. If their hand is already at or below that number, they discard nothing.
 
 
 ---
@@ -325,6 +327,8 @@
 
 601.2. Put gained resources readied into stockpile; put the revealed card on the bottom of your deck.
 
+> 601.2.1. If you gained one or fewer resources this way, draw a card.
+
 601.3. This action does not use the lock.
 
 601.4. Resource tokens created this way are created immediately in the stockpile; they do not use the lock-and-resolve flow in rule 300.2.7.
@@ -379,18 +383,6 @@
 >
 > 602.8.2. If no defending unit survived, every unit that is still in play **stays on that objective**, including surviving attackers (they remain expended).
 
-### 603. Allocate a resource to a unit
-
-603.1. Allocating a resource to a unit is a default game action.
-
-603.2. Once per turn on your turn, when you could play a Process, you may allocate a resource to a unit you control.
-
-603.3. Expend the resource `[EXPEND]` and choose the unit. Each allocated resource gives that unit +1 damage value and +1 health value.
-
-603.4. This does not use the lock and resolves immediately.
-
-603.5. You cannot allocate while the lock is full.
-
 ### 604. Play a card
 
 604.1. Playing a card is a default game action.
@@ -403,7 +395,7 @@
 
 605.1. During your main phase, as a default game action: choose an objective and a unit(s) you control on the battlefield that is not on an objective and is not waiting on a time counter (this includes your pilot). Move that unit onto the objective.
 
-605.2. **Claim (empty objective).** Move the unit onto the objective. It keeps its current readied or expended state and does not expend for this move. A unit that entered the battlefield this turn cannot claim an empty objective unless it has Blitz (see rule 300.2.2.2). You control the objective after this move (see rule 250.6). Claiming an empty objective does not cause Conquer (see rule 250.7.1.2).
+605.2. **Claim (empty objective).** Move the unit onto the objective. It keeps its current readied or expended state and does not expend for this move. A unit that entered the battlefield this turn may claim an empty objective (see rule 300.2.2.2). You control the objective after this move (see rule 250.6). Claiming an empty objective does not cause Conquer (see rule 250.7.1.2).
 
 605.3. **Reinforce (you control it).** Move the unit onto the objective. It keeps its current readied or expended state and does not expend for this move. A unit that entered the battlefield this turn may reinforce (see rule 300.2.2.2). Reinforcing does not cause Conquer (see rule 250.7.1.3).
 
@@ -563,7 +555,7 @@
 >
 > 800.3.14. **Refurbished**: Dismantle cards from the discard pile to pay `[GEN]` costs on this card.
 >
-> 800.3.15. **Spirit Link**: Damage this asset deals is gained as life by its controller.
+> 800.3.15. **Spirit Link**: For every 2 damage this unit deals, heal 1 damage from this unit.
 >
 > 800.3.16. **Stalwart**: Does not expend when attacking.
 >
@@ -580,6 +572,10 @@
 > 800.3.22. **Desperate Maneuver X**: When you draw this card, you may reveal it. If you do, dismantle X and play it immediately as though it had Surge without paying its invoke cost. Otherwise you may put it into your hand.
 >
 > 800.3.23. **PEER X**: Look at the top X cards of your deck. You may put any of them into your discard pile, then put the rest back on top of your deck in any order.
+>
+> 800.3.24. **Hit'n Run**: After conquering an objective with this unit, you may move this unit off this objective.
+>
+> 800.3.25. **Counter Attack**: This unit deals damage even while it is expended when defending an objective.
 
 ---
 

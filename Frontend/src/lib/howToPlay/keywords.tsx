@@ -25,6 +25,10 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
     text: "Whenever this entity deals damage to a unit, destroy that unit.",
   },
   {
+    name: "COUNTER ATTACK",
+    text: "This unit deals damage even while it is expended when defending an objective.",
+  },
+  {
     name: "DEGRADE X",
     text: "The affected player puts the top X cards of their deck into their discard pile. When card text says a player degrades X, that player is the affected player; if no player is stated, that player is you.",
   },
@@ -40,6 +44,10 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
   //     </>
   //   ),
   //   },
+  {
+    name: "HIT'N RUN",
+    text: "After conquering an objective with this unit, you may move this unit off this objective.",
+  },
   {
     name: "PREEMPTIVE STRIKE",
     text: "When this entity deals damage in a fight, it deals damage first, unless the opposing entity also has Preemptive Strike.",
@@ -84,7 +92,7 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
   },
   {
     name: "SPIRIT LINK",
-    text: "Damage this asset deals is gained as life by its controller.",
+    text: "For every 2 damage this unit deals, heal 1 damage from this unit.",
   },
   {
     name: "STALWART",
@@ -120,6 +128,11 @@ const KEYWORD_ALIASES: Record<string, string> = {
   HARDPOINT: "HARD POINT",
   CORROSIVE_BILE: "CORROSIVE BILE",
   CORROSIVEBILE: "CORROSIVE BILE",
+  COUNTER_ATTACK: "COUNTER ATTACK",
+  COUNTERATTACK: "COUNTER ATTACK",
+  HIT_N_RUN: "HIT'N RUN",
+  "HIT N RUN": "HIT'N RUN",
+  HITNRUN: "HIT'N RUN",
   PREEMPTIVE_STRIKE: "PREEMPTIVE STRIKE",
   LONG_RANGE: "LONG RANGE",
   LONGRANGE: "LONG RANGE",

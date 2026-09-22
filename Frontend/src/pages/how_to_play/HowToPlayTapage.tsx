@@ -50,7 +50,6 @@ const SECTIONS: TocEntry[] = [
         label: "Core Actions",
         children: [
             { id: "accumulate-resources", label: "Accumulate Resources" },
-            { id: "how-to-allocate", label: "Allocate a Resource" },
             { id: "how-to-play-card", label: "How to Play a Card" },
             { id: "objectives", label: "Objectives" },
             { id: "how-to-attack", label: "How to Attack" },
@@ -392,6 +391,9 @@ export function HowToPlayPage() {
                                     <GameIcon name="vp" /> for each objective you control, then
                                     check for a win.
                                 </li>
+                                <li>
+                                    Some cards also give or take away <GameIcon name="vp"/>.
+                                </li>
                             </ul>
                             <p>
                                 See <SectionLink href="#objectives">Objectives</SectionLink> for how
@@ -426,7 +428,7 @@ export function HowToPlayPage() {
                                 <li>A pilot</li>
                                 <li>A deck of at least 40 cards, with no more than 3 copies of a named card</li>
                                 <li>Exactly three objective cards (not part of the 40-card deck)</li>
-                                <li>A way to track life totals and <GameIcon name="vp" /></li>
+                                <li>A way to track <GameIcon name="vp" /></li>
                                 <li>5 or more red damage 6-sided dice</li>
                                 <li>5 or more green time-counter 6-sided dice</li>
                                 <li>Resource and other tokens</li>
@@ -437,8 +439,8 @@ export function HowToPlayPage() {
                                 First, place your pilot in the pilot zone. Then shuffle your deck and
                                 place it in the deck zone (labeled R.I.G. on the mat). Grab the starting resource tokens
                                 noted on your pilot and place them in your stockpile readied (vertical,
-                                90 degrees). Set your life total, start at 0 <GameIcon name="vp" />, and
-                                draw a hand of cards based on your pilot&apos;s starting values.
+                                90 degrees). Start at 0 <GameIcon name="vp" />, and
+                                draw a hand of cards based on your pilot&apos;s starting hand size.
                                 Keep your three objective cards face down beside your deck until they
                                 are chosen.
                             </p>
@@ -480,8 +482,8 @@ export function HowToPlayPage() {
                                 first. To mulligan, choose any number of cards from your hand, put them
                                 on the bottom of your deck, and draw that many cards from the top
                                 of your deck. Once all players have decided, the player going
-                                first begins the first turn. Once the game starts, there is no maximum
-                                hand size.
+                                first begins the first turn. Your maximum hand size equals the hand
+                                size printed on your pilot.
                             </p>
 
                             </Subsection>
@@ -507,13 +509,13 @@ export function HowToPlayPage() {
                                             turn.
                                         </li>
                                         <li>
+                                            Trigger all abilities with the{" "}
+                                            <GameIcon name="start" /> tag.
+                                        </li>
+                                        <li>
                                             <Term>Hold <GameIcon name="vp" />.</Term> Gain 1{" "}
                                             <GameIcon name="vp" /> for each objective you control,
                                             then check for a win.
-                                        </li>
-                                        <li>
-                                            Trigger all abilities with the{" "}
-                                            <GameIcon name="start" /> tag.
                                         </li>
                                         <li>
                                             Remove a time counter from each card you control in play,
@@ -542,8 +544,8 @@ export function HowToPlayPage() {
                                 <div className="space-y-1 border-l-2 border-cyan-500/0 pl-4">
                                     <p>
                                         You may play cards, activate abilities, make attacks, move
-                                        units onto or off objectives, allocate a resource to a unit,
-                                        or accumulate resources, in any order where timing allows.
+                                        units onto or off objectives, or accumulate resources, in
+                                        any order where timing allows.
                                     </p>
                                     <p>To contest an objective, in brief:</p>
                                     <ol className="list-decimal space-y-1 pl-6">
@@ -580,7 +582,13 @@ export function HowToPlayPage() {
                                     <ol className="list-decimal space-y-1 pl-6">
                                         <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
                                         <li>Trigger any ability with the <GameIcon name="endTurn" /> tag.</li>
-                                        <li>Players Lose any unspent resources in your resource pool (not your stockpile).</li>
+                                        <li>Players lose any unspent resources in the resource pool (not the stockpile).</li>
+                                        <li>
+                                            <Term>Discard to hand size.</Term> This is the last step.
+                                            The active player discards cards until their hand equals
+                                            the hand size printed on their pilot. If the hand is
+                                            already at or below that number, discard nothing.
+                                        </li>
                                         
                                     </ol>
                                 </div>
@@ -698,9 +706,8 @@ export function HowToPlayPage() {
                                 attack during the turn it entered unless it has Blitz
                                 (see Keyword Abilities). Moving onto an opponent-controlled objective
                                 is an attack, so a unit that entered this turn cannot do that unless
-                                it has Blitz, but it{" "}
-                                <strong>may</strong> reinforce an objective you already control. It
-                                cannot claim an empty objective that turn unless it has Blitz.
+                                it has Blitz. It may move onto an empty objective or reinforce an
+                                objective you already control.
                             </p>
                             <p>
                                 <Term>PROGRAM [ Entity ]:</Term> A type of card that tends to be
@@ -745,7 +752,7 @@ export function HowToPlayPage() {
                                 <Term>PROCESS [ Cyberspell ]:</Term> This cyberspell can be played
                                 any time during your main phase. Processes represent a combination of
                                 magic and technology: complex programs or scripts that take
-                                significant time to play in battle. They cannot attack.
+                                significant time to play in battle.
                             </p>
                             <p>
                                 <Term>QUICK HACK [ Cyberspell ]:</Term> This cyberspell can be played
@@ -754,7 +761,7 @@ export function HowToPlayPage() {
                                 when an effect not controlled by you resolves and the lock becomes
                                 empty. (See Using the Lock for details.) Quick Hacks represent the
                                 fastest scripts you can play, letting you disrupt your opponent or
-                                protect yourself. They cannot attack.
+                                protect yourself.
                             </p>
                             </Subsection>
                         </Section>
@@ -765,7 +772,8 @@ export function HowToPlayPage() {
                                 You may accumulate resources only once on your turn in your main phase, To do so, choose a card in hand, reveal it, and then "gain"
                                 (grab) up to two resource tokens from its listed invoke cost
                                 (ignoring the grey numbered costs) and add them to your stockpile
-                                readied. Then put the revealed card on the bottom of your deck.
+                                readied. Then put the revealed card on the bottom of your deck. If you gained
+                                one or fewer resources this way, draw a card.
                                 This action does not use the lock.
                             </p>
 
@@ -810,25 +818,6 @@ export function HowToPlayPage() {
 
 
 
-                            </Subsection>
-
-                            <Subsection id="how-to-allocate" title="How to Allocate a Resource to a Unit">
-                            <p>
-                                You may use it once per turn on your turn, any time you could play a
-                                Process (not while the lock is full). Each resource allocated to
-                                a unit gives it +1 damage and +1 health on its Threat Level. To allocate a
-                                resource, expend it <GameIcon name="expend" /> and choose a unit you
-                                control. This action does not use the lock and resolves immediately.
-                                An example of what a unit looks like with a resource allocated to it is
-                                found below:
-                            </p>
-                            <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
-                                <img
-                                    src={howToPlayImages.ALLOCATION}
-                                    alt="Mirror Image banner"
-
-                                />
-                            </div>
                             </Subsection>
 
                             <Subsection id="how-to-play-card" title="How to Play a Card">
@@ -946,8 +935,8 @@ export function HowToPlayPage() {
                                 <Term>Scoring:</Term> <Term>Conquer</Term> when you gain control of
                                 an objective: gain 1 <GameIcon name="vp" /> immediately (claiming
                                 an empty objective does not cause Conquer). <Term>Hold</Term> at the
-                                start of your turn: gain 1 <GameIcon name="vp" /> per objective
-                                you control. See{" "}
+                                start of your turn, after start-of-turn abilities: gain 1{" "}
+                                <GameIcon name="vp" /> per objective you control. See{" "}
                                 <SectionLink href="#how-to-win">How to Win</SectionLink>.
                             </p>
                             <p className="font-semibold text-cyan-200">Moving onto an objective</p>
@@ -960,7 +949,7 @@ export function HowToPlayPage() {
                                 <li>
                                     <Term>Claim (empty)</Term>: Move without expending. You control
                                     it afterward; this does not cause Conquer. A unit that entered
-                                    this turn cannot claim an empty objective unless it has Blitz.
+                                    this turn may claim an empty objective.
                                 </li>
                                 <li>
                                     <Term>Reinforce (you control it)</Term>: Move without expending.
