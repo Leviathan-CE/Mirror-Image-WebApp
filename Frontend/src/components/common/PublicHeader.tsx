@@ -49,7 +49,12 @@ export function PublicHeader() {
           >
             LORE
           </Button>
-          <Button className={navButtonClassName}>UPDATES</Button>
+          <Button
+            className={navButtonClassName}
+            onClick={() => navigate(ROUTES.UPDATES)}
+          >
+            UPDATES
+          </Button>
         </>
       }
       actions={

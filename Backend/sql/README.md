@@ -18,6 +18,7 @@ They define the full current schema. New deploys do not need migrations.
 | 10 | `10_seed_dev_decks.sql` | Dev sample decks (local only) |
 | 14 | `14_analytics.sql` | Daily + hourly activity counters for admin analytics |
 | 15 | `15_site_settings.sql` | Admin site flags (coming soon splash) |
+| 16 | `16_announcements.sql` | Public announcement board + reusable media library |
 
 Default deck section names (`Main`, `Side`, `Maybe`, `Extra`) are seeded by
 the API when a deck is created (`app/deck_defaults.py`), not by SQL.
@@ -25,7 +26,7 @@ the API when a deck is created (`app/deck_defaults.py`), not by SQL.
 ### Existing volumes
 
 Use `migrations/` only for patches added **after** the current init
-baseline (today that is `34_users_developer_role.sql`). Do not wipe
+baseline (today that is `35_announcements.sql`). Do not wipe
 the volume (`down -v`) to pick those up.
 
 ```bash

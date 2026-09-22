@@ -56,6 +56,12 @@ export function AdminHeader() {
             </Button>
           ) : null}
           <Button
+            className={adminNavClass(pathname.startsWith(ROUTES.ADMIN_UPDATES))}
+            onClick={() => navigate(ROUTES.ADMIN_UPDATES)}
+          >
+            UPDATES
+          </Button>
+          <Button
             className={navButtonClassName}
             onClick={() => navigate(ROUTES.MAIN)}
           >

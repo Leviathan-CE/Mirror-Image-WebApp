@@ -41,6 +41,12 @@ export function Userheader() {
           >
             LORE
           </Button>
+          <Button
+            className={navButtonClassName}
+            onClick={() => navigate(ROUTES.UPDATES)}
+          >
+            UPDATES
+          </Button>
           {isAdmin ? (
             <Button
               className={navButtonClassName}
