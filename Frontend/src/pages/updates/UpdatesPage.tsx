@@ -2,7 +2,7 @@
  * Public announcement board — expand a card to read the full post.
  */
 
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 
 import { sharedImages } from "@/assets"
 import { AnnouncementBody } from "@/components/updates/AnnouncementBody"
@@ -32,18 +32,22 @@ export function UpdatesPage() {
   const [openSlug, setOpenSlug] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    try {
-      setPosts(await fetchPublishedAnnouncements())
-      setError(null)
-    } catch {
-      setError("Could not load updates.")
+  useEffect(() => {
+    let cancelled = false
+    fetchPublishedAnnouncements()
+      .then((data) => {
+        if (cancelled) return
+        setPosts(data)
+        setError(null)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setError("Could not load updates.")
+      })
+    return () => {
+      cancelled = true
     }
   }, [])
-
-  useEffect(() => {
-    void load()
-  }, [load])
 
   return (
     <section

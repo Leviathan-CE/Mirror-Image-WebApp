@@ -84,8 +84,21 @@ export function markdownImageToken(
   id: number,
   alt: string
 ): string {
-  const safeAlt = alt.replace(/[\[\]]/g, "")
+  const safeAlt = alt.replaceAll("[", "").replaceAll("]", "")
   return `![${safeAlt}](${imageRefToken(kind, id)})`
+}
+
+/** Drop C0 controls (same set as backend `_NULL_RE`), keep tab/newline/CR. */
+function stripControlChars(text: string): string {
+  let out = ""
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i)
+    if (code <= 8) continue
+    if (code === 0x0b || code === 0x0c) continue
+    if (code >= 0x0e && code <= 0x1f) continue
+    out += text[i]
+  }
+  return out
 }
 
 /**
@@ -101,9 +114,8 @@ export function sanitizeAnnouncementMarkdown(
   const inlineCode = /`[^`]*`/g
   const image = /!\[([^\]]*)\]\(([^)]+)\)/g
   const link = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g
-  const nul = /[\x00-\x08\x0b\x0c\x0e-\x1f]/g
 
-  let cleaned = text.replace(nul, "")
+  let cleaned = stripControlChars(text)
   cleaned = cleaned.replace(htmlTag, "")
   cleaned = cleaned.replace(fence, "")
   cleaned = cleaned.replace(inlineCode, "")

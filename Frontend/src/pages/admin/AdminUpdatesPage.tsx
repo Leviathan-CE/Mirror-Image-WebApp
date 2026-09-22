@@ -114,8 +114,24 @@ export function AdminUpdatesPage() {
   }, [token])
 
   useEffect(() => {
-    void load()
-  }, [load])
+    if (!token) return
+    let cancelled = false
+    fetchAdminAnnouncements(token)
+      .then((data) => {
+        if (cancelled) return
+        setPosts(data)
+        setError(null)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setError(
+          "Could not load announcements. Run migrate 35 if the table is missing."
+        )
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [token])
 
   function startNew() {
     setEditingId(null)
