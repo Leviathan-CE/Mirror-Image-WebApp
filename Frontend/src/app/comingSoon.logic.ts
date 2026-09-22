@@ -27,6 +27,5 @@ export function comingSoonBlocksVisitor(args: {
   if (pathIs(path, ROUTES.VERIFY_EMAIL)) return false
   if (pathIs(path, ROUTES.ACCEPT_INVITE)) return false
   if (pathIs(path, ROUTES.ADMIN)) return false
-  if (pathIs(path, ROUTES.UPDATES)) return false
   return true
 }

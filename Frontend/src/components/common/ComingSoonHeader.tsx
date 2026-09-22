@@ -17,14 +17,7 @@ export function ComingSoonHeader() {
   return (
     <HeaderShell
       brandTo={ROUTES.HOME}
-      nav={
-        <Button
-          className={navButtonClassName}
-          onClick={() => navigate(ROUTES.UPDATES)}
-        >
-          UPDATES
-        </Button>
-      }
+      nav={null}
       actions={
         isAuthenticated ? (
           <Button className={navButtonClassName} onClick={clearSession}>

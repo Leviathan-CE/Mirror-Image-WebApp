@@ -50,13 +50,6 @@ export function ComingSoonPage() {
           console.
         </p>
         <div className="flex flex-wrap gap-3 pt-2">
-          <GlitchFx
-            label="UPDATES"
-            size="lg"
-            variant="outline"
-            className={loginCtaClass}
-            onClick={() => navigate(ROUTES.UPDATES)}
-          />
           {isAuthenticated ? (
             <GlitchFx
               label="SIGN OUT"

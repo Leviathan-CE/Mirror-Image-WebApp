@@ -41,16 +41,6 @@ describe("comingSoonBlocksVisitor", () => {
     ).toBe(false)
   })
 
-  it("keeps the public updates board readable", () => {
-    expect(
-      comingSoonBlocksVisitor({
-        comingSoon: true,
-        role: null,
-        pathname: ROUTES.UPDATES,
-      })
-    ).toBe(false)
-  })
-
   it("keeps login and admin console reachable for staff", () => {
     expect(
       comingSoonBlocksVisitor({
@@ -95,6 +85,13 @@ describe("comingSoonBlocksVisitor", () => {
         comingSoon: true,
         role: "user",
         pathname: ROUTES.REGISTER,
+      })
+    ).toBe(true)
+    expect(
+      comingSoonBlocksVisitor({
+        comingSoon: true,
+        role: null,
+        pathname: ROUTES.UPDATES,
       })
     ).toBe(true)
   })
