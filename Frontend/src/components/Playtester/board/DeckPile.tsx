@@ -20,6 +20,10 @@ import { CardEnlargeOverlay } from "@/components/Playtester/board/CardLargeOverl
 import { elementCssPaintScale } from "@/components/Playtester/board/playFieldScale.logic"
 import { scalePlayPile } from "@/components/Playtester/board/playPileScale.logic"
 import type { PlayPileSize } from "@/components/Playtester/constants"
+import {
+  beginHandDropCue,
+  endHandDropCue,
+} from "@/components/Playtester/drag/handDropCue"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { useLatestRef } from "@/hooks/useLatestRef"
 import { cardArtUrl } from "@/lib/api/decks"
@@ -66,6 +70,8 @@ export type DeckPileProps = {
   lift?: boolean
   /** Local hover changed — parent may relay over the net. */
   onHoverChange?: (hovered: boolean) => void
+  /** Light the empty-hand landing zone once the top card's drag picks up. */
+  cueHandDrop?: boolean
 }
 
 const FLIP_MS = 450
@@ -176,6 +182,7 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
       scale = 1,
       lift = false,
       onHoverChange,
+      cueHandDrop = false,
     },
     ref
   ) {
@@ -192,6 +199,14 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
     const onReleaseRef = useLatestRef(onTopCardRelease)
     const onClickRef = useLatestRef(onClickDraw)
     const onHoverChangeRef = useLatestRef(onHoverChange)
+    const cueHandDropRef = useLatestRef(cueHandDrop)
+
+    useEffect(() => {
+      return () => {
+        if (!dragRef.current?.moved) return
+        endHandDropCue()
+      }
+    }, [])
 
     const interactive = !busy && count > 0
     const showLift = (lift || hovered) && !drag?.moved && count > 0
@@ -211,6 +226,7 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
           event.clientY - current.startY
         )
         if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
+        if (!current.moved && cueHandDropRef.current) beginHandDropCue()
         const paint = elementCssPaintScale(measureRef.current)
         const next: TopDrag = {
           ...current,
@@ -229,7 +245,9 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
       function onUp(event: PointerEvent) {
         const current = dragRef.current
         if (!current || current.pointerId !== event.pointerId) return
+        const pickedUp = current.moved && cueHandDropRef.current
         dragRef.current = null
+        if (pickedUp) endHandDropCue()
         setDrag(null)
         setHovered(false)
         onHoverChangeRef.current?.(false)
@@ -250,7 +268,7 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
         window.removeEventListener("pointerup", onUp, true)
         window.removeEventListener("pointercancel", onUp, true)
       }
-    }, [drag])
+    }, [drag, cueHandDropRef])
 
     // Hold middle-mouse to peek (same as hand / trash / free-float).
     useEffect(() => {

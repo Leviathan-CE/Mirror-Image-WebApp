@@ -21,6 +21,10 @@ import { createPortal } from "react-dom"
 import { CardEnlargeOverlay } from "@/components/Playtester/board/CardLargeOverlay"
 import { PlayingCard } from "@/components/Playtester/board/PlayingCard"
 import {
+  beginHandDropCue,
+  endHandDropCue,
+} from "@/components/Playtester/drag/handDropCue"
+import {
   filterLibraryByName,
   groupCardsByPrinting,
   type CardPrintingGroup,
@@ -156,14 +160,21 @@ export function DeckSearchModal({
   const groups = useMemo(() => groupCardsByPrinting(visible), [visible])
 
   useEffect(() => {
-    if (!open) {
-      setQuery("")
-      setDrag(null)
-      dragRef.current = null
-      setEnlarged(null)
-      setSelectedIds([])
-    }
+    if (open) return
+    if (dragRef.current?.moved) endHandDropCue()
+    setQuery("")
+    setDrag(null)
+    dragRef.current = null
+    setEnlarged(null)
+    setSelectedIds([])
   }, [open])
+
+  useEffect(() => {
+    return () => {
+      if (!dragRef.current?.moved) return
+      endHandDropCue()
+    }
+  }, [])
 
   useEffect(() => {
     if (isPile) writeStoredFaceUpPileBrowserBox(box)
@@ -215,6 +226,7 @@ export function DeckSearchModal({
         event.clientY - current.startY
       )
       if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
+      if (!current.moved) beginHandDropCue()
       const next: DragState = {
         ...current,
         moved: true,
@@ -228,7 +240,9 @@ export function DeckSearchModal({
     function onUp(event: PointerEvent) {
       const current = dragRef.current
       if (!current || current.pointerId !== event.pointerId) return
+      const pickedUp = current.moved
       dragRef.current = null
+      if (pickedUp) endHandDropCue()
       setDrag(null)
       if (!current.moved) return
       onCardRelease(current.groupIds, event.clientX, event.clientY)

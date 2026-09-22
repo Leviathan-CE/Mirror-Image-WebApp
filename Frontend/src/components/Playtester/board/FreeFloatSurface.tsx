@@ -25,6 +25,10 @@ import { createPortal } from "react-dom"
 
 import { LOCAL_SEAT, type PlayerSlot } from "@/components/Playtester/constants"
 import {
+  beginHandDropCue,
+  endHandDropCue,
+} from "@/components/Playtester/drag/handDropCue"
+import {
   cardIsPaintSelected,
   selectionRingClass,
 } from "@/components/Playtester/board/selectionChrome"
@@ -312,6 +316,7 @@ export function FreeFloatSurface({
   // Tear down any leftover window listeners on unmount.
   useEffect(() => {
     return () => {
+      if (dragRef.current?.moved) endHandDropCue()
       detachWindowDrag()
       detachWindowMarquee()
       dragRef.current = null
@@ -517,6 +522,7 @@ export function FreeFloatSurface({
         moveEvent.clientY - current.startY
       )
       if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
+      if (!current.moved) beginHandDropCue()
 
       const paint = surfacePaintScale()
       const updated: DragState = {
@@ -534,6 +540,9 @@ export function FreeFloatSurface({
     function onUp(upEvent: PointerEvent) {
       const current = dragRef.current
       if (!current || current.pointerId !== upEvent.pointerId) return
+      const pickedUp = current.moved
+      dragRef.current = null
+      if (pickedUp) endHandDropCue()
       detachWindowDrag()
 
       const clientX = upEvent.clientX

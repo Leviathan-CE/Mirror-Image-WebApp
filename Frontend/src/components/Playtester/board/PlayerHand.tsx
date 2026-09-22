@@ -713,6 +713,7 @@ export function PlayerHand({
                   key={card.instanceId}
                   className={cn(
                     "relative shrink-0 touch-none",
+                    interactive && "pointer-events-auto",
                     cropToSliver && "overflow-hidden",
                     peek ? null : "transition-transform duration-150",
                     isDragging
@@ -743,6 +744,7 @@ export function PlayerHand({
                     onCardPointerDown(event, card)
                   }}
                   onPointerEnter={() => {
+                    openPeek()
                     reportHoverIndex(index)
                   }}
                   onPointerLeave={() => {
@@ -818,7 +820,7 @@ export function PlayerHand({
               ref={peekPortalRef}
               className={cn(
                 "fixed z-[70] overflow-hidden transition-[top,height] duration-150 ease-out",
-                stickOut && "pointer-events-none"
+                (!interactive || !peekRaised) && "pointer-events-none"
               )}
               style={{
                 left: peekPortalStyle.left,
