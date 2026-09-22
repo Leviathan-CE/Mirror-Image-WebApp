@@ -23,10 +23,14 @@ export const ROUTES = {
   /** Logged-in account UI prefs. */
   ACCOUNT: "/account",
 
+  /** Public announcement board. */
+  UPDATES: "/updates",
+
   /** Staff console (admin + developer). Users page is admin-only. */
   ADMIN: "/admin",
   ADMIN_CARDS: "/admin/cards",
   ADMIN_USERS: "/admin/users",
+  ADMIN_UPDATES: "/admin/updates",
 
   /** Build a deck detail URL — never navigate to bare "/decks". */
   deck: (deckId: string | number) => `/decks/${deckId}` as const,

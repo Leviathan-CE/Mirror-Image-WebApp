@@ -19,6 +19,8 @@ import { LorePage } from "@/pages/lore/LorePage"
 import { AdminAnalyticsPage } from "@/pages/admin/AdminAnalyticsPage"
 import { AdminCardsPage } from "@/pages/admin/AdminCardsPage"
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage"
+import { AdminUpdatesPage } from "@/pages/admin/AdminUpdatesPage"
+import { UpdatesPage } from "@/pages/updates/UpdatesPage"
 import { SubscribePage } from "@/pages/billing/SubscribePage"
 import { AccountSettingsPage } from "@/pages/account/AccountSettingsPage"
 import { ComunityDecksPage } from "@/pages/decks/ComunityDecksPage"
@@ -48,6 +50,7 @@ export function AppShell() {
             <Route path={ROUTES.DECK_PATTERN} element={<DeckPage />} />
             <Route path={ROUTES.HOW_TO_PLAY} element={<HowToPlayPage />} />
             <Route path={ROUTES.LORE} element={<LorePage />} />
+            <Route path={ROUTES.UPDATES} element={<UpdatesPage />} />
             <Route path={ROUTES.LOGIN} element={<LoginPage />} />
             <Route path={ROUTES.REGISTER} element={<CreateAccountPage />} />
             <Route path={ROUTES.VERIFY_EMAIL} element={<VerifyEmailPage />} />
@@ -106,6 +109,14 @@ export function AppShell() {
                 <RequireAdmin>
                   <AdminUsersPage />
                 </RequireAdmin>
+              }
+            />
+            <Route
+              path={ROUTES.ADMIN_UPDATES}
+              element={
+                <RequireStaff>
+                  <AdminUpdatesPage />
+                </RequireStaff>
               }
             />
           </Routes>
