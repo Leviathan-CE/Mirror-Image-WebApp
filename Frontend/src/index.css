@@ -586,29 +586,18 @@
 .lore-scroll-frame {
   --lore-art-y: 12%;
   object-position: center var(--lore-art-y);
-  transform-origin: center top;
   opacity: 0;
-  transform: scale(1.04);
-  transition:
-    opacity 0.55s ease,
-    transform 0.85s ease;
-  will-change: opacity, transform;
+  transition: opacity 0.55s ease;
 }
 
 .lore-scroll-frame.is-active {
   opacity: 1;
-  transform: scale(1);
   z-index: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .lore-scroll-frame {
     transition: none;
-    transform: none;
-  }
-
-  .lore-scroll-frame.is-active {
-    transform: none;
   }
 }
 
