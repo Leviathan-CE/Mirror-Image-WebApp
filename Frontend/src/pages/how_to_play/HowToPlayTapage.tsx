@@ -426,7 +426,7 @@ export function HowToPlayPage() {
                             </p>
                             <ul className="list-disc space-y-1 pl-6">
                                 <li>A pilot</li>
-                                <li>A deck of at least 40 cards, with no more than 3 copies of a named card</li>
+                                <li>A deck of 40 to 100 cards, with no more than 3 copies of a named card</li>
                                 <li>Exactly three objective cards (not part of the 40-card deck)</li>
                                 <li>A way to track <GameIcon name="vp" /></li>
                                 <li>5 or more red damage 6-sided dice</li>
@@ -1400,12 +1400,13 @@ export function HowToPlayPage() {
                                 Your deck holds the entity and cyberspell cards you bring to battle.
                                 On the playmat it is labeled <Term>R.I.G.</Term> (Regressive Integrated Gear).
                                 You also bring one pilot and exactly three objective cards. Your deck must have at
-                                least 40 cards; the pilot and objective cards do not count toward that minimum.
+                                least 40 and no more than 100 cards; the pilot and objective cards do not count
+                                toward that minimum or that maximum.
                             </p>
                             <p>When building a deck, keep these rules in mind:</p>
                             <ol className="list-decimal space-y-2 pl-6">
                                 <li>You must include exactly one pilot. The pilot is not part of the 40-card minimum.</li>
-                                <li>Your deck must have at least 40 entity and cyberspell cards.</li>
+                                <li>Your deck must have at least 40 and no more than 100 entity and cyberspell cards.</li>
                                 <li>Any non-pilot card may have up to three copies with the same name in your deck.</li>
                                 <li>Any card with the Prototype supertype is limited to a single copy in your deck.</li>
                                 <li>
