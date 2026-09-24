@@ -1,8 +1,14 @@
 """Self-serve and admin account purge.
 
-Stripe is cancelled before any row is removed. Decks linked only to this
-user are deleted; shared decks keep other owners. Then the user row goes,
-and FK CASCADE clears grants, tokens, oauth, and user_has_decks.
+Decks linked only to this user are deleted, then the user row goes (FK
+CASCADE clears grants, tokens, oauth, and user_has_decks) — all inside the
+caller's uncommitted transaction. Stripe is cancelled last, only once those
+deletes have gone through cleanly: Stripe cancellation cannot be rolled
+back, so it must not run until nothing local can still fail and abort the
+transaction. If it *did* run first and a later DB statement raised, the
+transaction still rolls back (nothing commits without an explicit
+``conn.commit()``) — but the subscription would already be gone forever,
+leaving the user with a cancelled subscription and an undeleted account.
 """
 
 from __future__ import annotations
@@ -138,8 +144,8 @@ def purge_account(
     if role == "admin" and _count_active_admins(cur) <= 1:
         raise AccountDeleteError("cannot_remove_last_admin")
 
+    delete_owned_decks(cur, user_id=user_id)
+    delete_user_row(cur, user_id=user_id)
     cancel_stripe_for_user(
         customer_id=customer_id, subscription_id=subscription_id
     )
-    delete_owned_decks(cur, user_id=user_id)
-    delete_user_row(cur, user_id=user_id)
