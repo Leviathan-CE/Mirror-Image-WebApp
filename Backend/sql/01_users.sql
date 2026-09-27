@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS users (
     CONSTRAINT users_password_not_blank CHECK (
         password IS NULL OR length(trim(password)) > 0
     ),
-    CONSTRAINT users_role_allowed CHECK (role IN ('user', 'admin', 'distributor', 'developer')),
+    CONSTRAINT users_role_allowed CHECK (role IN ('user', 'admin', 'distributor', 'developer','play_tester')),
     CONSTRAINT users_subscription_status_allowed CHECK (
         subscription_status IN (
             'none',

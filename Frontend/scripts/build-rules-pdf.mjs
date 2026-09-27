@@ -15,6 +15,7 @@ const FRONTEND_ROOT = join(__dirname, "..")
 const RULES_MD = join(FRONTEND_ROOT, "public/docs/Rules.md")
 const RULES_PDF = join(FRONTEND_ROOT, "public/docs/Rules.pdf")
 const ICONS_DIR = join(FRONTEND_ROOT, "public/images/icons")
+const KEYWORDS_DIR = join(FRONTEND_ROOT, "public/images/keywords")
 const STYLESHEET = join(__dirname, "rules-pdf.css")
 
 /** @type {Record<string, { file: string; shape?: "tag" | "token" }>} */
@@ -70,8 +71,8 @@ const PLACEHOLDER_TO_ICON = {
   "ENTERS STOCKPILE": { file: "keywords/stockpile.png", shape: "tag" },
   ATTACK: { file: "keywords/attack trigger.png", shape: "tag" },
   "ON ATTACK": { file: "keywords/attack trigger.png", shape: "tag" },
-  START: { file: "keywords/START.png", shape: "tag" },
-  "START OF TURN": { file: "keywords/START.png", shape: "tag" },
+  START: { file: "keywords/start.png", shape: "tag" },
+  "START OF TURN": { file: "keywords/start.png", shape: "tag" },
   "END TURN": { file: "keywords/end of turn.png", shape: "tag" },
   "END OF TURN": { file: "keywords/end of turn.png", shape: "tag" },
   INVOKE: { file: "keywords/invoke.png", shape: "tag" },
@@ -94,7 +95,10 @@ function iconImgHtml(tag) {
     return null
   }
 
-  const absPath = join(ICONS_DIR, icon.file)
+  const absPath =
+    icon.shape === "tag"
+      ? join(KEYWORDS_DIR, icon.file.replace(/^keywords\//, ""))
+      : join(ICONS_DIR, icon.file)
   const ext = icon.file.split(".").pop()?.toLowerCase() ?? "png"
   const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : "image/png"
   const base64 = readFileSync(absPath).toString("base64")

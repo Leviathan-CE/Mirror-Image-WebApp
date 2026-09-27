@@ -6,7 +6,7 @@
  * Everyone else gets the splash.
  */
 
-import { isStaffRole, ROUTES } from "@/lib/route"
+import { isPlayTesterRole, isStaffRole, ROUTES } from "@/lib/route"
 
 function pathIs(pathname: string, route: string): boolean {
   return pathname === route || pathname.startsWith(`${route}/`)
@@ -19,6 +19,7 @@ export function comingSoonBlocksVisitor(args: {
 }): boolean {
   if (!args.comingSoon) return false
   if (isStaffRole(args.role)) return false
+  if(isPlayTesterRole(args.role)) return false
 
   const path = args.pathname
   if (pathIs(path, ROUTES.LOGIN)) return false

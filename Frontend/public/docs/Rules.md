@@ -581,13 +581,13 @@
 
 ## 900. Deck Building
 
-900.1. A legal deck has at least 40 entity and cyberspell cards, exactly one pilot, and exactly three objective cards. The pilot and objective cards do not count toward the 40-card minimum.
+900.1. A legal deck has at least 40 and at most 100 entity and cyberspell cards, exactly one pilot, and exactly three objective cards. The pilot and objective cards do not count toward the 40-card minimum or the 100-card maximum.
 
 ### 900.2. Deck rules
 
 > 900.2.1. One pilot only.
 >
-> 900.2.2. At least 40 cards in the deck (entity and cyberspell cards only).
+> 900.2.2. At least 40 and at most 100 cards in the deck (entity and cyberspell cards only).
 >
 > 900.2.3. Up to three copies per named card.
 >

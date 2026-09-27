@@ -4,7 +4,7 @@
 
 import { apiBaseUrl, authHeaders, readJsonOrThrow } from "@/lib/api/client"
 
-export type UserRole = "user" | "admin" | "distributor" | "developer"
+export type UserRole = "user" | "admin" | "distributor" | "developer" | "play_tester"
 
 export type FeatureCatalogItem = {
   key: string

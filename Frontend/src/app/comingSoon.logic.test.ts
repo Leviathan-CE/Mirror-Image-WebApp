@@ -65,6 +65,30 @@ describe("comingSoonBlocksVisitor", () => {
     ).toBe(false)
   })
 
+  it("lets playtesters through and still blocks plain users", () => {
+    expect(
+      comingSoonBlocksVisitor({
+        comingSoon: true,
+        role: "play_tester",
+        pathname: ROUTES.HOME,
+      })
+    ).toBe(false)
+    expect(
+      comingSoonBlocksVisitor({
+        comingSoon: true,
+        role: "play_tester",
+        pathname: ROUTES.MAIN,
+      })
+    ).toBe(false)
+    expect(
+      comingSoonBlocksVisitor({
+        comingSoon: true,
+        role: "user",
+        pathname: ROUTES.HOME,
+      })
+    ).toBe(true)
+  })
+
   it("blocks the public app for guests and plain users", () => {
     expect(
       comingSoonBlocksVisitor({

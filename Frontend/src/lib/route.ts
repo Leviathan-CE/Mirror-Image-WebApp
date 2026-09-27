@@ -46,6 +46,7 @@ export const ROUTES = {
 
 export const ADMIN_ROLE = "admin" as const
 export const DEVELOPER_ROLE = "developer" as const
+export const PLAYTESTER_ROLE = "play_tester" as const
 
 export function isAdminRole(role: string | null | undefined): boolean {
   return role === ADMIN_ROLE
@@ -53,4 +54,8 @@ export function isAdminRole(role: string | null | undefined): boolean {
 
 export function isStaffRole(role: string | null | undefined): boolean {
   return role === ADMIN_ROLE || role === DEVELOPER_ROLE
+}
+
+export function isPlayTesterRole(role:string|null|undefined):boolean{
+  return role == PLAYTESTER_ROLE
 }

@@ -6,9 +6,9 @@ ROLE_USER = "user"
 ROLE_ADMIN = "admin"
 ROLE_DISTRIBUTOR = "distributor"
 ROLE_DEVELOPER = "developer"
-
+ROLE_PLAYTESTER = "play_tester"
 ALLOWED_ROLES = frozenset(
-    {ROLE_USER, ROLE_ADMIN, ROLE_DISTRIBUTOR, ROLE_DEVELOPER}
+    {ROLE_USER, ROLE_ADMIN, ROLE_DISTRIBUTOR, ROLE_DEVELOPER, ROLE_PLAYTESTER}
 )
 
 # Console + card upload + catalogue bypass. Not user management.
@@ -25,3 +25,6 @@ def is_staff_role(role: str | None) -> bool:
 
 def is_allowed_role(role: str | None) -> bool:
     return role in ALLOWED_ROLES
+
+def is_playtester_role(role: str | None) -> bool:
+    return role == ROLE_PLAYTESTER
