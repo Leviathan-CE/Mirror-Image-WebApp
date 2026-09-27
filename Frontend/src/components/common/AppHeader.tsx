@@ -14,7 +14,7 @@ import { AdminHeader } from "@/components/common/AdminHeader"
 import { ComingSoonHeader } from "@/components/common/ComingSoonHeader"
 import { PublicHeader } from "@/components/common/PublicHeader"
 import { Userheader } from "@/components/common/UserHeader"
-import { isStaffRole, ROUTES } from "@/lib/route"
+import { isPlayTesterRole, isStaffRole, ROUTES } from "@/lib/route"
 
 export function AppHeader() {
   const { isAuthenticated, user } = useAuth()
@@ -22,6 +22,8 @@ export function AppHeader() {
   const { pathname } = useLocation()
 
   const isAdmin = isStaffRole(user?.role)
+  const isPlaytester = isPlayTesterRole(user?.role)
+  const skipSplash = isAdmin || isPlaytester
   const playTesterPath =
     pathname === ROUTES.PLAY_TESTER ||
     pathname.startsWith(`${ROUTES.PLAY_TESTER}/`)
@@ -31,9 +33,10 @@ export function AppHeader() {
     return null
   }
 
-  if (comingSoon && !isAdmin) {
+  if (comingSoon && !skipSplash) {
     return <ComingSoonHeader />
   }
+
 
   const onAdminRoute = pathname.startsWith(ROUTES.ADMIN)
 
