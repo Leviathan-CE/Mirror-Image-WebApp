@@ -17,22 +17,19 @@ const sampleUser: AuthUser = {
 const clearSession = vi.fn()
 
 const useAuthMock = vi.fn()
+const useComingSoonMock = vi.fn()
 
 vi.mock("@/app/providers/AuthProvider", () => ({
   useAuth: () => useAuthMock(),
 }))
 
 vi.mock("@/app/providers/ComingSoonProvider", () => ({
-  useComingSoon: () => ({
-    comingSoon: false,
-    ready: true,
-    setComingSoonEnabled: vi.fn(),
-  }),
+  useComingSoon: () => useComingSoonMock(),
 }))
 
-function renderAppHeader() {
+function renderAppHeader(initialPath = "/") {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialPath]}>
       <AppHeader />
     </MemoryRouter>
   )
@@ -42,6 +39,12 @@ describe("AppHeader", () => {
   beforeEach(() => {
     clearSession.mockReset()
     useAuthMock.mockReset()
+    useComingSoonMock.mockReset()
+    useComingSoonMock.mockReturnValue({
+      comingSoon: false,
+      ready: true,
+      setComingSoonEnabled: vi.fn(),
+    })
   })
 
   afterEach(() => {
@@ -110,5 +113,59 @@ describe("AppHeader", () => {
     expect(
       screen.getByRole("menuitem", { name: "Subscribe" })
     ).toBeInTheDocument()
+  })
+
+  it("hides all chrome on the play-tester table for a playtester while coming-soon is on", () => {
+    useComingSoonMock.mockReturnValue({
+      comingSoon: true,
+      ready: true,
+      setComingSoonEnabled: vi.fn(),
+    })
+    useAuthMock.mockReturnValue({
+      user: { ...sampleUser, role: "play_tester" },
+      token: "test-token",
+      isAuthenticated: true,
+      setSession: vi.fn(),
+      clearSession,
+    })
+
+    const { container } = renderAppHeader("/play_tester/42")
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it("hides all chrome on the play-tester table for an admin while coming-soon is on", () => {
+    useComingSoonMock.mockReturnValue({
+      comingSoon: true,
+      ready: true,
+      setComingSoonEnabled: vi.fn(),
+    })
+    useAuthMock.mockReturnValue({
+      user: { ...sampleUser, role: "admin" },
+      token: "test-token",
+      isAuthenticated: true,
+      setSession: vi.fn(),
+      clearSession,
+    })
+
+    const { container } = renderAppHeader("/play_tester/42")
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it("still shows the coming-soon splash header for a plain user off the play-tester table", () => {
+    useComingSoonMock.mockReturnValue({
+      comingSoon: true,
+      ready: true,
+      setComingSoonEnabled: vi.fn(),
+    })
+    useAuthMock.mockReturnValue({
+      user: sampleUser,
+      token: "test-token",
+      isAuthenticated: true,
+      setSession: vi.fn(),
+      clearSession,
+    })
+
+    renderAppHeader("/")
+    expect(screen.getByRole("button", { name: "SIGN OUT" })).toBeInTheDocument()
   })
 })
