@@ -39,7 +39,6 @@ import {
   HAND_CARD_SIZE,
   HAND_DOCK_HEIGHT_PX,
   HAND_DOCK_EXPANDED_PX,
-  PLAY_PILE_SIZE,
   SELECTABLE_ACTION_ZONES,
   PLAYER_SLOT,
   otherSeat,
@@ -53,6 +52,10 @@ import {
   clientToLogicalField,
   type FieldSize,
 } from "@/components/Playtester/board/playFieldScale.logic"
+import {
+  scalePlayPile,
+  soloPlayPileScale,
+} from "@/components/Playtester/board/playPileScale.logic"
 import { viewFor } from "@/components/Playtester/session/fogView.logic"
 import { intentAllowed, type PlayFx } from "@/components/Playtester/net/playNet.logic"
 import {
@@ -144,7 +147,8 @@ export function PlayTesterPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const deckId = Number(deckIdParam)
   const vsDeckId = Number(vsDeckIdParam)
-  const [joinDraft, setJoinDraft] = useState(searchParams.get("room") ?? "")
+  // P2P join field hidden with the room menu.
+  // const [joinDraft, setJoinDraft] = useState(searchParams.get("room") ?? "")
 
   const playNet = usePlayNet({ token, localDeckId: deckId })
   const netActive = playNet.status !== "idle"
@@ -252,8 +256,9 @@ export function PlayTesterPage() {
    * - In a room: fixed `PLAY_FIELD_LOGICAL` so both seats share coords; fit
    *   scale letterboxes into the host (capped at 1× so nobody paints larger
    *   than the design).
-   * - Local solo: canvas = measured host at scale 1 — fills the space, no
-   *   artificial design ceiling.
+   * - Local solo: the page is pinned to the viewport. Pile faces and
+   *   battlefield cards share one scale so a phone fits the column instead
+   *   of clipping it. A large host stays at 1.
    */
   const [boardScale, setBoardScale] = useState(1)
   const [boardScreen, setBoardScreen] = useState<FieldSize>({
@@ -417,11 +422,14 @@ export function PlayTesterPage() {
   }
 
   useEffect(() => {
+    // P2P auto-join is hidden with the room menu. Uncomment the body to restore.
+    /*
     const room = searchParams.get("room")
     if (!room || !token || playNet.status !== "idle") return
     if (playNet.isHost || playNet.code) return
     if (!playNet.allowAutoJoin()) return
     playNet.joinRoom(room)
+    */
   }, [
     searchParams,
     token,
@@ -695,9 +703,11 @@ export function PlayTesterPage() {
   const visPilot = pilotCards.filter((c) => !flyingHide.has(c.instanceId))
   const visOppPilot = oppPilotCards.filter((c) => !flyingHide.has(c.instanceId))
 
-  const pileW = PLAY_PILE_SIZE.lg.w
   const handDockPx = HAND_DOCK_HEIGHT_PX
-  const pilotColW = pileW
+  const soloPileScale = soloPlayPileScale(
+    measuredFloatSize.width,
+    measuredFloatSize.height
+  )
   const peerBrowseLabel = peerBrowseStatusLabel(peerBrowse)
   const peerBrowsePile = peerBrowseOppPile(peerBrowse)
   const boardLayoutW = boardScreen.width * boardScale
@@ -1162,6 +1172,8 @@ export function PlayTesterPage() {
     navigate(ROUTES.MAIN)
   }
 
+  // P2P room code copy hidden with the room menu.
+  /*
   async function copyRoomCode() {
     const code = playNet.code
     if (!code) return
@@ -1172,6 +1184,7 @@ export function PlayTesterPage() {
       setPlayNotice("Could not copy room code.")
     }
   }
+  */
 
   const playMenuItems: DropdownMenuItem[] = [
     {
@@ -1189,6 +1202,8 @@ export function PlayTesterPage() {
     })
   }
 
+  // P2P play is hidden for now. Uncomment this block to show room controls again.
+  /*
   if (netActive) {
     playMenuItems.push({
       id: "playtester-copy-code",
@@ -1239,7 +1254,10 @@ export function PlayTesterPage() {
       }
     )
   }
+  */
 
+  // P2P status text hidden with the room menu.
+  /*
   const roomStatusMeta = netActive
     ? [
         playNet.status === "waiting"
@@ -1254,6 +1272,7 @@ export function PlayTesterPage() {
         .filter(Boolean)
         .join(" · ")
     : null
+  */
 
   const ctxMenuItems = usePlayContextMenu({
     ctxMenu,
@@ -1290,6 +1309,9 @@ export function PlayTesterPage() {
 
   function renderPlayBoard(fixedLayout: boolean) {
     const pileHit = "pointer-events-auto"
+    const pileScale = fixedLayout ? 1 : soloPileScale
+    const pileW = scalePlayPile("lg", pileScale).w
+    const pilotColW = pileW
     return (
       <div
         className={
@@ -1308,6 +1330,7 @@ export function PlayTesterPage() {
             fieldSize={floatLogical}
             className="absolute inset-0 h-full min-h-0 w-full"
             cards={visInPlay}
+            cardScale={pileScale}
             actions={floatSurfaceActions}
             onSelectionChange={onFloatSelectionChange}
             onCardsReleased={onBattlefieldRelease}
@@ -1329,6 +1352,7 @@ export function PlayTesterPage() {
                 cards={visOppTrash}
                 label="Opp trash"
                 size="lg"
+                scale={pileScale}
                 statusLabel={
                   peerBrowsePile === "trashyard" ? peerBrowseLabel : null
                 }
@@ -1342,6 +1366,7 @@ export function PlayTesterPage() {
                 label="Opp library"
                 busy
                 size="lg"
+                scale={pileScale}
                 lift={peerLibraryHover}
                 topRevealed={oppTopRevealed}
                 topCard={oppTopLibraryCard}
@@ -1354,6 +1379,7 @@ export function PlayTesterPage() {
                   cards={visOppPilot}
                   label="Opp pilot"
                   size="lg"
+                scale={pileScale}
                   onReleaseCards={() => undefined}
                 />
                 <LifeCounter
@@ -1382,6 +1408,7 @@ export function PlayTesterPage() {
                       cards={visOppDismantled}
                       label="Opp dismantled"
                       size="lg"
+                scale={pileScale}
                       statusLabel={
                         peerBrowsePile === "dismantled" ? peerBrowseLabel : null
                       }
@@ -1459,6 +1486,7 @@ export function PlayTesterPage() {
                     cueHandDrop
                     label="Dismantled"
                     size="lg"
+                scale={pileScale}
                     onReleaseCards={onFaceUpPileRelease}
                     onBrowse={() => setPileBrowser("dismantled")}
                     onCardContextMenu={onFloatCardContextMenu}
@@ -1490,6 +1518,7 @@ export function PlayTesterPage() {
                 cueHandDrop
                 label="Pilot"
                 size="lg"
+                scale={pileScale}
                 onReleaseCards={onFaceUpPileRelease}
                 onCardContextMenu={onFloatCardContextMenu}
                 onToggleExpended={(instanceId) =>
@@ -1504,6 +1533,7 @@ export function PlayTesterPage() {
               cueHandDrop
               count={libraryCount}
               size="lg"
+              scale={pileScale}
               onClickDraw={onDrawFromDeck}
               onTopCardRelease={onDeckTopRelease}
               onContextMenu={onDeckContextMenu}
@@ -1526,6 +1556,7 @@ export function PlayTesterPage() {
               cueHandDrop
               label="Trashyard"
               size="lg"
+              scale={pileScale}
               onReleaseCards={onFaceUpPileRelease}
               onBrowse={() => setPileBrowser("trashyard")}
               onCardContextMenu={onFloatCardContextMenu}
@@ -1541,8 +1572,12 @@ export function PlayTesterPage() {
 
   return (
     <section
-      className="relative flex h-svh flex-col overflow-hidden bg-cover bg-center bg-no-repeat select-none"
-      style={{ backgroundImage: `url(${sharedImages.ZONE_BACKGROUND})` }}
+      className="fixed inset-0 z-20 flex flex-col overflow-hidden bg-cover bg-center bg-no-repeat select-none"
+      style={{
+        backgroundImage: `url(${sharedImages.ZONE_BACKGROUND})`,
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
       onDragStart={(event) => event.preventDefault()}
     >
       <div className="absolute inset-0 bg-black/65" aria-hidden />
@@ -1559,6 +1594,7 @@ export function PlayTesterPage() {
         </div>
 
         <div className="pointer-events-auto flex max-w-[55%] flex-col items-end gap-0.5 text-right">
+          {/* P2P room code hidden for now.
           {netActive && playNet.code ? (
             <span className="font-mono text-[10px] text-cyan-100/80">
               <button
@@ -1575,6 +1611,7 @@ export function PlayTesterPage() {
               {roomStatusMeta ? ` · ${roomStatusMeta}` : null}
             </span>
           ) : null}
+          */}
           {playNotice ? (
             <p className="font-mono text-xs text-amber-200/90" role="status">
               {playNotice}
@@ -1594,6 +1631,7 @@ export function PlayTesterPage() {
             {playNet.errorText}
           </p>
         ) : null}
+        {/* P2P waiting / disconnect banners hidden for now.
         {netActive && playNet.status === "waiting" ? (
           <p
             className="pl-12 font-mono text-xs text-cyan-100/80"
@@ -1618,6 +1656,7 @@ export function PlayTesterPage() {
             Connection lost. Reconnect to request a fog snapshot.
           </p>
         ) : null}
+        */}
         {playNet.isHost &&
         oppFetchId > 0 &&
         vsDetail.status === "error" ? (
@@ -1626,11 +1665,13 @@ export function PlayTesterPage() {
             empty until that deck is public or shared.
           </p>
         ) : null}
+        {/* P2P opponent-left banner hidden for now.
         {netActive && playNet.status === "connected" && !playNet.peerPresent ? (
           <p className="font-mono text-xs text-amber-200" role="status">
             Opponent disconnected.
           </p>
         ) : null}
+        */}
 
         {status === "ready" ? (
           <div className="relative z-0 flex min-h-0 flex-1 flex-col gap-1">

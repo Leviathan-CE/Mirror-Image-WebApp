@@ -377,13 +377,17 @@ export function HowToPlayPage() {
                                 you gain <GameIcon name="vp" />. Different pilots can have different
                                 victory numbers.
                             </p>
+                            <Important>
+                                Inorder to gain the last victory point to win the match you can only do
+                                so by holding it.
+                            </Important>
                             <p>
                                 You score by controlling <Term>objectives</Term>:
                             </p>
                             <ul className="list-disc space-y-1 pl-6">
                                 <li>
                                     <Term>Conquer</Term>: When you gain control of an objective,
-                                    gain 1 <GameIcon name="vp" /> right away, then check for a win.
+                                    gain 1 <GameIcon name="vp" /> right away.
                                     Claiming an empty objective does not cause Conquer.
                                 </li>
                                 <li>
@@ -1221,8 +1225,7 @@ export function HowToPlayPage() {
                                 in an order of your choosing; then move the card to the battlefield if
                                 it's an entity, or to the discard pile if it's a cyberspell. If a unit
                                 moves to the battlefield this way, you choose whether it enters readied
-                                or expended, and it cannot attack during that turn unless it has
-                                Blitz. You may have
+                                or expended, and it gains Blitz until the end of the turn. You may have
                                 up to 2 cards with time counters on them in your stockpile at any given
                                 time.
                             </p>
@@ -1242,6 +1245,7 @@ export function HowToPlayPage() {
                                 battlefield (units on an objective count). You cannot choose an illegal
                                 target.
                             </p>
+
                             <p>
                                 If a card or activated ability requires targets, you must have at least
                                 one legal target before you play or activate it. Declare targets when the
@@ -1250,18 +1254,17 @@ export function HowToPlayPage() {
                                 Invulnerable and Stealth may further restrict targeting (see Keyword
                                 Abilities).
                             </p>
-                            <Important>
-                                Attacks are declared at objectives. Combat damage assignment follows
-                                the damage step (see{" "}
-                                <SectionLink href="#how-to-attack">How to Attack</SectionLink>).
-                            </Important>
+                            </Subsection>
+                            <Subsection id="triggers-adn-keywords" title="Static/Triggered Ability Tags">
+                         
+
                             <p>
                                 Some cards include highlighted words or keyword abilities. All
                                 abilities except the EFFECT tag and ACTIVATED abilities are displayed
                                 as tags on a card; special keyword text is highlighted in black.
                                 There are two types of tags: STATIC and TRIGGERED. A STATIC tag means
                                 the ability is always in effect while it is in play; a TRIGGERED
-                                ability triggers when a particular condition is met. When two
+                                ability triggers when a particular condition is met while in the lock or in play. When two
                                 triggers are side by side, both are in effect in an "and"
                                 relationship. Some tag conditions may be altered; when they are, the
                                 condition is always printed first, followed by a comma and then the
@@ -1321,7 +1324,10 @@ export function HowToPlayPage() {
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="effect" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when the played card resolves. Non-activatable abilities without any tag automatically have this one. (Note: effects are also referenced as what an ability does.)</span>
+                                    <span>Triggers when the played card resolves. Non-activatable abilities without any tag automatically have this one. (Note: effects are also referenced as what an ability does.)
+                                        Additional costs and alternate cost my also be printed on the card with this tag implicitly, for aiblities like additonal costs 
+                                        follow the cards rules text, some effects are active even while a card is in other zones.
+                                    </span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <GameIcon name="defeated" className="mt-0.5 shrink-0" />

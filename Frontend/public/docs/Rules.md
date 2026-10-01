@@ -10,13 +10,13 @@
 
 100.3. Whenever card text uses the word "this," it refers to the card that printed that text.
 
-100.4. A player wins the game when that player's `[VP]` is greater than or equal to the victory number printed on that player's pilot. Check this whenever a player gains `[VP]` (see rules 250.7 and 400.2.2.4).
+100.4. A player wins the game when that player's `[VP]` is greater than or equal to the victory number printed on that player's pilot. Check this whenever a player gains `[VP]`.
 
 > 100.4.1. Each pilot has its own victory number.
 >
-> 100.4.2. Conquer may cause a win during any turn. Hold is checked only during the start-of-turn Hold step.
+> 100.4.2. The last `[VP]` needed to win can be gained only by Hold, at the start of that player's turn (see rules 250.7.2 and 400.2.2.4). Conquer and any other `[VP]` gain cannot award that point. If a gain other than Hold would meet or exceed that player's victory number, that player gains `[VP]` only until they are one below it, and that gain does not win the game.
 
-100.5. Players score `[VP]` by controlling **objectives**: Conquer when you gain control of one, and Hold at the start of your turn (see section 250).
+100.5. Players score `[VP]` by controlling **objectives**: Conquer when you gain control of one, and Hold at the start of your turn (see section 250). A card effect may also give or take `[VP]`. A gain from such an effect follows rule 100.4.2.
 
 100.6. **`[TLV]` (Threat Level).** Only cards with the Unit supertype have a `[TLV]` on the card.
 
@@ -102,7 +102,7 @@
 
 ### 250.7. Scoring
 
-250.7.1. **Conquer.** When you gain control of an objective, gain 1 `[VP]`, then check win (see rule 100.4).
+250.7.1. **Conquer.** When you gain control of an objective, gain 1 `[VP]`. Conquer cannot award the winning `[VP]` (see rule 100.4.2).
 
 > 250.7.1.1. You gain control when you have at least one unit on it and no opponent does, and you did not already control it.
 >
@@ -112,7 +112,7 @@
 >
 > 250.7.1.4. Entering an objective another player still occupies does not cause Conquer until you are the only player with a unit on it.
 
-250.7.2. **Hold.** At the start of your turn, after start-of-turn abilities resolve (see rule 400.2.2.4), gain 1 `[VP]` per objective you control. Then check win (see rule 100.4). Objectives you do not control score 0.
+250.7.2. **Hold.** At the start of your turn, after start-of-turn abilities resolve (see rule 400.2.2.4), gain 1 `[VP]` per objective you control. Then check win (see rule 100.4). This is the only `[VP]` gain that can win the game (see rule 100.4.2). Objectives you do not control score 0.
 
 ### 250.8. Objective cards
 
@@ -158,7 +158,7 @@
 >
 > 300.2.2.2. A unit that entered the battlefield this turn **may** move onto an empty objective or an objective you **control** (see rules 605.2 and 605.3).
 >
-> 300.2.2.3. If a unit enters the battlefield because the last time counter was removed from it (see rule 700.4.4), it enters **as though it has Blitz**. Apply rules 300.2.2 and 300.2.2.1 as if it had Blitz (it enters readied and may attack this turn). It does not gain the Blitz keyword for other effects.
+> 300.2.2.3. If a unit enters the battlefield because the last time counter was removed from it (see rule 700.4.4), its controller chooses whether it enters readied or expended, and it gains Blitz until the end of the turn (see rule 800.3.3).
 >
 > 300.2.3. **Program [Entity]**: Stays in play; cannot attack.
 >
@@ -246,7 +246,7 @@
 >
 > 400.2.2.3. Trigger all abilities with the start-of-turn tag.
 >
-> 400.2.2.4. **Hold `[VP]`.** Gain 1 `[VP]` for each objective you control. Then check win (see rule 100.4). Objectives you do not control score 0.
+> 400.2.2.4. **Hold `[VP]`.** Gain 1 `[VP]` for each objective you control. Then check win (see rule 100.4). This is the only `[VP]` gain that can win the game (see rule 100.4.2). Objectives you do not control score 0.
 >
 > 400.2.2.5. Remove one time counter from each card you control in play; resolve effects when the last counter is removed from a stockpile card.
 
@@ -339,7 +339,7 @@
 
 602.2. **Declare attackers**: Choose unit(s) you control that are legal attackers: units on the battlefield (including units already on that objective). Multiple attackers are one attack. A unit may attack if it has the Unit supertype, including when it also has a type that otherwise cannot attack (see rules 100.7 and 100.7.2).
 
-> 602.2.1. A card with one or more time counters on it cannot attack (see rule 700.4.2.1). When the last counter is removed from a stockpile card, it moves to the battlefield (see rules 700.4.4 and 300.2.2).
+> 602.2.1. A card with one or more time counters on it cannot attack (see rule 700.4.2.1). When the last counter is removed from a stockpile card, it moves to the battlefield and, if it is a unit, gains Blitz until the end of the turn (see rules 700.4.4 and 300.2.2.3).
 >
 > 602.2.2. A unit cannot attack during the turn it entered the battlefield under your control unless it has Blitz (see rules 300.2.2.1 and 800.3.3).
 >
@@ -465,7 +465,7 @@
 
 700.4.3. At the start of each of your turns, remove one counter from each of your time-counter cards.
 
-700.4.4. When the last counter is removed from a stockpile card, resolve its effects without using the lock, then move it to the battlefield (entity) or discard pile (cyberspell). If an entity unit moves to the battlefield this way, apply rule 300.2.2 (including rule 300.2.2.3).
+700.4.4. When the last counter is removed from a stockpile card, resolve its effects without using the lock, in an order of its controller's choosing, then move it to the battlefield (entity) or discard pile (cyberspell). If a unit moves to the battlefield this way, its controller chooses whether it enters readied or expended, and it gains Blitz until the end of the turn (see rule 300.2.2.3).
 
 700.4.5. You may have at most two time-counter cards in stockpile.
 

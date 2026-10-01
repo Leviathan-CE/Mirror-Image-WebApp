@@ -1,8 +1,9 @@
 /**
  * Vertical overlapping card stack.
  * Hover scales a card and slides covering cards down to reveal it.
- * Left-click +1 (per-card max); Ctrl/Cmd+click multi-select; right-click −1 / remove;
- * middle-hold enlarge; drag to move (drags whole selection).
+ * Left-click +1 (per-card max); Ctrl/Cmd+click multi-select; right-click −1 / remove.
+ * A coarse pointer (phone) has no right-click: tap the card to open + and ×.
+ * Middle-hold enlarge; drag to move (drags whole selection).
  */
 
 import { useEffect, useRef, useState } from "react"
@@ -74,6 +75,34 @@ export function DeckCardStack({
     y: number
   } | null>(null)
   const suppressClickRef = useRef(false)
+  const [coarsePointer, setCoarsePointer] = useState(false)
+  const [adjustKey, setAdjustKey] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return
+    const media = window.matchMedia("(pointer: coarse)")
+    const sync = () => setCoarsePointer(media.matches)
+    sync()
+    media.addEventListener("change", sync)
+    return () => media.removeEventListener("change", sync)
+  }, [])
+
+  useEffect(() => {
+    if (!adjustKey) return
+
+    function closeIfOutside(event: PointerEvent) {
+      const target = event.target
+      if (!(target instanceof Element)) {
+        setAdjustKey(null)
+        return
+      }
+      if (target.closest("[data-deck-stack-root]")) return
+      setAdjustKey(null)
+    }
+
+    document.addEventListener("pointerdown", closeIfOutside)
+    return () => document.removeEventListener("pointerdown", closeIfOutside)
+  }, [adjustKey])
 
   useEffect(() => {
     if (!enlarged) return
@@ -103,6 +132,7 @@ export function DeckCardStack({
   return (
     <>
       <ul
+        data-deck-stack-root=""
         className={
           isList
             ? "deck-card-list"
@@ -131,6 +161,8 @@ export function DeckCardStack({
           const isDragging = draggingKeys?.has(cardKey) ?? false
           const canDrag = draggable && !disabled
           const itemClass = isList ? "deck-card-list__item" : "deck-card-stack__item"
+          const showAdjust =
+            coarsePointer && canAdjust && !classified && adjustKey === cardKey
 
           return (
             <li
@@ -141,13 +173,16 @@ export function DeckCardStack({
                 isSelected ? " is-selected" : ""
               }${canDrag ? " is-draggable" : ""}${
                 classified ? " is-classified" : ""
-              }`}
+              }${showAdjust ? " is-adjusting" : ""}`}
               style={
                 isList
-                  ? undefined
+                  ? showAdjust
+                    ? { zIndex: 80 }
+                    : undefined
                   : {
                       // Keep stack order — do not pull hovered cards above covers.
-                      zIndex: index + 1,
+                      // The open + / × pad has to sit above the cards that overlap it.
+                      zIndex: showAdjust ? 80 : index + 1,
                       ["--stack-index" as string]: index,
                     }
               }
@@ -261,6 +296,13 @@ export function DeckCardStack({
                 onClearSelect?.(card)
 
                 if (!canAdjust) return
+                if (coarsePointer) {
+                  event.preventDefault()
+                  setAdjustKey((current) =>
+                    current === cardKey ? null : cardKey
+                  )
+                  return
+                }
                 // Parent enforces the deck-wide copy cap (all sections).
                 onQuantityDelta?.(card, 1)
               }}
@@ -268,6 +310,10 @@ export function DeckCardStack({
                 if (!canAdjust) return
                 event.preventDefault()
                 event.stopPropagation()
+                if (coarsePointer) {
+                  setAdjustKey(cardKey)
+                  return
+                }
                 onQuantityDelta?.(card, -1)
               }}
               onAuxClick={(event) => {
@@ -279,7 +325,9 @@ export function DeckCardStack({
                   : classification === "classified"
                     ? `${card.card.card_name} — CLASSIFIED · click for details / become a member`
                   : canAdjust
-                    ? `${card.card.card_name} ×${card.quantity} — click +1 (max ${maxCopiesForDeckCard(category ?? { id: 0, name: "Main", sort_order: 0 }, card)}) · Ctrl/Cmd+click select · Shift+click range · right-click −1 · drag to move · middle-hold enlarge`
+                    ? coarsePointer
+                      ? `${card.card.card_name} ×${card.quantity} — tap for + and remove`
+                      : `${card.card.card_name} ×${card.quantity} — click +1 (max ${maxCopiesForDeckCard(category ?? { id: 0, name: "Main", sort_order: 0 }, card)}) · Ctrl/Cmd+click select · Shift+click range · right-click −1 · drag to move · middle-hold enlarge`
                     : `${card.card.card_name} ×${card.quantity} — middle-click hold to enlarge`
               }
             >
@@ -310,6 +358,36 @@ export function DeckCardStack({
                   ) : null}
                 </>
               )}
+              {showAdjust ? (
+                <div className="deck-card-stack__adjust" data-deck-qty="">
+                  <button
+                    type="button"
+                    data-deck-qty="add"
+                    aria-label={`Add a copy of ${card.card.card_name}`}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      onQuantityDelta?.(card, 1)
+                    }}
+                  >
+                    +
+                  </button>
+                  <button
+                    type="button"
+                    data-deck-qty="remove"
+                    aria-label={`Remove a copy of ${card.card.card_name}`}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      onQuantityDelta?.(card, -1)
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : null}
             </li>
           )
         })}
