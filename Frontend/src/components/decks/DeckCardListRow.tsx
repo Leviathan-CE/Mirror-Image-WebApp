@@ -3,7 +3,7 @@
  * Hover reveals the card thumbnail beside the cursor (hidden for classified).
  */
 
-import { useEffect, useState, type MouseEvent } from "react"
+import { useEffect, useState, type MouseEvent, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 
 import { CardCostIcons } from "@/components/cards/CardCostIcons"
@@ -15,6 +15,8 @@ import { cardFaceUrl, type DeckCardEntry } from "@/lib/api/decks"
 type DeckCardListRowProps = {
   card: DeckCardEntry
   classified: CardClassification | null
+  /** Replaces the copy-count chip. Used for the in-bar − / + controls. */
+  quantitySlot?: ReactNode
 }
 
 const HOVER_THUMB_WIDTH_PX = 352
@@ -46,7 +48,11 @@ export function hoverThumbPoint(clientX: number, clientY: number) {
   }
 }
 
-export function DeckCardListRow({ card, classified }: DeckCardListRowProps) {
+export function DeckCardListRow({
+  card,
+  classified,
+  quantitySlot,
+}: DeckCardListRowProps) {
   const threat = (card.card.threat_level ?? "0").trim()
   const showThreat =
     classified == null &&
@@ -106,7 +112,9 @@ export function DeckCardListRow({ card, classified }: DeckCardListRowProps) {
           {threat}
         </span>
       ) : null}
-      {card.quantity > 0 ? (
+      {quantitySlot != null ? (
+        quantitySlot
+      ) : card.quantity > 0 ? (
         <span className="deck-card-list__qty">×{card.quantity}</span>
       ) : null}
       {art && thumbPos

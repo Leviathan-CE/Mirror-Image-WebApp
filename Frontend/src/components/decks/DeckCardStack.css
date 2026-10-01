@@ -147,28 +147,22 @@
 
 .deck-card-stack__adjust {
   position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
   z-index: 6;
   display: flex;
-  gap: 0.35rem;
+  align-items: center;
+  gap: 0.25rem;
   pointer-events: auto;
 }
 
-.deck-card-stack__item.is-adjusting .deck-card-stack__adjust {
-  top: 0.35rem;
-  right: 0.35rem;
-  left: 0.35rem;
-  justify-content: space-between;
-}
-
-.deck-card-list__item.is-adjusting .deck-card-stack__adjust {
-  top: 50%;
-  right: 0.35rem;
-  transform: translateY(-50%);
+.deck-card-stack__adjust .deck-card-stack__qty {
+  position: static;
 }
 
 .deck-card-stack__adjust button {
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
   border: 1px solid rgb(34 211 238 / 0.75);
   background: rgb(0 0 0 / 0.92);
   color: #a5f3fc;
@@ -829,6 +823,30 @@
   font-family: ui-monospace, monospace;
   font-size: 0.7rem;
   font-weight: 600;
+}
+
+.deck-card-list__adjust {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.deck-card-list__adjust button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.65rem;
+  min-height: 1.65rem;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 0.28);
+  border-radius: 0.35rem;
+  background: rgb(0 0 0 / 0.28);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: none;
 }
 
 .deck-card-list__qty {
