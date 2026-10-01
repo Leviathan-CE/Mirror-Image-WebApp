@@ -26,7 +26,7 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
   },
   {
     name: "COUNTER ATTACK",
-    text: "This unit deals damage even while it is expended when defending an objective.",
+    text: "This unit deals damage even while it is expended.",
   },
   {
     name: "DEGRADE X",

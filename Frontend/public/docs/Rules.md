@@ -10,11 +10,11 @@
 
 100.3. Whenever card text uses the word "this," it refers to the card that printed that text.
 
-100.4. A player wins the game when that player's `[VP]` is greater than or equal to the victory number printed on that player's pilot. Check this whenever a player gains `[VP]` (see rules 250.7 and 400.2.2.4).
+100.4. A player wins the game only when a Hold score makes that player's `[VP]` greater than or equal to the victory number printed on that player's pilot (see rules 250.7.2 and 400.2.2.4).
 
 > 100.4.1. Each pilot has its own victory number.
 >
-> 100.4.2. Conquer may cause a win during any turn. Hold is checked only during the start-of-turn Hold step.
+> 100.4.2. The `[VP]` that causes a player to reach or exceed their victory number can be gained only by Hold, at the start of that player's turn. Conquer and any other `[VP]` gain cannot cause a win. If a gain other than Hold would meet or exceed that player's victory number, that player gains `[VP]` only until they are one below it.
 
 100.5. Players score `[VP]` by controlling **objectives**: Conquer when you gain control of one, and Hold at the start of your turn (see section 250).
 
@@ -102,7 +102,7 @@
 
 ### 250.7. Scoring
 
-250.7.1. **Conquer.** When you gain control of an objective, gain 1 `[VP]`, then check win (see rule 100.4).
+250.7.1. **Conquer.** When you gain control of an objective, gain 1 `[VP]`. Conquer cannot award the winning `[VP]` (see rule 100.4.2).
 
 > 250.7.1.1. You gain control when you have at least one unit on it and no opponent does, and you did not already control it.
 >
@@ -112,7 +112,7 @@
 >
 > 250.7.1.4. Entering an objective another player still occupies does not cause Conquer until you are the only player with a unit on it.
 
-250.7.2. **Hold.** At the start of your turn, after start-of-turn abilities resolve (see rule 400.2.2.4), gain 1 `[VP]` per objective you control. Then check win (see rule 100.4). Objectives you do not control score 0.
+250.7.2. **Hold.** At the start of your turn, after start-of-turn abilities resolve (see rule 400.2.2.4), gain 1 `[VP]` per objective you control. Then check win (see rule 100.4). This is the only `[VP]` gain that can win the game (see rule 100.4.2). Objectives you do not control score 0.
 
 ### 250.8. Objective cards
 
@@ -246,7 +246,7 @@
 >
 > 400.2.2.3. Trigger all abilities with the start-of-turn tag.
 >
-> 400.2.2.4. **Hold `[VP]`.** Gain 1 `[VP]` for each objective you control. Then check win (see rule 100.4). Objectives you do not control score 0.
+> 400.2.2.4. **Hold `[VP]`.** Gain 1 `[VP]` for each objective you control. Then check win (see rule 100.4). This is the only `[VP]` gain that can win the game (see rule 100.4.2). Objectives you do not control score 0.
 >
 > 400.2.2.5. Remove one time counter from each card you control in play; resolve effects when the last counter is removed from a stockpile card.
 

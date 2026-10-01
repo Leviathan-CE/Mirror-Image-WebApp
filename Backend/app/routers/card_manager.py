@@ -909,16 +909,17 @@ async def _store_card_image_file(
                 _, card_set_name, card_name = row
                 set_slug = _slugify(card_set_name)
                 card_slug = _slugify(card_name)
+                id_slug = _slugify(str(card_id))
 
                 base_dir = Path(__file__).resolve().parent.parent / "thumbnails"
                 set_dir = base_dir / set_slug
                 set_dir.mkdir(parents=True, exist_ok=True)
 
-                file_name = f"{card_slug}_{file_suffix}{extension}"
+                file_name = f"{card_slug}_{id_slug}_{file_suffix}{extension}"
                 file_path = set_dir / file_name
                 file_path.write_bytes(data)
 
-                for old in set_dir.glob(f"{card_slug}_{file_suffix}_*"):
+                for old in set_dir.glob(f"{card_slug}_{id_slug}_{file_suffix}_*"):
                     try:
                         old.unlink()
                     except OSError:
