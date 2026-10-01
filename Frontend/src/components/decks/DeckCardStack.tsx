@@ -2,11 +2,12 @@
  * Vertical overlapping card stack.
  * Hover scales a card and slides covering cards down to reveal it.
  * Left-click +1 (per-card max); Ctrl/Cmd+click multi-select; right-click −1 / remove.
- * A coarse pointer (phone) has no right-click: tap the card to open + and ×.
+ * A coarse pointer (phone) has no right-click: tap the card to open − and +
+ * on either side of the copy count.
  * Middle-hold enlarge; drag to move (drags whole selection).
  */
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 
 import {
   ClassifiedCardFace,
@@ -30,6 +31,52 @@ import {
 import { maxCopiesForDeckCard } from "@/components/decks/deck.logic"
 import type { DeckCategoryOut } from "@/lib/api/decks"
 
+
+function CopyAdjust({
+  card,
+  layout,
+  onQuantityDelta,
+}: {
+  card: DeckCardEntry
+  layout: "stack" | "list"
+  onQuantityDelta: (card: DeckCardEntry, delta: 1 | -1) => void
+}) {
+  const name = card.card.card_name
+  const rootClass =
+    layout === "list" ? "deck-card-list__adjust" : "deck-card-stack__adjust"
+  const qtyClass =
+    layout === "list" ? "deck-card-list__qty" : "deck-card-stack__qty"
+
+  function change(event: ReactMouseEvent<HTMLButtonElement>, delta: 1 | -1) {
+    event.preventDefault()
+    event.stopPropagation()
+    onQuantityDelta(card, delta)
+  }
+
+  return (
+    <div className={rootClass} data-deck-qty="">
+      <button
+        type="button"
+        data-deck-qty="remove"
+        aria-label={`Remove a copy of ${name}`}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => change(event, -1)}
+      >
+        −
+      </button>
+      <span className={qtyClass}>×{card.quantity}</span>
+      <button
+        type="button"
+        data-deck-qty="add"
+        aria-label={`Add a copy of ${name}`}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => change(event, 1)}
+      >
+        +
+      </button>
+    </div>
+  )
+}
 
 type DeckCardStackProps = {
   cards: DeckCardEntry[]
@@ -181,7 +228,7 @@ export function DeckCardStack({
                     : undefined
                   : {
                       // Keep stack order — do not pull hovered cards above covers.
-                      // The open + / × pad has to sit above the cards that overlap it.
+                      // The open − / + pad has to sit above the cards that overlap it.
                       zIndex: showAdjust ? 80 : index + 1,
                       ["--stack-index" as string]: index,
                     }
@@ -326,13 +373,25 @@ export function DeckCardStack({
                     ? `${card.card.card_name} — CLASSIFIED · click for details / become a member`
                   : canAdjust
                     ? coarsePointer
-                      ? `${card.card.card_name} ×${card.quantity} — tap for + and remove`
+                      ? `${card.card.card_name} ×${card.quantity} — tap for − and +`
                       : `${card.card.card_name} ×${card.quantity} — click +1 (max ${maxCopiesForDeckCard(category ?? { id: 0, name: "Main", sort_order: 0 }, card)}) · Ctrl/Cmd+click select · Shift+click range · right-click −1 · drag to move · middle-hold enlarge`
                     : `${card.card.card_name} ×${card.quantity} — middle-click hold to enlarge`
               }
             >
               {isList ? (
-                <DeckCardListRow card={card} classified={classification} />
+                <DeckCardListRow
+                  card={card}
+                  classified={classification}
+                  quantitySlot={
+                    showAdjust && onQuantityDelta ? (
+                      <CopyAdjust
+                        card={card}
+                        layout="list"
+                        onQuantityDelta={onQuantityDelta}
+                      />
+                    ) : undefined
+                  }
+                />
               ) : (
                 <>
                   {classified && classification ? (
@@ -353,41 +412,17 @@ export function DeckCardStack({
                       <span>{card.card.card_name}</span>
                     </div>
                   )}
-                  {card.quantity > 0 ? (
+                  {showAdjust && onQuantityDelta ? (
+                    <CopyAdjust
+                      card={card}
+                      layout="stack"
+                      onQuantityDelta={onQuantityDelta}
+                    />
+                  ) : card.quantity > 0 ? (
                     <span className="deck-card-stack__qty">×{card.quantity}</span>
                   ) : null}
                 </>
               )}
-              {showAdjust ? (
-                <div className="deck-card-stack__adjust" data-deck-qty="">
-                  <button
-                    type="button"
-                    data-deck-qty="add"
-                    aria-label={`Add a copy of ${card.card.card_name}`}
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      onQuantityDelta?.(card, 1)
-                    }}
-                  >
-                    +
-                  </button>
-                  <button
-                    type="button"
-                    data-deck-qty="remove"
-                    aria-label={`Remove a copy of ${card.card.card_name}`}
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      onQuantityDelta?.(card, -1)
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ) : null}
             </li>
           )
         })}

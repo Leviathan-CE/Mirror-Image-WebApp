@@ -78,4 +78,21 @@ describe("DeckCardStack quantity controls", () => {
       -1
     )
   })
+
+  it("puts − and + inside the list row on either side of the copy count", () => {
+    installPointer(true)
+    render(
+      <DeckCardStack
+        viewMode="list"
+        cards={[deckEntry({ card_id: 7, card_name: "Spirit Wire", quantity: 2 })]}
+        onQuantityDelta={vi.fn()}
+      />
+    )
+
+    tap(screen.getByTitle(/Spirit Wire/))
+    const row = screen.getByText("Spirit Wire").closest(".deck-card-list__row")
+    const adjust = row?.querySelector(".deck-card-list__adjust")
+    expect(adjust).not.toBeNull()
+    expect(adjust?.textContent?.replace(/\s/g, "")).toBe("−×2+")
+  })
 })
