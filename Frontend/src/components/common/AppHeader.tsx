@@ -28,8 +28,8 @@ export function AppHeader() {
     pathname === ROUTES.PLAY_TESTER ||
     pathname.startsWith(`${ROUTES.PLAY_TESTER}/`)
 
-  // Full-screen table — no site chrome (admins still play while the splash is on).
-  if (playTesterPath && !(comingSoon && !isAdmin)) {
+  // Full-screen table — no site chrome (admins/playtesters still play while the splash is on).
+  if (playTesterPath && !(comingSoon && !skipSplash)) {
     return null
   }
 
