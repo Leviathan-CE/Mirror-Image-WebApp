@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest"
 import {
   PILE_COLUMN_SCALE_MIN,
   SIDE_COLUMN_PILE_COUNT,
+  SOLO_LIFE_BLOCK_PX,
   pileColumnScale,
   scalePlayPile,
   sideColumnHeightAfterScale,
   sideColumnNaturalHeightPx,
+  soloPlayPileScale,
 } from "@/components/Playtester/board/playPileScale.logic"
 import { PLAY_PILE_SIZE } from "@/components/Playtester/constants"
 
@@ -55,5 +57,26 @@ describe("playPileScale.logic", () => {
   it("sizes the natural column for three piles", () => {
     expect(SIDE_COLUMN_PILE_COUNT).toBe(3)
     expect(sideColumnNaturalHeightPx()).toBeGreaterThan(PLAY_PILE_SIZE.lg.h * 3)
+  })
+
+  it("keeps solo piles full size on a desktop host", () => {
+    expect(soloPlayPileScale(1400, 900)).toBe(1)
+    expect(soloPlayPileScale(0, 0)).toBe(1)
+  })
+
+  it("shrinks solo piles so the life counter and three faces fit a short phone", () => {
+    const hostH = 520
+    const scale = soloPlayPileScale(800, hostH)
+    expect(scale).toBeLessThan(1)
+    expect(
+      sideColumnHeightAfterScale(scale) + SOLO_LIFE_BLOCK_PX
+    ).toBeLessThanOrEqual(hostH + 0.5)
+  })
+
+  it("shrinks solo columns so two of them leave field width on a narrow phone", () => {
+    const hostW = 360
+    const scale = soloPlayPileScale(hostW, 800)
+    const columnW = scalePlayPile("lg", scale).w
+    expect(columnW).toBeLessThanOrEqual((hostW - 16) * 0.3 + 1)
   })
 })
