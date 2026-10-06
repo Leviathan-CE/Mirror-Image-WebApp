@@ -387,11 +387,11 @@ export function HowToPlayPage() {
                             <ul className="list-disc space-y-1 pl-6">
                                 <li>
                                     <Term>Conquer</Term>: When you gain control of an objective,
-                                    gain 1 <GameIcon name="vp" /> right away.
+                                    gain 2 <GameIcon name="vp" /> right away.
                                     Claiming an empty objective does not cause Conquer.
                                 </li>
                                 <li>
-                                    <Term>Hold</Term>: At the start of your turn, gain 1{" "}
+                                    <Term>Hold</Term>: At the start of your turn, gain 2{" "}
                                     <GameIcon name="vp" /> for each objective you control, then
                                     check for a win.
                                 </li>

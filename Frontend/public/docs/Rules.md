@@ -102,7 +102,7 @@
 
 ### 250.7. Scoring
 
-250.7.1. **Conquer.** When you gain control of an objective, gain 1 `[VP]`. Conquer cannot award the winning `[VP]` (see rule 100.4.2).
+250.7.1. **Conquer.** When you gain control of an objective, gain 2 `[VP]`. Conquer cannot award the winning `[VP]` (see rule 100.4.2).
 
 > 250.7.1.1. You gain control when you have at least one unit on it and no opponent does, and you did not already control it.
 >
@@ -112,7 +112,7 @@
 >
 > 250.7.1.4. Entering an objective another player still occupies does not cause Conquer until you are the only player with a unit on it.
 
-250.7.2. **Hold.** At the start of your turn, after start-of-turn abilities resolve (see rule 400.2.2.4), gain 1 `[VP]` per objective you control. Then check win (see rule 100.4). This is the only `[VP]` gain that can win the game (see rule 100.4.2). Objectives you do not control score 0.
+250.7.2. **Hold.** At the start of your turn, after start-of-turn abilities resolve (see rule 400.2.2.4), gain 2 `[VP]` per objective you control. Then check win (see rule 100.4). This is the only `[VP]` gain that can win the game (see rule 100.4.2). Objectives you do not control score 0.
 
 ### 250.8. Objective cards
 
