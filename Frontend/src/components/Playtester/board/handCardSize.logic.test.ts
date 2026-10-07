@@ -6,8 +6,13 @@ import {
   peekStickOutSlot,
   scaleHandCardPx,
   shownHandHoverIndex,
+  soloHandDockPx,
 } from "@/components/Playtester/board/handCardSize.logic"
-import { HAND_CARD_SIZE } from "@/components/Playtester/constants"
+import {
+  HAND_CARD_SIZE,
+  HAND_DOCK_EXPANDED_PX,
+  HAND_DOCK_HEIGHT_PX,
+} from "@/components/Playtester/constants"
 
 describe("handCardSizePx", () => {
   it("uses the default footprint when the host has no size yet", () => {
@@ -164,5 +169,30 @@ describe("peekPortalBox", () => {
     expect(stick.top).toBe(20)
     expect(stick.paintedHeight).toBe(84)
     expect(stick.paintedHeight).toBeLessThan(252)
+  })
+})
+
+describe("soloHandDockPx", () => {
+  it("keeps full dock sizes on tall hosts", () => {
+    expect(soloHandDockPx(900)).toEqual({
+      collapsedPx: HAND_DOCK_HEIGHT_PX,
+      expandedPx: HAND_DOCK_EXPANDED_PX,
+    })
+  })
+
+  it("shrinks the raised hand on a phone-height host", () => {
+    const dock = soloHandDockPx(700)
+    expect(dock.expandedPx).toBeLessThan(HAND_DOCK_EXPANDED_PX)
+    expect(dock.expandedPx).toBeLessThanOrEqual(Math.round(700 * 0.22))
+    expect(dock.expandedPx).toBeGreaterThanOrEqual(132)
+    expect(dock.collapsedPx).toBeLessThanOrEqual(HAND_DOCK_HEIGHT_PX)
+    expect(dock.collapsedPx).toBeGreaterThanOrEqual(40)
+  })
+
+  it("returns defaults for invalid height", () => {
+    expect(soloHandDockPx(0)).toEqual({
+      collapsedPx: HAND_DOCK_HEIGHT_PX,
+      expandedPx: HAND_DOCK_EXPANDED_PX,
+    })
   })
 })

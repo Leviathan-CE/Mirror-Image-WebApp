@@ -29,6 +29,7 @@ import {
 } from "@/components/Playtester/board/handCardSize.logic"
 import { elementCssPaintScale } from "@/components/Playtester/board/playFieldScale.logic"
 import { PlayingCard } from "@/components/Playtester/board/PlayingCard"
+import { dragThresholdPx } from "@/components/Playtester/board/touchPlay.logic"
 import { HAND_CARD_SIZE, type PlayerSlot } from "@/components/Playtester/constants"
 import {
   cardIsPaintSelected,
@@ -36,11 +37,11 @@ import {
 } from "@/components/Playtester/board/selectionChrome"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { MiddleMouseScroll } from "@/components/ui/MiddleMouseScroll"
+import { useCoarsePointer } from "@/hooks/useCoarsePointer"
 import { useLatestRef } from "@/hooks/useLatestRef"
+import { useLongPressMenu } from "@/hooks/useLongPressMenu"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
-
-const DRAG_THRESHOLD_PX = 5
 const GROUP_GHOST_STEP_RATIO = 18 / HAND_CARD_SIZE.defaultWidth
 /**
  * Grace period before collapsing: the sliver and the raised overlay are
@@ -49,6 +50,11 @@ const GROUP_GHOST_STEP_RATIO = 18 / HAND_CARD_SIZE.defaultWidth
 const PEEK_COLLAPSE_DELAY_MS = 120
 /** Extra size on the inspected card while the peek overlay is open. */
 const PEEK_HOVER_SCALE = 1.9
+/**
+ * Room under the raised faces for the horizontal scrollbar
+ * (`mt-1` + `h-2`) so overflow doesn't shave the card tops.
+ */
+const HAND_RAISED_SCROLL_CHROME_PX = 16
 /** Logical px the opponent sliver grows when they inspect a card. */
 const PEEK_STICK_OUT_NUDGE_PX = 22
 
@@ -137,6 +143,94 @@ function normalizeRect(x0: number, y0: number, x1: number, y1: number) {
     right: Math.max(x0, x1),
     bottom: Math.max(y0, y1),
   }
+}
+
+/**
+ * Hover enlarge painted on document.body so the hand strip's overflow
+ * cannot crop it. Tracks the slot while the row scrolls.
+ */
+function RaisedHandZoom({
+  anchor,
+  card,
+  scale,
+  growDown,
+}: {
+  anchor: HTMLElement
+  card: PlayingCardInstance
+  scale: number
+  growDown: boolean
+}) {
+  const [box, setBox] = useState<{
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null>(null)
+
+  useLayoutEffect(() => {
+    let frame = 0
+    function place() {
+      const rect = anchor.getBoundingClientRect()
+      const aspect = rect.height > 0 ? rect.width / rect.height : 3 / 4
+      const margin = 4
+      let height = rect.height * scale
+      let width = rect.width * scale
+      // Prefer the full enlarged face. Shift it into the viewport; only
+      // shrink when it is taller than the screen, and keep the card aspect
+      // so the art is not cropped.
+      const maxH = Math.max(rect.height, window.innerHeight - margin * 2)
+      if (height > maxH) {
+        height = maxH
+        width = height * aspect
+      }
+      let top = growDown ? rect.top : rect.bottom - height
+      let left = rect.left + rect.width / 2 - width / 2
+      if (top < margin) top = margin
+      if (top + height > window.innerHeight - margin) {
+        top = Math.max(margin, window.innerHeight - margin - height)
+      }
+      if (left < margin) left = margin
+      if (left + width > window.innerWidth - margin) {
+        left = Math.max(margin, window.innerWidth - margin - width)
+      }
+      setBox((prev) => {
+        if (
+          prev &&
+          prev.left === left &&
+          prev.top === top &&
+          prev.width === width &&
+          prev.height === height
+        ) {
+          return prev
+        }
+        return { left, top, width, height }
+      })
+      frame = window.requestAnimationFrame(place)
+    }
+    place()
+    return () => window.cancelAnimationFrame(frame)
+  }, [anchor, scale, growDown])
+
+  if (!box || typeof document === "undefined") return null
+
+  return createPortal(
+    <div
+      className="pointer-events-none fixed z-[85]"
+      style={{
+        left: box.left,
+        top: box.top,
+        width: box.width,
+        height: box.height,
+      }}
+    >
+      <PlayingCard
+        card={card}
+        flat
+        className={cn("h-full w-full", growDown && "rotate-180")}
+      />
+    </div>,
+    document.body
+  )
 }
 
 function rectsIntersect(
@@ -285,7 +379,10 @@ export function PlayerHand({
         expandedPx: peek.expandedPx,
         expanded: peekRaised,
         sy,
-        hoverScale: PEEK_HOVER_SCALE,
+        // Raised strip stays at expandedPx. Hover zoom is a body portal so
+        // the strip's overflow cannot crop it — no extra headroom here.
+        hoverScale: 1,
+        expandedChromePx: HAND_RAISED_SCROLL_CHROME_PX,
         stickOutNudgePx: stickOut ? PEEK_STICK_OUT_NUDGE_PX : undefined,
       })
       setPeekPortalStyle({ ...box, sx, sy })
@@ -316,6 +413,18 @@ export function PlayerHand({
   const [drag, setDrag] = useState<HandDrag | null>(null)
   const [marquee, setMarquee] = useState<MarqueeState | null>(null)
   const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
+  const coarsePointer = useCoarsePointer()
+  const longPress = useLongPressMenu()
+  const coarseRef = useLatestRef(coarsePointer)
+  /** Overflow box inside MiddleMouseScroll — used for finger pan on phone. */
+  const scrollViewportRef = useRef<HTMLDivElement | null>(null)
+  const slotElsRef = useRef(new Map<string, HTMLDivElement>())
+  /**
+   * Coarse card gesture: wait until move past threshold, then lock to
+   * horizontal hand-scroll or vertical/play drag.
+   */
+  const handGestureRef = useRef<"pending" | "scroll" | "drag">("pending")
+  const scrollOriginLeftRef = useRef(0)
 
   const draggingIds = drag?.moved ? new Set(drag.groupIds) : null
 
@@ -370,6 +479,47 @@ export function PlayerHand({
     if (dragRef.current || marqueeRef.current) return
     event.preventDefault()
 
+    // Phone: empty-strip drag pans the hand instead of drawing a marquee.
+    if (coarsePointer) {
+      const viewport = scrollViewportRef.current
+      const startX = event.clientX
+      const startScrollLeft = viewport?.scrollLeft ?? 0
+      longPress.arm({
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        enabled: true,
+        onMenu: (x, y) => onEmptyContextMenu?.(x, y),
+      })
+      function onMove(moveEvent: PointerEvent) {
+        if (moveEvent.pointerId !== event.pointerId) return
+        longPress.noteMove(
+          moveEvent.pointerId,
+          moveEvent.clientX,
+          moveEvent.clientY
+        )
+        const el = scrollViewportRef.current
+        if (!el) return
+        el.scrollLeft = startScrollLeft - (moveEvent.clientX - startX)
+      }
+      function onUp(upEvent: PointerEvent) {
+        if (upEvent.pointerId !== event.pointerId) return
+        const menuOpened = longPress.release(upEvent.pointerId)
+        window.removeEventListener("pointermove", onMove, true)
+        window.removeEventListener("pointerup", onUp, true)
+        window.removeEventListener("pointercancel", onUp, true)
+        if (menuOpened) return
+        const draggedFar =
+          Math.abs(upEvent.clientX - startX) >
+          dragThresholdPx(coarseRef.current)
+        if (!draggedFar) onSelectionRef.current?.([])
+      }
+      window.addEventListener("pointermove", onMove, true)
+      window.addEventListener("pointerup", onUp, true)
+      window.addEventListener("pointercancel", onUp, true)
+      return
+    }
+
     const next: MarqueeState = {
       pointerId: event.pointerId,
       x0: event.clientX,
@@ -401,7 +551,7 @@ export function PlayerHand({
 
       const draggedFar =
         Math.hypot(current.x1 - current.x0, current.y1 - current.y0) >
-        DRAG_THRESHOLD_PX
+        dragThresholdPx(coarseRef.current)
 
       if (!draggedFar) {
         onSelectionRef.current?.([])
@@ -494,16 +644,54 @@ export function PlayerHand({
     }
     dragRef.current = next
     setDrag(next)
+    handGestureRef.current = "pending"
+    scrollOriginLeftRef.current = scrollViewportRef.current?.scrollLeft ?? 0
+
+    longPress.arm({
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      enabled: coarsePointer,
+      onMenu: (x, y) =>
+        onCardContextMenu?.(card.instanceId, x, y),
+      onAbortDrag: () => {
+        detachWindowCardDrag()
+        dragRef.current = null
+        setDrag(null)
+        handGestureRef.current = "pending"
+      },
+    })
 
     function onMove(moveEvent: PointerEvent) {
       const current = dragRef.current
       if (!current || current.pointerId !== moveEvent.pointerId) return
 
-      const dist = Math.hypot(
-        moveEvent.clientX - current.startX,
-        moveEvent.clientY - current.startY
+      longPress.noteMove(
+        moveEvent.pointerId,
+        moveEvent.clientX,
+        moveEvent.clientY
       )
-      if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
+
+      const dx = moveEvent.clientX - current.startX
+      const dy = moveEvent.clientY - current.startY
+      const dist = Math.hypot(dx, dy)
+      const threshold = dragThresholdPx(coarseRef.current)
+
+      if (handGestureRef.current === "pending") {
+        if (dist <= threshold) return
+        // Phone: sideways swipe scrolls the strip; other moves pick up the card.
+        if (coarseRef.current && Math.abs(dx) >= Math.abs(dy)) {
+          handGestureRef.current = "scroll"
+        } else {
+          handGestureRef.current = "drag"
+        }
+      }
+
+      if (handGestureRef.current === "scroll") {
+        const el = scrollViewportRef.current
+        if (el) el.scrollLeft = scrollOriginLeftRef.current - dx
+        return
+      }
 
       const nextPaint = elementCssPaintScale(surfaceEl())
       const updated: HandDrag = {
@@ -521,6 +709,9 @@ export function PlayerHand({
     function onUp(upEvent: PointerEvent) {
       const current = dragRef.current
       if (!current || current.pointerId !== upEvent.pointerId) return
+      const menuOpened = longPress.release(upEvent.pointerId)
+      const gesture = handGestureRef.current
+      handGestureRef.current = "pending"
       detachWindowCardDrag()
 
       const groupIdsAtRelease = current.groupIds
@@ -530,6 +721,11 @@ export function PlayerHand({
 
       dragRef.current = null
       setDrag(null)
+
+      if (menuOpened || gesture === "scroll") {
+        closePeekSoon()
+        return
+      }
 
       if (moved) {
         onReleaseRef.current(groupIdsAtRelease, clientX, clientY)
@@ -627,6 +823,7 @@ export function PlayerHand({
         label="Player hand"
         horizontal
         vertical={false}
+        viewportRef={scrollViewportRef}
         className={cn(
           "flex min-h-0 w-full flex-1 flex-col",
           embedded ? "bg-transparent" : "border border-cyan-500/25 bg-black/55"
@@ -691,16 +888,6 @@ export function PlayerHand({
                     ),
                   })
                 : null
-              const faceW = stick
-                ? stick.faceW
-                : bump
-                  ? Math.round(rowCardPx.width * PEEK_HOVER_SCALE)
-                  : rowCardPx.width
-              const faceH = stick
-                ? stick.faceH
-                : bump
-                  ? Math.round(rowCardPx.height * PEEK_HOVER_SCALE)
-                  : rowCardPx.height
               const slotW = stick ? stick.slotW : rowCardPx.width
               const slotH = stick ? stick.slotH : rowCardPx.height
               const cropToSliver = Boolean(stick)
@@ -732,6 +919,10 @@ export function PlayerHand({
                       !isDragging &&
                       selectionRingClass()
                   )}
+                  ref={(node) => {
+                    if (node) slotElsRef.current.set(card.instanceId, node)
+                    else slotElsRef.current.delete(card.instanceId)
+                  }}
                   style={{
                     width: slotW,
                     height: slotH,
@@ -770,9 +961,11 @@ export function PlayerHand({
                     style={
                       peek
                         ? {
-                            width: faceW,
-                            height: faceH,
-                            marginLeft: -faceW / 2,
+                            width: stick ? stick.faceW : "100%",
+                            height: stick ? stick.faceH : "100%",
+                            marginLeft: stick ? -stick.faceW / 2 : undefined,
+                            left: stick ? undefined : 0,
+                            right: stick ? undefined : 0,
                             bottom: pinToTop ? undefined : 0,
                             top: pinToTop ? 0 : undefined,
                             transition:
@@ -814,6 +1007,25 @@ export function PlayerHand({
         {peek ? null : handRow}
       </div>
 
+      {(() => {
+        if (!peekRaised || shownHoverIndex == null) return null
+        const zoomCard = cards[shownHoverIndex]
+        if (!zoomCard) return null
+        if (drag?.moved && drag.groupIds.includes(zoomCard.instanceId)) {
+          return null
+        }
+        const anchor = slotElsRef.current.get(zoomCard.instanceId)
+        if (!anchor) return null
+        return (
+          <RaisedHandZoom
+            anchor={anchor}
+            card={hideFaces ? { ...zoomCard, faceDown: true } : zoomCard}
+            scale={PEEK_HOVER_SCALE}
+            growDown={peek?.anchor === "top"}
+          />
+        )
+      })()}
+
       {peek && peekPortalStyle
         ? createPortal(
             <div
@@ -831,7 +1043,7 @@ export function PlayerHand({
               onPointerEnter={stickOut ? undefined : openPeek}
               onPointerLeave={stickOut ? undefined : closePeekSoon}
             >
-              <div className="absolute inset-0 flex flex-col">
+              <div className="absolute inset-0 flex min-h-0 flex-col">
                 {handRow}
               </div>
             </div>,

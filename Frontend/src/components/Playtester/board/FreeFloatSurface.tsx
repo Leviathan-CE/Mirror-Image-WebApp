@@ -43,15 +43,19 @@ import {
   type CardCounterKind,
   type PlayingCardInstance,
 } from "@/components/Playtester/types"
+import { useCoarsePointer } from "@/hooks/useCoarsePointer"
 import { useLatestRef } from "@/hooks/useLatestRef"
+import { useLongPressMenu } from "@/hooks/useLongPressMenu"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
 import { CardEnlargeOverlay } from "./CardLargeOverlay"
 import { ArenaCardPreview } from "./ArenaCardPreview"
-import { useCardZoom } from "./useCardZoom"
+import { dragThresholdPx } from "./touchPlay.logic"
 
-const DRAG_THRESHOLD_PX = 5
+/** Two taps on the same in-play card, within this window, expend or ready it. */
+const DOUBLE_TAP_MS = 320
+import { useCardZoom } from "./useCardZoom"
 
 export type CardMove = {
   instanceId: string
@@ -259,6 +263,11 @@ export function FreeFloatSurface({
   const [marquee, setMarquee] = useState<MarqueeState | null>(null)
   const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
   const zoom = useCardZoom()
+  const coarsePointer = useCoarsePointer()
+  const longPress = useLongPressMenu()
+  const coarseRef = useLatestRef(coarsePointer)
+  const onToggleRef = useLatestRef(onToggleExpended)
+  const lastTapRef = useRef<{ id: string; at: number } | null>(null)
 
   const cardsRef = useLatestRef(cards)
   const onSelectionRef = useLatestRef(onSelectionChange)
@@ -378,9 +387,27 @@ export function FreeFloatSurface({
     marqueeRef.current = next
     setMarquee(next)
 
+    longPress.arm({
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      enabled: coarsePointer,
+      onMenu: (x, y) => onEmptyContextMenu?.(x, y),
+      onAbortDrag: () => {
+        detachWindowMarquee()
+        marqueeRef.current = null
+        setMarquee(null)
+      },
+    })
+
     function onMove(moveEvent: PointerEvent) {
       const current = marqueeRef.current
       if (!current || current.pointerId !== moveEvent.pointerId) return
+      longPress.noteMove(
+        moveEvent.pointerId,
+        moveEvent.clientX,
+        moveEvent.clientY
+      )
       const point = clientToLocal(moveEvent.clientX, moveEvent.clientY)
       const updated = { ...current, x1: point.x, y1: point.y }
       marqueeRef.current = updated
@@ -390,13 +417,15 @@ export function FreeFloatSurface({
     function onUp(upEvent: PointerEvent) {
       const current = marqueeRef.current
       if (!current || current.pointerId !== upEvent.pointerId) return
+      const menuOpened = longPress.release(upEvent.pointerId)
       detachWindowMarquee()
       marqueeRef.current = null
       setMarquee(null)
+      if (menuOpened) return
 
       const draggedFar =
         Math.hypot(current.x1 - current.x0, current.y1 - current.y0) >
-        DRAG_THRESHOLD_PX
+        dragThresholdPx(coarseRef.current)
 
       if (!draggedFar) {
         onSelectionRef.current?.([])
@@ -415,6 +444,39 @@ export function FreeFloatSurface({
     window.addEventListener("pointermove", onMove)
     window.addEventListener("pointerup", onUp)
     window.addEventListener("pointercancel", onUp)
+  }
+
+  function expendCard(target: PlayingCardInstance) {
+    if (target.owner !== localSeat) {
+      onToggleRef.current([target.instanceId])
+      return
+    }
+    if (target.selected) {
+      const ids = cardsRef.current
+        .filter((c) => c.owner === localSeat && c.selected)
+        .map((c) => c.instanceId)
+      onToggleRef.current(ids.length > 0 ? ids : [target.instanceId])
+      return
+    }
+    onToggleRef.current([target.instanceId])
+  }
+
+  /** Coarse only. Returns true when this tap completed a double-tap. */
+  function noteCoarseTap(target: PlayingCardInstance): boolean {
+    if (!coarseRef.current) return false
+    const now = performance.now()
+    const last = lastTapRef.current
+    if (
+      last &&
+      last.id === target.instanceId &&
+      now - last.at <= DOUBLE_TAP_MS
+    ) {
+      lastTapRef.current = null
+      expendCard(target)
+      return true
+    }
+    lastTapRef.current = { id: target.instanceId, at: now }
+    return false
   }
 
   function onCardPointerDown(
@@ -466,9 +528,42 @@ export function FreeFloatSurface({
 
     // Opponent cards: click-highlight only. Dragging theirs would look like
     // you moved their board; bulk expend still requires a double-click on
-    // that one card (see onDoubleClick).
+    // that one card (see onDoubleClick). Long-press still opens the menu
+    // (View details / inspect) on coarse pointers.
     if (card.owner !== localSeat) {
       onSelectionRef.current?.([card.instanceId])
+      if (!coarsePointer) return
+      longPress.arm({
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        enabled: true,
+        onMenu: (x, y) =>
+          onCardContextMenu?.(card.instanceId, x, y),
+      })
+      function onOppMove(moveEvent: PointerEvent) {
+        if (moveEvent.pointerId !== event.pointerId) return
+        longPress.noteMove(
+          moveEvent.pointerId,
+          moveEvent.clientX,
+          moveEvent.clientY
+        )
+      }
+      function onOppUp(upEvent: PointerEvent) {
+        if (upEvent.pointerId !== event.pointerId) return
+        const menuOpened = longPress.release(upEvent.pointerId)
+        window.removeEventListener("pointermove", onOppMove, true)
+        window.removeEventListener("pointerup", onOppUp, true)
+        window.removeEventListener("pointercancel", onOppUp, true)
+        if (menuOpened) {
+          lastTapRef.current = null
+          return
+        }
+        noteCoarseTap(card)
+      }
+      window.addEventListener("pointermove", onOppMove, true)
+      window.addEventListener("pointerup", onOppUp, true)
+      window.addEventListener("pointercancel", onOppUp, true)
       return
     }
 
@@ -517,15 +612,36 @@ export function FreeFloatSurface({
     dragRef.current = next
     setDrag(next)
 
+    longPress.arm({
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      enabled: coarsePointer,
+      onMenu: (x, y) =>
+        onCardContextMenu?.(card.instanceId, x, y),
+      onAbortDrag: () => {
+        if (dragRef.current?.moved) endHandDropCue()
+        detachWindowDrag()
+        dragRef.current = null
+        setDrag(null)
+      },
+    })
+
     function onMove(moveEvent: PointerEvent) {
       const current = dragRef.current
       if (!current || current.pointerId !== moveEvent.pointerId) return
+
+      longPress.noteMove(
+        moveEvent.pointerId,
+        moveEvent.clientX,
+        moveEvent.clientY
+      )
 
       const dist = Math.hypot(
         moveEvent.clientX - current.startX,
         moveEvent.clientY - current.startY
       )
-      if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
+      if (dist <= dragThresholdPx(coarseRef.current) && !current.moved) return
       if (!current.moved) beginHandDropCue()
 
       const paint = surfacePaintScale()
@@ -544,10 +660,23 @@ export function FreeFloatSurface({
     function onUp(upEvent: PointerEvent) {
       const current = dragRef.current
       if (!current || current.pointerId !== upEvent.pointerId) return
+      const menuOpened = longPress.release(upEvent.pointerId)
       const pickedUp = current.moved
       dragRef.current = null
       if (pickedUp) endHandDropCue()
       detachWindowDrag()
+
+      if (menuOpened) {
+        setDrag(null)
+        lastTapRef.current = null
+        return
+      }
+
+      if (!current.moved) {
+        noteCoarseTap(card)
+      } else {
+        lastTapRef.current = null
+      }
 
       const clientX = upEvent.clientX
       const clientY = upEvent.clientY
@@ -702,7 +831,7 @@ export function FreeFloatSurface({
               }}
               onPointerDown={(event) => onCardPointerDown(event, card)}
               onPointerEnter={(event) => {
-                if (dragRef.current) return
+                if (dragRef.current || coarsePointer) return
                 zoom.beginHover(card, event.currentTarget)
               }}
               onPointerLeave={() => zoom.endHover()}
@@ -716,26 +845,14 @@ export function FreeFloatSurface({
                 )
               }}
               onDoubleClick={(event) => {
+                if (coarsePointer) return
                 if (
                   event.target instanceof Element &&
                   event.target.closest("[data-counter-badge]")
                 ) {
                   return
                 }
-                // Expend/ready an opponent's card only ever targets that one
-                // card — bulk-selection is a same-owner, local-only concept.
-                if (card.owner !== localSeat) {
-                  onToggleExpended([card.instanceId])
-                  return
-                }
-                if (card.selected) {
-                  const ids = cards
-                    .filter((c) => c.owner === localSeat && c.selected)
-                    .map((c) => c.instanceId)
-                  onToggleExpended(ids.length > 0 ? ids : [card.instanceId])
-                } else {
-                  onToggleExpended([card.instanceId])
-                }
+                expendCard(card)
               }}
             >
               <PlayingCard

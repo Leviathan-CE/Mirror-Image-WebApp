@@ -3,7 +3,11 @@
  * Width of the window only changes how many cards you see before scrolling.
  */
 
-import { HAND_CARD_SIZE } from "@/components/Playtester/constants"
+import {
+  HAND_CARD_SIZE,
+  HAND_DOCK_EXPANDED_PX,
+  HAND_DOCK_HEIGHT_PX,
+} from "@/components/Playtester/constants"
 
 export type HandCardPx = {
   width: number
@@ -117,6 +121,8 @@ export function peekPortalBox(args: {
   sy: number
   hoverScale: number
   stickOutNudgePx?: number
+  /** Extra painted room when raised (scrollbar thumb under the cards). */
+  expandedChromePx?: number
 }): {
   left: number
   top: number
@@ -130,7 +136,13 @@ export function peekPortalBox(args: {
       : 1
   let logicalH = args.collapsedPx
   if (args.expanded) {
-    logicalH = args.expandedPx * hover
+    const chrome =
+      args.expandedChromePx != null &&
+      Number.isFinite(args.expandedChromePx) &&
+      args.expandedChromePx > 0
+        ? args.expandedChromePx
+        : 0
+    logicalH = args.expandedPx * hover + chrome
   } else if (
     args.stickOutNudgePx != null &&
     Number.isFinite(args.stickOutNudgePx) &&
@@ -153,6 +165,55 @@ export function peekPortalBox(args: {
     paintedWidth: args.dock.width,
     paintedHeight,
   }
+}
+
+/**
+ * Solo playtester: shrink the peek dock on short hosts so a phone still has
+ * battlefield room. Desktop-tall hosts keep the full constants.
+ */
+export type SoloHandDockPx = {
+  collapsedPx: number
+  expandedPx: number
+}
+
+/** Hosts at/above this keep the full hand dock sizes. */
+export const SOLO_HAND_FULL_HEIGHT_PX = 780
+/** Raised hand may use at most this fraction of host height. */
+export const SOLO_HAND_EXPANDED_HOST_FRACTION = 0.22
+export const SOLO_HAND_EXPANDED_MIN_PX = 132
+export const SOLO_HAND_COLLAPSED_MIN_PX = 40
+
+export function soloHandDockPx(hostHeightPx: number): SoloHandDockPx {
+  if (!Number.isFinite(hostHeightPx) || hostHeightPx <= 0) {
+    return {
+      collapsedPx: HAND_DOCK_HEIGHT_PX,
+      expandedPx: HAND_DOCK_EXPANDED_PX,
+    }
+  }
+  if (hostHeightPx >= SOLO_HAND_FULL_HEIGHT_PX) {
+    return {
+      collapsedPx: HAND_DOCK_HEIGHT_PX,
+      expandedPx: HAND_DOCK_EXPANDED_PX,
+    }
+  }
+
+  const expandedPx = Math.max(
+    SOLO_HAND_EXPANDED_MIN_PX,
+    Math.min(
+      HAND_DOCK_EXPANDED_PX,
+      Math.round(hostHeightPx * SOLO_HAND_EXPANDED_HOST_FRACTION)
+    )
+  )
+  const collapsedPx = Math.max(
+    SOLO_HAND_COLLAPSED_MIN_PX,
+    Math.min(
+      HAND_DOCK_HEIGHT_PX,
+      Math.round(
+        expandedPx * (HAND_DOCK_HEIGHT_PX / HAND_DOCK_EXPANDED_PX)
+      )
+    )
+  )
+  return { collapsedPx, expandedPx }
 }
 
 

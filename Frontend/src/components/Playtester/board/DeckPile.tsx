@@ -20,6 +20,7 @@ import { CardEnlargeOverlay } from "@/components/Playtester/board/CardLargeOverl
 import { ArenaCardPreview } from "@/components/Playtester/board/ArenaCardPreview"
 import { elementCssPaintScale } from "@/components/Playtester/board/playFieldScale.logic"
 import { scalePlayPile } from "@/components/Playtester/board/playPileScale.logic"
+import { dragThresholdPx } from "@/components/Playtester/board/touchPlay.logic"
 import { useCardZoom } from "@/components/Playtester/board/useCardZoom"
 import type { PlayPileSize } from "@/components/Playtester/constants"
 import {
@@ -27,7 +28,9 @@ import {
   endHandDropCue,
 } from "@/components/Playtester/drag/handDropCue"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
+import { useCoarsePointer } from "@/hooks/useCoarsePointer"
 import { useLatestRef } from "@/hooks/useLatestRef"
+import { useLongPressMenu } from "@/hooks/useLongPressMenu"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
@@ -35,7 +38,6 @@ const MAX_UNDER_LAYERS = 5
 const STACK_STEP_X = 3
 const STACK_STEP_Y = 3
 const TOP_LIFT_PX = 14
-const DRAG_THRESHOLD_PX = 5
 
 export type DeckPileProps = {
   count: number
@@ -197,12 +199,16 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
     const [drag, setDrag] = useState<TopDrag | null>(null)
     const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
     const zoom = useCardZoom()
+    const coarsePointer = useCoarsePointer()
+    const longPress = useLongPressMenu()
+    const coarseRef = useLatestRef(coarsePointer)
     const dragRef = useRef<TopDrag | null>(null)
     const measureRef = useRef<HTMLDivElement | null>(null)
     const onReleaseRef = useLatestRef(onTopCardRelease)
     const onClickRef = useLatestRef(onClickDraw)
     const onHoverChangeRef = useLatestRef(onHoverChange)
     const cueHandDropRef = useLatestRef(cueHandDrop)
+    const onContextMenuRef = useLatestRef(onContextMenu)
 
     useEffect(() => {
       return () => {
@@ -224,11 +230,12 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
       function onMove(event: PointerEvent) {
         const current = dragRef.current
         if (!current || current.pointerId !== event.pointerId) return
+        longPress.noteMove(event.pointerId, event.clientX, event.clientY)
         const dist = Math.hypot(
           event.clientX - current.startX,
           event.clientY - current.startY
         )
-        if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
+        if (dist <= dragThresholdPx(coarseRef.current) && !current.moved) return
         if (!current.moved && cueHandDropRef.current) beginHandDropCue()
         const paint = elementCssPaintScale(measureRef.current)
         const next: TopDrag = {
@@ -248,12 +255,14 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
       function onUp(event: PointerEvent) {
         const current = dragRef.current
         if (!current || current.pointerId !== event.pointerId) return
+        const menuOpened = longPress.release(event.pointerId)
         const pickedUp = current.moved && cueHandDropRef.current
         dragRef.current = null
         if (pickedUp) endHandDropCue()
         setDrag(null)
         setHovered(false)
         onHoverChangeRef.current?.(false)
+        if (menuOpened) return
 
         const moved = current.moved
         if (!moved) {
@@ -311,11 +320,54 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
       }
       dragRef.current = next
       setDrag(next)
+      longPress.arm({
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        enabled: coarsePointer,
+        onMenu: (x, y) => onContextMenuRef.current?.(x, y),
+        onAbortDrag: () => {
+          if (dragRef.current?.moved && cueHandDropRef.current) {
+            endHandDropCue()
+          }
+          dragRef.current = null
+          setDrag(null)
+        },
+      })
       try {
         event.currentTarget.setPointerCapture(event.pointerId)
       } catch {
         /* ignore */
       }
+    }
+
+    function onEmptyPilePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+      if (event.button !== 0 || count > 0 || dragRef.current) return
+      longPress.arm({
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        enabled: coarsePointer,
+        onMenu: (x, y) => onContextMenuRef.current?.(x, y),
+      })
+      function onMove(moveEvent: PointerEvent) {
+        if (moveEvent.pointerId !== event.pointerId) return
+        longPress.noteMove(
+          moveEvent.pointerId,
+          moveEvent.clientX,
+          moveEvent.clientY
+        )
+      }
+      function onUp(upEvent: PointerEvent) {
+        if (upEvent.pointerId !== event.pointerId) return
+        longPress.release(upEvent.pointerId)
+        window.removeEventListener("pointermove", onMove, true)
+        window.removeEventListener("pointerup", onUp, true)
+        window.removeEventListener("pointercancel", onUp, true)
+      }
+      window.addEventListener("pointermove", onMove, true)
+      window.addEventListener("pointerup", onUp, true)
+      window.addEventListener("pointercancel", onUp, true)
     }
 
     return (
@@ -388,7 +440,14 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
                       setHovered(true)
                       onHoverChangeRef.current?.(true)
                     }
-                    if (dragRef.current || !topRevealed || !topCard) return
+                    if (
+                      coarsePointer ||
+                      dragRef.current ||
+                      !topRevealed ||
+                      !topCard
+                    ) {
+                      return
+                    }
                     zoom.beginHover(topCard, event.currentTarget)
                   }}
                   onMouseLeave={() => {
@@ -420,6 +479,7 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
                     "absolute inset-0 flex items-center justify-center",
                     "border border-dashed border-cyan-500/25 bg-black/40 clip-angled"
                   )}
+                  onPointerDown={onEmptyPilePointerDown}
                 >
                   <span className="font-mono text-[10px] text-white/35">
                     Empty

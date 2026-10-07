@@ -20,6 +20,7 @@ import { ArenaCardPreview } from "@/components/Playtester/board/ArenaCardPreview
 import { PlayingCard } from "@/components/Playtester/board/PlayingCard"
 import { elementCssPaintScale } from "@/components/Playtester/board/playFieldScale.logic"
 import { scalePlayPile } from "@/components/Playtester/board/playPileScale.logic"
+import { dragThresholdPx } from "@/components/Playtester/board/touchPlay.logic"
 import { useCardZoom } from "@/components/Playtester/board/useCardZoom"
 import type { PlayPileSize } from "@/components/Playtester/constants"
 import {
@@ -27,11 +28,11 @@ import {
   endHandDropCue,
 } from "@/components/Playtester/drag/handDropCue"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
+import { useCoarsePointer } from "@/hooks/useCoarsePointer"
 import { useLatestRef } from "@/hooks/useLatestRef"
+import { useLongPressMenu } from "@/hooks/useLongPressMenu"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
-
-const DRAG_THRESHOLD_PX = 5
 
 export type TrashyardPileProps = {
   cards: PlayingCardInstance[]
@@ -103,10 +104,15 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
     const [drag, setDrag] = useState<TrashDrag | null>(null)
     const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
     const zoom = useCardZoom()
+    const coarsePointer = useCoarsePointer()
+    const longPress = useLongPressMenu()
+    const coarseRef = useLatestRef(coarsePointer)
     const dragRef = useRef<TrashDrag | null>(null)
     const onReleaseRef = useLatestRef(onReleaseCards)
     const onBrowseRef = useLatestRef(onBrowse)
     const cueHandDropRef = useLatestRef(cueHandDrop)
+    const onCardContextMenuRef = useLatestRef(onCardContextMenu)
+    const onPileContextMenuRef = useLatestRef(onPileContextMenu)
 
     useEffect(() => {
       return () => {
@@ -127,11 +133,12 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       function onMove(event: PointerEvent) {
         const current = dragRef.current
         if (!current || current.pointerId !== event.pointerId) return
+        longPress.noteMove(event.pointerId, event.clientX, event.clientY)
         const dist = Math.hypot(
           event.clientX - current.startX,
           event.clientY - current.startY
         )
-        if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
+        if (dist <= dragThresholdPx(coarseRef.current) && !current.moved) return
         if (!current.moved && cueHandDropRef.current) beginHandDropCue()
         const paint = elementCssPaintScale(measureRef.current)
         const next: TrashDrag = {
@@ -149,10 +156,12 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       function onUp(event: PointerEvent) {
         const current = dragRef.current
         if (!current || current.pointerId !== event.pointerId) return
+        const menuOpened = longPress.release(event.pointerId)
         const pickedUp = current.moved && cueHandDropRef.current
         dragRef.current = null
         if (pickedUp) endHandDropCue()
         setDrag(null)
+        if (menuOpened) return
         if (!current.moved) {
           // Click without drag → open browser (same idea as searching the deck).
           onBrowseRef.current?.()
@@ -216,6 +225,50 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
       }
       dragRef.current = next
       setDrag(next)
+      longPress.arm({
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        enabled: coarsePointer,
+        onMenu: (x, y) =>
+          onCardContextMenuRef.current?.(instanceId, x, y),
+        onAbortDrag: () => {
+          if (dragRef.current?.moved && cueHandDropRef.current) {
+            endHandDropCue()
+          }
+          dragRef.current = null
+          setDrag(null)
+        },
+      })
+    }
+
+    function onEmptyPilePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+      if (event.button !== 0 || cards.length > 0 || dragRef.current) return
+      longPress.arm({
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        enabled: coarsePointer,
+        onMenu: (x, y) => onPileContextMenuRef.current?.(x, y),
+      })
+      function onMove(moveEvent: PointerEvent) {
+        if (moveEvent.pointerId !== event.pointerId) return
+        longPress.noteMove(
+          moveEvent.pointerId,
+          moveEvent.clientX,
+          moveEvent.clientY
+        )
+      }
+      function onUp(upEvent: PointerEvent) {
+        if (upEvent.pointerId !== event.pointerId) return
+        longPress.release(upEvent.pointerId)
+        window.removeEventListener("pointermove", onMove, true)
+        window.removeEventListener("pointerup", onUp, true)
+        window.removeEventListener("pointercancel", onUp, true)
+      }
+      window.addEventListener("pointermove", onMove, true)
+      window.addEventListener("pointerup", onUp, true)
+      window.addEventListener("pointercancel", onUp, true)
     }
 
     function onCardDoubleClick(
@@ -259,6 +312,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
                 className="absolute inset-x-0 bottom-0 flex items-center justify-center border border-dashed border-cyan-500/25 bg-black/40 clip-angled"
                 style={{ height: cardH }}
                 onClick={() => onBrowse?.()}
+                onPointerDown={onEmptyPilePointerDown}
                 onContextMenu={(event) => {
                   event.preventDefault()
                   event.stopPropagation()
@@ -280,7 +334,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
                   if (topCard) onCardPointerDown(event, topCard.instanceId)
                 }}
                 onPointerEnter={(event) => {
-                  if (!topCard || dragging?.moved) return
+                  if (coarsePointer || !topCard || dragging?.moved) return
                   zoom.beginHover(topCard, event.currentTarget)
                 }}
                 onPointerLeave={() => zoom.endHover()}

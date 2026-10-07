@@ -17,11 +17,12 @@ import {
 import { createPortal } from "react-dom"
 
 import { PlayingCard } from "@/components/Playtester/board/PlayingCard"
+import { dragThresholdPx } from "@/components/Playtester/board/touchPlay.logic"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
+import { useCoarsePointer } from "@/hooks/useCoarsePointer"
 import { useLatestRef } from "@/hooks/useLatestRef"
 import { cn } from "@/lib/utils"
 
-const DRAG_THRESHOLD_PX = 5
 const GHOST_W = 112
 const GHOST_H = 144
 
@@ -92,6 +93,8 @@ export function DeckPeekOverlay({
   const [discarded, setDiscarded] = useState<PlayingCardInstance[]>([])
   const [drag, setDrag] = useState<DragState | null>(null)
   const dragRef = useRef<DragState | null>(null)
+  const coarsePointer = useCoarsePointer()
+  const coarseRef = useLatestRef(coarsePointer)
   /** Slot elements, keyed by instance id, for pointer hit-testing. */
   const slotRefs = useRef<Map<string, HTMLLIElement>>(new Map())
   const discardZoneRef = useRef<HTMLDivElement | null>(null)
@@ -135,7 +138,7 @@ export function DeckPeekOverlay({
         event.clientX - current.startX,
         event.clientY - current.startY
       )
-      if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
+      if (dist <= dragThresholdPx(coarseRef.current) && !current.moved) return
       const overDiscard = pointInRect(
         event.clientX,
         event.clientY,
