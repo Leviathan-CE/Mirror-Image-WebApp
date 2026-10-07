@@ -181,7 +181,8 @@ export const SOLO_HAND_FULL_HEIGHT_PX = 780
 /** Raised hand may use at most this fraction of host height. */
 export const SOLO_HAND_EXPANDED_HOST_FRACTION = 0.22
 export const SOLO_HAND_EXPANDED_MIN_PX = 132
-export const SOLO_HAND_COLLAPSED_MIN_PX = 40
+/** Collapsed sliver. Tall enough to grab and scroll; same as the desktop dock. */
+export const SOLO_HAND_COLLAPSED_MIN_PX = HAND_DOCK_HEIGHT_PX
 
 export function soloHandDockPx(hostHeightPx: number): SoloHandDockPx {
   if (!Number.isFinite(hostHeightPx) || hostHeightPx <= 0) {
