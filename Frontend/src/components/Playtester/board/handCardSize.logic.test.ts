@@ -185,8 +185,7 @@ describe("soloHandDockPx", () => {
     expect(dock.expandedPx).toBeLessThan(HAND_DOCK_EXPANDED_PX)
     expect(dock.expandedPx).toBeLessThanOrEqual(Math.round(700 * 0.22))
     expect(dock.expandedPx).toBeGreaterThanOrEqual(132)
-    expect(dock.collapsedPx).toBeLessThanOrEqual(HAND_DOCK_HEIGHT_PX)
-    expect(dock.collapsedPx).toBeGreaterThanOrEqual(40)
+    expect(dock.collapsedPx).toBe(HAND_DOCK_HEIGHT_PX)
   })
 
   it("returns defaults for invalid height", () => {

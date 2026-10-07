@@ -49,7 +49,7 @@ const GROUP_GHOST_STEP_RATIO = 18 / HAND_CARD_SIZE.defaultWidth
  */
 const PEEK_COLLAPSE_DELAY_MS = 120
 /** Extra size on the inspected card while the peek overlay is open. */
-const PEEK_HOVER_SCALE = 1.9
+const PEEK_HOVER_SCALE = 2.5
 /**
  * Room under the raised faces for the horizontal scrollbar
  * (`mt-1` + `h-2`) so overflow doesn't shave the card tops.
