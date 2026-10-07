@@ -16,9 +16,11 @@ import {
 import { createPortal } from "react-dom"
 
 import { CardEnlargeOverlay } from "@/components/Playtester/board/CardLargeOverlay"
+import { ArenaCardPreview } from "@/components/Playtester/board/ArenaCardPreview"
 import { PlayingCard } from "@/components/Playtester/board/PlayingCard"
 import { elementCssPaintScale } from "@/components/Playtester/board/playFieldScale.logic"
 import { scalePlayPile } from "@/components/Playtester/board/playPileScale.logic"
+import { useCardZoom } from "@/components/Playtester/board/useCardZoom"
 import type { PlayPileSize } from "@/components/Playtester/constants"
 import {
   beginHandDropCue,
@@ -100,6 +102,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
 
     const [drag, setDrag] = useState<TrashDrag | null>(null)
     const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
+    const zoom = useCardZoom()
     const dragRef = useRef<TrashDrag | null>(null)
     const onReleaseRef = useLatestRef(onReleaseCards)
     const onBrowseRef = useLatestRef(onBrowse)
@@ -197,6 +200,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
         return
       }
       if (event.button !== 0) return
+      zoom.endHover()
       event.preventDefault()
       const paint = elementCssPaintScale(measureRef.current)
       const next: TrashDrag = {
@@ -275,6 +279,11 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
                 onPointerDown={(event) => {
                   if (topCard) onCardPointerDown(event, topCard.instanceId)
                 }}
+                onPointerEnter={(event) => {
+                  if (!topCard || dragging?.moved) return
+                  zoom.beginHover(topCard, event.currentTarget)
+                }}
+                onPointerLeave={() => zoom.endHover()}
                 onDoubleClick={(event) => {
                   if (topCard) onCardDoubleClick(event, topCard.instanceId)
                 }}
@@ -332,6 +341,7 @@ export const TrashyardPile = forwardRef<HTMLDivElement, TrashyardPileProps>(
             )
           : null}
 
+        <ArenaCardPreview target={zoom.preview} />
         <CardEnlargeOverlay
           open={enlarged != null}
           name={enlarged?.name ?? ""}

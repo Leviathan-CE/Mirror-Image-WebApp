@@ -48,6 +48,8 @@ import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
 import { CardEnlargeOverlay } from "./CardLargeOverlay"
+import { ArenaCardPreview } from "./ArenaCardPreview"
+import { useCardZoom } from "./useCardZoom"
 
 const DRAG_THRESHOLD_PX = 5
 
@@ -256,6 +258,7 @@ export function FreeFloatSurface({
   const [drag, setDrag] = useState<DragState | null>(null)
   const [marquee, setMarquee] = useState<MarqueeState | null>(null)
   const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
+  const zoom = useCardZoom()
 
   const cardsRef = useLatestRef(cards)
   const onSelectionRef = useLatestRef(onSelectionChange)
@@ -441,6 +444,7 @@ export function FreeFloatSurface({
     // silently swallowing double-click-to-expend on their card.
     event.stopPropagation()
     if (event.button !== 0) return
+    zoom.endHover()
     if (marqueeRef.current) {
       detachWindowMarquee()
       marqueeRef.current = null
@@ -697,6 +701,11 @@ export function FreeFloatSurface({
                   : "left 300ms ease-out, top 300ms ease-out, transform 300ms ease-out",
               }}
               onPointerDown={(event) => onCardPointerDown(event, card)}
+              onPointerEnter={(event) => {
+                if (dragRef.current) return
+                zoom.beginHover(card, event.currentTarget)
+              }}
+              onPointerLeave={() => zoom.endHover()}
               onContextMenu={(event) => {
                 event.preventDefault()
                 event.stopPropagation()
@@ -763,6 +772,7 @@ export function FreeFloatSurface({
             enlarged ? cardArtUrl(enlarged.artPath, enlarged.artVersion) : null
           }
         />
+        <ArenaCardPreview target={zoom.preview} />
       </div>
 
       {ghostCards.length > 0

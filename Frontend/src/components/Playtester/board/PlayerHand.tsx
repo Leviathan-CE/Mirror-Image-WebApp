@@ -48,7 +48,7 @@ const GROUP_GHOST_STEP_RATIO = 18 / HAND_CARD_SIZE.defaultWidth
  */
 const PEEK_COLLAPSE_DELAY_MS = 120
 /** Extra size on the inspected card while the peek overlay is open. */
-const PEEK_HOVER_SCALE = 1.28
+const PEEK_HOVER_SCALE = 1.9
 /** Logical px the opponent sliver grows when they inspect a card. */
 const PEEK_STICK_OUT_NUDGE_PX = 22
 

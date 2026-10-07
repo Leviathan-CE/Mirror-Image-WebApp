@@ -17,8 +17,10 @@ import { createPortal } from "react-dom"
 
 import { CardBackImg } from "@/components/Playtester/board/CardBackImg"
 import { CardEnlargeOverlay } from "@/components/Playtester/board/CardLargeOverlay"
+import { ArenaCardPreview } from "@/components/Playtester/board/ArenaCardPreview"
 import { elementCssPaintScale } from "@/components/Playtester/board/playFieldScale.logic"
 import { scalePlayPile } from "@/components/Playtester/board/playPileScale.logic"
+import { useCardZoom } from "@/components/Playtester/board/useCardZoom"
 import type { PlayPileSize } from "@/components/Playtester/constants"
 import {
   beginHandDropCue,
@@ -194,6 +196,7 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
     const [hovered, setHovered] = useState(false)
     const [drag, setDrag] = useState<TopDrag | null>(null)
     const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
+    const zoom = useCardZoom()
     const dragRef = useRef<TopDrag | null>(null)
     const measureRef = useRef<HTMLDivElement | null>(null)
     const onReleaseRef = useLatestRef(onTopCardRelease)
@@ -292,6 +295,7 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
         return
       }
       if (event.button !== 0 || !interactive) return
+      zoom.endHover()
       event.preventDefault()
       event.stopPropagation()
       const paint = elementCssPaintScale(measureRef.current)
@@ -379,17 +383,20 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
                   }
                   aria-disabled={!interactive}
                   onPointerDown={onTopPointerDown}
-                  onMouseEnter={() => {
+                  onMouseEnter={(event) => {
                     if (!dragRef.current && interactive) {
                       setHovered(true)
                       onHoverChangeRef.current?.(true)
                     }
+                    if (dragRef.current || !topRevealed || !topCard) return
+                    zoom.beginHover(topCard, event.currentTarget)
                   }}
                   onMouseLeave={() => {
                     if (!dragRef.current) {
                       setHovered(false)
                       onHoverChangeRef.current?.(false)
                     }
+                    zoom.endHover()
                   }}
                   className={cn(
                     "absolute inset-0 z-20 touch-none select-none p-0",
@@ -443,6 +450,7 @@ export const DeckPile = forwardRef<HTMLDivElement, DeckPileProps>(
             )
           : null}
 
+        <ArenaCardPreview target={zoom.preview} />
         <CardEnlargeOverlay
           open={enlarged != null}
           name={enlarged?.name ?? ""}
