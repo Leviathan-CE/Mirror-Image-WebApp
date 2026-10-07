@@ -44,7 +44,7 @@ export function planArenaHoverPreview(
   const spaceAbove = anchor.top - PAD
   const handLike = anchor.bottom > viewportHeight * 0.72 && spaceAbove >= 160
 
-  let left = anchor.right + GAP
+  let left: number
   let top = (anchor.top + anchor.bottom) / 2 - height / 2
 
   if (handLike) {

@@ -462,9 +462,8 @@ export function FreeFloatSurface({
   }
 
   /** Coarse only. Returns true when this tap completed a double-tap. */
-  function noteCoarseTap(target: PlayingCardInstance): boolean {
+  function noteCoarseTap(target: PlayingCardInstance, now: number): boolean {
     if (!coarseRef.current) return false
-    const now = performance.now()
     const last = lastTapRef.current
     if (
       last &&
@@ -559,7 +558,7 @@ export function FreeFloatSurface({
           lastTapRef.current = null
           return
         }
-        noteCoarseTap(card)
+        noteCoarseTap(card, upEvent.timeStamp)
       }
       window.addEventListener("pointermove", onOppMove, true)
       window.addEventListener("pointerup", onOppUp, true)
@@ -673,7 +672,7 @@ export function FreeFloatSurface({
       }
 
       if (!current.moved) {
-        noteCoarseTap(card)
+        noteCoarseTap(card, upEvent.timeStamp)
       } else {
         lastTapRef.current = null
       }
