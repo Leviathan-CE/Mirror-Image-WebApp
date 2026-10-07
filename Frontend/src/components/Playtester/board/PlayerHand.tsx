@@ -266,11 +266,17 @@ export function PlayerHand({
   function surfaceEl() {
     return peekPortalRef.current ?? rootRef.current
   }
-  const [cardPx, setCardPx] = useState(() =>
-    peek
-      ? handCardSizePx(peek.expandedPx + HAND_CARD_SIZE.chromeY)
-      : handCardSizePx(HAND_CARD_SIZE.defaultHeight + HAND_CARD_SIZE.chromeY)
+  // Peek faces follow the raised strip. The first render often has no
+  // measured host yet, so expandedPx starts at the desktop size and then
+  // shrinks — a one-time useState would keep the tall faces and the
+  // shorter strip would crop the tops.
+  const peekCardPx = peek
+    ? handCardSizePx(peek.expandedPx + HAND_CARD_SIZE.chromeY)
+    : null
+  const [fittedCardPx, setFittedCardPx] = useState(() =>
+    handCardSizePx(HAND_CARD_SIZE.defaultHeight + HAND_CARD_SIZE.chromeY)
   )
+  const cardPx = peekCardPx ?? fittedCardPx
   const dragRef = useRef<HandDrag | null>(null)
   const marqueeRef = useRef<MarqueeState | null>(null)
   const cardsRef = useLatestRef(cards)
@@ -278,13 +284,12 @@ export function PlayerHand({
   const onReleaseRef = useLatestRef(onReleaseCards)
 
   useEffect(() => {
-    // Peek cards are sized once, from the initial state above — the
-    // collapsed sliver crops them, it never shrinks them, so there is
-    // nothing to fit to the (tiny) dock height here.
+    // Peek size is derived from expandedPx above. This observer is only
+    // for the non-peek strip, which fills its own dock.
     if (peek) return
     const el = rootRef.current
     if (!el) return
-    const sync = () => setCardPx(handCardSizePx(el.clientHeight))
+    const sync = () => setFittedCardPx(handCardSizePx(el.clientHeight))
     const raf = requestAnimationFrame(sync)
     const observer = new ResizeObserver(sync)
     observer.observe(el)
