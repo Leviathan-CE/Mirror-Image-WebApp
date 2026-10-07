@@ -20,6 +20,7 @@ import { createPortal } from "react-dom"
 
 import { CardEnlargeOverlay } from "@/components/Playtester/board/CardLargeOverlay"
 import { PlayingCard } from "@/components/Playtester/board/PlayingCard"
+import { dragThresholdPx } from "@/components/Playtester/board/touchPlay.logic"
 import {
   beginHandDropCue,
   endHandDropCue,
@@ -49,13 +50,14 @@ import {
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { LOCAL_SEAT, type PlayerSlot } from "@/components/Playtester/constants"
 import { MiddleMouseScroll } from "@/components/ui/MiddleMouseScroll"
+import { useCoarsePointer } from "@/hooks/useCoarsePointer"
 import { useLatestRef } from "@/hooks/useLatestRef"
+import { useLongPressMenu } from "@/hooks/useLongPressMenu"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
 const CARD_W = 72
 const CARD_H = 96
-const DRAG_THRESHOLD_PX = 5
 
 export type DeckSearchModalProps = {
   open: boolean
@@ -141,6 +143,10 @@ export function DeckSearchModal({
   const [drag, setDrag] = useState<DragState | null>(null)
   const dragRef = useRef<DragState | null>(null)
   const [enlarged, setEnlarged] = useState<PlayingCardInstance | null>(null)
+  const coarsePointer = useCoarsePointer()
+  const longPress = useLongPressMenu()
+  const coarseRef = useLatestRef(coarsePointer)
+  const onCardContextMenuRef = useLatestRef(onCardContextMenu)
   const [box, setBox] = useState<DeckSearchBox>(() =>
     isPile
       ? readStoredFaceUpPileBrowserBox(currentViewport())
@@ -221,11 +227,12 @@ export function DeckSearchModal({
     function onMove(event: PointerEvent) {
       const current = dragRef.current
       if (!current || current.pointerId !== event.pointerId) return
+      longPress.noteMove(event.pointerId, event.clientX, event.clientY)
       const dist = Math.hypot(
         event.clientX - current.startX,
         event.clientY - current.startY
       )
-      if (dist <= DRAG_THRESHOLD_PX && !current.moved) return
+      if (dist <= dragThresholdPx(coarseRef.current) && !current.moved) return
       if (!current.moved) beginHandDropCue()
       const next: DragState = {
         ...current,
@@ -240,11 +247,12 @@ export function DeckSearchModal({
     function onUp(event: PointerEvent) {
       const current = dragRef.current
       if (!current || current.pointerId !== event.pointerId) return
+      const menuOpened = longPress.release(event.pointerId)
       const pickedUp = current.moved
       dragRef.current = null
       if (pickedUp) endHandDropCue()
       setDrag(null)
-      if (!current.moved) return
+      if (menuOpened || !current.moved) return
       onCardRelease(current.groupIds, event.clientX, event.clientY)
       setSelectedIds([])
     }
@@ -290,9 +298,39 @@ export function DeckSearchModal({
       return
     }
 
-    if (!canDragOut) return
-
     const topId = card.instanceId
+
+    if (!canDragOut) {
+      if (!coarsePointer) return
+      longPress.arm({
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        enabled: true,
+        onMenu: (x, y) =>
+          onCardContextMenuRef.current?.(topId, x, y),
+      })
+      function onMenuMove(moveEvent: PointerEvent) {
+        if (moveEvent.pointerId !== event.pointerId) return
+        longPress.noteMove(
+          moveEvent.pointerId,
+          moveEvent.clientX,
+          moveEvent.clientY
+        )
+      }
+      function onMenuUp(upEvent: PointerEvent) {
+        if (upEvent.pointerId !== event.pointerId) return
+        longPress.release(upEvent.pointerId)
+        window.removeEventListener("pointermove", onMenuMove, true)
+        window.removeEventListener("pointerup", onMenuUp, true)
+        window.removeEventListener("pointercancel", onMenuUp, true)
+      }
+      window.addEventListener("pointermove", onMenuMove, true)
+      window.addEventListener("pointerup", onMenuUp, true)
+      window.addEventListener("pointercancel", onMenuUp, true)
+      return
+    }
+
     let groupIds: string[]
 
     if (multiSelect) {
@@ -318,6 +356,19 @@ export function DeckSearchModal({
     }
     dragRef.current = next
     setDrag(next)
+    longPress.arm({
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      enabled: coarsePointer,
+      onMenu: (x, y) =>
+        onCardContextMenuRef.current?.(topId, x, y),
+      onAbortDrag: () => {
+        if (dragRef.current?.moved) endHandDropCue()
+        dragRef.current = null
+        setDrag(null)
+      },
+    })
   }
 
   function beginBoxDrag(

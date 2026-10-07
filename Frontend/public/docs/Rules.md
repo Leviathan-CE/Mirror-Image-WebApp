@@ -246,7 +246,7 @@
 >
 > 400.2.2.3. Trigger all abilities with the start-of-turn tag.
 >
-> 400.2.2.4. **Hold `[VP]`.** Gain 1 `[VP]` for each objective you control. Then check win (see rule 100.4). This is the only `[VP]` gain that can win the game (see rule 100.4.2). Objectives you do not control score 0.
+> 400.2.2.4. **Hold `[VP]`.** Gain 2 `[VP]` for each objective you control. Then check win (see rule 100.4). This is the only `[VP]` gain that can win the game (see rule 100.4.2). Objectives you do not control score 0.
 >
 > 400.2.2.5. Remove one time counter from each card you control in play; resolve effects when the last counter is removed from a stockpile card.
 
@@ -337,7 +337,7 @@
 
 602.1. To attack, declare an attack at an objective. Marked damage on units persists until healed (see rule 400.2.2.2).
 
-602.2. **Declare attackers**: Choose unit(s) you control that are legal attackers: units on the battlefield (including units already on that objective). Multiple attackers are one attack. A unit may attack if it has the Unit supertype, including when it also has a type that otherwise cannot attack (see rules 100.7 and 100.7.2).
+602.2. **Declare attackers**: Choose unit(s) you control that are legal attackers: units on the battlefield (not including units already on an  objective). Multiple attackers are one attack. A unit may attack if it has the Unit supertype, including when it also has a type that otherwise cannot attack (see rules 100.7 and 100.7.2).
 
 > 602.2.1. A card with one or more time counters on it cannot attack (see rule 700.4.2.1). When the last counter is removed from a stockpile card, it moves to the battlefield and, if it is a unit, gains Blitz until the end of the turn (see rules 700.4.4 and 300.2.2.3).
 >
@@ -351,8 +351,6 @@
 
 602.3. **Declare the objective**: Expend unit attackers. Trigger `[ATTACK]` tags and other on-attack abilities. Damage recipients are chosen in the damage step (see rule 602.7).
 
-> 602.3.1. **Airborne.** If the defending player has at least one Airborne unit on that objective, the attack is legal only if at least one attacking unit has Airborne or Long Range (see rules 800.3.2 and 800.3.12). That one unit enables the entire attack force.
->
 > 602.3.2. **Stealth.** If the defending player has at least one unit with Stealth on that objective, pay Stealth as an additional cost of the attack (see rules 800.3.18 and 602.4). Pay **once** for the entire attack force. If more than one such unit is on that objective, pay the highest Stealth X among them.
 >
 > 602.3.3. Other additional costs that would be paid to attack or target a unit on that objective are paid once for the entire attack force, using the highest value among those units if more than one applies.
@@ -361,7 +359,7 @@
 
 602.5. **Response window**: Players play Quick Hacks or activate abilities, active player first, until both pass.
 
-602.6. **Preemptive Strike damage**: Attackers with Preemptive Strike deal damage equal to their damage value (including modifiers). The attacking player divides that damage among the defending player's units on that objective, as they choose (rule 602.7.4 still applies). If Preemptive Strike damage was dealt for a unit, that unit skips ordinary combat damage in rule 602.7.
+602.6. **Preemptive Strike damage**: Attackers with Preemptive Strike deal damage equal to their damage value (including modifiers). The attacking player divides that damage among the defending player's units on that objective, as they choose (rule 602.7.4 still applies). If Preemptive Strike damage was dealt for a unit, that unit skips ordinary combat damage in rule 602.7. If a unit recieves lethal amount of damage it is `[DEFEATED]`, triggering any on `[DEFEATED]` abilities.
 
 602.7. **Combat damage**: Combat damage is simultaneous, using each unit's damage value from `[TLV]` (including modifiers).
 
@@ -373,7 +371,7 @@
 >
 > 602.7.4. You cannot assign damage from an attacking unit to an Airborne unit unless that attacking unit has Airborne or Long Range.
 >
-> 602.7.5. After damage, a unit is defeated if marked damage ≥ its health value (or health value + X with Durable X). Trigger on-defeat abilities; put defeated units in the discard pile.
+> 602.7.5. After damage, a unit is defeated if marked damage ≥ its `[TLV]` value. (when the `[TLV]` is split the dmg|hp use the hp value) Trigger on-defeat abilities; put defeated units in the discard pile.
 >
 > 602.7.6. If combat causes a player to **gain control** of the objective, apply rule 250.7.1 (Conquer).
 
@@ -421,7 +419,7 @@
 >
 > 700.1.2. At the start of a turn, the turn player is the active player.
 >
-> 700.1.3. When a card or effect enters the lock, its controller becomes the non-active player; an opponent of that player becomes active. Other players are not in that lock unless a card targets them.
+> 700.1.3. When a card or effect enters the lock, its controller becomes the non-active player; each opponent of that has a chance to be the active player. in 1v1 who does not havce a card or effect in the lock is the active player.
 >
 > 700.1.4. If multiple effects would enter an empty lock simultaneously, the active player puts one of theirs in first; others go to queues.
 >
@@ -454,6 +452,8 @@
 > 700.3.5. **Lock occupant resolves**: If lock is still full and any queue is non-empty, repeat 700.3.2–700.3.4. When lock is empty, queues must also be empty before normal play resumes.
 >
 > 700.3.6. A Quick Hack during batches overwrites per Scenario 1; only the active player may do so.
+>
+>700.3.7. If a resolving queued effect targets an entity, that entity's controller may activate one of its Quick Hack-speed abilities into their queue. The effect then resolves.
 
 ### 700.4. Time counters
 
@@ -536,18 +536,11 @@
 > 800.3.4. **Corrosive Bile**: Whenever this entity deals damage to a unit, destroy that unit.
 >
 > 800.3.5. **Degrade X**: Affected player mills X from their deck.
->
-> 800.3.6. **Durable X**: Defeated at health value + X damage instead of health value.
+
 >
 > 800.3.7. **Preemptive Strike**: Deals damage first in a fight unless the opponent also has Preemptive Strike (see rule 602.6).
 >
-> 800.3.8. **Hardened X**: Reduce damage taken by X.
->
-> 800.3.9. **Hard Point**: You may include a second copy of this card in your deck (in addition to the normal copy limit).
->
 > 800.3.10. **Invulnerable**: Cannot be trashed, dismantled, or destroyed by those effects; cannot be chosen as target for them.
->
-> 800.3.11. **Lethal X**: Deals X additional damage when it deals damage.
 >
 > 800.3.12. **Long Range**: Can attack Airborne units.
 >
@@ -566,8 +559,6 @@
 > 800.3.19. **Sturdy**: Cannot be destroyed by "destroy" effects.
 >
 > 800.3.20. **Surge**: Invokable whenever a Quick Hack can be played.
->
-> 800.3.21. **Weakened X**: Deals X less damage.
 >
 > 800.3.22. **Desperate Maneuver X**: When you draw this card, you may reveal it. If you do, dismantle X and play it immediately as though it had Surge without paying its invoke cost. Otherwise you may put it into your hand.
 >

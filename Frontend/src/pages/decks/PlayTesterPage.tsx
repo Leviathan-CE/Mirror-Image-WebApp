@@ -37,8 +37,6 @@ import {
 import {
   PLAY_ZONE,
   HAND_CARD_SIZE,
-  HAND_DOCK_HEIGHT_PX,
-  HAND_DOCK_EXPANDED_PX,
   SELECTABLE_ACTION_ZONES,
   PLAYER_SLOT,
   otherSeat,
@@ -52,6 +50,7 @@ import {
   clientToLogicalField,
   type FieldSize,
 } from "@/components/Playtester/board/playFieldScale.logic"
+import { soloHandDockPx } from "@/components/Playtester/board/handCardSize.logic"
 import {
   scalePlayPile,
   soloPlayPileScale,
@@ -114,6 +113,7 @@ import { cardArtUrl } from "@/lib/api/decks"
 import { useDeckDetail } from "@/hooks/useDeckDetail"
 import { ROUTES } from "@/lib/route"
 import { GameIcon } from "@/components/common/GameIcon"
+import { useCoarsePointer } from "@/hooks/useCoarsePointer"
 
 type AccumulateChooserState = {
   card: PlayingCardInstance
@@ -126,19 +126,6 @@ type DeckPeekState = {
   cards: PlayingCardInstance[]
   allowReorder: boolean
 }
-
-/**
- * Stable peek configs (same reference every render) so `PlayerHand` doesn't
- * re-measure on every parent re-render. Own hand sits at the bottom of the
- * board and rises up into the battlefield above it; opponent hand sits at
- * the top and rises down into the battlefield below it.
- */
-const HAND_PEEK_BOTTOM: HandPeekConfig = {
-  collapsedPx: HAND_DOCK_HEIGHT_PX,
-  expandedPx: HAND_DOCK_EXPANDED_PX,
-  anchor: "bottom",
-}
-const HAND_PEEK_TOP: HandPeekConfig = { ...HAND_PEEK_BOTTOM, anchor: "top" }
 
 export function PlayTesterPage() {
   const navigate = useNavigate()
@@ -290,6 +277,14 @@ export function PlayTesterPage() {
   const handRef = useRef<HTMLDivElement>(null)
   const [handDropArmed, setHandDropArmed] = useState(false)
   useEffect(() => subscribeHandDropCue(setHandDropArmed), [])
+  const coarsePointer = useCoarsePointer()
+  /** Solo phone / narrow: side piles live in a slide-out rail. */
+  const [pileRailOpen, setPileRailOpen] = useState(() => {
+    if (typeof window === "undefined") return true
+    if (typeof window.matchMedia !== "function") return true
+    // Phones start collapsed so the battlefield has room; tap ‹ to open.
+    return !window.matchMedia("(pointer: coarse)").matches
+  })
   const deckRef = useRef<HTMLDivElement>(null)
   const trashRef = useRef<HTMLDivElement>(null)
   const searchPanelRef = useRef<HTMLDivElement>(null)
@@ -703,7 +698,21 @@ export function PlayTesterPage() {
   const visPilot = pilotCards.filter((c) => !flyingHide.has(c.instanceId))
   const visOppPilot = oppPilotCards.filter((c) => !flyingHide.has(c.instanceId))
 
-  const handDockPx = HAND_DOCK_HEIGHT_PX
+  const soloHandDock = soloHandDockPx(measuredFloatSize.height)
+  const handDockPx = soloHandDock.collapsedPx
+  /** Peek sizes follow the host; memo keeps PlayerHand from re-measuring every tick. */
+  const handPeekBottom = useMemo<HandPeekConfig>(
+    () => ({
+      collapsedPx: soloHandDock.collapsedPx,
+      expandedPx: soloHandDock.expandedPx,
+      anchor: "bottom",
+    }),
+    [soloHandDock.collapsedPx, soloHandDock.expandedPx]
+  )
+  const handPeekTop = useMemo<HandPeekConfig>(
+    () => ({ ...handPeekBottom, anchor: "top" }),
+    [handPeekBottom]
+  )
   const soloPileScale = soloPlayPileScale(
     measuredFloatSize.width,
     measuredFloatSize.height
@@ -1312,6 +1321,11 @@ export function PlayTesterPage() {
     const pileScale = fixedLayout ? 1 : soloPileScale
     const pileW = scalePlayPile("lg", pileScale).w
     const pilotColW = pileW
+    const usePileRail =
+      !fixedLayout &&
+      (coarsePointer ||
+        measuredFloatSize.width < 720 ||
+        measuredFloatSize.height > measuredFloatSize.width)
     return (
       <div
         className={
@@ -1427,7 +1441,7 @@ export function PlayTesterPage() {
                   <PlayerHand
                     className="h-full min-h-0"
                     cards={visOppHand}
-                    peek={HAND_PEEK_TOP}
+                    peek={handPeekTop}
                     hideFaces
                     interactive={false}
                     embedded
@@ -1456,7 +1470,7 @@ export function PlayTesterPage() {
                 <PlayerHand
                   className="h-full min-h-0"
                   cards={visHand}
-                  peek={HAND_PEEK_BOTTOM}
+                  peek={handPeekBottom}
                   embedded
                   localSeat={localSeat}
                   onReleaseCards={onHandRelease}
@@ -1475,45 +1489,167 @@ export function PlayTesterPage() {
                   }}
                 />
               </DockedHandStrip>
-              <div
-                className={`relative shrink-0 ${pileHit}`}
-                style={{ width: pilotColW, height: handDockPx }}
-              >
-                <div className="absolute bottom-0 left-0 flex w-full flex-col items-center">
-                  <TrashyardPile
-                    ref={dismantledRef}
-                    cards={visDismantled}
-                    cueHandDrop
-                    label="Dismantled"
-                    size="lg"
-                scale={pileScale}
-                    onReleaseCards={onFaceUpPileRelease}
-                    onBrowse={() => setPileBrowser("dismantled")}
-                    onCardContextMenu={onFloatCardContextMenu}
-                    onPileContextMenu={(x, y) =>
-                      onFaceUpPileContextMenu(PLAY_ZONE.dismantled, x, y)
-                    }
-                  />
+              {usePileRail ? null : (
+                <div
+                  className={`relative shrink-0 ${pileHit}`}
+                  style={{ width: pilotColW, height: handDockPx }}
+                >
+                  <div className="absolute bottom-0 left-0 flex w-full flex-col items-center">
+                    <TrashyardPile
+                      ref={dismantledRef}
+                      cards={visDismantled}
+                      cueHandDrop
+                      label="Dismantled"
+                      size="lg"
+                      scale={pileScale}
+                      onReleaseCards={onFaceUpPileRelease}
+                      onBrowse={() => setPileBrowser("dismantled")}
+                      onCardContextMenu={onFloatCardContextMenu}
+                      onPileContextMenu={(x, y) =>
+                        onFaceUpPileContextMenu(PLAY_ZONE.dismantled, x, y)
+                      }
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
-          <div
-            className="flex shrink-0 flex-col items-center justify-end gap-1 overflow-visible py-1"
-            style={{ width: pileW }}
-          >
-            <div className={`mb-2 flex w-full flex-col items-center gap-1 ${pileHit}`}>
-              <LifeCounter
-                current={vp}
-                total={vpGoal}
-                onAdjust={(delta) =>
-                  setVp((prev) => Math.max(0, prev + delta))
+          {usePileRail ? (
+            <>
+              <button
+                type="button"
+                aria-expanded={pileRailOpen}
+                aria-controls="playtester-pile-rail"
+                aria-label={
+                  pileRailOpen ? "Hide pile panel" : "Show pile panel"
                 }
-                className="min-h-10 min-w-16 px-2 py-1 text-xl"
-              />
+                title={pileRailOpen ? "Hide piles" : "Show piles"}
+                className="pointer-events-auto absolute top-[45%] z-50 flex h-16 w-8 -translate-y-1/2 items-center justify-center border border-cyan-500/45 bg-cyan-950/95 font-buahs93 text-lg text-cyan-100 shadow-md shadow-black/40 hover:bg-cyan-900/95"
+                style={{
+                  right: pileRailOpen ? pileW * 2 + 4 : 0,
+                  transition: "right 200ms ease-out",
+                }}
+                onClick={() => setPileRailOpen((open) => !open)}
+              >
+                {pileRailOpen ? "›" : "‹"}
+              </button>
+              <div
+                id="playtester-pile-rail"
+                className="absolute py-10 inset-y-0 z-40 flex flex-col items-end justify-end gap-1 overflow-x-visible overflow-y-auto border-l border-cyan-500/25 bg-black/55 py-1 pl-1"
+                style={{
+                  width: pileW * 2 + 4,
+                  right: pileRailOpen ? 0 : -(pileW * 2 + 4),
+                  transition: "right 200ms ease-out",
+                  pointerEvents: pileRailOpen ? "auto" : "none",
+                }}
+              >
+                {/* Pilot sits left of the deck. VP lives in the bottom footer. */}
+                <div
+                  className={`mb-1 flex flex-row items-end gap-1 ${pileHit}`}
+                  style={{ width: pileW * 2 + 4 }}
+                >
+                  <div
+                    className="flex justify-center"
+                    style={{ width: pileW }}
+                  >
+                    <TrashyardPile
+                      ref={pilotRef}
+                      cards={visPilot}
+                      cueHandDrop
+                      label="Pilot"
+                      size="lg"
+                      scale={pileScale}
+                      onReleaseCards={onFaceUpPileRelease}
+                      onCardContextMenu={onFloatCardContextMenu}
+                      onToggleExpended={(instanceId) =>
+                        onToggleExpended([instanceId])
+                      }
+                      cardOverlay={pilotGenOverlay}
+                    />
+                  </div>
+                  <div
+                    className="flex justify-center"
+                    style={{ width: pileW }}
+                  >
+                    <DeckPile
+                      ref={deckRef}
+                      className={pileHit}
+                      cueHandDrop
+                      count={libraryCount}
+                      size="lg"
+                      scale={pileScale}
+                      onClickDraw={onDrawFromDeck}
+                      onTopCardRelease={onDeckTopRelease}
+                      onContextMenu={onDeckContextMenu}
+                      topCard={topLibraryCard}
+                      topRevealed={topRevealed}
+                      busy={Boolean(bottomAnim) || mulliganOpen || deckSearchOpen}
+                      onHoverChange={(active) => {
+                        if (!netActive || !playNet.peerPresent) return
+                        playNet.send({
+                          type: "hover",
+                          zone: "library",
+                          active,
+                        })
+                      }}
+                    />
+                  </div>
+                </div>
+                {/* Dismantled sits left of Trash — same relative layout as desktop. */}
+                <div
+                  className={`flex flex-row items-end gap-1 ${pileHit}`}
+                  style={{ width: pileW * 2 + 4 }}
+                >
+                  <div
+                    className="flex justify-center"
+                    style={{ width: pileW }}
+                  >
+                    <TrashyardPile
+                      ref={dismantledRef}
+                      cards={visDismantled}
+                      cueHandDrop
+                      label="Dismantled"
+                      size="lg"
+                      scale={pileScale}
+                      onReleaseCards={onFaceUpPileRelease}
+                      onBrowse={() => setPileBrowser("dismantled")}
+                      onCardContextMenu={onFloatCardContextMenu}
+                      onPileContextMenu={(x, y) =>
+                        onFaceUpPileContextMenu(PLAY_ZONE.dismantled, x, y)
+                      }
+                    />
+                  </div>
+                  <div
+                    className="flex justify-center"
+                    style={{ width: pileW }}
+                  >
+                    <TrashyardPile
+                      ref={trashRef}
+                      cards={visTrash}
+                      cueHandDrop
+                      label="Trashyard"
+                      size="lg"
+                      scale={pileScale}
+                      onReleaseCards={onFaceUpPileRelease}
+                      onBrowse={() => setPileBrowser("trashyard")}
+                      onCardContextMenu={onFloatCardContextMenu}
+                      onPileContextMenu={(x, y) =>
+                        onFaceUpPileContextMenu(PLAY_ZONE.trashyard, x, y)
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div
+              className="flex shrink-0 flex-col items-center justify-end gap-1 overflow-visible py-1"
+              style={{ width: pileW }}
+            >
               <TrashyardPile
                 ref={pilotRef}
+                className={pileHit}
                 cards={visPilot}
                 cueHandDrop
                 label="Pilot"
@@ -1526,45 +1662,45 @@ export function PlayTesterPage() {
                 }
                 cardOverlay={pilotGenOverlay}
               />
+              <DeckPile
+                ref={deckRef}
+                className={pileHit}
+                cueHandDrop
+                count={libraryCount}
+                size="lg"
+                scale={pileScale}
+                onClickDraw={onDrawFromDeck}
+                onTopCardRelease={onDeckTopRelease}
+                onContextMenu={onDeckContextMenu}
+                topCard={topLibraryCard}
+                topRevealed={topRevealed}
+                busy={Boolean(bottomAnim) || mulliganOpen || deckSearchOpen}
+                onHoverChange={(active) => {
+                  if (!netActive || !playNet.peerPresent) return
+                  playNet.send({
+                    type: "hover",
+                    zone: "library",
+                    active,
+                  })
+                }}
+              />
+              <TrashyardPile
+                ref={trashRef}
+                className={pileHit}
+                cards={visTrash}
+                cueHandDrop
+                label="Trashyard"
+                size="lg"
+                scale={pileScale}
+                onReleaseCards={onFaceUpPileRelease}
+                onBrowse={() => setPileBrowser("trashyard")}
+                onCardContextMenu={onFloatCardContextMenu}
+                onPileContextMenu={(x, y) =>
+                  onFaceUpPileContextMenu(PLAY_ZONE.trashyard, x, y)
+                }
+              />
             </div>
-            <DeckPile
-              ref={deckRef}
-              className={pileHit}
-              cueHandDrop
-              count={libraryCount}
-              size="lg"
-              scale={pileScale}
-              onClickDraw={onDrawFromDeck}
-              onTopCardRelease={onDeckTopRelease}
-              onContextMenu={onDeckContextMenu}
-              topCard={topLibraryCard}
-              topRevealed={topRevealed}
-              busy={Boolean(bottomAnim) || mulliganOpen || deckSearchOpen}
-              onHoverChange={(active) => {
-                if (!netActive || !playNet.peerPresent) return
-                playNet.send({
-                  type: "hover",
-                  zone: "library",
-                  active,
-                })
-              }}
-            />
-            <TrashyardPile
-              ref={trashRef}
-              className={pileHit}
-              cards={visTrash}
-              cueHandDrop
-              label="Trashyard"
-              size="lg"
-              scale={pileScale}
-              onReleaseCards={onFaceUpPileRelease}
-              onBrowse={() => setPileBrowser("trashyard")}
-              onCardContextMenu={onFloatCardContextMenu}
-              onPileContextMenu={(x, y) =>
-                onFaceUpPileContextMenu(PLAY_ZONE.trashyard, x, y)
-              }
-            />
-          </div>
+          )}
         </div>
       </div>
     )
@@ -1707,20 +1843,30 @@ export function PlayTesterPage() {
               )}
             </div>
 
-            <div className="relative z-40 flex shrink-0 items-center gap-2 border-t border-cyan-500/25 bg-black/55 px-2 py-1.5">
-              <GlitchFx
-                type="button"
-                label="START TURN"
-                disabled={
-                  mulliganOpen ||
-                  Boolean(bottomAnim) ||
-                  hasPendingDrawTimers()
+            <div className="relative z-40 grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 border-t border-cyan-500/25 bg-black/55 px-2 py-1.5">
+              <div className="justify-self-start">
+                <GlitchFx
+                  type="button"
+                  label="START TURN"
+                  disabled={
+                    mulliganOpen ||
+                    Boolean(bottomAnim) ||
+                    hasPendingDrawTimers()
+                  }
+                  className="font-buahs93 h-7 rounded-none bg-cyan-700 px-3 text-xs hover:bg-cyan-900 disabled:opacity-40"
+                  onClick={onStartTurn}
+                />
+              </div>
+              <LifeCounter
+                current={vp}
+                total={vpGoal}
+                onAdjust={(delta) =>
+                  setVp((prev) => Math.max(0, prev + delta))
                 }
-                className="font-buahs93 h-7 rounded-none bg-cyan-700 px-3 text-xs hover:bg-cyan-900 disabled:opacity-40"
-                onClick={onStartTurn}
+                className="min-h-8 min-w-16 px-2 py-1 text-lg"
               />
               <span
-                className="ml-auto font-buahs93 text-sm tracking-wide text-cyan-100/90"
+                className="justify-self-end font-buahs93 text-sm tracking-wide text-cyan-100/90"
                 aria-live="polite"
               >
                 Turn {turn}

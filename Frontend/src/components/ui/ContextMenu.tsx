@@ -77,7 +77,7 @@ function SubmenuFlyout({
     <div
       ref={panelRef}
       role="menu"
-      className="fixed z-[10101] min-w-[9rem] border border-cyan-500/30 bg-black/95 py-1 shadow-lg"
+      className="fixed z-[10101] grid w-max min-w-[9rem] max-w-[18rem] border border-cyan-500/30 bg-black/95 py-1 shadow-lg"
       style={{
         left: coords?.left ?? -9999,
         top: coords?.top ?? 0,
@@ -91,7 +91,7 @@ function SubmenuFlyout({
           role="menuitem"
           disabled={sub.disabled}
           className={cn(
-            "font-buahs93 inline-flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs hover:bg-cyan-500/15 disabled:opacity-50",
+            "font-buahs93 flex items-center gap-1.5 whitespace-nowrap px-3 py-2 text-left text-xs hover:bg-cyan-500/15 disabled:opacity-50",
             sub.tone === "danger"
               ? "text-red-300/90 hover:bg-red-500/15"
               : "text-cyan-100"

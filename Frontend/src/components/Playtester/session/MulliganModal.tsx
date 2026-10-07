@@ -3,13 +3,20 @@
  * Middle-mouse hold and right-click → Zoom use the same enlarge overlay as play.
  */
 
-import { useMemo, useState, type PointerEvent as ReactPointerEvent } from "react"
+import {
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react"
 
 import { CardEnlargeOverlay } from "@/components/Playtester/board/CardLargeOverlay"
 import { PlayingCard } from "@/components/Playtester/board/PlayingCard"
 import type { PlayingCardInstance } from "@/components/Playtester/types"
 import { ContextMenu } from "@/components/ui/ContextMenu"
 import type { DropdownMenuItem } from "@/components/ui/DropdownMenu"
+import { useCoarsePointer } from "@/hooks/useCoarsePointer"
+import { useLongPressMenu } from "@/hooks/useLongPressMenu"
 import { cardArtUrl } from "@/lib/api/decks"
 import { cn } from "@/lib/utils"
 
@@ -33,6 +40,9 @@ export function MulliganModal({ hand, onConfirm }: MulliganModalProps) {
     null
   )
   const [ctxMenu, setCtxMenu] = useState<CtxMenuState | null>(null)
+  const coarsePointer = useCoarsePointer()
+  const longPress = useLongPressMenu()
+  const suppressClickRef = useRef(false)
 
   const selectedCount = selected.size
   const orderedSelected = useMemo(
@@ -67,7 +77,39 @@ export function MulliganModal({ hand, onConfirm }: MulliganModalProps) {
       }
       window.addEventListener("pointerup", release)
       window.addEventListener("blur", release)
+      return
     }
+    if (event.button !== 0 || !coarsePointer) return
+
+    longPress.arm({
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      enabled: true,
+      onMenu: (x, y) => {
+        suppressClickRef.current = true
+        setCtxMenu({ card, x, y })
+      },
+    })
+
+    function onMove(moveEvent: PointerEvent) {
+      if (moveEvent.pointerId !== event.pointerId) return
+      longPress.noteMove(
+        moveEvent.pointerId,
+        moveEvent.clientX,
+        moveEvent.clientY
+      )
+    }
+    function onUp(upEvent: PointerEvent) {
+      if (upEvent.pointerId !== event.pointerId) return
+      longPress.release(upEvent.pointerId)
+      window.removeEventListener("pointermove", onMove, true)
+      window.removeEventListener("pointerup", onUp, true)
+      window.removeEventListener("pointercancel", onUp, true)
+    }
+    window.addEventListener("pointermove", onMove, true)
+    window.addEventListener("pointerup", onUp, true)
+    window.addEventListener("pointercancel", onUp, true)
   }
 
   const ctxMenuItems: DropdownMenuItem[] = ctxMenu
@@ -117,7 +159,13 @@ export function MulliganModal({ hand, onConfirm }: MulliganModalProps) {
                         ? "ring-2 ring-cyan-300 ring-offset-2 ring-offset-black"
                         : "opacity-90 hover:-translate-y-1"
                     )}
-                    onClick={() => toggle(card.instanceId)}
+                    onClick={() => {
+                      if (suppressClickRef.current) {
+                        suppressClickRef.current = false
+                        return
+                      }
+                      toggle(card.instanceId)
+                    }}
                     onPointerDown={(event) => onCardPointerDown(event, card)}
                     onContextMenu={(event) => {
                       event.preventDefault()

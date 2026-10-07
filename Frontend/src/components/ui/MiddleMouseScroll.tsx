@@ -16,6 +16,7 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
+  type Ref,
 } from "react"
 
 import { cn } from "@/lib/utils"
@@ -33,6 +34,13 @@ export type MiddleMouseScrollProps = {
   vertical?: boolean
   /** Accessible name for the scroll region. */
   label?: string
+  /**
+   * Exposes the overflow element so parents (e.g. hand cards) can pan
+   * scrollLeft while handling their own pointer capture.
+   */
+  viewportRef?: Ref<HTMLDivElement | null>
+  /** Hide custom scrollbar thumbs (e.g. peek hand — thumbs steal card height). */
+  hideThumbs?: boolean
 }
 
 type PanState = {
@@ -73,6 +81,16 @@ function thumbLayout(
   return { size, offset, track }
 }
 
+function assignRef<T>(ref: Ref<T> | undefined, value: T) {
+  if (!ref) return
+  if (typeof ref === "function") {
+    ref(value)
+    return
+  }
+  // RefObject.current is typed readonly; writers still assign at runtime.
+  ;(ref as { current: T }).current = value
+}
+
 export function MiddleMouseScroll({
   children,
   className,
@@ -81,8 +99,14 @@ export function MiddleMouseScroll({
   horizontal = true,
   vertical = true,
   label = "Scrollable area",
+  viewportRef: viewportRefProp,
+  hideThumbs = false,
 }: MiddleMouseScrollProps) {
-  const viewportRef = useRef<HTMLDivElement>(null)
+  const viewportRef = useRef<HTMLDivElement | null>(null)
+  function setViewportNode(node: HTMLDivElement | null) {
+    viewportRef.current = node
+    assignRef(viewportRefProp, node)
+  }
   const panRef = useRef<PanState | null>(null)
   const thumbDragRef = useRef<ThumbDragState | null>(null)
   const hThumbRef = useRef<ThumbLayout | null>(null)
@@ -296,14 +320,15 @@ export function MiddleMouseScroll({
       style={style}
     >
       <div
-        ref={viewportRef}
+        ref={setViewportNode}
         role="region"
         aria-label={label}
         className={cn(
-          "mi-middle-scroll min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain",
-          vertical && "pr-3",
-          panning ? "cursor-grabbing select-none" : "cursor-default",
-          viewportClassName
+          "mi-middle-scroll min-h-0 min-w-0 flex-1 overscroll-contain",
+          // Prefer caller overflow; default overflow-auto otherwise.
+          viewportClassName ?? "overflow-auto",
+          vertical && !hideThumbs && "pr-3",
+          panning ? "cursor-grabbing select-none" : "cursor-default"
         )}
         onScroll={onScroll}
         onPointerDown={onPointerDown}
@@ -315,7 +340,7 @@ export function MiddleMouseScroll({
         {children}
       </div>
 
-      {horizontal && hThumb ? (
+      {!hideThumbs && horizontal && hThumb ? (
         <div
           className="relative mt-1 h-2 w-full shrink-0 border border-cyan-500/25 bg-black/60"
           onPointerDown={onHorizontalTrackPointerDown}
@@ -333,7 +358,7 @@ export function MiddleMouseScroll({
 
       {/* Always paint the vertical track when enabled so the scroll rect is
           visible; the thumb only appears once content overflows. */}
-      {vertical ? (
+      {!hideThumbs && vertical ? (
         <div
           className="absolute top-0 right-0 bottom-0 z-10 w-2 border border-cyan-500/25 bg-black/60"
           style={{ bottom: horizontal && hThumb ? 12 : 0 }}
