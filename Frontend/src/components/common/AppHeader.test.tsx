@@ -58,6 +58,7 @@ describe("AppHeader", () => {
     })
     renderAppHeader()
     expect(screen.getByRole("button", { name: "LOGIN" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Site menu" })).toBeInTheDocument()
     expect(
       screen.queryByRole("button", { name: "Account menu" })
     ).not.toBeInTheDocument()

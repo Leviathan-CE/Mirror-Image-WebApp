@@ -25,6 +25,31 @@ describe("DropdownMenu", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument()
   })
 
+  it("runs onSelect from a coarse pointerup so a phone tap is not only an outside close", async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+
+    render(
+      <DropdownMenu
+        label="Options"
+        items={[{ id: "back", label: "Back to deck", onSelect }]}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: "Options" }))
+    const item = screen.getByRole("menuitem", { name: "Back to deck" })
+    item.dispatchEvent(
+      new PointerEvent("pointerup", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        pointerType: "touch",
+      })
+    )
+
+    await vi.waitFor(() => expect(onSelect).toHaveBeenCalledOnce())
+  })
+
   it("keeps the menu open while typing in a textInput item, submits on Enter", async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()

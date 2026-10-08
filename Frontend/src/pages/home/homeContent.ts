@@ -46,7 +46,8 @@ export const homeCopy = {
   artProcessNote:
     "Art is human-finished: AI speeds early plates, then photo-bash, paint, and rework until the piece no longer reads as raw generation.",
 
-  feedbackComingSoon: "Feedback channel coming soon",
+  discordInviteUrl: "https://discord.gg/Gv9pyNWffg",
+  feedbackHint: "Join Discord — playtest, report bugs, and help shape the game.",
 
   ctaCreateAccount: "CREATE ACCOUNT",
   ctaHowToPlay: "HOW TO PLAY",

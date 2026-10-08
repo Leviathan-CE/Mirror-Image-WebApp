@@ -5,6 +5,7 @@
 
 import { useNavigate } from "react-router-dom"
 
+import { HeaderNav } from "@/components/common/HeaderNav"
 import { HeaderShell } from "@/components/common/HeaderShell"
 import { navButtonClassName } from "@/components/common/headerStyles"
 import { Button } from "@/components/ui/button"
@@ -17,45 +18,40 @@ export function PublicHeader() {
     <HeaderShell
       brandTo={ROUTES.HOME}
       nav={
-        <>
-          <Button
-            className={navButtonClassName}
-            onClick={() => navigate(ROUTES.HOME)}
-          >
-            HOME
-          </Button>
-          <Button
-            className={navButtonClassName}
-            onClick={() => navigate(ROUTES.CARDS)}
-          >
-            CARDS
-          </Button>
-          <Button
-            className={navButtonClassName}
-            onClick={() => navigate(ROUTES.DECK_COMUNITY)}
-            >
-              DECKS
-            </Button>
-          <Button
-            className={navButtonClassName}
-            onClick={() => navigate(ROUTES.HOW_TO_PLAY)}
-          >
-            <span className="sm:hidden">PLAY</span>
-            <span className="hidden sm:inline">HOW TO PLAY</span>
-          </Button>
-          <Button
-            className={navButtonClassName}
-            onClick={() => navigate(ROUTES.LORE)}
-          >
-            LORE
-          </Button>
-          <Button
-            className={navButtonClassName}
-            onClick={() => navigate(ROUTES.UPDATES)}
-          >
-            UPDATES
-          </Button>
-        </>
+        <HeaderNav
+          items={[
+            {
+              id: "home",
+              label: "HOME",
+              onSelect: () => navigate(ROUTES.HOME),
+            },
+            {
+              id: "cards",
+              label: "CARDS",
+              onSelect: () => navigate(ROUTES.CARDS),
+            },
+            {
+              id: "decks",
+              label: "DECKS",
+              onSelect: () => navigate(ROUTES.DECK_COMUNITY),
+            },
+            {
+              id: "how-to-play",
+              label: "HOW TO PLAY",
+              onSelect: () => navigate(ROUTES.HOW_TO_PLAY),
+            },
+            {
+              id: "lore",
+              label: "LORE",
+              onSelect: () => navigate(ROUTES.LORE),
+            },
+            {
+              id: "updates",
+              label: "UPDATES",
+              onSelect: () => navigate(ROUTES.UPDATES),
+            },
+          ]}
+        />
       }
       actions={
         <div className="flex shrink-0 justify-end">
