@@ -42,7 +42,8 @@ export function CardDetailOverlay({ card, onClose }: CardDetailOverlayProps) {
 
   const art = cardFaceUrl(card)
   const threat = (card.threat_level ?? "0").trim()
-  const showThreat = threat !== "" && threat !== "0"
+  const showThreat =
+    card.has_tlv === true && threat !== "" && threat !== "0"
   const showInvokeCost = card.has_invoke_cost === true
   const keywords = card.keywords ?? []
 

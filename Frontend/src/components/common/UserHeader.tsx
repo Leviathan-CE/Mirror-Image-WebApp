@@ -2,9 +2,8 @@ import { useNavigate } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
 import { AccountMenu } from "@/components/common/AccountMenu"
+import { HeaderNav } from "@/components/common/HeaderNav"
 import { HeaderShell } from "@/components/common/HeaderShell"
-import { navButtonClassName } from "@/components/common/headerStyles"
-import { Button } from "@/components/ui/button"
 import { isStaffRole, ROUTES } from "@/lib/route"
 
 export function Userheader() {
@@ -12,51 +11,33 @@ export function Userheader() {
   const { user } = useAuth()
   const isAdmin = isStaffRole(user?.role)
 
+  const items = [
+    { id: "decks", label: "DECKS", onSelect: () => navigate(ROUTES.MAIN) },
+    { id: "cards", label: "CARDS", onSelect: () => navigate(ROUTES.CARDS) },
+    {
+      id: "rules",
+      label: "RULES",
+      onSelect: () => navigate(ROUTES.HOW_TO_PLAY),
+    },
+    { id: "lore", label: "LORE", onSelect: () => navigate(ROUTES.LORE) },
+    {
+      id: "updates",
+      label: "UPDATES",
+      onSelect: () => navigate(ROUTES.UPDATES),
+    },
+  ]
+  if (isAdmin) {
+    items.push({
+      id: "admin",
+      label: "ADMIN",
+      onSelect: () => navigate(ROUTES.ADMIN),
+    })
+  }
+
   return (
     <HeaderShell
       brandTo={ROUTES.HOME}
-      nav={
-        <>
-          <Button
-            className={navButtonClassName}
-            onClick={() => navigate(ROUTES.MAIN)}
-          >
-            DECKS
-          </Button>
-          <Button
-            className={navButtonClassName}
-            onClick={() => navigate(ROUTES.CARDS)}
-          >
-            CARDS
-          </Button>
-          <Button
-            className={navButtonClassName}
-            onClick={() => navigate(ROUTES.HOW_TO_PLAY)}
-          >
-            RULES
-          </Button>
-          <Button
-            className={navButtonClassName}
-            onClick={() => navigate(ROUTES.LORE)}
-          >
-            LORE
-          </Button>
-          <Button
-            className={navButtonClassName}
-            onClick={() => navigate(ROUTES.UPDATES)}
-          >
-            UPDATES
-          </Button>
-          {isAdmin ? (
-            <Button
-              className={navButtonClassName}
-              onClick={() => navigate(ROUTES.ADMIN)}
-            >
-              ADMIN
-            </Button>
-          ) : null}
-        </>
-      }
+      nav={<HeaderNav items={items} />}
       actions={<AccountMenu />}
     />
   )

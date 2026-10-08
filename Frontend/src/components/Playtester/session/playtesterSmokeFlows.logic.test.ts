@@ -60,6 +60,7 @@ function resourceTemplate(
     rarity: "common",
     invoke_cost: 0,
     has_invoke_cost: cost.length > 0,
+    has_tlv: false,
     cost,
     super_types: ["Resource"],
     sub_types: [],

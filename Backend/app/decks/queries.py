@@ -175,7 +175,7 @@ def fetch_deck_cards(
             c.sub_types,
             c.is_pilot,
             c.is_augment,
-            c.is_summon,
+            c.has_tlv,
             c.has_invoke_cost,
             pc.published
         FROM deck_has_cards dhc
@@ -215,7 +215,7 @@ def fetch_deck_cards(
             sub_types=list(row[22] or []),
             is_pilot=bool(row[23]),
             is_augment=bool(row[24]),
-            is_summon=bool(row[25]),
+            has_tlv=bool(row[25]),
             has_invoke_cost=bool(row[26]),
         )
         entry = DeckCardEntry(

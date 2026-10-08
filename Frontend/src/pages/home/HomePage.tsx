@@ -120,12 +120,18 @@ export function HomePage() {
               <GlitchFx
                 label={homeCopy.ctaSendFeedback}
                 variant="outline"
-                className={cn(quietCtaClass, "opacity-60")}
-                disabled
-                title={homeCopy.feedbackComingSoon}
+                className={quietCtaClass}
+                title={homeCopy.feedbackHint}
+                onClick={() =>
+                  window.open(
+                    homeCopy.discordInviteUrl,
+                    "_blank",
+                    "noopener,noreferrer"
+                  )
+                }
               />
-              <span className="font-buahs93 text-[10px] tracking-wide text-cyan-500/80">
-                {homeCopy.feedbackComingSoon}
+              <span className="font-buahs93 text-[10px] tracking-wide text-cyan-400/80">
+                {homeCopy.feedbackHint}
               </span>
             </span>
           </div>
@@ -309,12 +315,14 @@ export function HomePage() {
                 Account
               </Link>
             )}
-            <span
-              className="cursor-default text-cyan-500/50"
-              title={homeCopy.feedbackComingSoon}
+            <a
+              className="hover:text-cyan-100"
+              href={homeCopy.discordInviteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
             >
               Feedback
-            </span>
+            </a>
           </nav>
         </div>
       </footer>

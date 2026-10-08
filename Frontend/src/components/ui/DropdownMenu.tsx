@@ -123,8 +123,9 @@ export function DropdownMenu({
   useEffect(() => {
     if (!open) return
 
-    function onPointerDown(event: MouseEvent) {
-      const target = event.target as Node
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target
+      if (!(target instanceof Node)) return
       if (triggerRef.current?.contains(target)) return
       if (menuRef.current?.contains(target)) return
       setOpen(false)
@@ -134,10 +135,15 @@ export function DropdownMenu({
       if (event.key === "Escape") setOpen(false)
     }
 
-    document.addEventListener("mousedown", onPointerDown)
+    // Capture + pointerdown: a bubble mousedown misses iOS taps, and the
+    // delayed mouse event then hits the board so the row never gets click.
+    const timer = window.setTimeout(() => {
+      document.addEventListener("pointerdown", onPointerDown, true)
+    }, 0)
     document.addEventListener("keydown", onKeyDown)
     return () => {
-      document.removeEventListener("mousedown", onPointerDown)
+      window.clearTimeout(timer)
+      document.removeEventListener("pointerdown", onPointerDown, true)
       document.removeEventListener("keydown", onKeyDown)
     }
   }, [open])
@@ -179,15 +185,30 @@ export function DropdownMenu({
                   role="menuitem"
                   disabled={item.disabled}
                   className={cn(
-                    "font-buahs93 flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs hover:bg-cyan-500/15 disabled:opacity-50",
+                    "font-buahs93 flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 text-left text-xs touch-manipulation hover:bg-cyan-500/15 disabled:opacity-50",
                     textInput ? "px-1.5 py-1.5" : "px-3 py-2",
                     item.tone === "danger"
                       ? "text-red-300/90 hover:bg-red-500/15"
                       : "text-cyan-100"
                   )}
-                  onClick={() => {
+                  onPointerDown={(event) => {
+                    event.stopPropagation()
+                  }}
+                  onPointerUp={(event) => {
+                    if (event.button !== 0) return
+                    if (event.pointerType === "mouse") return
+                    event.preventDefault()
+                    event.stopPropagation()
+                    if (item.disabled) return
                     setOpen(false)
-                    item.onSelect?.()
+                    queueMicrotask(() => item.onSelect?.())
+                  }}
+                  onClick={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    if (item.disabled) return
+                    setOpen(false)
+                    queueMicrotask(() => item.onSelect?.())
                   }}
                 >
                   {item.label}

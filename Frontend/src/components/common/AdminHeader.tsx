@@ -2,28 +2,17 @@
  * Header for the admin console (`/admin/*`).
  */
 
-import { useLocation, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
 import { useComingSoon } from "@/app/providers/ComingSoonProvider"
 import { AccountMenu } from "@/components/common/AccountMenu"
+import { HeaderNav } from "@/components/common/HeaderNav"
 import { HeaderShell } from "@/components/common/HeaderShell"
-import { navButtonClassName } from "@/components/common/headerStyles"
-import { Button } from "@/components/ui/button"
 import { isAdminRole, ROUTES } from "@/lib/route"
-import { cn } from "@/lib/utils"
-
-function adminNavClass(active: boolean) {
-  return cn(
-    navButtonClassName,
-    active &&
-      "text-cyan-200 underline decoration-cyan-400/70 underline-offset-4"
-  )
-}
 
 export function AdminHeader() {
   const navigate = useNavigate()
-  const { pathname } = useLocation()
   const { comingSoon } = useComingSoon()
   const { user } = useAuth()
   const canManageUsers = isAdminRole(user?.role)
@@ -34,45 +23,46 @@ export function AdminHeader() {
       brandTo={ROUTES.ADMIN}
       brandLabel="MIRRORIMAGE ADMIN"
       nav={
-        <>
-          <Button
-            className={adminNavClass(pathname === ROUTES.ADMIN)}
-            onClick={() => navigate(ROUTES.ADMIN)}
-          >
-            ANALYTICS
-          </Button>
-          <Button
-            className={adminNavClass(pathname.startsWith(ROUTES.ADMIN_CARDS))}
-            onClick={() => navigate(ROUTES.ADMIN_CARDS)}
-          >
-            CARDS DB
-          </Button>
-          {canManageUsers ? (
-            <Button
-              className={adminNavClass(pathname.startsWith(ROUTES.ADMIN_USERS))}
-              onClick={() => navigate(ROUTES.ADMIN_USERS)}
-            >
-              USERS
-            </Button>
-          ) : null}
-          <Button
-            className={adminNavClass(pathname.startsWith(ROUTES.ADMIN_UPDATES))}
-            onClick={() => navigate(ROUTES.ADMIN_UPDATES)}
-          >
-            UPDATES
-          </Button>
-          <Button
-            className={navButtonClassName}
-            onClick={() => navigate(ROUTES.MAIN)}
-          >
-            APP
-          </Button>
+        <div className="flex min-w-0 items-center justify-start gap-1 md:flex-1 md:justify-center">
+          <HeaderNav
+            items={[
+              {
+                id: "analytics",
+                label: "ANALYTICS",
+                onSelect: () => navigate(ROUTES.ADMIN),
+              },
+              {
+                id: "cards-db",
+                label: "CARDS DB",
+                onSelect: () => navigate(ROUTES.ADMIN_CARDS),
+              },
+              ...(canManageUsers
+                ? [
+                    {
+                      id: "users",
+                      label: "USERS",
+                      onSelect: () => navigate(ROUTES.ADMIN_USERS),
+                    },
+                  ]
+                : []),
+              {
+                id: "updates",
+                label: "UPDATES",
+                onSelect: () => navigate(ROUTES.ADMIN_UPDATES),
+              },
+              {
+                id: "app",
+                label: "APP",
+                onSelect: () => navigate(ROUTES.MAIN),
+              },
+            ]}
+          />
           {comingSoon ? (
-            <span className="font-buahs93 px-1.5 text-[10px] text-amber-300 sm:text-xs">
+            <span className="font-buahs93 hidden px-1.5 text-[10px] text-amber-300 sm:text-xs md:inline">
               COMING SOON ON
             </span>
           ) : null}
-        </>
+        </div>
       }
       actions={<AccountMenu suffix={` · ${staffLabel}`} />}
     />

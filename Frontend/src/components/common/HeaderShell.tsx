@@ -40,7 +40,7 @@ export function HeaderShell({
           <span>{brandLabel}</span>
         </Link>
         <nav className={headerNavClassName}>{nav}</nav>
-        {actions}
+        <div className="ml-auto flex shrink-0 items-center">{actions}</div>
       </div>
     </header>
   )
