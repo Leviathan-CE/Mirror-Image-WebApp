@@ -38,6 +38,8 @@ npm run migrate -- 35_announcements.sql
 | `33_analytics_hourly.sql` | Hourly app-activity buckets for admin analytics |
 | `34_users_developer_role.sql` | Allow `developer` on users.role |
 | `35_announcements.sql` | Public announcement board + reusable media library |
+| `36_new_roles.sql` | Allow `play_tester` on users.role |
+| `37_has_tlv.sql` | Rename `cards.is_summon` to `has_tlv` |
 
 New schema that is not yet in init belongs here as `33_…`, `34_…`, and
 must also be copied into the matching init file so empty volumes stay

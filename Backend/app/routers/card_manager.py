@@ -70,10 +70,10 @@ class CardCreate(BaseModel):
     card_set_name: str = "unassigned"
     card_printing: str = "standard"
 
-    is_summon: bool = False
     is_pilot: bool = False
     is_augment: bool = False
     has_invoke_cost: bool = False
+    has_tlv: bool = False
 
     # Unity CardData.Threat_level is string (e.g. "0", "3").
     threat_level: str = Field(
@@ -206,10 +206,10 @@ class CardByNameResponse(BaseModel):
     card_count: int
     legal_info: str
     card_printing: str
-    is_summon: bool
     is_pilot: bool
     is_augment: bool
     has_invoke_cost: bool = False
+    has_tlv: bool = False
     threat_level: str
     ram_capacity: int
     power_capacity: int
@@ -228,8 +228,8 @@ _CARD_SELECT_SQL = """
     SELECT id, is_deprecated, card_set_name, card_name, cost, invoke_cost,
            super_types, sub_types, types_line, keywords, show_help_text,
            description, rarity, artist_name, card_number, card_count,
-           legal_info, card_printing, is_summon, is_pilot, is_augment,
-           has_invoke_cost,
+           legal_info, card_printing, is_pilot, is_augment,
+           has_invoke_cost, has_tlv,
            threat_level, ram_capacity, power_capacity, metal_capacity,
            spirit_capacity, steel_capacity, time_capacity, lif_capacity,
            hand_size, lagality, illustration_thumbnail_path, illustration_thumbnail_mime_type
@@ -257,10 +257,10 @@ def _card_row_to_response(row) -> CardByNameResponse:
         card_count=row[15],
         legal_info=row[16],
         card_printing=row[17],
-        is_summon=row[18],
-        is_pilot=row[19],
-        is_augment=row[20],
-        has_invoke_cost=bool(row[21]),
+        is_pilot=row[18],
+        is_augment=row[19],
+        has_invoke_cost=bool(row[20]),
+        has_tlv=bool(row[21]),
         threat_level=row[22],
         ram_capacity=row[23],
         power_capacity=row[24],
@@ -314,9 +314,9 @@ def create_card(
         "card_count": body.card_count,
         "legal_info": body.legal_info,
         "card_printing": body.card_printing,
-        "is_summon": body.is_summon,
         "is_pilot": body.is_pilot,
         "is_augment": body.is_augment,
+        "has_tlv": body.has_tlv,
         "has_invoke_cost": body.has_invoke_cost,
         "threat_level": body.threat_level,
         "ram_capacity": body.ram_capacity,
@@ -676,7 +676,8 @@ def browse_card_library(
                         steel_capacity,
                         time_capacity,
                         lif_capacity,
-                        has_invoke_cost
+                        has_invoke_cost,
+                        has_tlv
                       FROM cards
                      WHERE {where_sql}
                      ORDER BY {order_sql}
@@ -721,6 +722,7 @@ def browse_card_library(
             time_capacity=int(row[24] or 0),
             lif_capacity=int(row[25] or 0),
             has_invoke_cost=bool(row[26]),
+            has_tlv=bool(row[27]),
         )
         for row in rows
     ]

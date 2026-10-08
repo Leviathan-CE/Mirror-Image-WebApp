@@ -56,7 +56,7 @@ export function DeckCardListRow({
   const threat = (card.card.threat_level ?? "0").trim()
   const showThreat =
     classified == null &&
-    card.card.is_summon === true &&
+    card.card.has_tlv === true &&
     threat !== "" &&
     threat !== "0"
   const style = classified ? undefined : deckCardRowStyle(card.card.cost)

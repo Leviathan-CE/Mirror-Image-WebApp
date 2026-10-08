@@ -289,6 +289,7 @@ def admin_get_card(
                         c.time_capacity,
                         c.lif_capacity,
                         c.has_invoke_cost,
+                        c.has_tlv,
                         c.lagality,
                         COALESCE(p.published, 'not published'),
                         c.is_deprecated
@@ -337,9 +338,10 @@ def admin_get_card(
         time_capacity=int(row[24] or 0),
         lif_capacity=int(row[25] or 0),
         has_invoke_cost=bool(row[26]),
-        lagality=row[27] or "Legal",
-        published=row[28] or "not published",
-        is_deprecated=bool(row[29]),
+        has_tlv=bool(row[27]),
+        lagality=row[28] or "Legal",
+        published=row[29] or "not published",
+        is_deprecated=bool(row[30]),
     )
 
 

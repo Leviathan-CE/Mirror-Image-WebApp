@@ -36,10 +36,10 @@ CREATE TABLE IF NOT EXISTS cards (
     card_set_name     TEXT NOT NULL DEFAULT 'unassigned',
     card_printing TEXT NOT NULL DEFAULT 'standard',
 
-    is_summon    BOOLEAN NOT NULL DEFAULT FALSE,
     is_augment BOOLEAN NOT NULL DEFAULT FALSE,
     is_pilot     BOOLEAN NOT NULL DEFAULT FALSE,
     has_invoke_cost BOOLEAN NOT NULL DEFAULT FALSE,
+    has_tlv BOOLEAN NOT NULL DEFAULT FALSE,
 
     threat_level          TEXT NOT NULL DEFAULT '0',    
 

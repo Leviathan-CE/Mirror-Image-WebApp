@@ -517,7 +517,7 @@ export function HowToPlayPage() {
                                             <GameIcon name="start" /> tag.
                                         </li>
                                         <li>
-                                            <Term>Hold <GameIcon name="vp" />.</Term> Gain 1{" "}
+                                            <Term>Hold <GameIcon name="vp" />.</Term> Gain 2{" "}
                                             <GameIcon name="vp" /> for each objective you control,
                                             then check for a win.
                                         </li>

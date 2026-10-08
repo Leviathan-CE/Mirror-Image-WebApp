@@ -50,8 +50,8 @@ export type CardSummary = {
   sub_types?: string[]
   is_pilot?: boolean
   is_augment?: boolean
-  /** Unit / summon cards — only these show TLV in deck list view. */
-  is_summon?: boolean
+  /** When true, UI shows printed threat level (TLV). */
+  has_tlv?: boolean
   /** Pilot opening hand size (0 on non-pilots). */
   hand_size?: number
   /** Starting stockpile resource counts printed on the pilot. */
@@ -91,6 +91,7 @@ export type CardLibraryItem = CardSummary & {
   /** Library always returns these; tighten vs optional CardSummary fields. */
   invoke_cost: number
   has_invoke_cost: boolean
+  has_tlv: boolean
   cost: string[]
   super_types: string[]
   sub_types: string[]
