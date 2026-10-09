@@ -50,6 +50,47 @@ describe("DropdownMenu", () => {
     await vi.waitFor(() => expect(onSelect).toHaveBeenCalledOnce())
   })
 
+  it("runs onSelect only once for a full touch tap gesture (pointerdown + pointerup + compat click)", async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+
+    render(
+      <DropdownMenu
+        label="Options"
+        items={[{ id: "back", label: "Back to deck", onSelect }]}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: "Options" }))
+    const item = screen.getByRole("menuitem", { name: "Back to deck" })
+
+    // Mirrors what a real touchscreen browser dispatches for a single tap:
+    // pointerdown, pointerup, and then a synthesized "compatibility" click —
+    // unless pointerdown's default is prevented, the browser still fires
+    // that trailing click after the pointerup handler already ran onSelect.
+    item.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        pointerType: "touch",
+      })
+    )
+    item.dispatchEvent(
+      new PointerEvent("pointerup", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        pointerType: "touch",
+      })
+    )
+    item.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true })
+    )
+
+    await vi.waitFor(() => expect(onSelect).toHaveBeenCalledOnce())
+  })
+
   it("keeps the menu open while typing in a textInput item, submits on Enter", async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()

@@ -88,6 +88,10 @@ export function DropdownMenu({
   const menuId = useId()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  // A touch tap's pointerup already ran onSelect; the browser still fires a
+  // trailing compatibility click afterward, so this flags that click to be
+  // swallowed instead of running onSelect a second time.
+  const skipNextClickRef = useRef(false)
   const [open, setOpen] = useState(false)
   const [menuStyle, setMenuStyle] = useState<CSSProperties>({})
 
@@ -193,6 +197,11 @@ export function DropdownMenu({
                   )}
                   onPointerDown={(event) => {
                     event.stopPropagation()
+                    // Prevent the browser's compatibility mouse/click events
+                    // for touch and pen input — without this, the pointerup
+                    // handler below and the trailing synthesized click both
+                    // run onSelect, firing every action twice on a phone tap.
+                    if (event.pointerType !== "mouse") event.preventDefault()
                   }}
                   onPointerUp={(event) => {
                     if (event.button !== 0) return
@@ -200,12 +209,19 @@ export function DropdownMenu({
                     event.preventDefault()
                     event.stopPropagation()
                     if (item.disabled) return
+                    // Belt-and-suspenders for browsers that still dispatch
+                    // the trailing click despite the preventDefault above.
+                    skipNextClickRef.current = true
                     setOpen(false)
                     queueMicrotask(() => item.onSelect?.())
                   }}
                   onClick={(event) => {
                     event.preventDefault()
                     event.stopPropagation()
+                    if (skipNextClickRef.current) {
+                      skipNextClickRef.current = false
+                      return
+                    }
                     if (item.disabled) return
                     setOpen(false)
                     queueMicrotask(() => item.onSelect?.())
