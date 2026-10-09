@@ -14,7 +14,7 @@ export type KeywordAbility = {
 export const KEYWORD_ABILITIES: KeywordAbility[] = [
   {
     name: "AIRBORNE",
-    text: "Only Airborne or Long Range can attack this entity. To declare an attack at an objective that has at least one Airborne unit, at least one attacking unit must have Airborne or Long Range.",
+    text: "when you attack with this entity, only defending units with Airborne or Long Range, or cyberpsells and aiblities can deal damage to this entity.",
   },
   {
     name: "BLITZ",
