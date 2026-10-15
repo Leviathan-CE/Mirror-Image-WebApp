@@ -52,16 +52,17 @@ describe("duplexBackIndex", () => {
 })
 
 describe("collectDeckPrintoutSlots", () => {
-  it("includes pilot and in-deck main rows expanded by quantity", () => {
+  it("includes pilot, objectives, and in-deck main rows expanded by quantity", () => {
     const categories = [
       category(1, "Pilot", -1),
-      category(2, "Augments", -2),
+      category(2, "Objectives", -2),
       category(3, "Entity", 0, true),
       category(4, "Sideboard", 1, false),
     ]
     const cards = [
       card({ card_id: 10, category_id: 1, card_name: "My Pilot" }),
-      card({ card_id: 20, category_id: 2, card_name: "Aug A", quantity: 1 }),
+      card({ card_id: 20, category_id: 2, card_name: "Hold Site", quantity: 1 }),
+      card({ card_id: 21, category_id: 2, card_name: "Relay", quantity: 1 }),
       card({ card_id: 30, category_id: 3, card_name: "Unit", quantity: 2 }),
       card({ card_id: 40, category_id: 4, card_name: "Side", quantity: 3 }),
     ]
@@ -69,10 +70,30 @@ describe("collectDeckPrintoutSlots", () => {
     const slots = collectDeckPrintoutSlots(deck(categories, cards))
     expect(slots.map((s) => s.card_name)).toEqual([
       "My Pilot",
+      "Hold Site",
+      "Relay",
       "Unit",
       "Unit",
     ])
     expect(slots[0]?.section).toBe("pilot")
-    expect(slots[1]?.section).toBe("deck")
+    expect(slots[1]?.section).toBe("objective")
+    expect(slots[3]?.section).toBe("deck")
+  })
+
+  it("treats a legacy Augments section as objectives", () => {
+    const categories = [
+      category(1, "Pilot", -1),
+      category(2, "Augments", -2),
+      category(3, "Entity", 0, true),
+    ]
+    const cards = [
+      card({ card_id: 10, category_id: 1, card_name: "My Pilot" }),
+      card({ card_id: 20, category_id: 2, card_name: "Aug A", quantity: 1 }),
+      card({ card_id: 30, category_id: 3, card_name: "Unit", quantity: 1 }),
+    ]
+
+    const slots = collectDeckPrintoutSlots(deck(categories, cards))
+    expect(slots.map((s) => s.card_name)).toEqual(["My Pilot", "Aug A", "Unit"])
+    expect(slots[1]?.section).toBe("objective")
   })
 })
