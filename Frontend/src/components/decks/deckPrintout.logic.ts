@@ -1,8 +1,9 @@
 /**
- * Collect deck rows for a print-and-play PDF (pilot + in-deck sections).
+ * Collect deck rows for a print-and-play PDF
+ * (pilot + objectives + in-deck RIG sections).
  */
 
-import { pilotCard } from "@/components/decks/deck.logic"
+import { objectiveCards, pilotCard } from "@/components/decks/deck.logic"
 import { libraryDeckEntries } from "@/components/Playtester/session/setupOpeningSession.logic"
 import type { DeckCardEntry, DeckDetail } from "@/lib/api/decks"
 
@@ -12,7 +13,7 @@ export type DeckPrintoutSlot = {
   card_art_path: string | null
   card_thumbnail_path?: string | null
   card_art_version?: number | null
-  section: "pilot" | "deck"
+  section: "pilot" | "objective" | "deck"
 }
 
 /**
@@ -31,7 +32,10 @@ export function duplexBackIndex(
   return row * cols + (cols - 1 - col)
 }
 
-function expandQuantity(entries: DeckCardEntry[]): DeckPrintoutSlot[] {
+function expandQuantity(
+  entries: DeckCardEntry[],
+  section: "objective" | "deck"
+): DeckPrintoutSlot[] {
   const out: DeckPrintoutSlot[] = []
   for (const entry of entries) {
     const copies = Math.max(0, Math.floor(entry.quantity))
@@ -42,14 +46,14 @@ function expandQuantity(entries: DeckCardEntry[]): DeckPrintoutSlot[] {
         card_art_path: entry.card.card_art_path,
         card_thumbnail_path: entry.card.card_thumbnail_path,
         card_art_version: entry.card.card_art_version,
-        section: "deck",
+        section,
       })
     }
   }
   return out
 }
 
-/** Ordered print list: pilot, then shuffled RIG sections (by category order). */
+/** Ordered print list: pilot, objectives, then in-deck RIG rows. */
 export function collectDeckPrintoutSlots(deck: DeckDetail): DeckPrintoutSlot[] {
   const slots: DeckPrintoutSlot[] = []
 
@@ -65,14 +69,19 @@ export function collectDeckPrintoutSlots(deck: DeckDetail): DeckPrintoutSlot[] {
     })
   }
 
+  const objectives = objectiveCards(deck.cards, deck.categories, "name")
+  for (const slot of expandQuantity(objectives, "objective")) {
+    slots.push(slot)
+  }
+
   const main = libraryDeckEntries(deck).sort((a, b) => {
     const order = a.sort_order - b.sort_order
     if (order !== 0) return order
     return a.card.card_name.localeCompare(b.card.card_name)
   })
 
-  for (const slot of expandQuantity(main)) {
-    slots.push({ ...slot, section: "deck" })
+  for (const slot of expandQuantity(main, "deck")) {
+    slots.push(slot)
   }
 
   return slots
