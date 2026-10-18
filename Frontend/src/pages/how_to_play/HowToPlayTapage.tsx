@@ -945,7 +945,7 @@ export function HowToPlayPage() {
                             </p>
                             <p className="font-semibold text-cyan-200">Moving onto an objective</p>
                             <p>
-                                During your main phase, choose an objective and a unit you control
+                                During your main phase, choose an objective and a readied unit you control
                                 that is not already on an objective and is not waiting on time
                                 counters (your pilot counts):
                             </p>

@@ -391,11 +391,11 @@
 
 ### 605. Move onto or off an objective
 
-605.1. During your main phase, as a default game action: choose an objective and a unit(s) you control on the battlefield that is not on an objective and is not waiting on a time counter (this includes your pilot). Move that unit onto the objective.
+605.1. During your main phase, as a default game action: choose an objective and a readied unit(s) you control on the battlefield that is not on an objective and is not waiting on a time counter (this includes your pilot). Move that unit onto the objective.
 
-605.2. **Claim (empty objective).** Move the unit onto the objective. It keeps its current readied or expended state and does not expend for this move. A unit that entered the battlefield this turn may claim an empty objective (see rule 300.2.2.2). You control the objective after this move (see rule 250.6). Claiming an empty objective does not cause Conquer (see rule 250.7.1.2).
+605.2. **Claim (empty objective).** Move the unit onto the objective. It keeps its current  state and does not expend for this move. A unit that entered the battlefield this turn may claim an empty objective (see rule 300.2.2.2). You control the objective after this move (see rule 250.6). Claiming an empty objective does not cause Conquer (see rule 250.7.1.2).
 
-605.3. **Reinforce (you control it).** Move the unit onto the objective. It keeps its current readied or expended state and does not expend for this move. A unit that entered the battlefield this turn may reinforce (see rule 300.2.2.2). Reinforcing does not cause Conquer (see rule 250.7.1.3).
+605.3. **Reinforce (you control it).** Move the unit onto the objective. It keeps its current  state and does not expend for this move. A unit that entered the battlefield this turn may reinforce (see rule 300.2.2.2). Reinforcing does not cause Conquer (see rule 250.7.1.3).
 
 605.4. **Attack move (opponent controls it).** This move declares an **attack** with that unit (see section 602). Expend the unit as it joins the stack (if it was already expended, it stays expended). Because this is an attack, `[ATTACK]` tags and other attack triggers resolve, and players may play Quick Hacks in the attack response window (see rules 500.8.2.2 and 602.5).
 
@@ -467,7 +467,7 @@
 
 700.4.4. When the last counter is removed from a stockpile card, resolve its effects without using the lock, in an order of its controller's choosing, then move it to the battlefield (entity) or discard pile (cyberspell). If a unit moves to the battlefield this way, its controller chooses whether it enters readied or expended, and it gains Blitz until the end of the turn (see rule 300.2.2.3).
 
-700.4.5. You may have at most two time-counter cards in stockpile.
+700.4.5. You may have at most two time-counter cards in stockpile. This is called the Overflow buffer.
 
 ### 700.5. Actions while lock is full
 
