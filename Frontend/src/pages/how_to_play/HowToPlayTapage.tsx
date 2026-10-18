@@ -1227,7 +1227,8 @@ export function HowToPlayPage() {
                                 moves to the battlefield this way, you choose whether it enters readied
                                 or expended, and it gains Blitz until the end of the turn. You may have
                                 up to 2 cards with time counters on them in your stockpile at any given
-                                time.
+                                time. the maximuim quanity of cards in your stockpile with time counters on
+                                them is called you Overflow Buffer.
                             </p>
                             </Subsection>
                         </Section>
