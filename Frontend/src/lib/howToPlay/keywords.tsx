@@ -44,10 +44,10 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
   //     </>
   //   ),
   //   },
-  {
-    name: "HIT'N RUN",
-    text: "After conquering an objective with this unit, you may move this unit off this objective.",
-  },
+  // {
+  //   name: "HIT'N RUN",
+  //   text: "After conquering an objective with this unit, you may move this unit off this objective.",
+  // },
   {
     name: "PREEMPTIVE STRIKE",
     text: "When this entity deals damage in a fight, it deals damage first, unless the opposing entity also has Preemptive Strike.",
