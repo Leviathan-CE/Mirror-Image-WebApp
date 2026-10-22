@@ -183,6 +183,7 @@ class CardArtUploaded(BaseModel):
     card_art_version: int | None = None
 
 
+
 class CardByNameResponse(BaseModel):
     """Full card payload returned when querying by id or name."""
 
@@ -275,7 +276,9 @@ def _card_row_to_response(row) -> CardByNameResponse:
         card_art_mime_type=row[33],
     )
 
-
+class CardAllResponse(BaseModel):
+    itmes: list[CardByNameResponse]
+    
 def _fetch_card_row(cur, sql: str, params: dict) -> tuple | None:
     cur.execute(sql, params)
     return cur.fetchone()
@@ -729,6 +732,75 @@ def browse_card_library(
     return CardLibraryResponse(items=items, total=total, limit=limit, offset=offset)
 
 
+@router.get("/all_cards", response_model=CardAllResponse)
+def get_all_cards(
+    user_id: int | None = Depends(get_optional_user_id),
+    publish_bypass: bool = Depends(get_optional_publish_bypass),
+    include_preview: bool = Depends(get_optional_include_preview),
+):
+    """_summary_
+    Fetch all cards based on player unlock state of content based on the cards set name
+    if not logged in only grabs published cards.
+    returns the card data 
+    and returns the thumnail image of the card in 
+    """
+    visibility = catalogue_visibility_sql(
+        "cards",
+        bypass= publish_bypass,
+        include_preview=include_preview
+    )
+    if user_id is None:
+        # guest: published only
+        try:
+           with get_connection() as conn:
+               with conn.cursor() as cur:
+                   sql = (
+                       _CARD_SELECT_SQL
+                       + " WHERE is_deprecated = false"
+                       + f" AND {visibility}"
+                   )
+                   cur.exicute(sql)
+                   row = cur.fetchall()
+                   items = [_card_row_to_response(row) for row in rows]
+                   return CardAllResponse(items=items)
+        except OperationalError as e:
+            logger.warning("db error on card fetch: %s", e)
+            raise HTTPException(status_code=503, detail="database_unavailable") from e
+        except Exception as e:
+            logger.exception("unexpected error on card search: %s", e)
+            raise HTTPException(status_code=500, detail="card_search_failed") from e
+    else:
+        #logged in: published + content
+        try:
+           with get_connection() as conn:
+               with conn.cursor() as cur:
+                   sql = (
+                       _CARD_SELECT_SQL
+                          + """
+                            JOIN upgrades u
+                            ON u.upgrade_content = cards.card_set_name
+                            JOIN user_has_upgrades uhu
+                            ON uhu.upgrade_id = u.id
+                            AND uhu.user_id = %(user_id)s
+                        WHERE is_deprecated = false
+                        """
+                        + f" AND {visibility}"
+                        + " AND uhu.unlock = true"
+                                    )
+                   cur.exicute(sql, {"user_id": user_id})
+                   row = cur.fetchall()
+                   items = [_card_row_to_response(row) for row in rows]
+                   return CardAllResponse(items=items)
+        except OperationalError as e:
+            logger.warning("db error on card fetch: %s", e)
+            raise HTTPException(status_code=503, detail="database_unavailable") from e
+        except Exception as e:
+            logger.exception("unexpected error on card search: %s", e)
+            raise HTTPException(status_code=500, detail="card_search_failed") from e
+    
+    
+
+
 @router.get("/{card_id}", response_model=CardByNameResponse)
 def get_card_by_id(
     card_id: int,
@@ -791,9 +863,6 @@ def get_card_by_name(
         raise HTTPException(status_code=404, detail="card_not_found")
 
     return _card_row_to_response(row)
-
-
-
 
 
 @router.post("/{card_id}/thumbnail", response_model=CardThumbnailUploaded)
@@ -955,3 +1024,5 @@ async def _store_card_image_file(
 
     version = int(version_row[0]) if version_row and version_row[0] is not None else None
     return relative_path, len(data), version
+
+
