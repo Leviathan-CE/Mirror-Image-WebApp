@@ -14,9 +14,9 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from psycopg2 import OperationalError
+from psycopg2 import InterfaceError, OperationalError, ProgrammingError
 from psycopg2.errors import CheckViolation, DataError, NotNullViolation, UniqueViolation
-from psycopg2.extras import Json
+from psycopg2.extras import Json, RealDictCursor
 
 from app.db import get_connection
 from app.card_library_query import apply_catalogue_filters, catalogue_order_sql
@@ -225,61 +225,98 @@ class CardByNameResponse(BaseModel):
     card_art_mime_type: str | None = None
 
 
+# cards.* only — JOIN filter tables must not appear in the SELECT list.
 _CARD_SELECT_SQL = """
-    SELECT id, is_deprecated, card_set_name, card_name, cost, invoke_cost,
-           super_types, sub_types, types_line, keywords, show_help_text,
-           description, rarity, artist_name, card_number, card_count,
-           legal_info, card_printing, is_pilot, is_augment,
-           has_invoke_cost, has_tlv,
-           threat_level, ram_capacity, power_capacity, metal_capacity,
-           spirit_capacity, steel_capacity, time_capacity, lif_capacity,
-           hand_size, lagality, illustration_thumbnail_path, illustration_thumbnail_mime_type
+    SELECT cards.*
       FROM cards
 """
 
 
+def _card_cursor(conn):
+    """Dict rows so the mapper can read column names, not indexes."""
+    return conn.cursor(cursor_factory=RealDictCursor)
+
+
 def _card_row_to_response(row) -> CardByNameResponse:
+    if row is None:
+        raise ValueError("card_row_required")
     return CardByNameResponse(
-        id=row[0],
-        is_deprecated=row[1],
-        card_set_name=row[2],
-        card_name=row[3],
-        cost=row[4],
-        invoke_cost=row[5],
-        super_types=row[6],
-        sub_types=row[7],
-        types_line=row[8],
-        keywords=row[9],
-        show_help_text=row[10],
-        description=row[11],
-        rarity=row[12],
-        artist_name=row[13],
-        card_number=row[14],
-        card_count=row[15],
-        legal_info=row[16],
-        card_printing=row[17],
-        is_pilot=row[18],
-        is_augment=row[19],
-        has_invoke_cost=bool(row[20]),
-        has_tlv=bool(row[21]),
-        threat_level=row[22],
-        ram_capacity=row[23],
-        power_capacity=row[24],
-        metal_capacity=row[25],
-        spirit_capacity=row[26],
-        steel_capacity=row[27],
-        time_capacity=row[28],
-        lif_capacity=row[29],
-        hand_size=row[30],
-        lagality=row[31],
-        card_art_path=signed_media_path(row[32]),
-        card_art_mime_type=row[33],
+        id=row["id"],
+        is_deprecated=row["is_deprecated"],
+        card_set_name=row["card_set_name"],
+        card_name=row["card_name"],
+        cost=row["cost"],
+        invoke_cost=row["invoke_cost"],
+        super_types=row["super_types"],
+        sub_types=row["sub_types"],
+        types_line=row["types_line"],
+        keywords=row["keywords"],
+        show_help_text=row["show_help_text"],
+        description=row["description"],
+        rarity=row["rarity"],
+        artist_name=row["artist_name"],
+        card_number=row["card_number"],
+        card_count=row["card_count"],
+        legal_info=row["legal_info"],
+        card_printing=row["card_printing"],
+        is_pilot=row["is_pilot"],
+        is_augment=row["is_augment"],
+        has_invoke_cost=bool(row["has_invoke_cost"]),
+        has_tlv=bool(row["has_tlv"]),
+        threat_level=row["threat_level"],
+        ram_capacity=row["ram_capacity"],
+        power_capacity=row["power_capacity"],
+        metal_capacity=row["metal_capacity"],
+        spirit_capacity=row["spirit_capacity"],
+        steel_capacity=row["steel_capacity"],
+        time_capacity=row["time_capacity"],
+        lif_capacity=row["lif_capacity"],
+        hand_size=row["hand_size"],
+        lagality=row["lagality"],
+        card_art_path=signed_media_path(row["illustration_thumbnail_path"]),
+        card_art_mime_type=row["illustration_thumbnail_mime_type"],
+    )
+
+
+def _library_row_to_item(row) -> CardLibraryItem:
+    if row is None:
+        raise ValueError("library_row_required")
+    version = row["card_art_version"]
+    return CardLibraryItem(
+        id=int(row["id"]),
+        card_name=row["card_name"],
+        card_set_name=row["card_set_name"],
+        rarity=row["rarity"],
+        invoke_cost=int(row["invoke_cost"] or 0),
+        cost=list(row["cost"] or []),
+        super_types=list(row["super_types"] or []),
+        sub_types=list(row["sub_types"] or []),
+        types_line=row["types_line"] or "",
+        description=row["description"] or "",
+        keywords=list(row["keywords"] or []),
+        show_help_text=bool(row["show_help_text"]),
+        threat_level=str(row["threat_level"] if row["threat_level"] is not None else "0"),
+        card_art_path=signed_media_path(row["illustration_thumbnail_path"]),
+        card_thumbnail_path=signed_media_path(row["card_thumbnail_path"]),
+        card_art_version=int(version) if version is not None else None,
+        is_pilot=bool(row["is_pilot"]),
+        is_augment=bool(row["is_augment"]),
+        hand_size=int(row["hand_size"] or 0),
+        ram_capacity=int(row["ram_capacity"] or 0),
+        power_capacity=int(row["power_capacity"] or 0),
+        metal_capacity=int(row["metal_capacity"] or 0),
+        spirit_capacity=int(row["spirit_capacity"] or 0),
+        steel_capacity=int(row["steel_capacity"] or 0),
+        time_capacity=int(row["time_capacity"] or 0),
+        lif_capacity=int(row["lif_capacity"] or 0),
+        has_invoke_cost=bool(row["has_invoke_cost"]),
+        has_tlv=bool(row["has_tlv"]),
     )
 
 class CardAllResponse(BaseModel):
-    itmes: list[CardByNameResponse]
+    items: list[CardByNameResponse]
     
-def _fetch_card_row(cur, sql: str, params: dict) -> tuple | None:
+def _fetch_card_row(cur, sql: str, params: dict):
     cur.execute(sql, params)
     return cur.fetchone()
 
@@ -623,7 +660,7 @@ def browse_card_library(
 
     try:
         with get_connection() as conn:
-            with conn.cursor() as cur:
+            with _card_cursor(conn) as cur:
                 pooled = resolve_room_member_visibility(
                     cur, code=room, user_id=user_id
                 )
@@ -645,10 +682,10 @@ def browse_card_library(
                 )
 
                 cur.execute(
-                    f"SELECT COUNT(*)::int FROM cards WHERE {where_sql}",
+                    f"SELECT COUNT(*)::int AS total FROM cards WHERE {where_sql}",
                     params,
                 )
-                total = int(cur.fetchone()[0])
+                total = int(cur.fetchone()["total"])
 
                 cur.execute(
                     f"""
@@ -668,7 +705,7 @@ def browse_card_library(
                         threat_level,
                         illustration_thumbnail_path,
                         card_thumbnail_path,
-                        EXTRACT(EPOCH FROM updated_at)::bigint,
+                        EXTRACT(EPOCH FROM updated_at)::bigint AS card_art_version,
                         is_pilot,
                         is_augment,
                         hand_size,
@@ -696,39 +733,7 @@ def browse_card_library(
         logger.exception("unexpected error on card library: %s", e)
         raise HTTPException(status_code=500, detail="card_library_failed") from e
 
-    items = [
-        CardLibraryItem(
-            id=int(row[0]),
-            card_name=row[1],
-            card_set_name=row[2],
-            rarity=row[3],
-            invoke_cost=int(row[4] or 0),
-            cost=list(row[5] or []),
-            super_types=list(row[6] or []),
-            sub_types=list(row[7] or []),
-            types_line=row[8] or "",
-            description=row[9] or "",
-            keywords=list(row[10] or []),
-            show_help_text=bool(row[11]),
-            threat_level=str(row[12] if row[12] is not None else "0"),
-            card_art_path=signed_media_path(row[13]),
-            card_thumbnail_path=signed_media_path(row[14]),
-            card_art_version=int(row[15]) if row[15] is not None else None,
-            is_pilot=bool(row[16]),
-            is_augment=bool(row[17]),
-            hand_size=int(row[18] or 0),
-            ram_capacity=int(row[19] or 0),
-            power_capacity=int(row[20] or 0),
-            metal_capacity=int(row[21] or 0),
-            spirit_capacity=int(row[22] or 0),
-            steel_capacity=int(row[23] or 0),
-            time_capacity=int(row[24] or 0),
-            lif_capacity=int(row[25] or 0),
-            has_invoke_cost=bool(row[26]),
-            has_tlv=bool(row[27]),
-        )
-        for row in rows
-    ]
+    items = [_library_row_to_item(row) for row in rows]
     return CardLibraryResponse(items=items, total=total, limit=limit, offset=offset)
 
 
@@ -743,60 +748,63 @@ def get_all_cards(
     if not logged in only grabs published cards.
     returns the card data 
     and returns the thumnail image of the card in 
+    admin and devs get full db access
     """
     visibility = catalogue_visibility_sql(
         "cards",
-        bypass= publish_bypass,
-        include_preview=include_preview
+        bypass=publish_bypass,
+        include_preview=include_preview,
     )
-    if user_id is None:
-        # guest: published only
-        try:
-           with get_connection() as conn:
-               with conn.cursor() as cur:
-                   sql = (
-                       _CARD_SELECT_SQL
-                       + " WHERE is_deprecated = false"
-                       + f" AND {visibility}"
-                   )
-                   cur.exicute(sql)
-                   row = cur.fetchall()
-                   items = [_card_row_to_response(row) for row in rows]
-                   return CardAllResponse(items=items)
-        except OperationalError as e:
-            logger.warning("db error on card fetch: %s", e)
-            raise HTTPException(status_code=503, detail="database_unavailable") from e
-        except Exception as e:
-            logger.exception("unexpected error on card search: %s", e)
-            raise HTTPException(status_code=500, detail="card_search_failed") from e
-    else:
-        #logged in: published + content
-        try:
-           with get_connection() as conn:
-               with conn.cursor() as cur:
-                   sql = (
-                       _CARD_SELECT_SQL
-                          + """
-                            JOIN upgrades u
-                            ON u.upgrade_content = cards.card_set_name
-                            JOIN user_has_upgrades uhu
-                            ON uhu.upgrade_id = u.id
-                            AND uhu.user_id = %(user_id)s
-                        WHERE is_deprecated = false
-                        """
-                        + f" AND {visibility}"
-                        + " AND uhu.unlock = true"
-                                    )
-                   cur.exicute(sql, {"user_id": user_id})
-                   row = cur.fetchall()
-                   items = [_card_row_to_response(row) for row in rows]
-                   return CardAllResponse(items=items)
-        except OperationalError as e:
-            logger.warning("db error on card fetch: %s", e)
-            raise HTTPException(status_code=503, detail="database_unavailable") from e
-        except Exception as e:
-            logger.exception("unexpected error on card search: %s", e)
-            raise HTTPException(status_code=500, detail="card_search_failed") from e
+
+    # Staff / grant bypass and guests share the no-JOIN select.
+    sql = (
+        _CARD_SELECT_SQL
+        + " WHERE cards.is_deprecated = false"
+        + f" AND {visibility}"
+    )
+    params: dict[str, Any] = {}
+    if not publish_bypass and user_id is not None:
+        sql = (
+            "SELECT cards.* FROM cards"
+            + """
+                JOIN upgrades u ON u.upgrade_content = cards.card_set_name
+                JOIN user_has_upgrades uhu
+                  ON uhu.upgrade_id = u.id
+                 AND uhu.user_id = %(user_id)s
+               WHERE cards.is_deprecated = false
+            """
+            + f" AND {visibility}"
+            + " AND uhu.unlock = true"
+        )
+        params = {"user_id": user_id}
+
+    try:
+        with get_connection() as conn:
+            with _card_cursor(conn) as cur:
+                cur.execute(sql, params)
+                rows = cur.fetchall()
+        items = [_card_row_to_response(row) for row in rows]
+    except HTTPException:
+        raise
+    except (OperationalError, InterfaceError) as e:
+        logger.warning("db error on all_cards: %s", e)
+        raise HTTPException(status_code=503, detail="database_unavailable") from e
+    except ProgrammingError as e:
+        logger.exception("sql error on all_cards: %s", e)
+        raise HTTPException(status_code=500, detail="card_sql_failed") from e
+    except KeyError as e:
+        logger.exception("all_cards row missing column %s", e)
+        raise HTTPException(
+            status_code=500, detail="card_row_missing_column"
+        ) from e
+    except (TypeError, ValueError) as e:
+        logger.exception("all_cards row has a bad cell: %s", e)
+        raise HTTPException(status_code=500, detail="card_row_invalid") from e
+    except Exception as e:
+        logger.exception("unexpected error on all_cards: %s", e)
+        raise HTTPException(status_code=500, detail="card_unexpected_error") from e
+
+    return CardAllResponse(items=items)
     
     
 
@@ -818,7 +826,7 @@ def get_card_by_id(
     )
     try:
         with get_connection() as conn:
-            with conn.cursor() as cur:
+            with _card_cursor(conn) as cur:
                 row = _fetch_card_row(cur, sql, {"card_id": card_id})
     except OperationalError as e:
         logger.warning("db error on card by-id query: %s", e)
@@ -850,7 +858,7 @@ def get_card_by_name(
     )
     try:
         with get_connection() as conn:
-            with conn.cursor() as cur:
+            with _card_cursor(conn) as cur:
                 row = _fetch_card_row(cur, sql, {"card_name": normalized_name})
     except OperationalError as e:
         logger.warning("db error on card by-name query: %s", e)
