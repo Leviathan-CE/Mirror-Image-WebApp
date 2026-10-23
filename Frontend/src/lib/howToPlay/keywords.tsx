@@ -85,7 +85,7 @@ export const KEYWORD_ABILITIES: KeywordAbility[] = [
     text: (
       <>
         Dismantle any number of cards from your discard pile; for each card
-        dismantled this way, pay for one <GameIcon name="gen1" /> of this card's invoke 
+        dismantled this way, pay for one <GameIcon name="gen1" /> of this card's invoke
         cost.
       </>
     ),

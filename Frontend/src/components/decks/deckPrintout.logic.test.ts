@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  PRINTOUT_MARGIN_DEFAULT_MM,
+  PRINTOUT_MARGIN_MAX_MM,
+  PRINTOUT_MARGIN_MIN_MM,
   collectDeckPrintoutSlots,
+  computePrintoutGridLayout,
+  defaultPrintoutFileName,
   duplexBackIndex,
+  printoutPageCount,
+  resolvePrintoutFileName,
 } from "@/components/decks/deckPrintout.logic"
 import type { DeckCardEntry, DeckCategoryOut, DeckDetail } from "@/lib/api/decks"
 import { deckEntry } from "@/test/deckEntry.fixture"
@@ -95,5 +102,43 @@ describe("collectDeckPrintoutSlots", () => {
     const slots = collectDeckPrintoutSlots(deck(categories, cards))
     expect(slots.map((s) => s.card_name)).toEqual(["My Pilot", "Aug A", "Unit"])
     expect(slots[1]?.section).toBe("objective")
+  })
+})
+
+describe("computePrintoutGridLayout", () => {
+  it("shrinks cards when the margin grows", () => {
+    const tight = computePrintoutGridLayout(PRINTOUT_MARGIN_MIN_MM)
+    const loose = computePrintoutGridLayout(PRINTOUT_MARGIN_MAX_MM)
+    expect(loose.cardW).toBeLessThan(tight.cardW)
+    expect(loose.cardH).toBeLessThan(tight.cardH)
+  })
+
+  it("clamps margin outside the allowed range", () => {
+    expect(computePrintoutGridLayout(0).marginMm).toBe(PRINTOUT_MARGIN_MIN_MM)
+    expect(computePrintoutGridLayout(99).marginMm).toBe(PRINTOUT_MARGIN_MAX_MM)
+    expect(computePrintoutGridLayout(Number.NaN).marginMm).toBe(
+      PRINTOUT_MARGIN_DEFAULT_MM
+    )
+  })
+})
+
+describe("printout file name", () => {
+  it("appends _printout.pdf to a deck name", () => {
+    expect(defaultPrintoutFileName("My Deck")).toBe("My_Deck_printout.pdf")
+  })
+
+  it("keeps an explicit .pdf suffix", () => {
+    expect(resolvePrintoutFileName("core-set.pdf", "ignored")).toBe(
+      "core-set.pdf"
+    )
+  })
+})
+
+describe("printoutPageCount", () => {
+  it("counts 3×3 sheets", () => {
+    expect(printoutPageCount(0)).toBe(0)
+    expect(printoutPageCount(1)).toBe(1)
+    expect(printoutPageCount(9)).toBe(1)
+    expect(printoutPageCount(10)).toBe(2)
   })
 })

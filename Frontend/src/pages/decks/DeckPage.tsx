@@ -18,6 +18,7 @@ import { DeckBoard } from "@/components/decks/DeckBoard"
 import { DeckCardSearch } from "@/components/decks/DeckCardSearch"
 import { DeckDescription } from "@/components/decks/DeckDescription"
 import { collectDeckPrintoutSlots } from "@/components/decks/deckPrintout.logic"
+import { DeckPrintoutDialog } from "@/components/decks/DeckPrintoutDialog"
 import {
   DeckCardSortControls,
 } from "@/components/decks/DeckCardSortControls"
@@ -113,6 +114,7 @@ export function DeckPage() {
   const [browseOpen, setBrowseOpen] = useState(true)
   const [tagDraft, setTagDraft] = useState("")
   const [printoutBusy, setPrintoutBusy] = useState(false)
+  const [printDialogOpen, setPrintDialogOpen] = useState(false)
   const browseResizeRef = useRef<{
     pointerId: number
     startX: number
@@ -181,15 +183,24 @@ export function DeckPage() {
   const canPrintout = userHasFeature(user, FEATURE_DECK_PRINTOUT)
   const isAdmin = isStaffRole(user?.role)
 
-  async function onCreatePrintout() {
+  const closePrintDialog = useCallback(() => {
+    if (printoutBusy) return
+    setPrintDialogOpen(false)
+  }, [printoutBusy])
+
+  async function createPrintout(options?: {
+    includeBacks?: boolean
+    marginMm?: number
+    fileName?: string
+  }) {
     if (!deck || printoutBusy) return
     const slots = collectDeckPrintoutSlots(deck)
     if (slots.length === 0) {
       setErrorText("No cards marked for the deck to print.")
       return
     }
-    // Admins get duplex backs; subscribers get faces only.
-    if (isAdmin && !cardBackSrc) {
+    const includeBacks = options?.includeBacks ?? false
+    if (includeBacks && !cardBackSrc) {
       setErrorText("Card back art is not available yet — try again in a moment.")
       return
     }
@@ -202,8 +213,12 @@ export function DeckPage() {
       const result = await generateDeckPrintoutPdf({
         deckName: deck.name ?? `Deck ${deck.id}`,
         slots,
-        cardBackUrl: isAdmin ? cardBackSrc : null,
+        cardBackUrl: includeBacks ? cardBackSrc : null,
+        includeBacks,
+        marginMm: options?.marginMm,
+        fileName: options?.fileName,
       })
+      setPrintDialogOpen(false)
       if (result.missingArt > 0) {
         setErrorText(
           `Printout saved — ${result.missingArt} card(s) had no art and used name placeholders.`
@@ -214,6 +229,20 @@ export function DeckPage() {
     } finally {
       setPrintoutBusy(false)
     }
+  }
+
+  function onCreatePrintout() {
+    if (!deck || printoutBusy) return
+    const slots = collectDeckPrintoutSlots(deck)
+    if (slots.length === 0) {
+      setErrorText("No cards marked for the deck to print.")
+      return
+    }
+    if (isAdmin) {
+      setPrintDialogOpen(true)
+      return
+    }
+    void createPrintout({ includeBacks: false })
   }
 
   async function onCopyDeck() {
@@ -747,7 +776,7 @@ export function DeckPage() {
                       label={printoutBusy ? "BUILDING PDF…" : "CREATE PRINTOUT"}
                       disabled={printoutBusy || saving}
                       className="font-buahs93 h-9 rounded-none bg-orange-600 px-4 text-white hover:bg-orange-800 disabled:opacity-60"
-                      onClick={() => void onCreatePrintout()}
+                      onClick={onCreatePrintout}
                     />
                   ) : null}
                   <GlitchFx
@@ -873,6 +902,20 @@ export function DeckPage() {
                 void onDeleteDeck()
               }}
             />
+
+            {canPrintout && isAdmin ? (
+              <DeckPrintoutDialog
+                open={printDialogOpen}
+                slots={collectDeckPrintoutSlots(deck)}
+                deckName={deck.name ?? `Deck ${deck.id}`}
+                cardBackSrc={cardBackSrc}
+                busy={printoutBusy}
+                onCancel={closePrintDialog}
+                onGenerate={(options) => {
+                  void createPrintout(options)
+                }}
+              />
+            ) : null}
           </>
         ) : null}
       </div>

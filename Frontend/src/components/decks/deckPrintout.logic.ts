@@ -32,6 +32,92 @@ export function duplexBackIndex(
   return row * cols + (cols - 1 - col)
 }
 
+/** Letter page + 3×3 grid used by the printout PDF and staff preview. */
+export const PRINTOUT_PAGE_W_MM = 215.9
+export const PRINTOUT_PAGE_H_MM = 279.4
+export const PRINTOUT_COLS = 3
+export const PRINTOUT_ROWS = 3
+export const PRINTOUT_PER_PAGE = PRINTOUT_COLS * PRINTOUT_ROWS
+export const PRINTOUT_GAP_MM = 0.5
+/** Card height ÷ width (3:4 portrait). */
+export const PRINTOUT_CARD_ASPECT = 4 / 3
+export const PRINTOUT_MARGIN_MIN_MM = 4
+export const PRINTOUT_MARGIN_MAX_MM = 14
+export const PRINTOUT_MARGIN_DEFAULT_MM = 10
+
+export type PrintoutGridLayout = {
+  cardW: number
+  cardH: number
+  originX: number
+  originY: number
+  marginMm: number
+}
+
+export function clampPrintoutMarginMm(marginMm: number): number {
+  if (!Number.isFinite(marginMm)) return PRINTOUT_MARGIN_DEFAULT_MM
+  return Math.min(
+    PRINTOUT_MARGIN_MAX_MM,
+    Math.max(PRINTOUT_MARGIN_MIN_MM, marginMm)
+  )
+}
+
+/** Larger margin shrinks each card so the 3×3 grid still fits on letter. */
+export function computePrintoutGridLayout(
+  marginMm = PRINTOUT_MARGIN_DEFAULT_MM
+): PrintoutGridLayout {
+  const inset = clampPrintoutMarginMm(marginMm)
+  const usableW = PRINTOUT_PAGE_W_MM - inset * 2
+  const usableH = PRINTOUT_PAGE_H_MM - inset * 2
+  const maxWFromWidth =
+    (usableW - PRINTOUT_GAP_MM * (PRINTOUT_COLS - 1)) / PRINTOUT_COLS
+  const maxHFromHeight =
+    (usableH - PRINTOUT_GAP_MM * (PRINTOUT_ROWS - 1)) / PRINTOUT_ROWS
+
+  let cardW = maxWFromWidth
+  let cardH = cardW * PRINTOUT_CARD_ASPECT
+  if (cardH > maxHFromHeight) {
+    cardH = maxHFromHeight
+    cardW = cardH / PRINTOUT_CARD_ASPECT
+  }
+
+  const gridW = cardW * PRINTOUT_COLS + PRINTOUT_GAP_MM * (PRINTOUT_COLS - 1)
+  const gridH = cardH * PRINTOUT_ROWS + PRINTOUT_GAP_MM * (PRINTOUT_ROWS - 1)
+  return {
+    cardW,
+    cardH,
+    originX: (PRINTOUT_PAGE_W_MM - gridW) / 2,
+    originY: (PRINTOUT_PAGE_H_MM - gridH) / 2,
+    marginMm: inset,
+  }
+}
+
+export function printoutPageCount(slotCount: number): number {
+  if (slotCount <= 0) return 0
+  return Math.ceil(slotCount / PRINTOUT_PER_PAGE)
+}
+
+export function sanitizePrintoutFileName(name: string): string {
+  const cleaned = name.replace(/[^\w.-]+/g, "_").replace(/_+/g, "_").slice(0, 80)
+  const trimmed = cleaned.replace(/^_+|_+$/g, "")
+  if (!trimmed) return "deck_printout"
+  return trimmed
+}
+
+export function defaultPrintoutFileName(deckName: string): string {
+  const base = sanitizePrintoutFileName(deckName || "deck")
+  if (base.toLowerCase().endsWith(".pdf")) return base
+  if (base.endsWith("_printout")) return `${base}.pdf`
+  return `${base}_printout.pdf`
+}
+
+export function resolvePrintoutFileName(
+  fileName: string | undefined,
+  deckName: string
+): string {
+  const raw = (fileName ?? "").trim()
+  return defaultPrintoutFileName(raw || deckName || "deck")
+}
+
 function expandQuantity(
   entries: DeckCardEntry[],
   section: "objective" | "deck"
