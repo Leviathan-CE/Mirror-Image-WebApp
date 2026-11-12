@@ -740,7 +740,7 @@ export function DeckPage() {
 
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
                   {canEdit ? (
                     <div className="min-w-[12rem] flex-1 basis-48 max-w-xl">
@@ -761,30 +761,33 @@ export function DeckPage() {
                     onChange={(deck_view) => patchPrefs({ deck_view })}
                   />
                 </div>
-                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                  {canEdit ? (
-                    <GlitchFx
-                      type="button"
-                      label={browseOpen ? "HIDE BROWSE" : "BROWSE"}
-                      className="font-buahs93 h-9 rounded-none border border-cyan-500/40 bg-black/70 px-4 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10"
-                      onClick={() => setBrowseOpen((prev) => !prev)}
-                    />
-                  ) : null}
+                <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center md:justify-end">
+                  <GlitchFx
+                    type="button"
+                    label="PLAY TEST"
+                    fxClassName="order-1 block w-full md:order-3 md:w-auto"
+                    className="font-buahs93 h-9 w-full rounded-none bg-cyan-700 px-5 hover:bg-cyan-900 md:w-auto"
+                    onClick={() => navigate(ROUTES.playTester(deckId))}
+                  />
                   {canPrintout ? (
                     <GlitchFx
                       type="button"
                       label={printoutBusy ? "BUILDING PDF…" : "CREATE PRINTOUT"}
                       disabled={printoutBusy || saving}
-                      className="font-buahs93 h-9 rounded-none bg-orange-600 px-4 text-white hover:bg-orange-800 disabled:opacity-60"
+                      fxClassName="order-2 block w-full md:w-auto"
+                      className="font-buahs93 h-9 w-full rounded-none bg-orange-600 px-4 text-white hover:bg-orange-800 disabled:opacity-60 md:w-auto"
                       onClick={onCreatePrintout}
                     />
                   ) : null}
-                  <GlitchFx
-                    type="button"
-                    label="PLAY TEST"
-                    className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900"
-                    onClick={() => navigate(ROUTES.playTester(deckId))}
-                  />
+                  {canEdit ? (
+                    <GlitchFx
+                      type="button"
+                      label={browseOpen ? "HIDE BROWSE" : "BROWSE"}
+                      fxClassName="order-3 block w-full md:order-1 md:w-auto"
+                      className="font-buahs93 h-9 w-full rounded-none border border-cyan-500/40 bg-black/70 px-4 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 md:w-auto"
+                      onClick={() => setBrowseOpen((prev) => !prev)}
+                    />
+                  ) : null}
                 </div>
               </div>
             </header>

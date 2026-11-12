@@ -14,7 +14,7 @@ DECK_SORTS = frozenset({"type", "invoke", "name"})
 LIBRARY_SORTS = frozenset(
     {"name", "name_desc", "invoke", "invoke_desc", "relevance"}
 )
-LIBRARY_PAGE_SIZES = frozenset({50, 100, 150, 200})
+LIBRARY_PAGE_SIZES = frozenset({5, 10, 25, 50, 100, 150, 200})
 
 BROWSE_WIDTH_MIN = 280
 BROWSE_WIDTH_MAX = 2400
