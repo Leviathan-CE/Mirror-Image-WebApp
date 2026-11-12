@@ -396,7 +396,7 @@ export function HowToPlayPage() {
                                     check for a win.
                                 </li>
                                 <li>
-                                    Some cards also give or take away <GameIcon name="vp"/>.
+                                    Some cards also give or take away <GameIcon name="vp" />.
                                 </li>
                             </ul>
                             <p>
@@ -424,179 +424,179 @@ export function HowToPlayPage() {
 
                         <Section id="how-to-play-basics" title="Setup & Turns">
                             <Subsection id="setting-up" title="Setting Up">
-                            <p>
-                                For your first time, we recommend using a premade starter deck; it has
-                                everything you need to play:
-                            </p>
-                            <ul className="list-disc space-y-1 pl-6">
-                                <li>A pilot</li>
-                                <li>A deck of 40 to 100 cards, with no more than 3 copies of a named card</li>
-                                <li>Exactly three objective cards (not part of the 40-card deck)</li>
-                                <li>A way to track <GameIcon name="vp" /></li>
-                                <li>5 or more red damage 6-sided dice</li>
-                                <li>5 or more green time-counter 6-sided dice</li>
-                                <li>Resource and other tokens</li>
-                            </ul>
+                                <p>
+                                    For your first time, we recommend using a premade starter deck; it has
+                                    everything you need to play:
+                                </p>
+                                <ul className="list-disc space-y-1 pl-6">
+                                    <li>A pilot</li>
+                                    <li>A deck of 40 to 100 cards, with no more than 3 copies of a named card</li>
+                                    <li>Exactly three objective cards (not part of the 40-card deck)</li>
+                                    <li>A way to track <GameIcon name="vp" /></li>
+                                    <li>5 or more red damage 6-sided dice</li>
+                                    <li>5 or more green time-counter 6-sided dice</li>
+                                    <li>Resource and other tokens</li>
+                                </ul>
 
 
-                            <p>
-                                First, place your pilot in the pilot zone. Then shuffle your deck and
-                                place it in the deck zone (labeled R.I.G. on the mat). Grab the starting resource tokens
-                                noted on your pilot and place them in your stockpile readied (vertical,
-                                90 degrees). Start at 0 <GameIcon name="vp" />, and
-                                draw a hand of cards based on your pilot&apos;s starting hand size.
-                                Keep your three objective cards face down beside your deck until they
-                                are chosen.
-                            </p>
+                                <p>
+                                    First, place your pilot in the pilot zone. Then shuffle your deck and
+                                    place it in the deck zone (labeled R.I.G. on the mat). Grab the starting resource tokens
+                                    noted on your pilot and place them in your stockpile readied (vertical,
+                                    90 degrees). Start at 0 <GameIcon name="vp" />, and
+                                    draw a hand of cards based on your pilot&apos;s starting hand size.
+                                    Keep your three objective cards face down beside your deck until they
+                                    are chosen.
+                                </p>
 
-                            <p>
-                                Once all players have done this, randomly determine who goes first;
-                                the winner decides whether they want the first turn. (A setup demo
-                                using the blue/yellow starter is shown below.) The player who takes
-                                the first turn then chooses two resources in their stockpile and
-                                expends them (turns them horizontal). If they have fewer than two,
-                                they expend all of them. Those resources do not ready during that
-                                player&apos;s first start-of-turn step; they ready normally on later
-                                turns. That player also skips the draw phase on their first turn.
-                            </p>
-                            <p>
-                                After first player is known, starting with that player and going
-                                clockwise, each player chooses one of their three objective cards and
-                                places it face up in the shared objective area. Set aside each
-                                player&apos;s unchosen objectives out of the game.
-                            </p>
-                            <Note>
-                                Note: You may change which side you prefer to have your deck, pilot zone, and discard pile
-                                for convenience. When designing the game they were defaulted to the left; you may have them
-                                on the right if that is more comfortable.
-                            </Note>
+                                <p>
+                                    Once all players have done this, randomly determine who goes first;
+                                    the winner decides whether they want the first turn. (A setup demo
+                                    using the blue/yellow starter is shown below.) The player who takes
+                                    the first turn then chooses two resources in their stockpile and
+                                    expends them (turns them horizontal). If they have fewer than two,
+                                    they expend all of them. Those resources do not ready during that
+                                    player&apos;s first start-of-turn step; they ready normally on later
+                                    turns. That player also skips the draw phase on their first turn.
+                                </p>
+                                <p>
+                                    After first player is known, starting with that player and going
+                                    clockwise, each player chooses one of their three objective cards and
+                                    places it face up in the shared objective area. Set aside each
+                                    player&apos;s unchosen objectives out of the game.
+                                </p>
+                                <Note>
+                                    Note: You may change which side you prefer to have your deck, pilot zone, and discard pile
+                                    for convenience. When designing the game they were defaulted to the left; you may have them
+                                    on the right if that is more comfortable.
+                                </Note>
 
-                            <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
-                                <img
-                                    src={howToPlayImages.SETUP}
-                                    alt="Setting up the starting game board for a player"
+                                <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
+                                    <img
+                                        src={howToPlayImages.SETUP}
+                                        alt="Setting up the starting game board for a player"
 
-                                />
-                            </div>
+                                    />
+                                </div>
 
-                            <p>
-                                Once players know who is going first, they may look at their hand.
-                                Each player has one chance to mulligan unwanted cards from their
-                                opening hand; this happens only once. The player going first mulligans
-                                first. To mulligan, choose any number of cards from your hand, put them
-                                on the bottom of your deck, and draw that many cards from the top
-                                of your deck. Once all players have decided, the player going
-                                first begins the first turn. Your maximum hand size equals the hand
-                                size printed on your pilot.
-                            </p>
+                                <p>
+                                    Once players know who is going first, they may look at their hand.
+                                    Each player has one chance to mulligan unwanted cards from their
+                                    opening hand; this happens only once. The player going first mulligans
+                                    first. To mulligan, choose any number of cards from your hand, put them
+                                    on the bottom of your deck, and draw that many cards from the top
+                                    of your deck. Once all players have decided, the player going
+                                    first begins the first turn. Your maximum hand size equals the hand
+                                    size printed on your pilot.
+                                </p>
 
                             </Subsection>
 
                             <Subsection id="turn-phases" title="Turn Phases">
-                            <p>
-                                There are four phases: start of turn, draw phase, the
-                                main phase, and the end-of-turn phase. Take them in order on your
-                                turn.
-                            </p>
-                            <div className="space-y-1">
-                                <p className="flex items-center gap-2 font-semibold text-cyan-200">
-                                    Start of Turn
+                                <p>
+                                    There are four phases: start of turn, draw phase, the
+                                    main phase, and the end-of-turn phase. Take them in order on your
+                                    turn.
                                 </p>
-                                <div className="border-l-2 border-cyan-500/0 pl-4">
-                                    <ol className="list-decimal space-y-1 pl-6">
-                                        <li>Ready all entities you control.</li>
-                                        <li>
-                                            <Term>Heal.</Term> Remove 1 marked damage (not below 0)
-                                            from each unit you control on the battlefield that is{" "}
-                                            <strong>not</strong> on an objective. Units on an
-                                            objective do not heal. Opponent units do not heal on your
-                                            turn.
-                                        </li>
-                                        <li>
-                                            Trigger all abilities with the{" "}
-                                            <GameIcon name="start" /> tag.
-                                        </li>
-                                        <li>
-                                            <Term>Hold <GameIcon name="vp" />.</Term> Gain 2{" "}
-                                            <GameIcon name="vp" /> for each objective you control,
-                                            then check for a win.
-                                        </li>
-                                        <li>
-                                            Remove a time counter from each card you control in play,
-                                            and resolve any effect triggered when the last time
-                                            counter is removed from a card in your stockpile.
-                                        </li>
-                                    </ol>
-                                </div>
-                            </div>
-                            <div>
-                            <p className="flex items-center gap-2 font-semibold text-cyan-200">
-                                    Draw Phase
-                                </p>
-                                <div className="border-l-2 border-cyan-500/0 pl-4">
-                                    <ol className="list-decimal space-y-1 pl-6">
-                                        <li>Draw one card.</li>
-                                        <Note>
-                                            Skip this step if you are the player taking the first
-                                            turn of the game.
-                                        </Note>
-                                    </ol>
-                                </div>
-                            </div>
-                            <div className="space-y-1">
-                                <p className="font-semibold text-cyan-200">Main Phase</p>
-                                <div className="space-y-1 border-l-2 border-cyan-500/0 pl-4">
-                                    <p>
-                                        You may play cards, activate abilities, make attacks, move
-                                        units onto or off objectives, or accumulate resources, in
-                                        any order where timing allows.
+                                <div className="space-y-1">
+                                    <p className="flex items-center gap-2 font-semibold text-cyan-200">
+                                        Start of Turn
                                     </p>
-                                    <p>To contest an objective, in brief:</p>
-                                    <ol className="list-decimal space-y-1 pl-6">
-                                        <li>
-                                            Declare an attack at an objective with legal attacker(s),
-                                            expend them, and trigger any <GameIcon name="attack" />{" "}
-                                            tags.
-                                        </li>
-                                        <li>
-                                            Players may play Quick Hacks or activate abilities,
-                                            starting with the active player, until no one adds more
-                                            effects.
-                                        </li>
-                                        <li>
-                                            Deal damage (Preemptive Strike first, then simultaneous).
-                                            Each player divides their side&apos;s damage among
-                                            opposing units on that fight. Defeated units go to the
-                                            discard pile. Surviving control may Conquer.
-                                        </li>
-                                    </ol>
-                                    <p>
-                                        See <SectionLink href="#objectives">Objectives</SectionLink>{" "}
-                                        and{" "}
-                                        <SectionLink href="#how-to-attack">How to Attack</SectionLink>{" "}
-                                        under Core Actions for the full step-by-step.
+                                    <div className="border-l-2 border-cyan-500/0 pl-4">
+                                        <ol className="list-decimal space-y-1 pl-6">
+                                            <li>Ready all entities you control.</li>
+                                            <li>
+                                                <Term>Heal.</Term> Remove 1 marked damage (not below 0)
+                                                from each unit you control on the battlefield that is{" "}
+                                                <strong>not</strong> on an objective. Units on an
+                                                objective do not heal. Opponent units do not heal on your
+                                                turn.
+                                            </li>
+                                            <li>
+                                                Trigger all abilities with the{" "}
+                                                <GameIcon name="start" /> tag.
+                                            </li>
+                                            <li>
+                                                <Term>Hold <GameIcon name="vp" />.</Term> Gain 2{" "}
+                                                <GameIcon name="vp" /> for each objective you control,
+                                                then check for a win.
+                                            </li>
+                                            <li>
+                                                Remove a time counter from each card you control in play,
+                                                and resolve any effect triggered when the last time
+                                                counter is removed from a card in your stockpile.
+                                            </li>
+                                        </ol>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="flex items-center gap-2 font-semibold text-cyan-200">
+                                        Draw Phase
                                     </p>
+                                    <div className="border-l-2 border-cyan-500/0 pl-4">
+                                        <ol className="list-decimal space-y-1 pl-6">
+                                            <li>Draw one card.</li>
+                                            <Note>
+                                                Skip this step if you are the player taking the first
+                                                turn of the game.
+                                            </Note>
+                                        </ol>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="space-y-1">
-                                <p className="flex items-center gap-2 font-semibold text-cyan-200">
-                                    End-of-Turn Phase
-                                </p>
-                                <div className="border-l-2 border-cyan-500/0 pl-4">
-                                    <ol className="list-decimal space-y-1 pl-6">
-                                        <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
-                                        <li>Trigger any ability with the <GameIcon name="endTurn" /> tag.</li>
-                                        <li>Players lose any unspent resources in the resource pool (not the stockpile).</li>
-                                        <li>
-                                            <Term>Discard to hand size.</Term> This is the last step.
-                                            The active player discards cards until their hand equals
-                                            the hand size printed on their pilot. If the hand is
-                                            already at or below that number, discard nothing.
-                                        </li>
-                                        
-                                    </ol>
+                                <div className="space-y-1">
+                                    <p className="font-semibold text-cyan-200">Main Phase</p>
+                                    <div className="space-y-1 border-l-2 border-cyan-500/0 pl-4">
+                                        <p>
+                                            You may play cards, activate abilities, make attacks, move
+                                            units onto or off objectives, or accumulate resources, in
+                                            any order where timing allows.
+                                        </p>
+                                        <p>To contest an objective, in brief:</p>
+                                        <ol className="list-decimal space-y-1 pl-6">
+                                            <li>
+                                                Declare an attack at an objective with legal attacker(s),
+                                                expend them, and trigger any <GameIcon name="attack" />{" "}
+                                                tags.
+                                            </li>
+                                            <li>
+                                                Players may play Quick Hacks or activate abilities,
+                                                starting with the active player, until no one adds more
+                                                effects.
+                                            </li>
+                                            <li>
+                                                Deal damage (Preemptive Strike first, then simultaneous).
+                                                Each player divides their side&apos;s damage among
+                                                opposing units on that fight. Defeated units go to the
+                                                discard pile. Surviving control may Conquer.
+                                            </li>
+                                        </ol>
+                                        <p>
+                                            See <SectionLink href="#objectives">Objectives</SectionLink>{" "}
+                                            and{" "}
+                                            <SectionLink href="#how-to-attack">How to Attack</SectionLink>{" "}
+                                            under Core Actions for the full step-by-step.
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
+                                <div className="space-y-1">
+                                    <p className="flex items-center gap-2 font-semibold text-cyan-200">
+                                        End-of-Turn Phase
+                                    </p>
+                                    <div className="border-l-2 border-cyan-500/0 pl-4">
+                                        <ol className="list-decimal space-y-1 pl-6">
+                                            <li>Players may play Quick Hacks or activate abilities, starting with the active player, until no one adds more effects.</li>
+                                            <li>Trigger any ability with the <GameIcon name="endTurn" /> tag.</li>
+                                            <li>Players lose any unspent resources in the resource pool (not the stockpile).</li>
+                                            <li>
+                                                <Term>Discard to hand size.</Term> This is the last step.
+                                                The active player discards cards until their hand equals
+                                                the hand size printed on their pilot. If the hand is
+                                                already at or below that number, discard nothing.
+                                            </li>
+
+                                        </ol>
+                                    </div>
+                                </div>
                             </Subsection>
                         </Section>
 
@@ -620,23 +620,23 @@ export function HowToPlayPage() {
                             </div>
 
                             <Subsection id="threat-level" title="Threat Level">
-                            <p>
-                                Only units have a <GameIcon name="threat_lvl" />{" "}
-                                <Term>Threat Level</Term> (<Term>TLV</Term>) on the card. It tells you
-                                how hard the unit hits and how much damage it can take before it is
-                                defeated.
-                            </p>
-                            <p>
-                                <Term>Split format <code>[dmg|hp]</code>:</Term> Two numbers separated
-                                by a vertical bar. The first number is damage; the second is health.
-                                Example: <strong>3|2</strong> deals 3 damage in combat and is defeated
-                                at 2 marked damage.
-                            </p>
-                            <p>
-                                <Term>Combined format <code>[dmg+hp]</code>:</Term> A single number
-                                used for both values. Example: <strong>3</strong> deals 3 damage and
-                                is defeated at 3 marked damage.
-                            </p>
+                                <p>
+                                    Only units have a <GameIcon name="threat_lvl" />{" "}
+                                    <Term>Threat Level</Term> (<Term>TLV</Term>) on the card. It tells you
+                                    how hard the unit hits and how much damage it can take before it is
+                                    defeated.
+                                </p>
+                                <p>
+                                    <Term>Split format <code>[dmg|hp]</code>:</Term> Two numbers separated
+                                    by a vertical bar. The first number is damage; the second is health.
+                                    Example: <strong>3|2</strong> deals 3 damage in combat and is defeated
+                                    at 2 marked damage.
+                                </p>
+                                <p>
+                                    <Term>Combined format <code>[dmg+hp]</code>:</Term> A single number
+                                    used for both values. Example: <strong>3</strong> deals 3 damage and
+                                    is defeated at 3 marked damage.
+                                </p>
                             </Subsection>
 
                         </Section>
@@ -663,407 +663,407 @@ export function HowToPlayPage() {
 
 
                             <Subsection id="base-types" title="Base Types">
-                            <p>
-                                <Term>Cyberspell:</Term> When you play a card with this type, it
-                                goes to the discard pile after its effect resolves or is
-                                overwritten.
-                            </p>
-                            <p>
-                                <Term>Entity:</Term> When you play a card with this type, it goes to
-                                the battlefield if time counters are not used to play it (or to the
-                                stockpile if time counters are used) after its effects resolve. If
-                                it is overwritten, it goes to the discard pile.
-                            </p>
+                                <p>
+                                    <Term>Cyberspell:</Term> When you play a card with this type, it
+                                    goes to the discard pile after its effect resolves or is
+                                    overwritten.
+                                </p>
+                                <p>
+                                    <Term>Entity:</Term> When you play a card with this type, it goes to
+                                    the battlefield if time counters are not used to play it (or to the
+                                    stockpile if time counters are used) after its effects resolve. If
+                                    it is overwritten, it goes to the discard pile.
+                                </p>
                             </Subsection>
 
                             <Subsection id="super-types" title="Super Types">
-                            <Important>
-                                <Term>Multiple types:</Term> A card may have more than one supertype or
-                                subtype. When type rules conflict, the more permissive rule applies unless
-                                card text says otherwise. If the card has the Unit supertype, it may
-                                attack even if another type says it cannot. Attacks are declared at{" "}
-                                <SectionLink href="#objectives">objectives</SectionLink>, not at a
-                                chosen unit or player.
-                            </Important>
-                            <p>
-                                <Term>PILOT [ Entity ]:</Term> Your pilot is the center of
-                                attention, commanding drones, mechs, hacks, spells, and other
-                                effects from your deck in the pilot zone. You can also have them join
-                                the heat of battle if you choose, to show off why you picked this
-                                pilot. The pilot is a unit that starts in your pilot zone and can be
-                                played from that zone by paying its invoke cost. It may sit on an
-                                objective and counts toward controlling it. Its printed victory
-                                number is how many <GameIcon name="vp" /> you need to win. Whenever your pilot
-                                moves zones you may instead of moving the pilot to that zone back to the pilot
-                                zone instead increasing the pilots cost for the rest of the game by {" "} <GameIcon name="gen2" />.
-                            </p>
-                            <p>
-                                <Term>UNIT [ Entity ]:</Term> Units are call-ins that back up your
-                                pilot, ranging from drones, turrets, and tanks to spacecraft,
-                                helping you contest objectives. Units have a Threat Level (see{" "}
-                                <SectionLink href="#threat-level">Threat Level</SectionLink>
-                                ). To play a unit, pay its invoke cost (see{" "}
-                                <SectionLink href="#how-to-play-card">How to Play a Card</SectionLink>
-                                ). If it resolves, it goes to the battlefield, provided you chose
-                                not to use time as part of its cost (see Time Counters). A unit you
-                                control enters the battlefield <strong>readied</strong>. It cannot
-                                attack during the turn it entered unless it has Blitz
-                                (see Keyword Abilities). Moving onto an opponent-controlled objective
-                                is an attack, so a unit that entered this turn cannot do that unless
-                                it has Blitz. It may move onto an empty objective or reinforce an
-                                objective you already control.
-                            </p>
-                            <p>
-                                <Term>PROGRAM [ Entity ]:</Term> A type of card that tends to be
-                                synergistic, stays in play once played, and has a variety of effects
-                                and abilities. They cannot attack.
-                            </p>
-                            <p>
-                                <Term>TECHNOLOGY [ Entity ]:</Term> A type of card that tends to be a
-                                counter-play or support piece, stays in play once played, and has a
-                                variety of effects and abilities. They cannot attack.
-                            </p>
-                            <p>
-                                <Term>PROTOTYPE [ ANY ]:</Term> Prototype cards: rare experimental
-                                assets in the lore. A card with this type is
-                                restricted to a single copy in your deck.
-                            </p>
-                            <p>
-                                <Term>RESOURCE [ Entity ]:</Term> Resource tokens you use to play
-                                cards (assets) from different zones of play. Whenever a card
-                                says to "gain" a resource, create a token of the specified color and
-                                put it into your stockpile readied (90 degrees vertical). You can use
-                                resources as soon as they enter play, with no need to wait as a unit
-                                does.
-                            </p>
-                            <p>
-                                <Term>TOKEN [ Entity ]:</Term> Usually created by an effect, not played
-                                from hand or other zones; tokens do not go to the discard pile when
-                                defeated or trashed. You may use your own objects as tokens, so long as
-                                it is clear which token they represent and whether they are expended.
-                                You cannot use non-token MIRROR IMAGE cards as tokens. When an effect
-                                creates a token, that creation may enter the lock if it is empty, or its
-                                controller's queue if the lock is full. The token is not created until
-                                the creating effect resolves: resource tokens enter the stockpile
-                                readied; unit tokens enter the battlefield readied; other tokens enter
-                                the battlefield readied.
-                            </p>
+                                <Important>
+                                    <Term>Multiple types:</Term> A card may have more than one supertype or
+                                    subtype. When type rules conflict, the more permissive rule applies unless
+                                    card text says otherwise. If the card has the Unit supertype, it may
+                                    attack even if another type says it cannot. Attacks are declared at{" "}
+                                    <SectionLink href="#objectives">objectives</SectionLink>, not at a
+                                    chosen unit or player.
+                                </Important>
+                                <p>
+                                    <Term>PILOT [ Entity ]:</Term> Your pilot is the center of
+                                    attention, commanding drones, mechs, hacks, spells, and other
+                                    effects from your deck in the pilot zone. You can also have them join
+                                    the heat of battle if you choose, to show off why you picked this
+                                    pilot. The pilot is a unit that starts in your pilot zone and can be
+                                    played from that zone by paying its invoke cost. It may sit on an
+                                    objective and counts toward controlling it. Its printed victory
+                                    number is how many <GameIcon name="vp" /> you need to win. Whenever your pilot
+                                    moves zones you may instead of moving the pilot to that zone back to the pilot
+                                    zone instead increasing the pilots cost for the rest of the game by {" "} <GameIcon name="gen2" />.
+                                </p>
+                                <p>
+                                    <Term>UNIT [ Entity ]:</Term> Units are call-ins that back up your
+                                    pilot, ranging from drones, turrets, and tanks to spacecraft,
+                                    helping you contest objectives. Units have a Threat Level (see{" "}
+                                    <SectionLink href="#threat-level">Threat Level</SectionLink>
+                                    ). To play a unit, pay its invoke cost (see{" "}
+                                    <SectionLink href="#how-to-play-card">How to Play a Card</SectionLink>
+                                    ). If it resolves, it goes to the battlefield, provided you chose
+                                    not to use time as part of its cost (see Time Counters). A unit you
+                                    control enters the battlefield <strong>readied</strong>. It cannot
+                                    attack during the turn it entered unless it has Blitz
+                                    (see Keyword Abilities). Moving onto an opponent-controlled objective
+                                    is an attack, so a unit that entered this turn cannot do that unless
+                                    it has Blitz. It may move onto an empty objective or reinforce an
+                                    objective you already control.
+                                </p>
+                                <p>
+                                    <Term>PROGRAM [ Entity ]:</Term> A type of card that tends to be
+                                    synergistic, stays in play once played, and has a variety of effects
+                                    and abilities. They cannot attack.
+                                </p>
+                                <p>
+                                    <Term>TECHNOLOGY [ Entity ]:</Term> A type of card that tends to be a
+                                    counter-play or support piece, stays in play once played, and has a
+                                    variety of effects and abilities. They cannot attack.
+                                </p>
+                                <p>
+                                    <Term>PROTOTYPE [ ANY ]:</Term> Prototype cards: rare experimental
+                                    assets in the lore. A card with this type is
+                                    restricted to a single copy in your deck.
+                                </p>
+                                <p>
+                                    <Term>RESOURCE [ Entity ]:</Term> Resource tokens you use to play
+                                    cards (assets) from different zones of play. Whenever a card
+                                    says to "gain" a resource, create a token of the specified color and
+                                    put it into your stockpile readied (90 degrees vertical). You can use
+                                    resources as soon as they enter play, with no need to wait as a unit
+                                    does.
+                                </p>
+                                <p>
+                                    <Term>TOKEN [ Entity ]:</Term> Usually created by an effect, not played
+                                    from hand or other zones; tokens do not go to the discard pile when
+                                    defeated or trashed. You may use your own objects as tokens, so long as
+                                    it is clear which token they represent and whether they are expended.
+                                    You cannot use non-token MIRROR IMAGE cards as tokens. When an effect
+                                    creates a token, that creation may enter the lock if it is empty, or its
+                                    controller's queue if the lock is full. The token is not created until
+                                    the creating effect resolves: resource tokens enter the stockpile
+                                    readied; unit tokens enter the battlefield readied; other tokens enter
+                                    the battlefield readied.
+                                </p>
 
                             </Subsection>
 
                             <Subsection id="sub-types" title="Sub Types">
-                            <p>
-                                <Term>PROCESS [ Cyberspell ]:</Term> This cyberspell can be played
-                                any time during your main phase. Processes represent a combination of
-                                magic and technology: complex programs or scripts that take
-                                significant time to play in battle.
-                            </p>
-                            <p>
-                                <Term>QUICK HACK [ Cyberspell ]:</Term> This cyberspell can be played
-                                any time you can play a Process. You may also play it at the end of
-                                each turn, during an attack, when there is a card in the lock, or
-                                when an effect not controlled by you resolves and the lock becomes
-                                empty. (See Using the Lock for details.) Quick Hacks represent the
-                                fastest scripts you can play, letting you disrupt your opponent or
-                                protect yourself.
-                            </p>
+                                <p>
+                                    <Term>PROCESS [ Cyberspell ]:</Term> This cyberspell can be played
+                                    any time during your main phase. Processes represent a combination of
+                                    magic and technology: complex programs or scripts that take
+                                    significant time to play in battle.
+                                </p>
+                                <p>
+                                    <Term>QUICK HACK [ Cyberspell ]:</Term> This cyberspell can be played
+                                    any time you can play a Process. You may also play it at the end of
+                                    each turn, during an attack, when there is a card in the lock, or
+                                    when an effect not controlled by you resolves and the lock becomes
+                                    empty. (See Using the Lock for details.) Quick Hacks represent the
+                                    fastest scripts you can play, letting you disrupt your opponent or
+                                    protect yourself.
+                                </p>
                             </Subsection>
                         </Section>
 
                         <Section id="how-to-play-actions" title="Core Actions">
                             <Subsection id="accumulate-resources" title="Accumulate Resources">
-                            <p>
-                                You may accumulate resources only once on your turn in your main phase, To do so, choose a card in hand, reveal it, and then "gain"
-                                (grab) up to two resource tokens from its listed invoke cost
-                                (ignoring the grey numbered costs) and add them to your stockpile
-                                readied. Then put the revealed card on the bottom of your deck. If you gained
-                                one or fewer resources this way, draw a card.
-                                This action does not use the lock.
-                            </p>
+                                <p>
+                                    You may accumulate resources only once on your turn in your main phase, To do so, choose a card in hand, reveal it, and then "gain"
+                                    (grab) up to two resource tokens from its listed invoke cost
+                                    (ignoring the grey numbered costs) and add them to your stockpile
+                                    readied. Then put the revealed card on the bottom of your deck. If you gained
+                                    one or fewer resources this way, draw a card.
+                                    This action does not use the lock.
+                                </p>
 
-                            <div className="space-y-3 rounded-md border border-cyan-500/20 bg-black/40 p-4">
-                                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                                    <CheckMark />
-                                    <span className="flex flex-wrap items-center gap-1.5">
-                                        <GameIcon name="ram" />
-                                        <GameIcon name="steel" />
-                                        <GameIcon name="time" />
-                                        <GameIcon name="life" />
-                                        <GameIcon name="power" />
-                                        <GameIcon name="metal" />
-                                    </span>
-                                    <span className="text-base text-gray-300 lg:text-lg">
-                                        Colored resource symbols can be gained.
-                                    </span>
+                                <div className="space-y-3 rounded-md border border-cyan-500/20 bg-black/40 p-4">
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                                        <CheckMark />
+                                        <span className="flex flex-wrap items-center gap-1.5">
+                                            <GameIcon name="ram" />
+                                            <GameIcon name="steel" />
+                                            <GameIcon name="time" />
+                                            <GameIcon name="life" />
+                                            <GameIcon name="power" />
+                                            <GameIcon name="metal" />
+                                        </span>
+                                        <span className="text-base text-gray-300 lg:text-lg">
+                                            Colored resource symbols can be gained.
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                                        <CrossMark />
+                                        <span className="flex flex-wrap items-center gap-1.5">
+                                            <GameIcon name="gen0" />
+                                            <GameIcon name="gen1" />
+                                            <GameIcon name="gen2" />
+                                            <span className="px-1 text-gray-400">. . . . .</span>
+                                            <GameIcon name="gen10" />
+                                            <GameIcon name="genX" />
+                                        </span>
+                                        <span className="text-base text-gray-300 lg:text-lg">
+                                            Grey numbered (generic) costs are ignored.
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                                    <CrossMark />
-                                    <span className="flex flex-wrap items-center gap-1.5">
-                                        <GameIcon name="gen0" />
-                                        <GameIcon name="gen1" />
-                                        <GameIcon name="gen2" />
-                                        <span className="px-1 text-gray-400">. . . . .</span>
-                                        <GameIcon name="gen10" />
-                                        <GameIcon name="genX" />
-                                    </span>
-                                    <span className="text-base text-gray-300 lg:text-lg">
-                                        Grey numbered (generic) costs are ignored.
-                                    </span>
+
+                                <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
+                                    <img
+                                        src={howToPlayImages.GAIN_RESOURCE}
+                                        alt="Mirror Image banner"
+
+                                    />
                                 </div>
-                            </div>
-
-                            <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
-                                <img
-                                    src={howToPlayImages.GAIN_RESOURCE}
-                                    alt="Mirror Image banner"
-
-                                />
-                            </div>
 
 
 
                             </Subsection>
 
                             <Subsection id="how-to-play-card" title="How to Play a Card">
-                            <p>
-                                Each card has an invoke cost printed on it; pay that cost to play the card. A card
-                                without an invoke cost in the upper-left corner cannot be played unless an effect
-                                allows it. You normally play from your hand; you may play from another zone
-                                (pilot zone, trashyard, dismantled zone, and so on) only when a card ability or
-                                effect says you can. To pay the cost, you must have the required resources in your
-                                resource pool, an imaginary area where resources go when a card says to
-                                "add" a resource of the color you need; they stay there until the end
-                                of the turn.
+                                <p>
+                                    Each card has an invoke cost printed on it; pay that cost to play the card. A card
+                                    without an invoke cost in the upper-left corner cannot be played unless an effect
+                                    allows it. You normally play from your hand; you may play from another zone
+                                    (pilot zone, trashyard, dismantled zone, and so on) only when a card ability or
+                                    effect says you can. To pay the cost, you must have the required resources in your
+                                    resource pool, an imaginary area where resources go when a card says to
+                                    "add" a resource of the color you need; they stay there until the end
+                                    of the turn.
+
+                                    <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
+                                        <img
+                                            src={howToPlayImages.PLAYING_CARD_1}
+                                            alt="Mirror Image banner"
+
+                                        />
+                                    </div>
+
+                                </p>
+                                <p>
+                                    For example, say I want to play the Needle Jet card. I need a
+                                    RAM (blue) and Unit of Power (yellow) in my resource pool to play the card. I
+                                    already have a RAM and a unit of Power readied in my stockpile:
+                                    I then activate the RAM's ability of "<GameIcon name="expend" />: Add a <GameIcon name="ram" /> to your resource pool"
+                                    by turing the ram sideways as that is the cost then. i get to add a <GameIcon name="ram" /> to
+                                    my resource pool.
+
+                                </p>
+                                <p>
+                                    Because I have what I need, I'll expend both the RAM and Unit of Power
+                                    resources, which adds resources of the respective color when I expend
+                                    them, as shown in the images below.
+
+                                    <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
+                                        <img
+                                            src={howToPlayImages.PLAYING_CARD_2}
+                                            alt="Mirror Image banner"
+
+                                        />
+                                    </div>
+                                    Resources in Resource pool: <GameIcon name="ram" />
+                                    <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
+                                        <img
+                                            src={howToPlayImages.PLAYING_CARD_3}
+                                            alt="Mirror Image banner"
+
+                                        />
+                                    </div>
+                                    Resources in Resource pool: <GameIcon name="ram" /><GameIcon name="power" />
+                                </p>
+                                <p>
+                                    Once you have paid the cost by removing the resources in your resource pool equal to the invoke cost, and if the card says to target, you
+                                    must have legal targets before you play the card, or you cannot play
+                                    it; then reveal the card you intend to play. Put it in the lock if the
+                                    lock is empty, or overwrite the lock occupant if the lock is full (only
+                                    effects go to a queue when the lock is full; see{" "}
+                                    <SectionLink href="#lock">The Lock</SectionLink>). Declare its legal
+                                    targets, then trigger any{" "}
+                                    <GameIcon name="invoke" /> tags printed on the card and resolve those tags immediately. The card remains the lock occupant until it resolves or is overwritten.
+                                </p>
+
 
                                 <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                     <img
-                                        src={howToPlayImages.PLAYING_CARD_1}
+                                        src={howToPlayImages.PLAYING_CARD_4}
                                         alt="Mirror Image banner"
 
                                     />
                                 </div>
+                                <p> Resources in Resource pool: empty</p>
 
-                            </p>
-                            <p>
-                                For example, say I want to play the Needle Jet card. I need a
-                                RAM (blue) and Unit of Power (yellow) in my resource pool to play the card. I
-                                already have a RAM and a unit of Power readied in my stockpile:
-                                I then activate the RAM's ability of "<GameIcon name="expend" />: Add a <GameIcon name="ram" /> to your resource pool"
-                                by turing the ram sideways as that is the cost then. i get to add a <GameIcon name="ram" /> to
-                                my resource pool.
 
-                            </p>
-                            <p>
-                                Because I have what I need, I'll expend both the RAM and Unit of Power
-                                resources, which adds resources of the respective color when I expend
-                                them, as shown in the images below.
-
+                                <p>
+                                    While a card is the lock occupant, the active player may overwrite it
+                                    with a Quick Hack or take other actions allowed while the lock is full
+                                    (see <SectionLink href="#lock">The Lock</SectionLink>). If the lock
+                                    occupant is not overwritten, it resolves when the lock process allows:
+                                    first, put the card in its respective zone (the battlefield for
+                                    entities, the discard pile for cyberspells), then resolve its effects in
+                                    order as written on the card (<GameIcon name="effect" /> see this tag for
+                                    details), then resolve any other triggers such as the{" "}
+                                    <GameIcon name="entersPlay" /> tag. The card has now finished being
+                                    played. If your card's invoke cost has colorless symbols, you can use
+                                    any color of resource in your pool to pay for 1 of the cost it requires,
+                                    and/or reduce that cost by one for each time counter. See The Lock &
+                                    Time Counters for more details.
+                                </p>
                                 <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
                                     <img
-                                        src={howToPlayImages.PLAYING_CARD_2}
+                                        src={howToPlayImages.PLAYING_CARD_5}
                                         alt="Mirror Image banner"
 
                                     />
                                 </div>
-                                Resources in Resource pool: <GameIcon name="ram" />
-                                <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
-                                    <img
-                                        src={howToPlayImages.PLAYING_CARD_3}
-                                        alt="Mirror Image banner"
-
-                                    />
-                                </div>
-                                Resources in Resource pool: <GameIcon name="ram" /><GameIcon name="power" />
-                            </p>
-                            <p>
-                                Once you have paid the cost by removing the resources in your resource pool equal to the invoke cost, and if the card says to target, you
-                                must have legal targets before you play the card, or you cannot play
-                                it; then reveal the card you intend to play. Put it in the lock if the
-                                lock is empty, or overwrite the lock occupant if the lock is full (only
-                                effects go to a queue when the lock is full; see{" "}
-                                <SectionLink href="#lock">The Lock</SectionLink>). Declare its legal
-                                targets, then trigger any{" "}
-                                <GameIcon name="invoke" /> tags printed on the card and resolve those tags immediately. The card remains the lock occupant until it resolves or is overwritten.
-                            </p>
-
-
-                            <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
-                                <img
-                                    src={howToPlayImages.PLAYING_CARD_4}
-                                    alt="Mirror Image banner"
-
-                                />
-                            </div>
-                            <p> Resources in Resource pool: empty</p>
-
-
-                            <p>
-                                While a card is the lock occupant, the active player may overwrite it
-                                with a Quick Hack or take other actions allowed while the lock is full
-                                (see <SectionLink href="#lock">The Lock</SectionLink>). If the lock
-                                occupant is not overwritten, it resolves when the lock process allows:
-                                first, put the card in its respective zone (the battlefield for
-                                entities, the discard pile for cyberspells), then resolve its effects in
-                                order as written on the card (<GameIcon name="effect" /> see this tag for
-                                details), then resolve any other triggers such as the{" "}
-                                <GameIcon name="entersPlay" /> tag. The card has now finished being
-                                played. If your card's invoke cost has colorless symbols, you can use
-                                any color of resource in your pool to pay for 1 of the cost it requires,
-                                and/or reduce that cost by one for each time counter. See The Lock &
-                                Time Counters for more details.
-                            </p>
-                            <div className=" font-buahs93 items-center text-cyan-300 relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-8">
-                                <img
-                                    src={howToPlayImages.PLAYING_CARD_5}
-                                    alt="Mirror Image banner"
-
-                                />
-                            </div>
 
                             </Subsection>
 
                             <Subsection id="objectives" title="Objectives">
-                            <p>
-                                Objectives are the shared battlefield locations you fight over.
-                                Each player brings three objective cards with their deck and places
-                                one during setup. While you <Term>control</Term> an objective, you
-                                get the benefit of that card&apos;s rules text.
-                            </p>
-                            <p>
-                                You control an objective if you have at least one unit on it and no
-                                opponent does. Your pilot is a unit and counts. Units on an objective
-                                are still on the battlefield: they ready normally, and they skip the
-                                start-of-turn heal step.
-                            </p>
-                            <p>
-                                <Term>Scoring:</Term> <Term>Conquer</Term> when you gain control of
-                                an objective: gain 1 <GameIcon name="vp" /> immediately (claiming
-                                an empty objective does not cause Conquer). <Term>Hold</Term> at the
-                                start of your turn, after start-of-turn abilities: gain 1{" "}
-                                <GameIcon name="vp" /> per objective you control. See{" "}
-                                <SectionLink href="#how-to-win">How to Win</SectionLink>.
-                            </p>
-                            <p className="font-semibold text-cyan-200">Moving onto an objective</p>
-                            <p>
-                                During your main phase, choose an objective and a readied unit you control
-                                that is not already on an objective and is not waiting on time
-                                counters (your pilot counts):
-                            </p>
-                            <ul className="list-disc space-y-1 pl-6">
-                                <li>
-                                    <Term>Claim (empty)</Term>: Move without expending. You control
-                                    it afterward; this does not cause Conquer. A unit that entered
-                                    this turn may claim an empty objective.
-                                </li>
-                                <li>
-                                    <Term>Reinforce (you control it)</Term>: Move without expending.
-                                    A unit that entered this turn may reinforce.
-                                </li>
-                                <li>
-                                    <Term>Attack move (opponent controls it)</Term>: Declares an{" "}
-                                    <SectionLink href="#how-to-attack">attack</SectionLink> with that
-                                    unit. Expend it as it joins the stack.
-                                </li>
-                            </ul>
-                            <p>
-                                <Term>Leave:</Term> During your main phase, choose a{" "}
-                                <strong>readied</strong> unit you control on an objective,{" "}
-                                <GameIcon name="expend" /> it, and move it off the objective (it
-                                stays on the battlefield). If this causes a player to gain control,
-                                apply Conquer.
-                            </p>
-                            <Note>
-                                Readied units on an objective deal combat damage back during the
-                                damage step. Expended units deal 0.
-                            </Note>
+                                <p>
+                                    Objectives are the shared battlefield locations you fight over.
+                                    Each player brings three objective cards with their deck and places
+                                    one during setup. While you <Term>control</Term> an objective, you
+                                    get the benefit of that card&apos;s rules text.
+                                </p>
+                                <p>
+                                    You control an objective if you have at least one unit on it and no
+                                    opponent does. Your pilot is a unit and counts. Units on an objective
+                                    are still on the battlefield: they ready normally, and they skip the
+                                    start-of-turn heal step.
+                                </p>
+                                <p>
+                                    <Term>Scoring:</Term> <Term>Conquer</Term> when you gain control of
+                                    an objective: gain 1 <GameIcon name="vp" /> immediately (claiming
+                                    an empty objective does not cause Conquer). <Term>Hold</Term> at the
+                                    start of your turn, after start-of-turn abilities: gain 1{" "}
+                                    <GameIcon name="vp" /> per objective you control. See{" "}
+                                    <SectionLink href="#how-to-win">How to Win</SectionLink>.
+                                </p>
+                                <p className="font-semibold text-cyan-200">Moving onto an objective</p>
+                                <p>
+                                    During your main phase, choose an objective and a readied unit you control
+                                    that is not already on an objective and is not waiting on time
+                                    counters (your pilot counts):
+                                </p>
+                                <ul className="list-disc space-y-1 pl-6">
+                                    <li>
+                                        <Term>Claim (empty)</Term>: Move without expending. You control
+                                        it afterward; this does not cause Conquer. A unit that entered
+                                        this turn may claim an empty objective.
+                                    </li>
+                                    <li>
+                                        <Term>Reinforce (you control it)</Term>: Move without expending.
+                                        A unit that entered this turn may reinforce.
+                                    </li>
+                                    <li>
+                                        <Term>Attack move (opponent controls it)</Term>: Declares an{" "}
+                                        <SectionLink href="#how-to-attack">attack</SectionLink> with that
+                                        unit. Expend it as it joins the stack.
+                                    </li>
+                                </ul>
+                                <p>
+                                    <Term>Leave:</Term> During your main phase, choose a{" "}
+                                    <strong>readied</strong> unit you control on an objective,{" "}
+                                    <GameIcon name="expend" /> it, and move it off the objective (it
+                                    stays on the battlefield). If this causes a player to gain control,
+                                    apply Conquer.
+                                </p>
+                                <Note>
+                                    Readied units on an objective deal combat damage back during the
+                                    damage step. Expended units deal 0.
+                                </Note>
                             </Subsection>
 
                             <Subsection id="how-to-attack" title="How to Attack">
-                            <p>
-                                To attack, declare an attack at an objective. Combat is how you
-                                contest objectives.
-                            </p>
-                            <Important>
-                                NOTE: Damage stays marked on a unit turn after turn. You can heal
-                                it with cards and effects that say to heal, and units not on
-                                an objective also heal 1 at the start of your turn.
-                            </Important>
-                            <ol className="list-decimal space-y-1 pl-6">
-                                <li>
-                                    Choose an objective and legal attacker(s): units you control on
-                                    the battlefield (including units already on that objective) that
-                                    did not enter this turn unless they have Blitz, and that are not
-                                    waiting on time counters. Multiple attackers are one attack. A
-                                    unit may attack if it has the Unit supertype, even if another type
-                                    says it cannot.
-                                </li>
-                                <li>
-                                    Expend the attackers (unless Stalwart). Trigger their{" "}
-                                    <GameIcon name="attack" /> tags. Damage recipients are chosen in
-                                    the damage step.
-                                    <Note>
-                                        If the objective has at least one Airborne unit, at least one
-                                        attacker must have Airborne or Long Range. If the objective
-                                        has Stealth, pay Stealth once for the whole attack force.
-                                    </Note>
-                                </li>
-                                <li>
-                                    Players may play Quick Hacks or activate abilities, starting with
-                                    the active player, until no one adds more effects.
-                                </li>
-                                <li>
-                                    Attackers with Preemptive Strike deal their damage first. The
-                                    attacking player divides that damage among the defending
-                                    player&apos;s units on that objective. If Preemptive Strike
-                                    damage was dealt for a unit, skip ordinary combat damage for that
-                                    unit.
-                                </li>
-                                <li>
-                                    Otherwise, combat damage is simultaneous using each unit&apos;s{" "}
-                                    <GameIcon name="threat_lvl" /> damage value:
-                                    <ul className="list-disc space-y-1 pl-6 pt-1">
-                                        <li>
-                                            The <strong>attacking player</strong> divides each
-                                            attacker&apos;s damage among the defending player&apos;s
-                                            units on that objective. Assign damage to readied
-                                            defenders before expended ones when you have excess to
-                                            assign. You cannot assign an attacker&apos;s damage to an
-                                            Airborne unit unless that attacker has Airborne or Long
-                                            Range.
-                                        </li>
-                                        <li>
-                                            The <strong>defending player</strong> divides damage from
-                                            their units on that objective among the attackers. A
-                                            readied defending unit deals its damage value; an expended
-                                            one deals 0.
-                                        </li>
-                                        <li>
-                                            A player may put all of a unit&apos;s damage on one
-                                            opposing unit or split it; assign all of that unit&apos;s
-                                            damage.
-                                        </li>
-                                    </ul>
-                                </li>
-                                <li>
-                                    After damage, a unit is defeated if marked damage is at least its
-                                    health value. Trigger{" "}
-                                    <GameIcon name="defeated" /> and other on-defeat abilities, then
-                                    put defeated units in the discard pile. If combat causes a player
-                                    to gain control of the objective, apply Conquer.
-                                    <Note>
-                                        Example: Threat Level 3|2 with Durable 2 is defeated at 4
-                                        marked damage (health 2 + 2), not 2.
-                                    </Note>
-                                </li>
-                                <li>
-                                    After the attack resolves: if at least one defending unit and at
-                                    least one attacking unit both survived, the attacking units leave
-                                    the objective and stay on their controller&apos;s battlefield
-                                    expended. If no defending unit survived, every unit still in play
-                                    stays on that objective (including surviving attackers, still
-                                    expended).
-                                </li>
-                            </ol>
+                                <p>
+                                    To attack, declare an attack at an objective. Combat is how you
+                                    contest objectives.
+                                </p>
+                                <Important>
+                                    NOTE: Damage stays marked on a unit turn after turn. You can heal
+                                    it with cards and effects that say to heal, and units not on
+                                    an objective also heal 1 at the start of your turn.
+                                </Important>
+                                <ol className="list-decimal space-y-1 pl-6">
+                                    <li>
+                                        Choose an objective and legal attacker(s): units you control on
+                                        the battlefield (including units already on that objective) that
+                                        did not enter this turn unless they have Blitz, and that are not
+                                        waiting on time counters. Multiple attackers are one attack. A
+                                        unit may attack if it has the Unit supertype, even if another type
+                                        says it cannot.
+                                    </li>
+                                    <li>
+                                        Expend the attackers (unless Stalwart). Trigger their{" "}
+                                        <GameIcon name="attack" /> tags. Damage recipients are chosen in
+                                        the damage step.
+                                        <Note>
+                                            If the objective has at least one Airborne unit, at least one
+                                            attacker must have Airborne or Long Range. If the objective
+                                            has Stealth, pay Stealth once for the whole attack force.
+                                        </Note>
+                                    </li>
+                                    <li>
+                                        Players may play Quick Hacks or activate abilities, starting with
+                                        the active player, until no one adds more effects.
+                                    </li>
+                                    <li>
+                                        Attackers with Preemptive Strike deal their damage first. The
+                                        attacking player divides that damage among the defending
+                                        player&apos;s units on that objective. If Preemptive Strike
+                                        damage was dealt for a unit, skip ordinary combat damage for that
+                                        unit.
+                                    </li>
+                                    <li>
+                                        Otherwise, combat damage is simultaneous using each unit&apos;s{" "}
+                                        <GameIcon name="threat_lvl" /> damage value:
+                                        <ul className="list-disc space-y-1 pl-6 pt-1">
+                                            <li>
+                                                The <strong>attacking player</strong> divides each
+                                                attacker&apos;s damage among the defending player&apos;s
+                                                units on that objective. Assign damage to readied
+                                                defenders before expended ones when you have excess to
+                                                assign. You cannot assign an attacker&apos;s damage to an
+                                                Airborne unit unless that attacker has Airborne or Long
+                                                Range.
+                                            </li>
+                                            <li>
+                                                The <strong>defending player</strong> divides damage from
+                                                their units on that objective among the attackers. A
+                                                readied defending unit deals its damage value; an expended
+                                                one deals 0.
+                                            </li>
+                                            <li>
+                                                A player may put all of a unit&apos;s damage on one
+                                                opposing unit or split it; assign all of that unit&apos;s
+                                                damage.
+                                            </li>
+                                        </ul>
+                                    </li>
+                                    <li>
+                                        After damage, a unit is defeated if marked damage is at least its
+                                        health value. and Trigger{" "}
+                                        <GameIcon name="defeated" /> and other on-defeat abilities, then
+                                        put defeated units in the discard pile.Then resolves those abilities if able, If combat causes a player
+                                        to gain control of the objective, apply Conquer.
+                                        <Note>
+                                            Example: Threat Level 3|2 with +2 <GameIcon name="threat_lvl" /> is defeated at 4
+                                            marked damage (health 2 + 2), not 2.
+                                        </Note>
+                                    </li>
+                                    <li>
+                                        After the attack resolves: if at least one defending unit and at
+                                        least one attacking unit both survived, the attacking units leave
+                                        the objective and stay on their controller&apos;s battlefield
+                                        expended. If no defending unit survived, every unit still in play
+                                        stays on that objective (including surviving attackers, still
+                                        expended).
+                                    </li>
+                                </ol>
                             </Subsection>
                         </Section>
 
@@ -1084,7 +1084,7 @@ export function HowToPlayPage() {
                             </ol>
                             <p>
                                 Whoever controls the lock occupant is the non-active player; the
-                                other player is the active player. At the start of each the player whos 
+                                other player is the active player. At the start of each the player whos
                                 turn it is, is the active player. The active player may take game actions until
                                 a card or effect is added to the lock. Then the controller of that
                                 occupant becomes non-active, and their opponent becomes active. If
@@ -1100,279 +1100,279 @@ export function HowToPlayPage() {
                             </Note>
 
                             <Subsection id="lock-scenario-1" title="Scenario 1: The lock occupant and Quick Hacks">
-                            <p>
-                                The lock holds at most one card or effect.
-                            </p>
-                            <ul className="list-disc space-y-1 pl-6">
-                                <li>
-                                    <strong className="text-cyan-100">Empty lock:</strong> a card
-                                    you play, or an effect that uses the lock, goes to the lock.
-                                </li>
-                                <li>
-                                    <strong className="text-cyan-100">Full lock (card):</strong> a
-                                    card you play overwrites the lock occupant and becomes the new
-                                    occupant. It does not go to a queue (see Overwrite result below).
-                                </li>
-                                <li>
-                                    <strong className="text-cyan-100">Full lock (effect):</strong> that
-                                    effect goes to its controller's queue instead. It does not enter
-                                    the lock.
-                                </li>
-                                <li>
-                                    <strong className="text-cyan-100">Overwrite result:</strong> when
-                                    any played card overwrites the lock occupant, the replaced card goes
-                                    to its controller's stockpile with 2 time counters on it. If that
-                                    player already has the maximum number of cards with time counters in
-                                    their stockpile (2), the replaced card is discarded instead and does
-                                    not resolve. If the replaced occupant was an effect, it does nothing.
-                                    Recalculate who is active; restart from &ldquo;while the lock is full.&rdquo;
-                                </li>
-                                <li>
-                                    <strong className="text-cyan-100">Quick Hack overwrite:</strong> during
-                                    Scenario 2 (see below), only the active player may play a Quick Hack to
-                                    overwrite the lock occupant. Apply the overwrite result above, then
-                                    restart from &ldquo;while the lock is full.&rdquo;
-                                </li>
-                            </ul>
-                            <p>
-                                Queued effects never overwrite the lock. Only played cards can overwrite
-                                the lock occupant; Quick Hack overwrites during Scenario 2 are limited to
-                                the active player.
-                            </p>
+                                <p>
+                                    The lock holds at most one card or effect.
+                                </p>
+                                <ul className="list-disc space-y-1 pl-6">
+                                    <li>
+                                        <strong className="text-cyan-100">Empty lock:</strong> a card
+                                        you play, or an effect that uses the lock, goes to the lock.
+                                    </li>
+                                    <li>
+                                        <strong className="text-cyan-100">Full lock (card):</strong> a
+                                        card you play overwrites the lock occupant and becomes the new
+                                        occupant. It does not go to a queue (see Overwrite result below).
+                                    </li>
+                                    <li>
+                                        <strong className="text-cyan-100">Full lock (effect):</strong> that
+                                        effect goes to its controller's queue instead. It does not enter
+                                        the lock.
+                                    </li>
+                                    <li>
+                                        <strong className="text-cyan-100">Overwrite result:</strong> when
+                                        any played card overwrites the lock occupant, the replaced card goes
+                                        to its controller's stockpile with 2 time counters on it. If that
+                                        player already has the maximum number of cards with time counters in
+                                        their stockpile (2), the replaced card is discarded instead and does
+                                        not resolve. If the replaced occupant was an effect, it does nothing.
+                                        Recalculate who is active; restart from &ldquo;while the lock is full.&rdquo;
+                                    </li>
+                                    <li>
+                                        <strong className="text-cyan-100">Quick Hack overwrite:</strong> during
+                                        Scenario 2 (see below), only the active player may play a Quick Hack to
+                                        overwrite the lock occupant. Apply the overwrite result above, then
+                                        restart from &ldquo;while the lock is full.&rdquo;
+                                    </li>
+                                </ul>
+                                <p>
+                                    Queued effects never overwrite the lock. Only played cards can overwrite
+                                    the lock occupant; Quick Hack overwrites during Scenario 2 are limited to
+                                    the active player.
+                                </p>
 
                             </Subsection>
 
                             <Subsection id="lock-scenario-2" title="Scenario 2: The queue (lock is full)">
-                            <p>
-                                Whenever an ability or effect would be added to the lock but the lock
-                                already holds a card or effect, it is not added to the lock. Put it
-                                on its controller's queue. Queues record whose overflow effects are
-                                waiting. The turn does not continue as free play until the lock and
-                                all queues are empty.
-                            </p>
-                            <p>Then, with the lock still occupied:</p>
-                            <ol className="list-decimal space-y-2 pl-6">
-                                <li>
-                                    <strong className="text-cyan-100">Active batch.</strong> The
-                                    active player may add any legal overflow effects to their queue.
-                                    They then resolve their entire queue, one effect at a time, in an
-                                    order they choose. Each effect fully resolves before the next. If
-                                    a resolved effect would go to the lock, it goes to its
-                                    controller's queue instead. Effects that land on the active
-                                    player's queue during this batch are still part of this batch.
-                                    Effects that land on the non-active player's queue wait.
-                                </li>
-                                <li>
-                                    <strong className="text-cyan-100">Non-active batch.</strong> The
-                                    non-active player does the same: add, then resolve their entire
-                                    queue, one at a time, in an order they choose. Same overflow rule.
-                                </li>
-                                <li>
-                                    <strong className="text-cyan-100">Alternate.</strong> Starting
-                                    with the active player, a player either puts one overflow effect
-                                    on their queue and resolves that one effect, or passes. After a
-                                    player resolves one, it is the other player's turn to add-one-or-pass.
-                                    When both players pass in succession, stop. On your
-                                    add-one-or-pass turn you may pay costs and use resource abilities
-                                    to activate an ability into your queue, even if you are the
-                                    non-active player. (Example: the active player passes; you are
-                                    non-active; you may still spend resources, pay the activation
-                                    cost, add that effect to your queue, and resolve it.) You still
-                                    cannot Quick Hack overwrite unless you are the active player.
-                                </li>
-                                <li>
-                                    <strong className="text-cyan-100">Lock occupant resolves.</strong>{" "}
-                                    Then: if the lock is full and any queue is not empty, repeat
-                                    steps 1–4. If the lock is empty, queues must also be empty before
-                                    the player who turn it is, is active again and play continues.
-                                </li>
-                            </ol>
-                            <p>
-                                A Quick Hack during steps 1–3 is not a queue effect: it overwrites
-                                the lock (Scenario 1) and you restart from “while the lock is full.”
-                                Only the active player may play that Quick Hack.
-                            </p>
-                            <p>
-                                While the lock is full, the player who is currently adding effects
-                                (active batch, non-active batch, or their Alternate turn) may:
-                            </p>
-                            <ol className="list-decimal space-y-1 pl-6">
-                                <li>Pay costs and use resource abilities (those abilities do not use the lock).</li>
-                                <li>Activate an activated ability that uses the lock: it goes to your queue, not the lock.</li>
-                            </ol>
-                            <p>
-                                Overwriting the lock with a Quick Hack is only legal for the active
-                                player.
-                            </p>
+                                <p>
+                                    Whenever an ability or effect would be added to the lock but the lock
+                                    already holds a card or effect, it is not added to the lock. Put it
+                                    on its controller's queue. Queues record whose overflow effects are
+                                    waiting. The turn does not continue as free play until the lock and
+                                    all queues are empty.
+                                </p>
+                                <p>Then, with the lock still occupied:</p>
+                                <ol className="list-decimal space-y-2 pl-6">
+                                    <li>
+                                        <strong className="text-cyan-100">Active batch.</strong> The
+                                        active player may add any legal overflow effects to their queue.
+                                        They then resolve their entire queue, one effect at a time, in an
+                                        order they choose. Each effect fully resolves before the next. If
+                                        a resolved effect would go to the lock, it goes to its
+                                        controller's queue instead. Effects that land on the active
+                                        player's queue during this batch are still part of this batch.
+                                        Effects that land on the non-active player's queue wait.
+                                    </li>
+                                    <li>
+                                        <strong className="text-cyan-100">Non-active batch.</strong> The
+                                        non-active player does the same: add, then resolve their entire
+                                        queue, one at a time, in an order they choose. Same overflow rule.
+                                    </li>
+                                    <li>
+                                        <strong className="text-cyan-100">Alternate.</strong> Starting
+                                        with the active player, a player either puts one overflow effect
+                                        on their queue and resolves that one effect, or passes. After a
+                                        player resolves one, it is the other player's turn to add-one-or-pass.
+                                        When both players pass in succession, stop. On your
+                                        add-one-or-pass turn you may pay costs and use resource abilities
+                                        to activate an ability into your queue, even if you are the
+                                        non-active player. (Example: the active player passes; you are
+                                        non-active; you may still spend resources, pay the activation
+                                        cost, add that effect to your queue, and resolve it.) You still
+                                        cannot Quick Hack overwrite unless you are the active player.
+                                    </li>
+                                    <li>
+                                        <strong className="text-cyan-100">Lock occupant resolves.</strong>{" "}
+                                        Then: if the lock is full and any queue is not empty, repeat
+                                        steps 1–4. If the lock is empty, queues must also be empty before
+                                        the player who turn it is, is active again and play continues.
+                                    </li>
+                                </ol>
+                                <p>
+                                    A Quick Hack during steps 1–3 is not a queue effect: it overwrites
+                                    the lock (Scenario 1) and you restart from “while the lock is full.”
+                                    Only the active player may play that Quick Hack.
+                                </p>
+                                <p>
+                                    While the lock is full, the player who is currently adding effects
+                                    (active batch, non-active batch, or their Alternate turn) may:
+                                </p>
+                                <ol className="list-decimal space-y-1 pl-6">
+                                    <li>Pay costs and use resource abilities (those abilities do not use the lock).</li>
+                                    <li>Activate an activated ability that uses the lock: it goes to your queue, not the lock.</li>
+                                </ol>
+                                <p>
+                                    Overwriting the lock with a Quick Hack is only legal for the active
+                                    player.
+                                </p>
 
                             </Subsection>
 
                             <Subsection id="time-counters" title="Time Counters">
-                            <p>
-                                Time counters shape how you interact with the lock: you can reduce a
-                                card's invoke cost by <GameIcon name="gen1" /> for each time counter you place on it after you
-                                play it. You can only reduce grey numbered-value costs this way. When
-                                you do, instead of putting the card into the lock, you ignore the lock
-                                entirely (protecting your asset) and place it in your
-                                stockpile revealed with the number of time counters you used to reduce its
-                                cost. However, you do not get any of the card's effects right away:
-                                while the card has one or more time counters on it, it has no abilities
-                                (except abilities with the <GameIcon name="atomic" /> tag) and cannot
-                                attack, regardless of zone or ready state. At the start
-                                of each of your turns, remove 1 counter from each card you have in play
-                                with time counters on it. When the last time counter is removed from a
-                                card in your stockpile, resolve its effects without using the lock and
-                                in an order of your choosing; then move the card to the battlefield if
-                                it's an entity, or to the discard pile if it's a cyberspell. If a unit
-                                moves to the battlefield this way, you choose whether it enters readied
-                                or expended, and it gains Blitz until the end of the turn. You may have
-                                up to 2 cards with time counters on them in your stockpile at any given
-                                time. the maximuim quanity of cards in your stockpile with time counters on
-                                them is called you Overflow Buffer.
-                            </p>
+                                <p>
+                                    Time counters shape how you interact with the lock: you can reduce a
+                                    card's invoke cost by <GameIcon name="gen1" /> for each time counter you place on it after you
+                                    play it. You can only reduce grey numbered-value costs this way. When
+                                    you do, instead of putting the card into the lock, you ignore the lock
+                                    entirely (protecting your asset) and place it in your
+                                    stockpile revealed with the number of time counters you used to reduce its
+                                    cost. However, you do not get any of the card's effects right away:
+                                    while the card has one or more time counters on it, it has no abilities
+                                    (except abilities with the <GameIcon name="atomic" /> tag) and cannot
+                                    attack, regardless of zone or ready state. At the start
+                                    of each of your turns, remove 1 counter from each card you have in play
+                                    with time counters on it. When the last time counter is removed from a
+                                    card in your stockpile, resolve its effects without using the lock and
+                                    in an order of your choosing; then move the card to the battlefield if
+                                    it's an entity, or to the discard pile if it's a cyberspell. If a unit
+                                    moves to the battlefield this way, you choose whether it enters readied
+                                    or expended, and it gains Blitz until the end of the turn. You may have
+                                    up to 2 cards with time counters on them in your stockpile at any given
+                                    time. the maximuim quanity of cards in your stockpile with time counters on
+                                    them is called you Overflow Buffer.
+                                </p>
                             </Subsection>
                         </Section>
 
                         <Section id="timing" title="Timing, Triggers & Keywords">
                             <Subsection id="targeting" title="Targeting">
-                            <p>
-                                Some effects use the word &ldquo;target.&rdquo; A target is legal only if
-                                it meets <strong>every</strong> restriction on that effect (type,
-                                controller, zone, and so on). If an effect names a type (for example,
-                                &ldquo;Technology&rdquo;), the target must have that type. If an effect
-                                uses an exclusion (for example, &ldquo;non-Unit&rdquo;), the target is
-                                illegal if it has the excluded type, even if it also has a required type.
-                                If an effect does not name a zone, you may only choose targets on the
-                                battlefield (units on an objective count). You cannot choose an illegal
-                                target.
-                            </p>
+                                <p>
+                                    Some effects use the word &ldquo;target.&rdquo; A target is legal only if
+                                    it meets <strong>every</strong> restriction on that effect (type,
+                                    controller, zone, and so on). If an effect names a type (for example,
+                                    &ldquo;Technology&rdquo;), the target must have that type. If an effect
+                                    uses an exclusion (for example, &ldquo;non-Unit&rdquo;), the target is
+                                    illegal if it has the excluded type, even if it also has a required type.
+                                    If an effect does not name a zone, you may only choose targets on the
+                                    battlefield (units on an objective count). You cannot choose an illegal
+                                    target.
+                                </p>
 
-                            <p>
-                                If a card or activated ability requires targets, you must have at least
-                                one legal target before you play or activate it. Declare targets when the
-                                effect enters the lock or a queue. If every target is illegal when the
-                                effect resolves, it does nothing to those targets. Keywords such as
-                                Invulnerable and Stealth may further restrict targeting (see Keyword
-                                Abilities).
-                            </p>
+                                <p>
+                                    If a card or activated ability requires targets, you must have at least
+                                    one legal target before you play or activate it. Declare targets when the
+                                    effect enters the lock or a queue. If every target is illegal when the
+                                    effect resolves, it does nothing to those targets. Keywords such as
+                                    Invulnerable and Stealth may further restrict targeting (see Keyword
+                                    Abilities).
+                                </p>
                             </Subsection>
                             <Subsection id="triggers-adn-keywords" title="Static/Triggered Ability Tags">
-                         
 
-                            <p>
-                                Some cards include highlighted words or keyword abilities. All
-                                abilities except the EFFECT tag and ACTIVATED abilities are displayed
-                                as tags on a card; special keyword text is highlighted in black.
-                                There are two types of tags: STATIC and TRIGGERED. A STATIC tag means
-                                the ability is always in effect while it is in play; a TRIGGERED
-                                ability triggers when a particular condition is met while in the lock or in play. When two
-                                triggers are side by side, both are in effect in an "and"
-                                relationship. Some tag conditions may be altered; when they are, the
-                                condition is always printed first, followed by a comma and then the
-                                effect, formatted (ignoring the brackets) as [condition], [effect].
-                            </p>
 
-                            <ul className="space-y-3">
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="atomic" className="mt-0.5 shrink-0" />
-                                    <span>Abilities with this tag trigger and/or stay active even while there are time counters on the card.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="entersPlay" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when this card enters play for the first time, whether the battlefield or the stockpile. This ability always has the  <GameIcon name="atomic" className="mt-0.5 shrink-0" />  tag.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="battlefield" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when the card enters the battlefield for the first time.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="stockpile" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when the card enters the stockpile for the first time.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="attack" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when you make an attack with that card.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="endTurn" className="mt-0.5 shrink-0" />
-                                    <span>Triggers on a card at the end of your turn.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="start" className="mt-0.5 shrink-0" />
-                                    <span>Triggers on a card at the start of your turn.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="invoke" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when you play the card this tag is printed on, as the card goes to the lock; it always resolves as soon as it is triggered.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="conditional" className="mt-0.5 shrink-0" />
-                                    <span>
-                                        Triggers when a condition is met, formatted (ignoring the
-                                        brackets) as [condition], [effect]. If the condition refers to
-                                        playing a card (for example, &ldquo;whenever you play a
-                                        cyberspell&rdquo;), the condition is met as soon as that play
-                                        finishes entering the lock or, if you used time counters,
-                                        going to your stockpile, not when the played card&apos;s{" "}
-                                        <GameIcon name="effect" className="inline align-text-bottom" />{" "}
-                                        resolves. The triggered effect then uses the lock or a queue
-                                        like other triggers.
-                                    </span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="static" className="mt-0.5 shrink-0" />
-                                    <span>This ability is always active while the card is in play.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="effect" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when the played card resolves. Non-activatable abilities without any tag automatically have this one. (Note: effects are also referenced as what an ability does.)
-                                        Additional costs and alternate cost my also be printed on the card with this tag implicitly, for aiblities like additonal costs 
-                                        follow the cards rules text, some effects are active even while a card is in other zones.
-                                    </span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="defeated" className="mt-0.5 shrink-0" />
-                                    <span>Triggers when the unit it is printed on is defeated, meaning put into the discard pile from play.</span>
-                                </li>
-                            </ul>
+                                <p>
+                                    Some cards include highlighted words or keyword abilities. All
+                                    abilities except the EFFECT tag and ACTIVATED abilities are displayed
+                                    as tags on a card; special keyword text is highlighted in black.
+                                    There are two types of tags: STATIC and TRIGGERED. A STATIC tag means
+                                    the ability is always in effect while it is in play; a TRIGGERED
+                                    ability triggers when a particular condition is met while in the lock or in play. When two
+                                    triggers are side by side, both are in effect in an "and"
+                                    relationship. Some tag conditions may be altered; when they are, the
+                                    condition is always printed first, followed by a comma and then the
+                                    effect, formatted (ignoring the brackets) as [condition], [effect].
+                                </p>
+
+                                <ul className="space-y-3">
+                                    <li className="flex items-start gap-3">
+                                        <GameIcon name="atomic" className="mt-0.5 shrink-0" />
+                                        <span>Abilities with this tag trigger and/or stay active even while there are time counters on the card.</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <GameIcon name="entersPlay" className="mt-0.5 shrink-0" />
+                                        <span>Triggers when this card enters play for the first time, whether the battlefield or the stockpile. This ability always has the  <GameIcon name="atomic" className="mt-0.5 shrink-0" />  tag.</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <GameIcon name="battlefield" className="mt-0.5 shrink-0" />
+                                        <span>Triggers when the card enters the battlefield for the first time.</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <GameIcon name="stockpile" className="mt-0.5 shrink-0" />
+                                        <span>Triggers when the card enters the stockpile for the first time.</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <GameIcon name="attack" className="mt-0.5 shrink-0" />
+                                        <span>Triggers when you make an attack with that card.</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <GameIcon name="endTurn" className="mt-0.5 shrink-0" />
+                                        <span>Triggers on a card at the end of your turn.</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <GameIcon name="start" className="mt-0.5 shrink-0" />
+                                        <span>Triggers on a card at the start of your turn.</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <GameIcon name="invoke" className="mt-0.5 shrink-0" />
+                                        <span>Triggers when you play the card this tag is printed on, as the card goes to the lock; it always resolves as soon as it is triggered.</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <GameIcon name="conditional" className="mt-0.5 shrink-0" />
+                                        <span>
+                                            Triggers when a condition is met, formatted (ignoring the
+                                            brackets) as [condition], [effect]. If the condition refers to
+                                            playing a card (for example, &ldquo;whenever you play a
+                                            cyberspell&rdquo;), the condition is met as soon as that play
+                                            finishes entering the lock or, if you used time counters,
+                                            going to your stockpile, not when the played card&apos;s{" "}
+                                            <GameIcon name="effect" className="inline align-text-bottom" />{" "}
+                                            resolves. The triggered effect then uses the lock or a queue
+                                            like other triggers.
+                                        </span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <GameIcon name="static" className="mt-0.5 shrink-0" />
+                                        <span>This ability is always active while the card is in play.</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <GameIcon name="effect" className="mt-0.5 shrink-0" />
+                                        <span>Triggers when the played card resolves. Non-activatable abilities without any tag automatically have this one. (Note: effects are also referenced as what an ability does.)
+                                            Additional costs and alternate cost my also be printed on the card with this tag implicitly, for aiblities like additonal costs
+                                            follow the cards rules text, some effects are active even while a card is in other zones.
+                                        </span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <GameIcon name="defeated" className="mt-0.5 shrink-0" />
+                                        <span>Triggers when the unit it is printed on is defeated, meaning put into the discard pile from play.</span>
+                                    </li>
+                                </ul>
 
                             </Subsection>
 
                             <Subsection id="activated-abilities" title="Activated Abilities">
-                            <p>
-                                Activated abilities are formatted (ignoring the brackets) as [cost 1,
-                                cost 2, etc.]: [effect]. Unless they say otherwise, they can be
-                                activated any time you can play a Quick Hack. If an activated ability
-                                targets, it cannot be activated unless at least one legal target exists
-                                (see Targeting above). To activate one, pay the cost written on the
-                                card. If the lock is empty, the effect goes to the lock. If the lock is
-                                full, the effect goes to your queue instead (see The Lock). Declare
-                                legal targets when the effect enters the lock or queue.
-                            </p>
-                            <p>
-                                Example: the activated ability "<GameIcon name="expend" />, <GameIcon name="power" /> <GameIcon name="gen1" /> : Draw a
-                                card" means to expend the card the ability is printed on, then pay 1
-                                yellow unit of power and 1 of any color of your choice, to add the
-                                "draw a card" effect to the lock, after which it resolves.
-                            </p>
-                            <ul className="space-y-3">
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="expend" className="mt-0.5 shrink-0" />
-                                    <span>The Expend ability and symbol. Turn a card in play 90 degrees from vertical to horizontal. (Note: to ready an entity is the opposite of expending; a readied entity is vertical.)</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="recycle" className="mt-0.5 shrink-0" />
-                                    <span>The Recycle ability and symbol. Discard this card from hand to gain an effect, at any time you can play a Quick Hack.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="trash" className="mt-0.5 shrink-0" />
-                                    <span>The Trash ability and symbol. It can only be activated while the card it is printed on is on the battlefield; as part of a cost, put that card into the discard pile.</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <GameIcon name="dismantle" className="mt-0.5 shrink-0" />
-                                    <span>The Dismantle ability and symbol. It can be activated while in play; as part of a cost, put the card it is printed on into the dismantled zone.</span>
-                                </li>
-                            </ul>
+                                <p>
+                                    Activated abilities are formatted (ignoring the brackets) as [cost 1,
+                                    cost 2, etc.]: [effect]. Unless they say otherwise, they can be
+                                    activated any time you can play a Quick Hack. If an activated ability
+                                    targets, it cannot be activated unless at least one legal target exists
+                                    (see Targeting above). To activate one, pay the cost written on the
+                                    card. If the lock is empty, the effect goes to the lock. If the lock is
+                                    full, the effect goes to your queue instead (see The Lock). Declare
+                                    legal targets when the effect enters the lock or queue.
+                                </p>
+                                <p>
+                                    Example: the activated ability "<GameIcon name="expend" />, <GameIcon name="power" /> <GameIcon name="gen1" /> : Draw a
+                                    card" means to expend the card the ability is printed on, then pay 1
+                                    yellow unit of power and 1 of any color of your choice, to add the
+                                    "draw a card" effect to the lock, after which it resolves.
+                                </p>
+                                <ul className="space-y-3">
+                                    <li className="flex items-start gap-3">
+                                        <GameIcon name="expend" className="mt-0.5 shrink-0" />
+                                        <span>The Expend ability and symbol. Turn a card in play 90 degrees from vertical to horizontal. (Note: to ready an entity is the opposite of expending; a readied entity is vertical.)</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <GameIcon name="recycle" className="mt-0.5 shrink-0" />
+                                        <span>The Recycle ability and symbol. Discard this card from hand to gain an effect, at any time you can play a Quick Hack.</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <GameIcon name="trash" className="mt-0.5 shrink-0" />
+                                        <span>The Trash ability and symbol. It can only be activated while the card it is printed on is on the battlefield; as part of a cost, put that card into the discard pile.</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <GameIcon name="dismantle" className="mt-0.5 shrink-0" />
+                                        <span>The Dismantle ability and symbol. It can be activated while in play; as part of a cost, put the card it is printed on into the dismantled zone.</span>
+                                    </li>
+                                </ul>
                             </Subsection>
                         </Section>
 
@@ -1419,7 +1419,9 @@ export function HowToPlayPage() {
                                 <li>
                                     Bring exactly three objective cards with your deck. They are not
                                     shuffled into the deck. During setup, you place one of them (see{" "}
-                                    <SectionLink href="#setting-up">Setting Up</SectionLink>).
+                                    <SectionLink href="#setting-up">Setting Up</SectionLink>). You may replace upto 2 objective cards
+                                    with augment cards which agument your pilots capabilites by giving your pilot new aiblities, or adding
+                                    or subtracting their <GameIcon name="threat_lvl" /> to the pilots, they start on the battlefield under your control.
                                 </li>
                             </ol>
 
