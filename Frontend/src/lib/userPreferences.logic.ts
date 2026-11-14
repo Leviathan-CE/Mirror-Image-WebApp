@@ -23,7 +23,7 @@ export const PREF_STORAGE = {
   deckStartSections: "mi-deck-start-sections",
 } as const
 
-export const LIBRARY_PAGE_SIZES = [50, 100, 150, 200] as const
+export const LIBRARY_PAGE_SIZES = [5, 10, 25, 50, 100, 150, 200] as const
 export type LibraryPageSize = (typeof LIBRARY_PAGE_SIZES)[number]
 
 export const BROWSE_WIDTH_MIN = 280

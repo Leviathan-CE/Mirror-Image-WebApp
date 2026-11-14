@@ -5,7 +5,7 @@
  * - Owner can edit name, description, visibility, and categories.
  */
 
-import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react"
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { ThumbsUp } from "lucide-react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 
@@ -18,6 +18,7 @@ import { DeckBoard } from "@/components/decks/DeckBoard"
 import { DeckCardSearch } from "@/components/decks/DeckCardSearch"
 import { DeckDescription } from "@/components/decks/DeckDescription"
 import { collectDeckPrintoutSlots } from "@/components/decks/deckPrintout.logic"
+import { DeckPrintoutDialog } from "@/components/decks/DeckPrintoutDialog"
 import {
   DeckCardSortControls,
 } from "@/components/decks/DeckCardSortControls"
@@ -31,7 +32,6 @@ import { useDeckDetail } from "@/hooks/useDeckDetail"
 import { useDeckBoardMutations } from "@/hooks/useDeckBoardMutations"
 import { DeckTagSuggestInput } from "@/components/decks/DeckTagSuggestInput"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
-import { ContextMenu } from "@/components/ui/ContextMenu"
 import { DropdownMenu, type DropdownMenuItem } from "@/components/ui/DropdownMenu"
 import {
   PublicTextArea,
@@ -103,9 +103,6 @@ export function DeckPage() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [deckCtxMenu, setDeckCtxMenu] = useState<{ x: number; y: number } | null>(
-    null
-  )
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [isPublic, setIsPublic] = useState(false)
@@ -113,6 +110,7 @@ export function DeckPage() {
   const [browseOpen, setBrowseOpen] = useState(true)
   const [tagDraft, setTagDraft] = useState("")
   const [printoutBusy, setPrintoutBusy] = useState(false)
+  const [printDialogOpen, setPrintDialogOpen] = useState(false)
   const browseResizeRef = useRef<{
     pointerId: number
     startX: number
@@ -181,15 +179,24 @@ export function DeckPage() {
   const canPrintout = userHasFeature(user, FEATURE_DECK_PRINTOUT)
   const isAdmin = isStaffRole(user?.role)
 
-  async function onCreatePrintout() {
+  const closePrintDialog = useCallback(() => {
+    if (printoutBusy) return
+    setPrintDialogOpen(false)
+  }, [printoutBusy])
+
+  async function createPrintout(options?: {
+    includeBacks?: boolean
+    marginMm?: number
+    fileName?: string
+  }) {
     if (!deck || printoutBusy) return
     const slots = collectDeckPrintoutSlots(deck)
     if (slots.length === 0) {
       setErrorText("No cards marked for the deck to print.")
       return
     }
-    // Admins get duplex backs; subscribers get faces only.
-    if (isAdmin && !cardBackSrc) {
+    const includeBacks = options?.includeBacks ?? false
+    if (includeBacks && !cardBackSrc) {
       setErrorText("Card back art is not available yet — try again in a moment.")
       return
     }
@@ -202,8 +209,12 @@ export function DeckPage() {
       const result = await generateDeckPrintoutPdf({
         deckName: deck.name ?? `Deck ${deck.id}`,
         slots,
-        cardBackUrl: isAdmin ? cardBackSrc : null,
+        cardBackUrl: includeBacks ? cardBackSrc : null,
+        includeBacks,
+        marginMm: options?.marginMm,
+        fileName: options?.fileName,
       })
+      setPrintDialogOpen(false)
       if (result.missingArt > 0) {
         setErrorText(
           `Printout saved — ${result.missingArt} card(s) had no art and used name placeholders.`
@@ -214,6 +225,20 @@ export function DeckPage() {
     } finally {
       setPrintoutBusy(false)
     }
+  }
+
+  function onCreatePrintout() {
+    if (!deck || printoutBusy) return
+    const slots = collectDeckPrintoutSlots(deck)
+    if (slots.length === 0) {
+      setErrorText("No cards marked for the deck to print.")
+      return
+    }
+    if (isAdmin) {
+      setPrintDialogOpen(true)
+      return
+    }
+    void createPrintout({ includeBacks: false })
   }
 
   async function onCopyDeck() {
@@ -241,12 +266,12 @@ export function DeckPage() {
       setDeck((prev) =>
         prev
           ? {
-              ...prev,
-              like_count: summary.like_count,
-              liked_by_me: summary.liked_by_me,
-              view_count: summary.view_count,
-              tags: summary.tags,
-            }
+            ...prev,
+            like_count: summary.like_count,
+            liked_by_me: summary.liked_by_me,
+            view_count: summary.view_count,
+            tags: summary.tags,
+          }
           : prev
       )
     } catch {
@@ -271,11 +296,11 @@ export function DeckPage() {
       setDeck((prev) =>
         prev
           ? {
-              ...prev,
-              tags: summary.tags,
-              like_count: summary.like_count,
-              view_count: summary.view_count,
-            }
+            ...prev,
+            tags: summary.tags,
+            like_count: summary.like_count,
+            view_count: summary.view_count,
+          }
           : prev
       )
       setTagDraft("")
@@ -301,11 +326,11 @@ export function DeckPage() {
       setDeck((prev) =>
         prev
           ? {
-              ...prev,
-              tags: summary.tags,
-              like_count: summary.like_count,
-              view_count: summary.view_count,
-            }
+            ...prev,
+            tags: summary.tags,
+            like_count: summary.like_count,
+            view_count: summary.view_count,
+          }
           : prev
       )
     } catch {
@@ -436,29 +461,10 @@ export function DeckPage() {
     }
   }
 
-  function onDeckPageContextMenu(event: ReactMouseEvent<HTMLElement>) {
-    if (!canEdit || saving) return
-    const target = event.target
-    if (!(target instanceof Element)) return
-    // Cards / pilot / form controls keep their own right-click behavior.
-    if (
-      target.closest(
-        "li, input, textarea, select, button, a, [role='menu'], [role='menuitem'], [data-deck-no-page-ctx]"
-      )
-    ) {
-      return
-    }
-    event.preventDefault()
-    setDeckCtxMenu({ x: event.clientX, y: event.clientY })
-  }
-
-
-
   return (
     <section
       className="relative min-h-screen max-w-full overflow-x-clip bg-cover bg-center bg-no-repeat px-4 py-12 sm:px-6 lg:px-8 xl:px-10 2xl:px-12"
       style={{ backgroundImage: `url(${sharedImages.ZONE_BACKGROUND})` }}
-      onContextMenu={onDeckPageContextMenu}
     >
       <div className="absolute inset-0 bg-black/65" aria-hidden />
 
@@ -524,194 +530,194 @@ export function DeckPage() {
             ) : null}
             <header className="mb-8 border-b border-cyan-500/20 pb-6">
               <div className="min-w-0">
-                  {editing && canEdit ? (
-                    <div className="flex flex-col gap-3">
-                      <PublicTextField
-                        value={name}
-                        onChange={setName}
-                        placeholder="deck name"
+                {editing && canEdit ? (
+                  <div className="flex flex-col gap-3">
+                    <PublicTextField
+                      value={name}
+                      onChange={setName}
+                      placeholder="deck name"
+                      disabled={saving}
+                    />
+                    <PublicTextArea
+                      value={description}
+                      onChange={setDescription}
+                      placeholder="description (markdown supported)"
+                      disabled={saving}
+                      rows={3}
+                    />
+                    <label className="flex items-center gap-2 font-buahs93 text-sm text-cyan-200/80">
+                      <input
+                        type="checkbox"
+                        checked={isPublic}
+                        onChange={(e) => setIsPublic(e.target.checked)}
                         disabled={saving}
+                        className="accent-cyan-400"
                       />
-                      <PublicTextArea
-                        value={description}
-                        onChange={setDescription}
-                        placeholder="description (markdown supported)"
-                        disabled={saving}
-                        rows={3}
-                      />
-                      <label className="flex items-center gap-2 font-buahs93 text-sm text-cyan-200/80">
-                        <input
-                          type="checkbox"
-                          checked={isPublic}
-                          onChange={(e) => setIsPublic(e.target.checked)}
-                          disabled={saving}
-                          className="accent-cyan-400"
-                        />
-                        PUBLIC
-                      </label>
-                      <div className="flex flex-wrap items-center gap-2">
-                        {(deck.tags ?? []).map((tag) => (
-                          <span
-                            key={tag}
-                            className="inline-flex items-center gap-1 border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-mono text-[11px] text-cyan-100"
-                          >
-                            {tag}
-                            <button
-                              type="button"
-                              className="text-cyan-300/70 hover:text-red-300"
-                              disabled={saving}
-                              aria-label={`Remove tag ${tag}`}
-                              onClick={() => void onRemoveTag(tag)}
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                      <div className="flex w-full min-w-0 max-w-lg items-center gap-2">
-                        <DeckTagSuggestInput
-                          value={tagDraft}
-                          onChange={setTagDraft}
-                          exclude={deck.tags ?? []}
-                          disabled={saving}
-                          onPick={(tag) => void onAddTag(tag)}
-                        />
-                        <div className="shrink-0">
-                          <GlitchFx
+                      PUBLIC
+                    </label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {(deck.tags ?? []).map((tag) => (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center gap-1 border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-mono text-[11px] text-cyan-100"
+                        >
+                          {tag}
+                          <button
                             type="button"
-                            label="ADD TAG"
-                            disabled={
-                              saving ||
-                              !tagDraft.trim() ||
-                              !isPublicTextClean(tagDraft)
-                            }
-                            className="font-buahs93 h-8 rounded-none border border-cyan-500/40 bg-black/70 px-4 text-xs text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 disabled:opacity-60"
-                            onClick={() => void onAddTag()}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
+                            className="text-cyan-300/70 hover:text-red-300"
+                            disabled={saving}
+                            aria-label={`Remove tag ${tag}`}
+                            onClick={() => void onRemoveTag(tag)}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex w-full min-w-0 max-w-lg items-center gap-2">
+                      <DeckTagSuggestInput
+                        value={tagDraft}
+                        onChange={setTagDraft}
+                        exclude={deck.tags ?? []}
+                        disabled={saving}
+                        onPick={(tag) => void onAddTag(tag)}
+                      />
+                      <div className="shrink-0">
                         <GlitchFx
                           type="button"
-                          label={saving ? "SAVING…" : "SAVE"}
+                          label="ADD TAG"
                           disabled={
-                            saving || !isPublicTextClean(name, description)
+                            saving ||
+                            !tagDraft.trim() ||
+                            !isPublicTextClean(tagDraft)
                           }
-                          className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900 disabled:opacity-60"
-                          onClick={() => void onSaveMeta()}
-                        />
-                        <GlitchFx
-                          type="button"
-                          label="CANCEL"
-                          disabled={saving}
-                          className="font-buahs93 h-9 rounded-none border border-cyan-500/40 bg-black/70 px-5 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 disabled:opacity-60"
-                          onClick={() => {
-                            setEditing(false)
-                            setName(deck.name ?? "")
-                            setDescription(deck.description ?? "")
-                            setIsPublic(deck.is_public)
-                            setTagDraft("")
-                          }}
+                          className="font-buahs93 h-8 rounded-none border border-cyan-500/40 bg-black/70 px-4 text-xs text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 disabled:opacity-60"
+                          onClick={() => void onAddTag()}
                         />
                       </div>
                     </div>
-                  ) : (
-                    <>
-                      <div className="flex flex-wrap items-start gap-2">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <h1 className="font-glitch text-3xl text-cyan-300 sm:text-4xl">
-                            {deck.name ?? `Deck #${deck.id}`}
-                          </h1>
-                          {isAuthenticated && token ? (
-                            <button
-                              type="button"
-                              disabled={saving}
-                              aria-pressed={deck.liked_by_me}
-                              aria-label={
-                                deck.liked_by_me
-                                  ? `Unlike deck (${deck.like_count ?? 0} likes)`
-                                  : `Like deck (${deck.like_count ?? 0} likes)`
-                              }
-                              title={
-                                deck.liked_by_me
-                                  ? `Liked · ${deck.like_count ?? 0}`
-                                  : `Like · ${deck.like_count ?? 0}`
-                              }
+                    <div className="flex flex-wrap gap-2">
+                      <GlitchFx
+                        type="button"
+                        label={saving ? "SAVING…" : "SAVE"}
+                        disabled={
+                          saving || !isPublicTextClean(name, description)
+                        }
+                        className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900 disabled:opacity-60"
+                        onClick={() => void onSaveMeta()}
+                      />
+                      <GlitchFx
+                        type="button"
+                        label="CANCEL"
+                        disabled={saving}
+                        className="font-buahs93 h-9 rounded-none border border-cyan-500/40 bg-black/70 px-5 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 disabled:opacity-60"
+                        onClick={() => {
+                          setEditing(false)
+                          setName(deck.name ?? "")
+                          setDescription(deck.description ?? "")
+                          setIsPublic(deck.is_public)
+                          setTagDraft("")
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-start gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <h1 className="font-glitch text-3xl text-cyan-300 sm:text-4xl">
+                          {deck.name ?? `Deck #${deck.id}`}
+                        </h1>
+                        {isAuthenticated && token ? (
+                          <button
+                            type="button"
+                            disabled={saving}
+                            aria-pressed={deck.liked_by_me}
+                            aria-label={
+                              deck.liked_by_me
+                                ? `Unlike deck (${deck.like_count ?? 0} likes)`
+                                : `Like deck (${deck.like_count ?? 0} likes)`
+                            }
+                            title={
+                              deck.liked_by_me
+                                ? `Liked · ${deck.like_count ?? 0}`
+                                : `Like · ${deck.like_count ?? 0}`
+                            }
+                            className={cn(
+                              "clip-angled flex h-8 w-8 shrink-0 items-center justify-center rounded-none border-0 disabled:opacity-50",
+                              deck.liked_by_me
+                                ? "text-cyan-300 hover:bg-cyan-500/10 hover:text-cyan-100"
+                                : "text-cyan-200/80 hover:bg-cyan-500/10 hover:text-white"
+                            )}
+                            onClick={() => void onToggleLike()}
+                          >
+                            <ThumbsUp
                               className={cn(
-                                "clip-angled flex h-8 w-8 shrink-0 items-center justify-center rounded-none border-0 disabled:opacity-50",
-                                deck.liked_by_me
-                                  ? "text-cyan-300 hover:bg-cyan-500/10 hover:text-cyan-100"
-                                  : "text-cyan-200/80 hover:bg-cyan-500/10 hover:text-white"
+                                "h-4 w-4",
+                                deck.liked_by_me && "fill-current"
                               )}
-                              onClick={() => void onToggleLike()}
-                            >
-                              <ThumbsUp
-                                className={cn(
-                                  "h-4 w-4",
-                                  deck.liked_by_me && "fill-current"
-                                )}
-                                aria-hidden
-                              />
-                            </button>
-                          ) : null}
-                          {isAuthenticated && token ? (
-                            <DropdownMenu
-                              label="Deck options"
-                              disabled={saving}
-                              className="shrink-0"
-                              items={[
-                                {
-                                  id: "copy-deck",
-                                  label: saving ? "Copying…" : "Copy to my decks",
-                                  disabled: saving,
-                                  onSelect: () => void onCopyDeck(),
-                                },
-                                ...(canEdit
-                                  ? ([
-                                      {
-                                        id: "edit-details",
-                                        label: "Edit details",
-                                        onSelect: () => setEditing(true),
-                                      },
-                                      {
-                                        id: "delete-deck",
-                                        label: "Delete deck",
-                                        tone: "danger" as const,
-                                        onSelect: () => setDeleteOpen(true),
-                                      },
-                                    ] satisfies DropdownMenuItem[])
-                                  : []),
-                              ]}
+                              aria-hidden
                             />
-                          ) : null}
-                        </div>
+                          </button>
+                        ) : null}
+                        {isAuthenticated && token ? (
+                          <DropdownMenu
+                            label="Deck options"
+                            disabled={saving}
+                            className="shrink-0"
+                            items={[
+                              {
+                                id: "copy-deck",
+                                label: saving ? "Copying…" : "Copy to my decks",
+                                disabled: saving,
+                                onSelect: () => void onCopyDeck(),
+                              },
+                              ...(canEdit
+                                ? ([
+                                  {
+                                    id: "edit-details",
+                                    label: "Edit details",
+                                    onSelect: () => setEditing(true),
+                                  },
+                                  {
+                                    id: "delete-deck",
+                                    label: "Delete deck",
+                                    tone: "danger" as const,
+                                    onSelect: () => setDeleteOpen(true),
+                                  },
+                                ] satisfies DropdownMenuItem[])
+                                : []),
+                            ]}
+                          />
+                        ) : null}
                       </div>
-                     
-                      <p className="mt-2 flex flex-wrap items-center gap-2 font-buahs93 text-sm text-cyan-200/70">
-                        <span>by {deck.author_name}</span>
-                        <span
-                          className={cn(
-                            "text-[10px] tracking-wide",
-                            deck.is_public
-                              ? "text-emerald-400/90"
-                              : "text-white/40"
-                          )}
-                        >
-                          {deck.is_public ? "PUBLIC" : "PRIVATE"}
-                        </span>
-                      </p>
-                      {deck.description ? (
-                        <DeckDescription
-                          className="mt-3"
-                          text={deck.description}
-                        />
-                      ) : null}
-                    </>
-                  )}
+                    </div>
+
+                    <p className="mt-2 flex flex-wrap items-center gap-2 font-buahs93 text-sm text-cyan-200/70">
+                      <span>by {deck.author_name}</span>
+                      <span
+                        className={cn(
+                          "text-[10px] tracking-wide",
+                          deck.is_public
+                            ? "text-emerald-400/90"
+                            : "text-white/40"
+                        )}
+                      >
+                        {deck.is_public ? "PUBLIC" : "PRIVATE"}
+                      </span>
+                    </p>
+                    {deck.description ? (
+                      <DeckDescription
+                        className="mt-3"
+                        text={deck.description}
+                      />
+                    ) : null}
+                  </>
+                )}
 
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
                   {canEdit ? (
                     <div className="min-w-[12rem] flex-1 basis-48 max-w-xl">
@@ -732,30 +738,33 @@ export function DeckPage() {
                     onChange={(deck_view) => patchPrefs({ deck_view })}
                   />
                 </div>
-                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                  {canEdit ? (
-                    <GlitchFx
-                      type="button"
-                      label={browseOpen ? "HIDE BROWSE" : "BROWSE"}
-                      className="font-buahs93 h-9 rounded-none border border-cyan-500/40 bg-black/70 px-4 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10"
-                      onClick={() => setBrowseOpen((prev) => !prev)}
-                    />
-                  ) : null}
+                <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center md:justify-end">
+                  <GlitchFx
+                    type="button"
+                    label="PLAY TEST"
+                    fxClassName="order-1 block w-full md:order-3 md:w-auto"
+                    className="font-buahs93 h-9 w-full rounded-none bg-cyan-700 px-5 hover:bg-cyan-900 md:w-auto"
+                    onClick={() => navigate(ROUTES.playTester(deckId))}
+                  />
                   {canPrintout ? (
                     <GlitchFx
                       type="button"
                       label={printoutBusy ? "BUILDING PDF…" : "CREATE PRINTOUT"}
                       disabled={printoutBusy || saving}
-                      className="font-buahs93 h-9 rounded-none bg-orange-600 px-4 text-white hover:bg-orange-800 disabled:opacity-60"
-                      onClick={() => void onCreatePrintout()}
+                      fxClassName="order-2 block w-full md:w-auto"
+                      className="font-buahs93 h-9 w-full rounded-none bg-orange-600 px-4 text-white hover:bg-orange-800 disabled:opacity-60 md:w-auto"
+                      onClick={onCreatePrintout}
                     />
                   ) : null}
-                  <GlitchFx
-                    type="button"
-                    label="PLAY TEST"
-                    className="font-buahs93 h-9 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900"
-                    onClick={() => navigate(ROUTES.playTester(deckId))}
-                  />
+                  {canEdit ? (
+                    <GlitchFx
+                      type="button"
+                      label={browseOpen ? "HIDE BROWSE" : "BROWSE"}
+                      fxClassName="order-3 block w-full md:order-1 md:w-auto"
+                      className="font-buahs93 h-9 w-full rounded-none border border-cyan-500/40 bg-black/70 px-4 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 md:w-auto"
+                      onClick={() => setBrowseOpen((prev) => !prev)}
+                    />
+                  ) : null}
                 </div>
               </div>
             </header>
@@ -797,7 +806,6 @@ export function DeckPage() {
 
               {canEdit && browseOpen ? (
                 <aside
-                  data-deck-no-page-ctx
                   className="relative flex w-full shrink-0 flex-col overflow-visible border border-cyan-500/25 bg-black/55 p-3 xl:w-[var(--browse-w)]"
                   style={{ ["--browse-w" as string]: `${browseWidth}px` }}
                 >
@@ -841,23 +849,6 @@ export function DeckPage() {
               ) : null}
             </div>
 
-            <ContextMenu
-              open={deckCtxMenu != null && canEdit}
-              x={deckCtxMenu?.x ?? 0}
-              y={deckCtxMenu?.y ?? 0}
-              label="Deck page menu"
-              onClose={() => setDeckCtxMenu(null)}
-              items={[
-                {
-                  id: "delete-deck",
-                  label: "Delete deck",
-                  tone: "danger",
-                  disabled: saving,
-                  onSelect: () => setDeleteOpen(true),
-                },
-              ]}
-            />
-
             <ConfirmDialog
               open={deleteOpen}
               title="Delete deck?"
@@ -873,6 +864,20 @@ export function DeckPage() {
                 void onDeleteDeck()
               }}
             />
+
+            {canPrintout && isAdmin ? (
+              <DeckPrintoutDialog
+                open={printDialogOpen}
+                slots={collectDeckPrintoutSlots(deck)}
+                deckName={deck.name ?? `Deck ${deck.id}`}
+                cardBackSrc={cardBackSrc}
+                busy={printoutBusy}
+                onCancel={closePrintDialog}
+                onGenerate={(options) => {
+                  void createPrintout(options)
+                }}
+              />
+            ) : null}
           </>
         ) : null}
       </div>

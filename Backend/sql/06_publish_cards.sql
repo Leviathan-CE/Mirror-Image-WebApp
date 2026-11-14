@@ -1,4 +1,4 @@
--- Catalogue card visibility (one status per card — not per user).
+ -- Catalogue card visibility (one status per card — not per user).
 CREATE TABLE IF NOT EXISTS publish_cards (
     card_id BIGINT PRIMARY KEY REFERENCES cards(id) ON DELETE CASCADE,
     published TEXT NOT NULL DEFAULT 'not published',

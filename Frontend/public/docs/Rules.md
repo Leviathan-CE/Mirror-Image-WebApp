@@ -126,13 +126,37 @@
 
 250.8.3. Objective cards in play sit in the shared objective area of the battlefield (see rule 200.11). Units on an objective are on the battlefield.
 
-250.8.4. **Setup: choosing and placing.** After first player is determined (see rule 400.1.3), starting with the first player and proceeding clockwise, each player chooses one of the three objective cards they brought and places it face up in the shared objective area. Place all chosen objectives this way before the game begins.
+250.8.4. **Setup: choosing and placing.** After first player is determined (see rule 400.1.3), starting with the first player and proceeding clockwise, each player chooses one of the objective cards they brought and places it face up in the shared objective area. Place all chosen objectives this way before the game begins. You may have replaced some of those cards with augments (see section 255).
 
 > 250.8.4.1. A player's unchosen objective cards are set aside out of the game for this game.
 >
 > 250.8.4.2. The number of objectives in play equals the number of players (each player places one).
 >
 > 250.8.4.3. See rule 400.1.6 for when this step happens in setup order.
+
+---
+
+## 255. Augments
+
+255.1. An **augment** is a card you may include in place of an objective card (see rule 900.2.7). It is separate from your 40-card deck and is not shuffled into your deck.
+
+255.2. Follow each augment's printed text (see rule 100.1).
+
+255.3. Augments in play are on the battlefield under your control. They are not objective cards and they are not in the shared objective area (see rule 200.11).
+
+> 255.3.1. An augment can be targeted and otherwise interacted with as a card on the battlefield (see rule 100.8.10).
+>
+> 255.3.2. An augment cannot be Conquered or Held (see rule 250.7). Units cannot move onto an augment as though it were an objective.
+
+255.4. Otherwise, an augment you control follows the same rules as other cards you control.
+
+255.5. **Setup.** During setup, each augment you brought enters the battlefield under your control (see rule 400.1.7).
+
+> 255.5.1. If an augment modifies your pilot's starting values, including printed `[TLV]`, apply that modification when the augment enters during setup.
+>
+> 255.5.2. An effect that adds to or subtracts from the `[TLV]` printed on your pilot modifies that pilot's `[TLV]` as in rule 100.6.3.
+
+255.6. You may replace up to two of the three objective cards you bring with augments. You must still bring at least one objective card (see rules 900.1 and 900.2.7).
 
 ---
 
@@ -183,6 +207,8 @@
 > 300.2.7.6. When a resource token is created, put it into the stockpile readied (see rule 300.2.6).
 >
 > 300.2.7.7. When any other token is created, put it onto the battlefield. If it is a unit, it enters readied (see rule 300.2.2); otherwise it enters readied.
+>
+> 300.2.8. **Augment**: A card brought with the deck in place of an objective card. It starts on the battlefield under your control. See section 255.
 
 ### 300.3. Subtypes
 
@@ -222,9 +248,9 @@
 
 ### 400.1. Setup
 
-> 400.1.1. This game is for 2–4 players. Each player needs a pilot, a deck, three objective cards, `[VP]` tracking, damage dice, time-counter dice, and resource tokens.
+> 400.1.1. This game is for 2–4 players. Each player needs a pilot, a deck, three cards that are objective cards and/or augments (see rule 900.2.7), `[VP]` tracking, damage dice, time-counter dice, and resource tokens.
 >
-> 400.1.2. Place pilot in the pilot zone; shuffle your deck; place pilot's starting resources readied in stockpile; draw a starting hand as printed on your pilot. Each player starts at 0 `[VP]`. Your victory number is the `[VP]` printed on your pilot. Keep your three objective cards face down beside your deck until they are chosen (see rule 400.1.6).
+> 400.1.2. Place pilot in the pilot zone; shuffle your deck; place pilot's starting resources readied in stockpile; draw a starting hand as printed on your pilot. Each player starts at 0 `[VP]`. Your victory number is the `[VP]` printed on your pilot. Keep your objective cards and augments face down beside your deck until they are placed (see rules 400.1.6 and 400.1.7).
 >
 > 400.1.3. Determine first player randomly; that player chooses whether to go first. Turn order is clockwise from the first player.
 >
@@ -232,7 +258,9 @@
 >
 > 400.1.5. The player who takes the first turn chooses two resources in their stockpile and `[EXPEND]`s them (turn them 90° horizontal). If that player controls fewer than two resources in their stockpile, they expend all of them. Those resources remain expended during that player's first start-of-turn ready step (see rule 400.2.2.1); they ready normally on later turns. That player also skips the draw phase on their first turn (see rule 400.2.3.2).
 >
-> 400.1.6. **Place objectives.** After first player is known (rule 400.1.3), starting with the first player and proceeding clockwise, each player chooses one of their three objective cards and places it face up in the shared objective area (see rule 250.8.4). Set aside each player's unchosen objectives out of the game.
+> 400.1.6. **Place objectives.** After first player is known (rule 400.1.3), starting with the first player and proceeding clockwise, each player chooses one of their objective cards and places it face up in the shared objective area (see rule 250.8.4). Set aside each player's unchosen objectives out of the game.
+>
+> 400.1.7. **Place augments.** After objectives are placed, each player puts each augment they brought onto the battlefield under their control (see rule 255.5). Then apply any starting-value modifications from those augments, including printed `[TLV]` changes.
 
 ### 400.2. Turn structure
 
@@ -570,7 +598,7 @@
 
 ## 900. Deck Building
 
-900.1. A legal deck has at least 40 and at most 100 entity and cyberspell cards, exactly one pilot, and exactly three objective cards. The pilot and objective cards do not count toward the 40-card minimum or the 100-card maximum.
+900.1. A legal deck has at least 40 and at most 100 entity and cyberspell cards, exactly one pilot, and exactly three cards that are objective cards and/or augments. At most two of those three may be augments. You must include at least one objective card. The pilot, objective cards, and augments do not count toward the 40-card minimum or the 100-card maximum.
 
 ### 900.2. Deck rules
 
@@ -584,7 +612,9 @@
 >
 > 900.2.5. Include any extra cards you want available in the 40-card minimum when building.
 >
-> 900.2.6. Bring exactly three objective cards with your deck. They are not shuffled into the deck. During setup, you place one of them (see rules 250.8 and 400.1.6).
+> 900.2.6. Bring exactly three objective cards with your deck, except as in rule 900.2.7. They are not shuffled into the deck. During setup, you place one of them (see rules 250.8 and 400.1.6).
+>
+> 900.2.7. You may replace up to two of those three objective cards with augments (see section 255). Augments are not shuffled into the deck. They enter the battlefield during setup (see rule 400.1.7).
 
 ---
 

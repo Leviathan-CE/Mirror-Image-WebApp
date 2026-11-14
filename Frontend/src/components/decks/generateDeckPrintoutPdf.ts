@@ -2,89 +2,41 @@
  * Build a letter-size print-and-play PDF from deck card art.
  *
  * - Subscribers: faces only (3×3 per page) — no real card backs.
- * - Admins: duplex — each face sheet followed by a mirrored back sheet
+ * - Staff: optional duplex — each face sheet followed by a mirrored back sheet
  *   (pass `cardBackUrl` from the auth-gated card-back asset).
  */
 
 import { jsPDF } from "jspdf"
 
 import {
+  PRINTOUT_COLS,
+  PRINTOUT_GAP_MM,
+  PRINTOUT_MARGIN_DEFAULT_MM,
+  PRINTOUT_PAGE_H_MM,
+  PRINTOUT_PAGE_W_MM,
+  PRINTOUT_PER_PAGE,
+  computePrintoutGridLayout,
   duplexBackIndex,
+  resolvePrintoutFileName,
   type DeckPrintoutSlot,
+  type PrintoutGridLayout,
 } from "@/components/decks/deckPrintout.logic"
 import { cardFaceUrl } from "@/lib/api/decks"
 
-const PAGE_W_MM = 215.9
-const PAGE_H_MM = 279.4
-/** Minimal printable inset — keeps cards as large as possible on letter paper. */
-const MARGIN_MM = 5
-const COLS = 3
-const ROWS = 3
-const PER_PAGE = COLS * ROWS
-/** Hairline between cuts; borders are drawn on each card. */
-const GAP_MM = 0.5
-/** Card height ÷ width (3:4 portrait, matches deck board 240×320). */
-const CARD_ASPECT = 4 / 3
-
 export type DeckPrintoutPdfResult = {
   missingArt: number
-}
-
-type GridLayout = {
-  cardW: number
-  cardH: number
-  originX: number
-  originY: number
-}
-
-function computeGridLayout(): GridLayout {
-  const usableW = PAGE_W_MM - MARGIN_MM * 2
-  const usableH = PAGE_H_MM - MARGIN_MM * 2
-  const maxWFromWidth = (usableW - GAP_MM * (COLS - 1)) / COLS
-  const maxHFromHeight = (usableH - GAP_MM * (ROWS - 1)) / ROWS
-
-  let cardW = maxWFromWidth
-  let cardH = cardW * CARD_ASPECT
-  if (cardH > maxHFromHeight) {
-    cardH = maxHFromHeight
-    cardW = cardH / CARD_ASPECT
-  }
-
-  const gridW = cardW * COLS + GAP_MM * (COLS - 1)
-  const gridH = cardH * ROWS + GAP_MM * (ROWS - 1)
-  return {
-    cardW,
-    cardH,
-    originX: (PAGE_W_MM - gridW) / 2,
-    originY: (PAGE_H_MM - gridH) / 2,
-  }
-}
-
-async function loadImageDataUrl(url: string): Promise<string | null> {
-  try {
-    const response = await fetch(url)
-    if (!response.ok) return null
-    const blob = await response.blob()
-    return await new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(String(reader.result))
-      reader.onerror = () => reject(reader.error)
-      reader.readAsDataURL(blob)
-    })
-  } catch {
-    return null
-  }
+  fileName: string
 }
 
 function slotPosition(
-  layout: GridLayout,
+  layout: PrintoutGridLayout,
   indexOnPage: number
 ): { x: number; y: number } {
-  const col = indexOnPage % COLS
-  const row = Math.floor(indexOnPage / COLS)
+  const col = indexOnPage % PRINTOUT_COLS
+  const row = Math.floor(indexOnPage / PRINTOUT_COLS)
   return {
-    x: layout.originX + col * (layout.cardW + GAP_MM),
-    y: layout.originY + row * (layout.cardH + GAP_MM),
+    x: layout.originX + col * (layout.cardW + PRINTOUT_GAP_MM),
+    y: layout.originY + row * (layout.cardH + PRINTOUT_GAP_MM),
   }
 }
 
@@ -118,42 +70,63 @@ function drawPlaceholder(
   doc.text(lines, x + 2, y + 6)
 }
 
-function safeFileName(name: string): string {
-  return name.replace(/[^\w-]+/g, "_").replace(/_+/g, "_").slice(0, 80)
-}
-
 function imageFormat(dataUrl: string): "PNG" | "JPEG" {
   return dataUrl.includes("image/png") ? "PNG" : "JPEG"
+}
+
+async function loadImageDataUrl(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url)
+    if (!response.ok) return null
+    const blob = await response.blob()
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.onerror = () => reject(reader.error)
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return null
+  }
 }
 
 export async function generateDeckPrintoutPdf(opts: {
   deckName: string
   slots: DeckPrintoutSlot[]
   /**
-   * When set (admin), append duplex back sheets using this signed card-back URL.
+   * When set and `includeBacks` is true, append duplex back sheets.
    * When omitted, faces only.
    */
   cardBackUrl?: string | null
+  includeBacks?: boolean
+  marginMm?: number
+  fileName?: string
 }): Promise<DeckPrintoutPdfResult> {
   const { deckName, slots, cardBackUrl } = opts
-  const includeBacks = Boolean(cardBackUrl)
-  const layout = computeGridLayout()
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "letter" })
+  const includeBacks = opts.includeBacks ?? Boolean(cardBackUrl)
+  const layout = computePrintoutGridLayout(
+    opts.marginMm ?? PRINTOUT_MARGIN_DEFAULT_MM
+  )
+  const fileName = resolvePrintoutFileName(opts.fileName, deckName)
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: [PRINTOUT_PAGE_W_MM, PRINTOUT_PAGE_H_MM],
+  })
 
   if (slots.length === 0) {
-    doc.save(`${safeFileName(deckName || "deck")}_printout.pdf`)
-    return { missingArt: 0 }
+    doc.save(fileName)
+    return { missingArt: 0, fileName }
   }
 
-  const backDataUrl = includeBacks
-    ? await loadImageDataUrl(cardBackUrl!)
-    : null
+  const backDataUrl =
+    includeBacks && cardBackUrl ? await loadImageDataUrl(cardBackUrl) : null
   let missingArt = 0
 
-  for (let pageStart = 0; pageStart < slots.length; pageStart += PER_PAGE) {
+  for (let pageStart = 0; pageStart < slots.length; pageStart += PRINTOUT_PER_PAGE) {
     if (pageStart > 0) doc.addPage()
 
-    const pageSlots = slots.slice(pageStart, pageStart + PER_PAGE)
+    const pageSlots = slots.slice(pageStart, pageStart + PRINTOUT_PER_PAGE)
 
     for (let i = 0; i < pageSlots.length; i++) {
       const slot = pageSlots[i]!
@@ -186,10 +159,9 @@ export async function generateDeckPrintoutPdf(opts: {
 
     if (!includeBacks) continue
 
-    // Matching reverse: same sheet positions after long-edge duplex flip.
     doc.addPage()
     for (let i = 0; i < pageSlots.length; i++) {
-      const { x, y } = slotPosition(layout, duplexBackIndex(i, COLS))
+      const { x, y } = slotPosition(layout, duplexBackIndex(i, PRINTOUT_COLS))
       if (backDataUrl) {
         doc.addImage(
           backDataUrl,
@@ -206,8 +178,6 @@ export async function generateDeckPrintoutPdf(opts: {
     }
   }
 
-  const fileName = `${safeFileName(deckName || "deck")}_printout.pdf`
   doc.save(fileName)
-
-  return { missingArt }
+  return { missingArt, fileName }
 }
