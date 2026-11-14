@@ -978,6 +978,30 @@ export function HowToPlayPage() {
                                 </Note>
                             </Subsection>
 
+                            <Subsection id="Augments" title="Augments">
+                                <p>
+                                    Augments are cards you may swap in for objective cards. Follow each
+                                    augment&apos;s printed text. Many of them change your pilot&apos;s{" "}
+                                    <GameIcon name="threat_lvl" /> by adding to or subtracting from the
+                                    value printed on the pilot.
+                                </p>
+                                <p>
+                                    You may replace up to two of your three objective cards with
+                                    augments (see{" "}
+                                    <SectionLink href="#deck-building">Deck Building</SectionLink>
+                                    ). Like objectives, they stay on the battlefield. Unlike
+                                    objectives, they are under your control, and they can be targeted
+                                    and interacted with. They cannot be{" "}
+                                    <Term>Conquered</Term> or <Term>Held</Term>.
+                                </p>
+                                <p>
+                                    Otherwise, augments follow the same rules as other cards you
+                                    control. They start in play during setup, so if an augment changes
+                                    your pilot&apos;s starting values, apply that change when you set
+                                    up.
+                                </p>
+                            </Subsection>
+
                             <Subsection id="how-to-attack" title="How to Attack">
                                 <p>
                                     To attack, declare an attack at an objective. Combat is how you
@@ -1419,9 +1443,12 @@ export function HowToPlayPage() {
                                 <li>
                                     Bring exactly three objective cards with your deck. They are not
                                     shuffled into the deck. During setup, you place one of them (see{" "}
-                                    <SectionLink href="#setting-up">Setting Up</SectionLink>). You may replace upto 2 objective cards
-                                    with augment cards which agument your pilots capabilites by giving your pilot new aiblities, or adding
-                                    or subtracting their <GameIcon name="threat_lvl" /> to the pilots, they start on the battlefield under your control.
+                                    <SectionLink href="#setting-up">Setting Up</SectionLink>
+                                    ). You may replace up to two of those objective cards with
+                                    augments. Augments start on the battlefield under your control.
+                                    They can give your pilot new abilities, or add to or subtract from
+                                    the pilot&apos;s <GameIcon name="threat_lvl" />. See{" "}
+                                    <SectionLink href="#Augments">Augments</SectionLink>.
                                 </li>
                             </ol>
 
