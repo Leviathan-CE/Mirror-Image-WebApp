@@ -637,6 +637,18 @@ export function HowToPlayPage() {
                                     used for both values. Example: <strong>3</strong> deals 3 damage and
                                     is defeated at 3 marked damage.
                                 </p>
+                                <p>
+                                    If a <strong>temporary effect</strong> raised a unit&apos;s{" "}
+                                    <GameIcon name="threat_lvl" /> and that unit has marked damage,
+                                    remove 1 marked damage for each{" "}
+                                    <Note>Example of temporary effect, "until the end of the turn" is
+                                        the most common example, the duration must be defined to be considered a temorary effect.
+                                    </Note>
+                                    <GameIcon name="threat_lvl" /> lost when the effect ends (not
+                                    below 0). <strong>TLV counters</strong> do not do this: when a
+                                    counter comes off, the damage stays, then check whether marked
+                                    damage is enough to defeat the unit.
+                                </p>
                             </Subsection>
 
                         </Section>
