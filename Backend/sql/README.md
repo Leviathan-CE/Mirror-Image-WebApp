@@ -19,6 +19,7 @@ They define the full current schema. New deploys do not need migrations.
 | 14 | `14_analytics.sql` | Daily + hourly activity counters for admin analytics |
 | 15 | `15_site_settings.sql` | Admin site flags (coming soon splash) |
 | 16 | `16_announcements.sql` | Public announcement board + reusable media library |
+| 19 | `19_notifications.sql` | In-app inbox events + per-user read receipts |
 
 Default deck section names (`Main`, `Side`, `Maybe`, `Extra`) are seeded by
 the API when a deck is created (`app/deck_defaults.py`), not by SQL.

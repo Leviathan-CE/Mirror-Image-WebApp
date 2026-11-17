@@ -13,6 +13,10 @@ from app.card_library_query import apply_catalogue_filters, catalogue_order_sql
 from app.cards.schemas import CardLibraryItem
 from app.db import get_connection
 from app.media_urls import signed_media_path
+from app.notifications import (
+    emit_card_change,
+    fetch_card_notify_states,
+)
 from app.security import get_current_staff_user_id
 
 logger = logging.getLogger(__name__)
@@ -361,6 +365,7 @@ def admin_bulk_update_cards(
         with get_connection() as conn:
             with conn.cursor() as cur:
                 updated = 0
+                old_states = fetch_card_notify_states(cur, body.card_ids)
                 if body.lagality is not None:
                     cur.execute(
                         """
@@ -386,6 +391,13 @@ def admin_bulk_update_cards(
                         {"published": body.published, "ids": body.card_ids},
                     )
                     updated = max(updated, cur.rowcount)
+                new_states = fetch_card_notify_states(cur, body.card_ids)
+                for card_id in body.card_ids:
+                    emit_card_change(
+                        cur,
+                        old_states.get(card_id),
+                        new_states.get(card_id),
+                    )
             conn.commit()
     except OperationalError as e:
         logger.warning("db error on admin bulk update: %s", e)
@@ -416,6 +428,9 @@ def admin_delete_cards(
                 )
                 existing_ids = [int(row[0]) for row in cur.fetchall()]
                 skipped = len(body.card_ids) - len(existing_ids)
+                old_states = fetch_card_notify_states(cur, existing_ids)
+                for card_id in existing_ids:
+                    emit_card_change(cur, old_states.get(card_id), None)
 
                 deleted = 0
                 if existing_ids:

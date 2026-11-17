@@ -19,6 +19,7 @@ from app.routers import play_rooms
 from app.routers import site_settings
 from app.routers import announcements_public
 from app.routers import admin_announcements
+from app.routers import notifications
 from app.analytics import (
     LOGIN_PATHS,
     host_sampler,
@@ -120,6 +121,7 @@ app.include_router(admin_cards.router)
 app.include_router(admin_users.router)
 app.include_router(announcements_public.router)
 app.include_router(admin_announcements.router)
+app.include_router(notifications.router)
 app.include_router(card_manager.router)
 app.include_router(media.router)
 app.include_router(assets.router)

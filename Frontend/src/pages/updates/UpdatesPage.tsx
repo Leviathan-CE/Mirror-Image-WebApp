@@ -3,6 +3,7 @@
  */
 
 import { useEffect, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 
 import { sharedImages } from "@/assets"
 import { AnnouncementBody } from "@/components/updates/AnnouncementBody"
@@ -28,9 +29,16 @@ function postedLabel(iso: string | null): string {
 }
 
 export function UpdatesPage() {
+  const [searchParams] = useSearchParams()
+  const slugFromUrl = searchParams.get("slug")
   const [posts, setPosts] = useState<AnnouncementPost[]>([])
-  const [openSlug, setOpenSlug] = useState<string | null>(null)
+  const [openSlug, setOpenSlug] = useState<string | null>(slugFromUrl)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!slugFromUrl) return
+    setOpenSlug(slugFromUrl)
+  }, [slugFromUrl])
 
   useEffect(() => {
     let cancelled = false

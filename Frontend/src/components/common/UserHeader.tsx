@@ -4,6 +4,7 @@ import { useAuth } from "@/app/providers/AuthProvider"
 import { AccountMenu } from "@/components/common/AccountMenu"
 import { HeaderNav } from "@/components/common/HeaderNav"
 import { HeaderShell } from "@/components/common/HeaderShell"
+import { InboxBell } from "@/components/inbox/InboxBell"
 import { isStaffRole, ROUTES } from "@/lib/route"
 
 export function Userheader() {
@@ -38,7 +39,12 @@ export function Userheader() {
     <HeaderShell
       brandTo={ROUTES.HOME}
       nav={<HeaderNav items={items} />}
-      actions={<AccountMenu />}
+      actions={
+        <div className="flex items-center gap-1">
+          <InboxBell />
+          <AccountMenu />
+        </div>
+      }
     />
   )
 }

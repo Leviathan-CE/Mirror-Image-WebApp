@@ -103,6 +103,8 @@ class UserPreferencesOut(BaseModel):
     deck_start_sections: list[str] = Field(
         default_factory=lambda: ["Entity", "Cyberspell"]
     )
+    notify_blog: bool = True
+    notify_cards: bool = True
 
 
 class DeleteAccountBody(BaseModel):
@@ -119,6 +121,8 @@ class UserPreferencesPatch(BaseModel):
     library_page_size: int | None = None
     library_preview_px: int | None = None
     deck_start_sections: list[str] | None = None
+    notify_blog: bool | None = None
+    notify_cards: bool | None = None
 
 
 class UserPublic(BaseModel):

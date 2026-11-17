@@ -76,6 +76,14 @@ export {
   type AnnouncementPost,
 } from "@/lib/api/announcements"
 export {
+  fetchNotifications,
+  fetchUnreadCount,
+  markNotificationRead,
+  markAllNotificationsRead,
+  type NotificationItem,
+  type NotificationListResponse,
+} from "@/lib/api/notifications"
+export {
   createPlayRoom,
   playWsUrl,
   type PlayRoomCreated,

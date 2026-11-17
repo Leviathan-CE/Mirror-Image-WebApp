@@ -27,6 +27,7 @@ from app.announcements import (
 )
 from app.db import get_connection
 from app.media_urls import signed_media_path
+from app.notifications import emit_announcement_published
 from app.security import get_current_staff_user_id
 
 logger = logging.getLogger(__name__)
@@ -222,6 +223,13 @@ def create_announcement(
                 )
                 row = cur.fetchone()
                 result = _to_out(cur, row)
+                if status == "published":
+                    emit_announcement_published(
+                        cur,
+                        announcement_id=new_id,
+                        title=result.title,
+                        slug=result.slug,
+                    )
             conn.commit()
     except (UndefinedTable, OperationalError) as e:
         raise _db_error(e) from e
@@ -320,6 +328,13 @@ def patch_announcement(
                 )
                 row = cur.fetchone()
                 result = _to_out(cur, row)
+                if result.status == "published":
+                    emit_announcement_published(
+                        cur,
+                        announcement_id=result.id,
+                        title=result.title,
+                        slug=result.slug,
+                    )
             conn.commit()
     except HTTPException:
         raise

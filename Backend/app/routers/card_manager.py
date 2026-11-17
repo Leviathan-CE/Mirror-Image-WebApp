@@ -27,6 +27,10 @@ from app.card_publish import (
 )
 from app.cards.schemas import CardLibraryItem
 from app.media_urls import signed_media_path
+from app.notifications import (
+    emit_card_change,
+    fetch_card_notify_state,
+)
 from app.security import (
     get_current_staff_user_id,
     get_optional_user_id,
@@ -387,8 +391,11 @@ def create_card(
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
+                old_state = fetch_card_notify_state(cur, body.id)
                 cur.execute(sql, insert_cols)
                 row = cur.fetchone()
+                new_state = fetch_card_notify_state(cur, int(row[0]))
+                emit_card_change(cur, old_state, new_state)
             conn.commit()
     except UniqueViolation as e:
         logger.warning("card duplicate id: %s", e)
