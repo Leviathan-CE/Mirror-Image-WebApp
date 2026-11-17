@@ -35,6 +35,8 @@ import { cn } from "@/lib/utils"
 import { AdminPageShell } from "@/pages/admin/AdminPageShell"
 
 const PAGE_SIZE = 48
+/** Admin library max `limit` (backend `le=200`). */
+const LIBRARY_FETCH_CAP = 200
 
 const EMPTY_FACETS: CardLibraryFacets = {
   colors: ["LIF", "MET", "POW", "RAM", "TIM", "STL"],
@@ -147,24 +149,7 @@ export function AdminCardsPage() {
     setStatus("loading")
     setErrorText("")
 
-    const min =
-      invokeMin.trim() === "" ? null : Number.parseInt(invokeMin, 10)
-    const max =
-      invokeMax.trim() === "" ? null : Number.parseInt(invokeMax, 10)
-
-    void fetchAdminCardLibrary(token, {
-      q: debouncedName || undefined,
-      description: debouncedDescription || undefined,
-      colors,
-      invokeCostMin: Number.isFinite(min) ? min : null,
-      invokeCostMax: Number.isFinite(max) ? max : null,
-      typesLine: typesLine || undefined,
-      superType: superType || undefined,
-      subType: subType || undefined,
-      published: publishedFilter || undefined,
-      limit: PAGE_SIZE,
-      offset,
-    })
+    void fetchAdminCardLibrary(token, currentLibraryQuery(PAGE_SIZE, offset))
       .then((result) => {
         if (cancelled) return
         setItems(result.items)
@@ -221,10 +206,32 @@ export function AdminCardsPage() {
     setOffset(0)
   }
 
+  function currentLibraryQuery(limit: number, pageOffset: number) {
+    const min =
+      invokeMin.trim() === "" ? null : Number.parseInt(invokeMin, 10)
+    const max =
+      invokeMax.trim() === "" ? null : Number.parseInt(invokeMax, 10)
+    return {
+      q: debouncedName || undefined,
+      description: debouncedDescription || undefined,
+      colors,
+      invokeCostMin: Number.isFinite(min) ? min : null,
+      invokeCostMax: Number.isFinite(max) ? max : null,
+      typesLine: typesLine || undefined,
+      superType: superType || undefined,
+      subType: subType || undefined,
+      published: publishedFilter || undefined,
+      limit,
+      offset: pageOffset,
+    }
+  }
+
   const pageIds = useMemo(() => items.map((item) => item.id), [items])
   const allPageSelected =
     pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id))
+  const somePageSelected = pageIds.some((id) => selectedIds.has(id))
   const selectedCount = selectedIds.size
+  const allMatchingSelected = total > 0 && selectedCount >= total
   const selectedItems = useMemo(
     () => items.filter((item) => selectedIds.has(item.id)),
     [items, selectedIds]
@@ -249,6 +256,43 @@ export function AdminCardsPage() {
       }
       return next
     })
+  }
+
+  async function selectAllMatching() {
+    if (!token) return
+    if (total === 0) return
+    if (busy) return
+    if (allMatchingSelected) {
+      clearSelection()
+      return
+    }
+
+    setBusy(true)
+    setActionMessage("")
+    const collected = new Set<number>()
+    let pageOffset = 0
+    try {
+      for (;;) {
+        const result = await fetchAdminCardLibrary(
+          token,
+          currentLibraryQuery(LIBRARY_FETCH_CAP, pageOffset)
+        )
+        if (result.items.length === 0) break
+        for (const item of result.items) collected.add(item.id)
+        pageOffset += result.items.length
+        if (pageOffset >= result.total) break
+      }
+      setSelectedIds(collected)
+      setActionMessage(`Selected ${collected.size} card(s).`)
+    } catch (error: unknown) {
+      setActionMessage(
+        error instanceof ApiError
+          ? "Could not select all matching cards."
+          : "Could not reach the server."
+      )
+    } finally {
+      setBusy(false)
+    }
   }
 
   function clearSelection() {
@@ -416,7 +460,7 @@ export function AdminCardsPage() {
     <AdminPageShell
       wide
       title="CARDS DB"
-      description="Search and filter the catalogue like the public library, multi-select cards, then set publish status or lagality in bulk."
+      description="Search and filter the catalogue like the public library, multi-select cards (kept as you change pages), then set publish status or lagality in bulk."
     >
       <div className="mb-4 border border-cyan-500/25 bg-black/55 p-4">
         <div className="space-y-3">
@@ -668,11 +712,29 @@ export function AdminCardsPage() {
           <Button
             type="button"
             className={secondaryActionClassName}
+            disabled={busy || total === 0}
+            onClick={() => void selectAllMatching()}
+          >
+            {allMatchingSelected
+              ? "CLEAR ALL"
+              : `SELECT ALL ${total || 0}`}
+          </Button>
+          <Button
+            type="button"
+            className={secondaryActionClassName}
             disabled={busy || selectedCount === 0}
             onClick={clearSelection}
           >
             CLEAR SELECTION
           </Button>
+          {selectedCount > 0 ? (
+            <span className="font-mono text-[11px] text-cyan-200/70">
+              {selectedCount} selected
+              {selectedCount > pageIds.filter((id) => selectedIds.has(id)).length
+                ? " (kept across pages)"
+                : ""}
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -704,12 +766,17 @@ export function AdminCardsPage() {
                 <input
                   type="checkbox"
                   checked={allPageSelected}
+                  ref={(node) => {
+                    if (!node) return
+                    node.indeterminate = somePageSelected && !allPageSelected
+                  }}
                   onChange={togglePage}
                   disabled={pageIds.length === 0 || busy}
                   aria-label="Select all on page"
                 />
               </th>
               <th className="px-2 py-2">CARD</th>
+              <th className="px-2 py-2">SUPER TYPE</th>
               <th className="px-2 py-2">SET</th>
               <th className="px-2 py-2">PUBLISH</th>
               <th className="px-2 py-2">LAGALITY</th>
@@ -719,7 +786,7 @@ export function AdminCardsPage() {
             {status === "loading" && items.length === 0 ? (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={6}
                   className="px-4 py-10 text-center font-mono text-xs text-cyan-300/50"
                 >
                   Loading catalogue…
@@ -729,7 +796,7 @@ export function AdminCardsPage() {
             {status === "ready" && items.length === 0 ? (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={6}
                   className="px-4 py-10 text-center font-mono text-xs text-white/40"
                 >
                   No cards match this search.
@@ -739,6 +806,9 @@ export function AdminCardsPage() {
             {items.map((item) => {
               const art = cardFaceUrl(item)
               const checked = selectedIds.has(item.id)
+              const superTypes = item.super_types ?? []
+              const superTypeLabel =
+                superTypes.length === 0 ? "—" : superTypes.join(" · ")
               return (
                 <tr
                   key={item.id}
@@ -787,6 +857,9 @@ export function AdminCardsPage() {
                         </p>
                       </div>
                     </button>
+                  </td>
+                  <td className="px-2 py-2 font-mono text-xs text-cyan-100/80">
+                    {superTypeLabel}
                   </td>
                   <td className="px-2 py-2 font-mono text-xs text-white/60">
                     {item.card_set_name}

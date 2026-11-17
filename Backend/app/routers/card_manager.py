@@ -737,7 +737,9 @@ def browse_card_library(
     return CardLibraryResponse(items=items, total=total, limit=limit, offset=offset)
 
 
-@router.get("/all_cards", response_model=CardAllResponse)
+# Unity catalogue dump: GET {origin}/cards/all_cards
+# Off until set-unlock is shared with by-id / by-name / library.
+# @router.get("/all_cards", response_model=CardAllResponse)
 def get_all_cards(
     user_id: int | None = Depends(get_optional_user_id),
     publish_bypass: bool = Depends(get_optional_publish_bypass),

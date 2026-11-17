@@ -13,11 +13,18 @@ import {
 import type { CSSProperties } from "react";
 
 import { GlitchFx } from "@/components/effects/GlitchFx";
-import { LoreArtScroll } from "@/pages/lore/LoreArtScroll";
 
 
 
 const SECTIONS: TocEntry[] = [
+
+    {
+
+        id: "theatre",
+
+        label: "The Theatre of the 22nd Century",
+
+    },
 
     {
 
@@ -30,6 +37,8 @@ const SECTIONS: TocEntry[] = [
             { id: "01-diana", label: "Diana Ugisaki" },
 
             { id: "01-evran", label: "Evran Loth'laundil" },
+
+            { id: "01-yagihiryi", label: "Princess Yagihiryi" },
 
         ],
 
@@ -75,339 +84,350 @@ export function LorePage() {
 
     return (
         <div className="bg-black">
-            {/* Full-bleed art theater — backgrounds fade under scrolling panes */}
-            <LoreArtScroll />
-
             {/* Written lore / TOC below the gallery */}
             <section
                 id="lore-codex"
-                className="relative min-h-screen bg-cover bg-center bg-no-repeat px-6 py-12"
+                className="relative min-h-screen bg-cover bg-center bg-no-repeat px-6 pb-12 pt-28 sm:pt-32"
                 style={{ backgroundImage: `url(${sharedImages.ZONE_BACKGROUND})` }}
             >
-            <div className="absolute inset-0 bg-black/60" aria-hidden />
-            <div className="relative z-10">
-                <BackToTocButton />
+                <div className="absolute inset-0 bg-black/60" aria-hidden />
+                <div className="relative z-10">
+                    <BackToTocButton />
 
-                <div className="grid w-full gap-8 lg:grid-cols-[260px_1fr] lg:gap-12 2xl:grid-cols-[320px_1fr] 2xl:gap-16">
+                    <div className="grid w-full gap-8 lg:grid-cols-[260px_1fr] lg:gap-12 2xl:grid-cols-[320px_1fr] 2xl:gap-16">
 
-                    <aside>
+                        <aside>
 
-                        <TableOfContents sections={SECTIONS} />
+                            <TableOfContents sections={SECTIONS} />
 
-                    </aside>
+                        </aside>
 
 
 
-                    <div className="space-y-12">
-
-                        <Section id="01" title="Characters">
-
-                            <Subsection
-                                id="01-diana"
-                                title="Diana Ugisaki"
-                                variant="character"
-                                media={
-                                    <img
-                                        src={loreImages.DIANA_UGISDKI}
-                                        alt="Diana Ugisaki"
-                                        className="fade-left clip-angled w-full"
-                                        style={fadeLeftImageStyle}
-                                    />
-                                }
-                            >
+                        <div className="space-y-12">
+                            <Section id="theatre" title="The Theatre of the 22nd Century">
                                 <p>
-                                    Diana Ugisaki was six when the Quakes tore Aerathea apart; one
-                                    of the few in her family to walk away from the wreckage. Raised as an
-                                    only child with you mother and father in the shadow of that catastrophe, she was later recuited for
-                                    S.O.R.A. (Special Operations Recon Agent), a black-ops wing of the Pilot
-                                    Program devoted to stealth insertion and high-risk retrieval. Her orders
-                                    are singular: slip through the war-torn dark, trace the ghost-signal of
-                                    PyAi, and find where the rogue intelligence truly hides.
+                                    The current year is 2196, eighty-six years into the World at the End of
+                                    the World. The bloody conflict began with a quake and utter
+                                    destruction, then a horrifying march of abhorrations mixed with men
+                                    hurled itself at the free peoples of Aerathea. A powerful rogue
+                                    intelligence once thought dead has returned to authoritarian rule;
+                                    every creature—even the once-allied nation of Vrag—now works to
+                                    destroy this plague. Take a theatrical dive into a short story of one
+                                    aircraft carrier and her crew as they carry thousands of refugees from
+                                    the Aleye continent to the safety of the greatest fortress city built
+                                    by the Éloth&apos;drin elves and the UDC of men.
                                 </p>
                                 <GlitchFx
-                                    label="DOWNLOAD ORIGIN STORY"
+                                    label="DOWNLOAD SNIPPET"
                                     size="lg"
-                                    className="font-buahs93 h-8 rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
+                                    className="font-buahs93 h-auto min-h-8 w-auto max-w-full whitespace-normal rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
                                     render={<a href="/docs/lore/Into_the_Fray.pdf" download />}
                                 />
-                            </Subsection>
+                            </Section>
 
-                            <Subsection
-                                id="01-evran"
-                                title="Evran Loth'laundil"
-                                variant="character"
-                                media={
-                                    <img
-                                        src={loreImages.EVRAN}
-                                        alt="Evran Loth'laundil"
-                                        className="fade-left clip-angled w-full"
-                                        style={fadeLeftImageStyle}
-                                    />
-                                }
-                            >
-                                <p>
-                                    Evran Loth&apos;laundil grew up with his mother while the PyAi Wars
-                                    raged and his father fought on the front lines. Owlea later blessed him
-                                    with the Guinness script he forged under siege at Loyrn, granting
-                                    regeneration at a speed that should have been impossible. Battle after
-                                    battle sharpened his scripts and techniques until the day he and his
-                                    companions climbed the snowy peaks to Anorath&apos;s mountain fortress
-                                    and struck down the necromancer, ending his tyranny.
-                                </p>
-                                <p>
-                                    Evran discovered the blessing could pass to his children. Within a few
-                                    centuries, nearly every elf in Aerathea carried his blood. Longevity
-                                    spread through the faction, yet Evran himself still does not know when his
-                                    own time will come to join his ancestors.
-                                </p>
-                                <p>
-                                    He remains devoted to destroying evil wherever it hides&mdash;hunting the
-                                    corruption left by Dragor&apos;drune the Corruptor and the legacy of
-                                    Anorath, seeking peace and balance for Aerathea. No one knows how long he
-                                    will live, or where he has gone. Some whisper of a masked elven warrior
-                                    who cut through anything with the blade, regenerate his entire body after being cut in half,
-                                    and tears open the sky to watch
-                                    comets burn through PyAi&apos;s armies from the void.
-                                </p>
+                            <Section id="01" title="Characters">
 
-                                <GlitchFx
-                                    label="DOWNLOAD ORIGIN STORY"
-                                    size="lg"
-                                    className="font-buahs93 h-8 rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
-                                    render={<a href="/docs/lore/Refiners_Fire.pdf" download />}
-                                />
-                            </Subsection>
+                                <Subsection
+                                    id="01-diana"
+                                    title="Diana Ugisaki"
+                                    variant="character"
+                                    media={
+                                        <img
+                                            src={loreImages.DIANA_UGISDKI}
+                                            alt="Diana Ugisaki"
+                                            className="fade-left clip-angled w-full"
+                                            style={fadeLeftImageStyle}
+                                        />
+                                    }
+                                >
+                                    <p>
+                                        Diana Ugisaki was six when the Quakes tore Aerathea apart; one
+                                        of the few in her family to walk away from the wreckage. Raised as an
+                                        only child with you mother and father in the shadow of that catastrophe, she was later recuited for
+                                        S.O.R.A. (Special Operations Recon Agent), a black-ops wing of the Pilot
+                                        Program devoted to stealth insertion and high-risk retrieval. Her orders
+                                        are singular: slip through the war-torn dark, trace the ghost-signal of
+                                        PyAi, and find where the rogue intelligence truly hides.
+                                    </p>
+                                </Subsection>
 
-                            <Subsection
-                                id="01-evran"
-                                title="Princess Yagihiryi"
-                                variant="character"
-                                media={
-                                    <img
-                                        src={loreImages.PRINCESS_YAGIHIYRI}
-                                        alt="Princess Yagihiryi"
-                                        className="fade-left clip-angled w-full"
-                                        style={fadeLeftImageStyle}
-                                    />
-                                }
-                            >
-                                <p>
-                                    The Legendary Warrior Princess, who lead her poeple  to saftey after Vrag invaded 
-                                    near the start of the third world war. A changling of a 7 tailed fox she and many of her poeple 
-                                    are called changlings because of the mystical ability to change shape into anything of there own desire
-                                    eventually pernemantly, some say that is how new mythological creatures come to be in Areathea, Gorga’roth currupted many 
-                                    changlings into his twisted way creating the first monsters of a old time. they remain a threat to PyAi being the only 
-                                    faction wihtout pilot augmentation to stand in a fight against it. as such after the third great war the nations of the changling
-                                    decent and fractured into tribes across Aerathea. now few in number. 
-                                </p>
+                                <Subsection
+                                    id="01-evran"
+                                    title="Evran Loth'laundil"
+                                    variant="character"
+                                    media={
+                                        <img
+                                            src={loreImages.EVRAN}
+                                            alt="Evran Loth'laundil"
+                                            className="fade-left clip-angled w-full"
+                                            style={fadeLeftImageStyle}
+                                        />
+                                    }
+                                >
+                                    <p>
+                                        Evran Loth&apos;laundil grew up with his mother while the PyAi Wars
+                                        raged and his father fought on the front lines. Owlea later blessed him
+                                        with the Guinness script he forged under siege at Loyrn, granting
+                                        regeneration at a speed that should have been impossible. Battle after
+                                        battle sharpened his scripts and techniques until the day he and his
+                                        companions climbed the snowy peaks to Anorath&apos;s mountain fortress
+                                        and struck down the necromancer, ending his tyranny.
+                                    </p>
+                                    <p>
+                                        Evran discovered the blessing could pass to his children. Within a few
+                                        centuries, nearly every elf in Aerathea carried his blood. Longevity
+                                        spread through the faction, yet Evran himself still does not know when his
+                                        own time will come to join his ancestors.
+                                    </p>
+                                    <p>
+                                        He remains devoted to destroying evil wherever it hides&mdash;hunting the
+                                        corruption left by Dragor&apos;drune the Corruptor and the legacy of
+                                        Anorath, seeking peace and balance for Aerathea. No one knows how long he
+                                        will live, or where he has gone. Some whisper of a masked elven warrior
+                                        who cut through anything with the blade, regenerate his entire body after being cut in half,
+                                        and tears open the sky to watch
+                                        comets burn through PyAi&apos;s armies from the void.
+                                    </p>
 
-                                {/* <GlitchFx
+                                    {/* <GlitchFx
+                                        label="DOWNLOAD ORIGIN STORY"
+                                        size="lg"
+                                        className="font-buahs93 h-8 rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
+                                        render={<a href="/docs/lore/Refiners_Fire.pdf" download />}
+                                    /> */}
+                                </Subsection>
+
+                                <Subsection
+                                    id="01-yagihiryi"
+                                    title="Princess Yagihiryi"
+                                    variant="character"
+                                    media={
+                                        <img
+                                            src={loreImages.PRINCESS_YAGIHIYRI}
+                                            alt="Princess Yagihiryi"
+                                            className="fade-left clip-angled w-full"
+                                            style={fadeLeftImageStyle}
+                                        />
+                                    }
+                                >
+                                    <p>
+                                        The Legendary Warrior Princess, who lead her poeple  to saftey after Vrag invaded
+                                        near the start of the third world war. A changling of a 7 tailed fox she and many of her poeple
+                                        are called changlings because of the mystical ability to change shape into anything of there own desire
+                                        eventually pernemantly, some say that is how new mythological creatures come to be in Areathea, Gorga’roth currupted many
+                                        changlings into his twisted way creating the first monsters of a old time. they remain a threat to PyAi being the only
+                                        faction wihtout pilot augmentation to stand in a fight against it. as such after the third great war the nations of the changling
+                                        decent and fractured into tribes across Aerathea. now few in number.
+                                    </p>
+
+                                    {/* <GlitchFx
                                     label="DOWNLOAD ORIGIN STORY"
                                     size="lg"
                                     className="font-buahs93 h-8 rounded-none bg-cyan-700 px-10 hover:bg-cyan-900 active:bg-cyan-400"
                                     render={<a href="/docs/lore/Refiners_Fire.pdf" download />}
                                 /> */}
-                            </Subsection>
+                                </Subsection>
 
-                        </Section>
-
-
-
-                        <Section id="02" title="Thuamatech">
-
-                            <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] lg:gap-8">
-
-                                <div className="space-y-6">
-
-                                    <p className="text-lg lg:text-xl">
-
-                                        Once, a spell took six breaths, three reagents, and a lifetime of
-
-                                        memorization. Now it takes a login. That is thuamatech: the fusion of
-
-                                        arcane theory and cybernetic engineering behind the world&apos;s war
-
-                                        machines, networks, and battlefield augments.
-
-                                    </p>
+                            </Section>
 
 
 
-                                    <Subsection id="02-age-of-scripts" title="The Age of Scripts">
+                            <Section id="02" title="Thuamatech">
 
-                                        <p>
+                                <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] lg:gap-8">
 
-                                            In the beginning, scripts were incantations&mdash;spoken formulas
+                                    <div className="space-y-6">
 
-                                            that channeled spiritual power into spellcraft. Every script demanded
+                                        <p className="text-lg lg:text-xl">
 
-                                            dedicated memorization. You were limited by how fast you could recite
+                                            Once, a spell took six breaths, three reagents, and a lifetime of
 
-                                            it aloud or hold it in your mind. Most required material and somatic
+                                            memorization. Now it takes a login. That is thuamatech: the fusion of
 
-                                            components on top of the written formula, and the same effect could be
+                                            arcane theory and cybernetic engineering behind the world&apos;s war
 
-                                            written countless different ways.
+                                            machines, networks, and battlefield augments.
 
                                         </p>
 
-                                        <p>
 
-                                            Sages, wizards, and clerics rarely changed a battlefield. The
 
-                                            concentration and speed war demanded outpaced what a human invoker
+                                        <Subsection id="02-age-of-scripts" title="The Age of Scripts">
 
-                                            could deliver&mdash;even when the script itself was worth the cost.
+                                            <p>
 
-                                            Many still tried. Many died, bit by bit, refining the art through
+                                                In the beginning, scripts were incantations&mdash;spoken formulas
 
-                                            loss.
+                                                that channeled spiritual power into spellcraft. Every script demanded
 
-                                        </p>
+                                                dedicated memorization. You were limited by how fast you could recite
 
-                                    </Subsection>
+                                                it aloud or hold it in your mind. Most required material and somatic
 
+                                                components on top of the written formula, and the same effect could be
 
+                                                written countless different ways.
 
-                                    <Subsection id="02-after-anorath" title="After Anorath">
+                                            </p>
 
-                                        <p>
+                                            <p>
 
-                                            The techniques were never truly lost. Necessity during the rise of
+                                                Sages, wizards, and clerics rarely changed a battlefield. The
 
-                                            Anorath forced the next leap: scripts grew more efficient and faster
+                                                concentration and speed war demanded outpaced what a human invoker
 
-                                            to pronounce. Material innovations stacked on one another until
+                                                could deliver&mdash;even when the script itself was worth the cost.
 
-                                            invocation speed finally began to catch up with war. The renowned
+                                                Many still tried. Many died, bit by bit, refining the art through
 
-                                            invoker and sage Evran paved the way with new techniques and training,
+                                                loss.
 
-                                            ushering in a renaissance in the late 1400s&mdash;shortly after Anorath
+                                            </p>
 
-                                            and his undead forces had been defeated.
+                                        </Subsection>
 
-                                        </p>
 
-                                    </Subsection>
 
+                                        <Subsection id="02-after-anorath" title="After Anorath">
 
+                                            <p>
 
-                                    <Subsection id="02-machine-invocation" title="Machine Invocation">
+                                                The techniques were never truly lost. Necessity during the rise of
 
-                                        <p>
+                                                Anorath forced the next leap: scripts grew more efficient and faster
 
-                                            With the computer came a new age. Scripts no longer required a
+                                                to pronounce. Material innovations stacked on one another until
 
-                                            sentient creature to invoke them&mdash;though early machine
+                                                invocation speed finally began to catch up with war. The renowned
 
-                                            interfaces limited the practice mostly to divination and illusion,
+                                                invoker and sage Evran paved the way with new techniques and training,
 
-                                            where the system itself could be the target of the spell. For a time,
+                                                ushering in a renaissance in the late 1400s&mdash;shortly after Anorath
 
-                                            modern firearms and industrial warfare made scripts feel obsolete.
+                                                and his undead forces had been defeated.
 
-                                            Elves kept the old ways alive. So did most changelings, and human
+                                            </p>
 
-                                            minorities who refused to let the craft die.
+                                        </Subsection>
 
-                                        </p>
 
-                                    </Subsection>
 
+                                        <Subsection id="02-machine-invocation" title="Machine Invocation">
 
+                                            <p>
 
-                                    <Subsection id="02-pyai-war" title="The PyAi War">
+                                                With the computer came a new age. Scripts no longer required a
 
-                                        <p>
+                                                sentient creature to invoke them&mdash;though early machine
 
-                                            Scripts did not return to the center of history until the Third World
+                                                interfaces limited the practice mostly to divination and illusion,
 
-                                            War&mdash;and the shadow-government AI called PyAi. PyAi wielded
+                                                where the system itself could be the target of the spell. For a time,
 
-                                            scripts at scale, paired necromantic arts with Anorath&apos;s living
+                                                modern firearms and industrial warfare made scripts feel obsolete.
 
-                                            metal, and built monstrosities that should not exist. The first day of
+                                                Elves kept the old ways alive. So did most changelings, and human
 
-                                            the war was nuclear. The fallout lasted twenty years of brutal
+                                                minorities who refused to let the craft die.
 
-                                            bloodshed.
+                                            </p>
 
-                                        </p>
+                                        </Subsection>
 
-                                        <p>
 
-                                            Humanity answered the only way it could: the Pilot Program. Living
 
-                                            metal as a material source. A Human Augmented Intellegence (HAI), a artificail intellegent companion trained live to a pilots data, to invoke scripts at inhuman speed.
+                                        <Subsection id="02-pyai-war" title="The PyAi War">
 
-                                            Technology to hack mainframes and turn enemy systems against
+                                            <p>
 
-                                            themselves. Scripting became the backbone of state-of-the-art
+                                                Scripts did not return to the center of history until the Third World
 
-                                            intelligence work, command, infiltration, and frontline battle.
+                                                War&mdash;and the shadow-government AI called PyAi. PyAi wielded
 
-                                        </p>
+                                                scripts at scale, paired necromantic arts with Anorath&apos;s living
 
-                                        <p>
+                                                metal, and built monstrosities that should not exist. The first day of
 
-                                            Diana Ugisaki hunts the ghost-signal of the intelligence that perfected
+                                                the war was nuclear. The fallout lasted twenty years of brutal
 
-                                            what thuamatech became. Every Pilot in the field is standing on the
+                                                bloodshed.
 
-                                            wreckage of that war.
+                                            </p>
 
-                                        </p>
+                                            <p>
 
-                                    </Subsection>
+                                                Humanity answered the only way it could: the Pilot Program. Living
 
+                                                metal as a material source. A Human Augmented Intellegence (HAI), a artificail intellegent companion trained live to a pilots data, to invoke scripts at inhuman speed.
 
+                                                Technology to hack mainframes and turn enemy systems against
 
-                                    <Subsection id="02-today" title="Today">
+                                                themselves. Scripting became the backbone of state-of-the-art
 
-                                        <p>
+                                                intelligence work, command, infiltration, and frontline battle.
 
-                                            Thuamatech is everywhere now&mdash;from battlefield augments to the
+                                            </p>
 
-                                            appliances in your kitchen. The line between invention and magic
+                                            <p>
 
-                                            collapsed so completely that most people never notice the diffrence.
+                                                Diana Ugisaki hunts the ghost-signal of the intelligence that perfected
 
-                                        </p>
+                                                what thuamatech became. Every Pilot in the field is standing on the
 
-                                        <p className="border-l-2 border-cyan-500/50 pl-4 text-lg italic text-cyan-100/90 lg:text-xl">
+                                                wreckage of that war.
 
-                                            All you need to do is log in.
+                                            </p>
 
-                                        </p>
+                                        </Subsection>
 
-                                    </Subsection>
+
+
+                                        <Subsection id="02-today" title="Today">
+
+                                            <p>
+
+                                                Thuamatech is everywhere now&mdash;from battlefield augments to the
+
+                                                appliances in your kitchen. The line between invention and magic
+
+                                                collapsed so completely that most people never notice the diffrence.
+
+                                            </p>
+
+                                            <p className="border-l-2 border-cyan-500/50 pl-4 text-lg italic text-cyan-100/90 lg:text-xl">
+
+                                                All you need to do is log in.
+
+                                            </p>
+
+                                        </Subsection>
+
+                                    </div>
+
+                                    <img
+
+                                        src={loreImages.THUAMATECH_DIAG}
+
+                                        alt="Thaumatech diagram"
+
+                                        className="fade-left clip-angled w-full lg:sticky lg:top-24"
+
+                                        style={fadeLeftImageStyle}
+
+                                    />
 
                                 </div>
 
-                                <img
+                            </Section>
 
-                                    src={loreImages.THUAMATECH_DIAG}
-
-                                    alt="Thaumatech diagram"
-
-                                    className="fade-left clip-angled w-full lg:sticky lg:top-24"
-
-                                    style={fadeLeftImageStyle}
-
-                                />
-
-                            </div>
-
-                        </Section>
+                        </div>
 
                     </div>
 
                 </div>
 
-            </div>
-
-        </section>
+            </section>
         </div>
     );
 }

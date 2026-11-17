@@ -24,7 +24,11 @@
 >
 > 100.6.2. **Combined format `[dmg+hp]`.** When printed as a single number (for example, `3`), that number is both the unit's damage value and its health value.
 >
-> 100.6.3. In these rules, a unit's **damage value** is the damage it deals in combat; its **health value** is how much marked damage it can take before it is defeated. Effects that modify `[TLV]` modify the corresponding value unless stated otherwise.
+> 100.6.3. In these rules, a unit's **damage value** is the damage it deals in combat; its **health value** is how much marked damage it can take before it is defeated. Effects that modify `[TLV]` modify the corresponding value unless stated otherwise. If the `[TLV]` is split `[dmg|hp]`, `[TLV]` counters and temporary `[TLV]` effects apply to the corresponding value unless stated otherwise.
+>
+> 100.6.4. **Temporary `[TLV]` effects.** If a temporary effect (see rule 100.9) increased a unit's `[TLV]`, and that unit has marked damage, then for each `[TLV]` lost when that effect ends, remove 1 marked damage from that unit (not below 0). Then check whether it is defeated (see rule 602.7.5). If the `[TLV]` is split `[dmg|hp]`, this applies to the health value.
+>
+> 100.6.5. **`[TLV]` counters.** `[TLV]` counters do not use rule 100.6.4. When a `[TLV]` counter is removed, marked damage stays. Then check whether the unit is defeated (see rule 602.7.5). If the `[TLV]` is split `[dmg|hp]`, use the health value.
 
 ### 100.7. Multiple supertypes and subtypes
 
@@ -57,6 +61,16 @@
 > 100.8.9. Combat damage assignment follows the attack's damage step (see rule 602.7).
 >
 > 100.8.10. If an effect does not specify a zone, only cards and objects on the battlefield may be chosen (see rule 200.3). Units on an objective are on the battlefield. To target a card in the stockpile, hand, discard pile, dismantle pile, pilot zone, or another zone, the effect must say so.
+
+### 100.9. Temporary effects
+
+100.9. A **temporary effect** is an effect whose **duration is printed** on the card or ability that created it (for example, "until end of turn" or "this combat"). If no duration is printed, the effect is not temporary.
+
+> 100.9.1. A `[STATIC]` ability is not a temporary effect. It applies while its source is in play (see rule 800.1.9). When that source leaves play, the ability stops; that is not a temporary effect ending.
+>
+> 100.9.2. A counter is not a temporary effect (see rule 100.6.5).
+>
+> 100.9.3. When a temporary effect ends, it ends only because its printed duration expired.
 
 ---
 
@@ -399,7 +413,7 @@
 >
 > 602.7.4. You cannot assign damage from an attacking unit to an Airborne unit unless that attacking unit has Airborne or Long Range.
 >
-> 602.7.5. After damage, a unit is defeated if marked damage ≥ its `[TLV]` value. (when the `[TLV]` is split the dmg|hp use the hp value) Trigger on-defeat abilities; put defeated units in the discard pile.
+> 602.7.5. After damage, a unit is defeated if marked damage ≥ its `[TLV]` value. (when the `[TLV]` is split the dmg|hp use the hp value) If `[TLV]` was just reduced, apply rule 100.6.4 or 100.6.5 first, then check defeat. Trigger on-defeat abilities; put defeated units in the discard pile.
 >
 > 602.7.6. If combat causes a player to **gain control** of the objective, apply rule 250.7.1 (Conquer).
 
@@ -527,7 +541,7 @@
 >
 > 800.1.8.1. If the condition refers to **playing** a card, the condition is met when that play is complete under rule 500.2 (the card enters or overwrites the lock occupant) or rule 700.4.2 (time counters replace the lock step). This includes plays from zones other than hand when an ability allows (see rule 500.2.1), such as Recursive from the discard pile. The triggered effect then enters the lock or its controller's queue like other triggered abilities (see section 700).
 >
-> 800.1.9. `[STATIC]`: Always active in play.
+> 800.1.9. `[STATIC]`: Always active in play. A `[STATIC]` ability is not a temporary effect (see rule 100.9).
 >
 > 800.1.10. `[EFFECT]`: When the played card resolves; default for untagged non-activated abilities.
 >

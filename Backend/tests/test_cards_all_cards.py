@@ -8,6 +8,10 @@ import pytest
 
 from app.db import get_connection
 
+pytestmark = pytest.mark.skip(
+    reason="GET /cards/all_cards is unregistered until unlock gating is shared"
+)
+
 
 def _payload_items(body: dict) -> list[dict]:
     # Route model currently uses `itmes`; accept `items` once renamed.
