@@ -24,6 +24,7 @@ export const LAGALITY_OPTIONS = [
 export type AdminCardItem = {
   id: number
   card_name: string
+  super_types?: string[]
   card_set_name: string
   rarity: string
   lagality: string

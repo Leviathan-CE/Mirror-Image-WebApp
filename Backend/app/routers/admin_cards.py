@@ -27,6 +27,7 @@ class AdminCardItem(BaseModel):
 
     id: int
     card_name: str
+    super_types: list[str] = Field(default_factory=list)
     card_set_name: str
     rarity: str
     lagality: str
@@ -47,7 +48,7 @@ class AdminCardLibraryResponse(BaseModel):
 class AdminCardBulkUpdate(BaseModel):
     """Apply publish status and/or lagality to many cards at once."""
 
-    card_ids: list[int] = Field(min_length=1, max_length=500)
+    card_ids: list[int] = Field(min_length=1, max_length=5000)
     published: str | None = None
     lagality: str | None = None
 
@@ -91,7 +92,7 @@ class AdminCardBulkResult(BaseModel):
 class AdminCardDeleteRequest(BaseModel):
     """Permanently remove catalogue cards (and deck references via CASCADE)."""
 
-    card_ids: list[int] = Field(min_length=1, max_length=500)
+    card_ids: list[int] = Field(min_length=1, max_length=5000)
 
     @field_validator("card_ids")
     @classmethod
@@ -202,7 +203,8 @@ def admin_browse_cards(
                         c.is_deprecated,
                         c.illustration_thumbnail_path,
                         c.card_thumbnail_path,
-                        EXTRACT(EPOCH FROM c.updated_at)::bigint
+                        EXTRACT(EPOCH FROM c.updated_at)::bigint,
+                        c.super_types
                       FROM cards c
                       LEFT JOIN publish_cards p ON p.card_id = c.id
                      WHERE {where_sql}
@@ -231,6 +233,7 @@ def admin_browse_cards(
             card_art_path=signed_media_path(row[7]),
             card_thumbnail_path=signed_media_path(row[8]),
             card_art_version=int(row[9]) if row[9] is not None else None,
+            super_types=list(row[10] or []),
         )
         for row in rows
     ]
