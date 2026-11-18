@@ -67,8 +67,17 @@ def create_access_token(
 
 
 def decode_access_token(token: str) -> dict[str, Any]:
+    """
+    Decode a real login session token.
+
+    Single-purpose email-link tokens (password reset, blog unsubscribe,
+    etc.) are signed with this same secret but carry a ``purpose`` claim
+    that a login access token never sets. Reject them here so a token
+    meant only for one narrow, unauthenticated action (e.g. clicking an
+    unsubscribe link) can never be replayed as a full Bearer session.
+    """
     try:
-        return jwt.decode(token, signing_secret(), algorithms=[ALGORITHM])
+        payload = jwt.decode(token, signing_secret(), algorithms=[ALGORITHM])
     except jwt.ExpiredSignatureError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -79,6 +88,12 @@ def decode_access_token(token: str) -> dict[str, Any]:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="invalid_token",
         ) from e
+    if "purpose" in payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid_token",
+        )
+    return payload
 
 
 def get_current_user_id(
