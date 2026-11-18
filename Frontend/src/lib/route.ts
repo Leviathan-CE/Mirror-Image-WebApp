@@ -26,6 +26,12 @@ export const ROUTES = {
   /** Public announcement board. */
   UPDATES: "/updates",
 
+  /** Public mailing-list unsubscribe (token in query). */
+  UNSUBSCRIBE: "/unsubscribe",
+
+  /** Logged-in notification inbox. */
+  INBOX: "/inbox",
+
   /** Staff console (admin + developer). Users page is admin-only. */
   ADMIN: "/admin",
   ADMIN_CARDS: "/admin/cards",
@@ -56,6 +62,6 @@ export function isStaffRole(role: string | null | undefined): boolean {
   return role === ADMIN_ROLE || role === DEVELOPER_ROLE
 }
 
-export function isPlayTesterRole(role:string|null|undefined):boolean{
+export function isPlayTesterRole(role: string | null | undefined): boolean {
   return role == PLAYTESTER_ROLE
 }

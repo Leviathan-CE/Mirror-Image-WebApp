@@ -37,6 +37,12 @@ export type AnnouncementWrite = {
   cover_card_id?: number | null
   cover_card_face?: "art" | "thumb" | null
   cover_youtube?: string | null
+  email_subscribers?: boolean
+}
+
+export type AnnouncementSaveResult = AnnouncementPost & {
+  emailed?: number | null
+  email_failed?: number | null
 }
 
 export type AnnouncementMediaItem = {
@@ -77,13 +83,13 @@ export async function fetchAdminAnnouncements(
 export async function createAnnouncement(
   token: string,
   body: AnnouncementWrite
-): Promise<AnnouncementPost> {
+): Promise<AnnouncementSaveResult> {
   const response = await fetch(`${apiBaseUrl()}/admin/announcements`, {
     method: "POST",
     headers: { ...authHeaders(token), "Content-Type": "application/json" },
     body: JSON.stringify(body),
   })
-  return readJsonOrThrow<AnnouncementPost>(
+  return readJsonOrThrow<AnnouncementSaveResult>(
     response,
     "admin_announcement_create_failed"
   )
@@ -93,13 +99,13 @@ export async function patchAnnouncement(
   token: string,
   id: number,
   body: Partial<AnnouncementWrite>
-): Promise<AnnouncementPost> {
+): Promise<AnnouncementSaveResult> {
   const response = await fetch(`${apiBaseUrl()}/admin/announcements/${id}`, {
     method: "PATCH",
     headers: { ...authHeaders(token), "Content-Type": "application/json" },
     body: JSON.stringify(body),
   })
-  return readJsonOrThrow<AnnouncementPost>(
+  return readJsonOrThrow<AnnouncementSaveResult>(
     response,
     "admin_announcement_patch_failed"
   )

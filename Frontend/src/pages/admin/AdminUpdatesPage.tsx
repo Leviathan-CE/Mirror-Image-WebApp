@@ -102,6 +102,8 @@ export function AdminUpdatesPage() {
   const [pickerFor, setPickerFor] = useState<"body" | "cover" | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [emailSubscribers, setEmailSubscribers] = useState(false)
+  const [emailNotice, setEmailNotice] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!token) return
@@ -138,6 +140,8 @@ export function AdminUpdatesPage() {
     setTitle("")
     setBody("")
     setCover(EMPTY_COVER)
+    setEmailSubscribers(false)
+    setEmailNotice(null)
   }
 
   function openPost(post: AnnouncementPost) {
@@ -187,10 +191,14 @@ export function AdminUpdatesPage() {
     }
     setBusy(true)
     setError(null)
+    setEmailNotice(null)
+    const shouldEmail =
+      status === "published" && emailSubscribers
     const payload = {
       title: cleanTitle,
       body_markdown: body,
       status,
+      email_subscribers: shouldEmail,
       ...coverPayload(cover),
     }
     try {
@@ -198,6 +206,17 @@ export function AdminUpdatesPage() {
         ? await patchAnnouncement(token, editingId, payload)
         : await createAnnouncement(token, payload)
       setEditingId(saved.id)
+      if (shouldEmail && saved.emailed != null) {
+        const failed = saved.email_failed ?? 0
+        if (failed > 0) {
+          setEmailNotice(
+            `Emailed ${saved.emailed}; ${failed} failed.`
+          )
+        } else {
+          setEmailNotice(`Emailed ${saved.emailed} subscribers.`)
+        }
+      }
+      setEmailSubscribers(false)
       await load()
     } catch (err) {
       setError(
@@ -343,6 +362,25 @@ export function AdminUpdatesPage() {
                   ? `card #${cover.cardId} ${cover.cardFace}`
                   : "none"}
           </p>
+          <label className="inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={emailSubscribers}
+              disabled={busy}
+              onChange={(event) =>
+                setEmailSubscribers(event.target.checked)
+              }
+              aria-label="Email mailing list on publish"
+            />
+            <span className="font-buahs93 text-[11px] tracking-wide text-cyan-100">
+              EMAIL MAILING LIST ON PUBLISH
+            </span>
+          </label>
+          {emailNotice ? (
+            <p className="font-mono text-[11px] text-cyan-200/80" role="status">
+              {emailNotice}
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             <GlitchFx
               type="button"

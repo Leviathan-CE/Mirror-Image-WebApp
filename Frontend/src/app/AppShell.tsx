@@ -23,10 +23,13 @@ import { AdminUpdatesPage } from "@/pages/admin/AdminUpdatesPage"
 import { UpdatesPage } from "@/pages/updates/UpdatesPage"
 import { SubscribePage } from "@/pages/billing/SubscribePage"
 import { AccountSettingsPage } from "@/pages/account/AccountSettingsPage"
+import { CardNotificationHost } from "@/components/inbox/CardNotificationHost"
+import { InboxPage } from "@/pages/inbox/InboxPage"
 import { ComunityDecksPage } from "@/pages/decks/ComunityDecksPage"
 import { ComingSoonGate } from "@/app/ComingSoonGate"
 import { ROUTES } from "@/lib/route"
 import { PlayTesterPage } from "@/pages/decks/PlayTesterPage"
+import { UnsubscribePage } from "@/pages/mailing/UnsubscribePage"
 
 export function AppShell() {
   return (
@@ -35,91 +38,104 @@ export function AppShell() {
         <PreferencesNavigationFlush />
         <ComingSoonGate>
           <AppHeader />
+          <CardNotificationHost />
           <main className="min-h-screen">
             <Routes>
-            <Route path={ROUTES.HOME} element={<HomePage />} />
-            <Route
-              path={ROUTES.MAIN}
-              element={
-                <RequireAuth>
-                  <MainPage />
-                </RequireAuth>
-              }
-            />
-            <Route path={ROUTES.CARDS} element={<CardLibraryPage />} />
-            <Route path={ROUTES.DECK_PATTERN} element={<DeckPage />} />
-            <Route path={ROUTES.HOW_TO_PLAY} element={<HowToPlayPage />} />
-            <Route path={ROUTES.LORE} element={<LorePage />} />
-            <Route path={ROUTES.UPDATES} element={<UpdatesPage />} />
-            <Route path={ROUTES.LOGIN} element={<LoginPage />} />
-            <Route path={ROUTES.REGISTER} element={<CreateAccountPage />} />
-            <Route path={ROUTES.VERIFY_EMAIL} element={<VerifyEmailPage />} />
-            <Route
-              path={ROUTES.FORGOT_PASSWORD}
-              element={<ForgotPasswordPage />}
-            />
-            <Route
-              path={ROUTES.RESET_PASSWORD}
-              element={<ResetPasswordPage />}
-            />
-            <Route
-              path={ROUTES.ACCEPT_INVITE}
-              element={<AcceptInvitePage />}
-            />
-            <Route path={ROUTES.DECK_COMUNITY} element={<ComunityDecksPage />} />
-            <Route path={ROUTES.PLAY_TESTER} element={<PlayTesterPage/>}/>
-            <Route path={ROUTES.PLAY_TESTER_PATTERN} element={<PlayTesterPage />} />
-            <Route path={ROUTES.PLAY_TESTER_VS_PATTERN} element={<PlayTesterPage />} />
-            <Route
-              path={ROUTES.SUBSCRIBE}
-              element={
-                <RequireAuth>
-                  <SubscribePage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path={ROUTES.ACCOUNT}
-              element={
-                <RequireAuth>
-                  <AccountSettingsPage />
-                </RequireAuth>
-              }
-            />
+              <Route path={ROUTES.HOME} element={<HomePage />} />
+              <Route
+                path={ROUTES.MAIN}
+                element={
+                  <RequireAuth>
+                    <MainPage />
+                  </RequireAuth>
+                }
+              />
+              <Route path={ROUTES.CARDS} element={<CardLibraryPage />} />
+              <Route path={ROUTES.DECK_PATTERN} element={<DeckPage />} />
+              <Route path={ROUTES.HOW_TO_PLAY} element={<HowToPlayPage />} />
+              <Route path={ROUTES.LORE} element={<LorePage />} />
+              <Route path={ROUTES.UPDATES} element={<UpdatesPage />} />
+              <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+              <Route path={ROUTES.REGISTER} element={<CreateAccountPage />} />
+              <Route path={ROUTES.VERIFY_EMAIL} element={<VerifyEmailPage />} />
+              <Route
+                path={ROUTES.FORGOT_PASSWORD}
+                element={<ForgotPasswordPage />}
+              />
+              <Route
+                path={ROUTES.RESET_PASSWORD}
+                element={<ResetPasswordPage />}
+              />
+              <Route
+                path={ROUTES.ACCEPT_INVITE}
+                element={<AcceptInvitePage />}
+              />
+              <Route
+                path={ROUTES.UNSUBSCRIBE}
+                element={<UnsubscribePage />}
+              />
+              <Route path={ROUTES.DECK_COMUNITY} element={<ComunityDecksPage />} />
+              <Route path={ROUTES.PLAY_TESTER} element={<PlayTesterPage />} />
+              <Route path={ROUTES.PLAY_TESTER_PATTERN} element={<PlayTesterPage />} />
+              <Route path={ROUTES.PLAY_TESTER_VS_PATTERN} element={<PlayTesterPage />} />
+              <Route
+                path={ROUTES.SUBSCRIBE}
+                element={
+                  <RequireAuth>
+                    <SubscribePage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path={ROUTES.ACCOUNT}
+                element={
+                  <RequireAuth>
+                    <AccountSettingsPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path={ROUTES.INBOX}
+                element={
+                  <RequireAuth>
+                    <InboxPage />
+                  </RequireAuth>
+                }
+              />
 
-            <Route
-              path={ROUTES.ADMIN}
-              element={
-                <RequireStaff>
-                  <AdminAnalyticsPage />
-                </RequireStaff>
-              }
-            />
-            <Route
-              path={ROUTES.ADMIN_CARDS}
-              element={
-                <RequireStaff>
-                  <AdminCardsPage />
-                </RequireStaff>
-              }
-            />
-            <Route
-              path={ROUTES.ADMIN_USERS}
-              element={
-                <RequireAdmin>
-                  <AdminUsersPage />
-                </RequireAdmin>
-              }
-            />
-            <Route
-              path={ROUTES.ADMIN_UPDATES}
-              element={
-                <RequireStaff>
-                  <AdminUpdatesPage />
-                </RequireStaff>
-              }
-            />
-          </Routes>
+              <Route
+                path={ROUTES.ADMIN}
+                element={
+                  <RequireStaff>
+                    <AdminAnalyticsPage />
+                  </RequireStaff>
+                }
+              />
+              <Route
+                path={ROUTES.ADMIN_CARDS}
+                element={
+                  <RequireStaff>
+                    <AdminCardsPage />
+                  </RequireStaff>
+                }
+              />
+              <Route
+                path={ROUTES.ADMIN_USERS}
+                element={
+                  <RequireAdmin>
+                    <AdminUsersPage />
+                  </RequireAdmin>
+                }
+              />
+              <Route
+                path={ROUTES.ADMIN_UPDATES}
+                element={
+                  <RequireStaff>
+                    <AdminUpdatesPage />
+                  </RequireStaff>
+                }
+              />
+            </Routes>
           </main>
         </ComingSoonGate>
       </BrowserRouter>

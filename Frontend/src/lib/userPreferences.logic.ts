@@ -53,6 +53,9 @@ export type UserPreferences = {
   library_page_size: LibraryPageSize
   library_preview_px: number
   deck_start_sections: string[]
+  notify_blog: boolean
+  notify_cards: boolean
+  notify_blog_email: boolean
 }
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
@@ -63,9 +66,19 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   library_page_size: 50,
   library_preview_px: PREVIEW_PX_DEFAULT,
   deck_start_sections: [...DEFAULT_DECK_CATEGORY_NAMES],
+  notify_blog: true,
+  notify_cards: true,
+  notify_blog_email: false,
 }
 
 export type UserPreferencesPatch = Partial<UserPreferences>
+
+function asBool(value: unknown, fallback: boolean): boolean {
+  if (typeof value === "boolean") return value
+  if (value === "true" || value === 1 || value === "1") return true
+  if (value === "false" || value === 0 || value === "0") return false
+  return fallback
+}
 
 function clampInt(value: unknown, lo: number, hi: number, fallback: number): number {
   const n = typeof value === "number" ? value : Number(value)
@@ -154,6 +167,9 @@ export function normalizeUserPreferences(raw: unknown): UserPreferences {
       : DEFAULT_USER_PREFERENCES.library_page_size,
     library_preview_px: clampPreviewPx(Number(data.library_preview_px)),
     deck_start_sections: normalizeStartSections(data.deck_start_sections),
+    notify_blog: asBool(data.notify_blog, true),
+    notify_cards: asBool(data.notify_cards, true),
+    notify_blog_email: asBool(data.notify_blog_email, false),
   }
 }
 

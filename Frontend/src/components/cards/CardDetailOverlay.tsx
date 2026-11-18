@@ -7,6 +7,7 @@
 import { useEffect } from "react"
 import { createPortal } from "react-dom"
 
+import { CardChangeBanner } from "@/components/cards/CardChangeBanner"
 import { CardCostIcons } from "@/components/cards/CardCostIcons"
 import { CardRulesText } from "@/components/cards/CardRulesText"
 import { parseKeyword } from "@/components/cards/keywordHelp.logic"
@@ -14,6 +15,11 @@ import { GameIcon } from "@/components/common/GameIcon"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import type { CardLibraryItem } from "@/lib/api/cards"
 import { cardFaceUrl } from "@/lib/api/decks"
+import {
+  changedRow,
+  type CardDetailChange,
+} from "@/lib/cardBanner.logic"
+import type { CardDiffRow } from "@/lib/inboxCardDiff.logic"
 
 const closeButtonClassName =
   "font-buahs93 h-9 rounded-none border border-cyan-500/35 bg-black/70 px-3 text-sm text-cyan-100 hover:border-cyan-400/60 hover:bg-cyan-500/10 hover:text-white"
@@ -26,9 +32,25 @@ export type CardDetailOverlayCard = CardLibraryItem & {
 type CardDetailOverlayProps = {
   card: CardDetailOverlayCard | null
   onClose: () => void
+  /** Inbox/catalogue change callout. Omit when browsing a plain card. */
+  change?: CardDetailChange | null
 }
 
-export function CardDetailOverlay({ card, onClose }: CardDetailOverlayProps) {
+function WasLine({ row }: { row: CardDiffRow | null }) {
+  if (row == null) return null
+  if (row.before === "—") return null
+  return (
+    <p className="font-mono text-[11px] text-white/40 line-through">
+      {row.before}
+    </p>
+  )
+}
+
+export function CardDetailOverlay({
+  card,
+  onClose,
+  change = null,
+}: CardDetailOverlayProps) {
   useEffect(() => {
     if (!card) return
     function onKeyDown(event: KeyboardEvent) {
@@ -46,6 +68,24 @@ export function CardDetailOverlay({ card, onClose }: CardDetailOverlayProps) {
     card.has_tlv === true && threat !== "" && threat !== "0"
   const showInvokeCost = card.has_invoke_cost === true
   const keywords = card.keywords ?? []
+  const rows = change?.rows ?? []
+  const costRow =
+    changedRow(rows, "cost") ?? changedRow(rows, "invoke_cost")
+  const costChanged = costRow != null
+  const beforeCost = change?.beforeCost ?? []
+  const afterCost =
+    change?.afterCost && change.afterCost.length > 0
+      ? change.afterCost
+      : card.cost
+  const threatRow = changedRow(rows, "threat_level")
+  const typesChanged =
+    changedRow(rows, "super_types") != null ||
+    changedRow(rows, "sub_types") != null ||
+    changedRow(rows, "types_line") != null
+  const keywordRow = changedRow(rows, "keywords")
+  const rulesRow = changedRow(rows, "description")
+  const setRow = changedRow(rows, "card_set_name")
+  const rarityRow = changedRow(rows, "rarity")
 
   return createPortal(
     <div
@@ -82,24 +122,61 @@ export function CardDetailOverlay({ card, onClose }: CardDetailOverlayProps) {
               onClick={onClose}
             />
           </div>
+          {change ? (
+            <div className="mt-2">
+              <CardChangeBanner
+                kind={change.kind}
+                className="relative left-0 top-0 inline-block"
+              />
+            </div>
+          ) : null}
           <p className="mt-2 font-mono text-sm text-cyan-400/70 sm:text-base">
             {card.card_set_name} · {card.rarity}
           </p>
+          {setRow || rarityRow ? (
+            <WasLine
+              row={
+                setRow ?? rarityRow
+              }
+            />
+          ) : null}
           {card.metaLine ? (
             <p className="mt-1 font-mono text-xs text-cyan-300/55">
               {card.metaLine}
             </p>
           ) : null}
           <div className="mt-4 flex flex-wrap items-start gap-8 sm:mt-5">
-            {showInvokeCost ? (
+            {showInvokeCost || costChanged ? (
               <div className="space-y-2">
                 <p className="font-buahs93 text-sm text-cyan-200/80 sm:text-base">
                   INVOKE COST
                 </p>
-                <CardCostIcons
-                  cost={card.cost}
-                  iconClassName="h-6 w-auto lg:h-7 2xl:h-7"
-                />
+                {costChanged ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-buahs93 text-[11px] text-white/45">
+                      was:
+                    </span>
+                    <CardCostIcons
+                      cost={beforeCost}
+                      iconClassName="h-6 w-auto opacity-55 lg:h-7 2xl:h-7"
+                    />
+                    <span className="font-mono text-sm text-cyan-300/70">
+                      →
+                    </span>
+                    <span className="font-buahs93 text-[11px] text-cyan-200/80">
+                      now:
+                    </span>
+                    <CardCostIcons
+                      cost={afterCost}
+                      iconClassName="h-6 w-auto lg:h-7 2xl:h-7"
+                    />
+                  </div>
+                ) : (
+                  <CardCostIcons
+                    cost={card.cost}
+                    iconClassName="h-6 w-auto lg:h-7 2xl:h-7"
+                  />
+                )}
               </div>
             ) : null}
             {showThreat ? (
@@ -116,10 +193,17 @@ export function CardDetailOverlay({ card, onClose }: CardDetailOverlayProps) {
                     {threat}
                   </span>
                 </div>
+                <WasLine row={threatRow} />
               </div>
             ) : null}
           </div>
-          <p className="mt-4 font-mono text-sm text-white/55 sm:text-base">
+          <p
+            className={
+              typesChanged
+                ? "mt-4 font-mono text-sm text-cyan-200 sm:text-base"
+                : "mt-4 font-mono text-sm text-white/55 sm:text-base"
+            }
+          >
             {[...(card.super_types ?? []), ...(card.sub_types ?? [])]
               .filter(Boolean)
               .join(" · ") || "—"}
@@ -151,10 +235,23 @@ export function CardDetailOverlay({ card, onClose }: CardDetailOverlayProps) {
             </div>
           ) : null}
 
+          {keywordRow ? <WasLine row={keywordRow} /> : null}
+
           <div className="mt-5 sm:mt-6">
             <p className="mb-2 font-buahs93 text-xs tracking-wide text-cyan-300/80">
               RULES TEXT
             </p>
+            {rulesRow && rulesRow.before !== "—" ? (
+              <div className="mb-3 border border-cyan-500/15 bg-black/40 p-3">
+                <p className="mb-1 font-buahs93 text-[10px] tracking-wide text-white/40">
+                  WAS
+                </p>
+                <CardRulesText
+                  text={rulesRow.before}
+                  className="text-sm text-white/40 line-through sm:text-base"
+                />
+              </div>
+            ) : null}
             <CardRulesText text={card.description ?? ""} />
           </div>
         </div>

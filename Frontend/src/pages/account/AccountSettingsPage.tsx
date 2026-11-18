@@ -257,6 +257,59 @@ export function AccountSettingsPage() {
           </div>
         </section>
 
+        <section className="mb-6 border border-cyan-500/25 bg-black/50 p-5">
+          <h2 className="font-buahs93 text-sm tracking-wide text-cyan-100">
+            NOTIFICATIONS
+          </h2>
+          <p className="mt-1 font-mono text-[11px] text-cyan-100/45">
+            In-app inbox channels mute without deleting events. Blog email is
+            off until you opt in.
+          </p>
+          <div className="mt-4 flex flex-col gap-3">
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={prefs.notify_blog}
+                aria-label="Blog post notifications"
+                onChange={(event) =>
+                  patchSettings({ notify_blog: event.target.checked })
+                }
+              />
+              <span className="font-buahs93 text-xs tracking-wide text-cyan-100">
+                BLOG / UPDATES POSTS (IN-APP)
+              </span>
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={prefs.notify_cards}
+                aria-label="Card change notifications"
+                onChange={(event) =>
+                  patchSettings({ notify_cards: event.target.checked })
+                }
+              />
+              <span className="font-buahs93 text-xs tracking-wide text-cyan-100">
+                CARD CHANGES
+              </span>
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={prefs.notify_blog_email}
+                aria-label="Blog post email notifications"
+                onChange={(event) =>
+                  patchSettings({
+                    notify_blog_email: event.target.checked,
+                  })
+                }
+              />
+              <span className="font-buahs93 text-xs tracking-wide text-cyan-100">
+                BLOG / UPDATES POSTS (EMAIL)
+              </span>
+            </label>
+          </div>
+        </section>
+
         <DeleteAccountPanel />
       </div>
     </section>

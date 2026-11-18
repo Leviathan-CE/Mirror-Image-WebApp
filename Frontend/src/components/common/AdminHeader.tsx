@@ -9,6 +9,7 @@ import { useComingSoon } from "@/app/providers/ComingSoonProvider"
 import { AccountMenu } from "@/components/common/AccountMenu"
 import { HeaderNav } from "@/components/common/HeaderNav"
 import { HeaderShell } from "@/components/common/HeaderShell"
+import { InboxBell } from "@/components/inbox/InboxBell"
 import { isAdminRole, ROUTES } from "@/lib/route"
 
 export function AdminHeader() {
@@ -38,12 +39,12 @@ export function AdminHeader() {
               },
               ...(canManageUsers
                 ? [
-                    {
-                      id: "users",
-                      label: "USERS",
-                      onSelect: () => navigate(ROUTES.ADMIN_USERS),
-                    },
-                  ]
+                  {
+                    id: "users",
+                    label: "USERS",
+                    onSelect: () => navigate(ROUTES.ADMIN_USERS),
+                  },
+                ]
                 : []),
               {
                 id: "updates",
@@ -64,7 +65,12 @@ export function AdminHeader() {
           ) : null}
         </div>
       }
-      actions={<AccountMenu suffix={` · ${staffLabel}`} />}
+      actions={
+        <div className="flex items-center gap-1">
+          <InboxBell />
+          <AccountMenu suffix={` · ${staffLabel}`} />
+        </div>
+      }
     />
   )
 }

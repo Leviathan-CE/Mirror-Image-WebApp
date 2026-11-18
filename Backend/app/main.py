@@ -19,6 +19,8 @@ from app.routers import play_rooms
 from app.routers import site_settings
 from app.routers import announcements_public
 from app.routers import admin_announcements
+from app.routers import notifications
+from app.routers import mailing_list
 from app.analytics import (
     LOGIN_PATHS,
     host_sampler,
@@ -45,7 +47,12 @@ async def lifespan(_app: FastAPI):
     Schema setup is intentionally disabled for now, but this is where
     startup work should run before the app begins serving requests.
     """
+    import asyncio
+
+    from app.inbox_pubsub import inbox_hub
+
     #ensure_schema()
+    inbox_hub.bind_loop(asyncio.get_running_loop())
     host_sampler.start()
     yield
     host_sampler.stop()
@@ -120,6 +127,8 @@ app.include_router(admin_cards.router)
 app.include_router(admin_users.router)
 app.include_router(announcements_public.router)
 app.include_router(admin_announcements.router)
+app.include_router(notifications.router)
+app.include_router(mailing_list.router)
 app.include_router(card_manager.router)
 app.include_router(media.router)
 app.include_router(assets.router)

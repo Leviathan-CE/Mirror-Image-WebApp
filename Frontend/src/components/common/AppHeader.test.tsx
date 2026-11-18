@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { MemoryRouter } from "react-router-dom"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { InboxProvider } from "@/app/providers/InboxProvider"
 import type { AuthUser } from "@/lib/api/auth"
 
 import { AppHeader } from "./AppHeader"
@@ -30,10 +31,40 @@ vi.mock("@/app/providers/ComingSoonProvider", () => ({
   }),
 }))
 
+vi.mock("@/lib/api/notifications", () => ({
+  INBOX_CHANGED: "inbox.changed",
+  notificationsWsUrl: () => "ws://localhost:8001/notifications/ws",
+  fetchNotifications: vi.fn(async () => ({
+    items: [],
+    total: 0,
+    unread: 0,
+    limit: 8,
+    offset: 0,
+  })),
+  fetchUnreadCount: vi.fn(async () => ({ unread: 0 })),
+  markNotificationRead: vi.fn(async () => ({ read: 0 })),
+  markAllNotificationsRead: vi.fn(async () => ({ read: 0 })),
+}))
+
+class FakeWebSocket {
+  static OPEN = 1
+  readyState = FakeWebSocket.OPEN
+  onopen: ((ev: Event) => void) | null = null
+  onmessage: ((ev: MessageEvent) => void) | null = null
+  onclose: ((ev: CloseEvent) => void) | null = null
+  onerror: ((ev: Event) => void) | null = null
+  send() {}
+  close() {}
+}
+
+vi.stubGlobal("WebSocket", FakeWebSocket)
+
 function renderAppHeader() {
   return render(
     <MemoryRouter>
-      <AppHeader />
+      <InboxProvider>
+        <AppHeader />
+      </InboxProvider>
     </MemoryRouter>
   )
 }
@@ -76,6 +107,7 @@ describe("AppHeader", () => {
     expect(
       screen.getByRole("button", { name: "Account menu" })
     ).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Inbox" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "LOGIN" })).not.toBeInTheDocument()
   })
 

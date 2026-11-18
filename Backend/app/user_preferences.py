@@ -36,7 +36,23 @@ DEFAULT_PREFERENCES: dict[str, Any] = {
     "library_page_size": 50,
     "library_preview_px": PREVIEW_PX_DEFAULT,
     "deck_start_sections": list(DEFAULT_START_SECTIONS),
+    "notify_blog": True,
+    "notify_cards": True,
+    "notify_blog_email": False,
 }
+
+
+def _as_bool(value: Any, default: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    text = str(value).strip().lower()
+    if text in ("true", "1", "on", "yes"):
+        return True
+    if text in ("false", "0", "off", "no"):
+        return False
+    return default
 
 
 def _clamp_int(value: Any, lo: int, hi: int, default: int) -> int:
@@ -98,6 +114,12 @@ def normalize_user_preferences(raw: Any) -> dict[str, Any]:
         ),
         "deck_start_sections": _normalize_start_sections(
             data.get("deck_start_sections")
+        ),
+        "notify_blog": _as_bool(data.get("notify_blog"), True),
+        "notify_cards": _as_bool(data.get("notify_cards"), True),
+        "notify_blog_email": _as_bool(
+            data.get("notify_blog_email"),
+            False,
         ),
     }
 

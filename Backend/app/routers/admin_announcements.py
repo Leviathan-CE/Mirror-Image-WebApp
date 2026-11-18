@@ -27,6 +27,9 @@ from app.announcements import (
 )
 from app.db import get_connection
 from app.media_urls import signed_media_path
+from app.inbox_pubsub import publish_inbox_changed
+from app.mailing_list import fanout_blog_post_emails
+from app.notifications import emit_announcement_published
 from app.security import get_current_staff_user_id
 
 logger = logging.getLogger(__name__)
@@ -60,6 +63,8 @@ class AnnouncementOut(BaseModel):
     cover_card_id: int | None = None
     cover_card_face: str | None = None
     cover_youtube_id: str | None = None
+    emailed: int | None = None
+    email_failed: int | None = None
 
 
 class AnnouncementCreate(BaseModel):
@@ -71,6 +76,7 @@ class AnnouncementCreate(BaseModel):
     cover_card_id: int | None = None
     cover_card_face: CardFace | None = None
     cover_youtube: str | None = None
+    email_subscribers: bool = False
 
 
 class AnnouncementPatch(BaseModel):
@@ -82,6 +88,7 @@ class AnnouncementPatch(BaseModel):
     cover_card_id: int | None = None
     cover_card_face: CardFace | None = None
     cover_youtube: str | None = None
+    email_subscribers: bool = False
 
 
 class MediaItem(BaseModel):
@@ -222,7 +229,28 @@ def create_announcement(
                 )
                 row = cur.fetchone()
                 result = _to_out(cur, row)
+                event_id = None
+                if status == "published":
+                    event_id = emit_announcement_published(
+                        cur,
+                        announcement_id=new_id,
+                        title=result.title,
+                        slug=result.slug,
+                    )
             conn.commit()
+        if event_id is not None:
+            publish_inbox_changed(event_id=event_id)
+        if status == "published" and body.email_subscribers:
+            with get_connection() as mail_conn:
+                with mail_conn.cursor() as mail_cur:
+                    email_stats = fanout_blog_post_emails(
+                        mail_cur,
+                        title=result.title,
+                        slug=result.slug,
+                        body_markdown=result.body_markdown,
+                    )
+            result.emailed = int(email_stats["sent"])
+            result.email_failed = int(email_stats["failed"])
     except (UndefinedTable, OperationalError) as e:
         raise _db_error(e) from e
     return result
@@ -320,7 +348,28 @@ def patch_announcement(
                 )
                 row = cur.fetchone()
                 result = _to_out(cur, row)
+                event_id = None
+                if result.status == "published":
+                    event_id = emit_announcement_published(
+                        cur,
+                        announcement_id=result.id,
+                        title=result.title,
+                        slug=result.slug,
+                    )
             conn.commit()
+        if event_id is not None:
+            publish_inbox_changed(event_id=event_id)
+        if result.status == "published" and body.email_subscribers:
+            with get_connection() as mail_conn:
+                with mail_conn.cursor() as mail_cur:
+                    email_stats = fanout_blog_post_emails(
+                        mail_cur,
+                        title=result.title,
+                        slug=result.slug,
+                        body_markdown=result.body_markdown,
+                    )
+            result.emailed = int(email_stats["sent"])
+            result.email_failed = int(email_stats["failed"])
     except HTTPException:
         raise
     except (UndefinedTable, OperationalError) as e:
