@@ -63,6 +63,13 @@ describe("comingSoonBlocksVisitor", () => {
         pathname: ROUTES.ADMIN_CARDS,
       })
     ).toBe(false)
+    expect(
+      comingSoonBlocksVisitor({
+        comingSoon: true,
+        role: null,
+        pathname: ROUTES.UNSUBSCRIBE,
+      })
+    ).toBe(false)
   })
 
   it("lets playtesters through and still blocks plain users", () => {

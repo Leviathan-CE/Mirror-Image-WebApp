@@ -3,10 +3,19 @@
  * Used full-page on /cards and as a compact side panel on the deck editor.
  */
 
-import { useEffect, useRef, useState, type DragEvent as ReactDragEvent } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent as ReactDragEvent,
+} from "react"
 
+import { useInbox } from "@/app/providers/InboxProvider"
 import { useUserPreferences } from "@/app/providers/PreferencesProvider"
+import { CardChangeBanner } from "@/components/cards/CardChangeBanner"
 import { CardDetailOverlay } from "@/components/cards/CardDetailOverlay"
+import type { CardDetailChange } from "@/lib/cardBanner.logic"
 import { costTokenToIcon } from "@/components/cards/constants"
 import { CardSearchBar } from "@/components/cards/CardSearchBar"
 import { SearchPaginationBar } from "@/components/cards/SearchPaginationBar"
@@ -75,6 +84,11 @@ export function CardLibraryBrowser({
   onCardActivate,
 }: CardLibraryBrowserProps) {
   const { prefs, patchPrefs } = useUserPreferences()
+  const {
+    bannerForCard,
+    changeForCard,
+    markCardsSeen,
+  } = useInbox()
   const pageSize = prefs.library_page_size
   const sortMode = prefs.library_sort
   const previewCardMinPx = prefs.library_preview_px
@@ -96,6 +110,10 @@ export function CardLibraryBrowser({
   const [subType, setSubType] = useState("")
   const [offset, setOffset] = useState(0)
   const [selected, setSelected] = useState<CardLibraryItem | null>(null)
+  const [selectedChange, setSelectedChange] =
+    useState<CardDetailChange | null>(null)
+  const itemsRef = useRef<CardLibraryItem[]>([])
+  itemsRef.current = items
   const [advancedOpen, setAdvancedOpen] = useState(false)
   /** Compact deck panel: keep advanced filters collapsed so the grid stays large. */
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -139,6 +157,25 @@ export function CardLibraryBrowser({
     subType,
     pageSize,
     sortMode,
+  ])
+
+  useEffect(() => {
+    return () => {
+      const visibleIds = itemsRef.current.map((card) => card.id)
+      markCardsSeen(visibleIds)
+    }
+  }, [
+    debouncedName,
+    debouncedDescription,
+    colors,
+    invokeMin,
+    invokeMax,
+    superType,
+    subType,
+    pageSize,
+    sortMode,
+    offset,
+    markCardsSeen,
   ])
 
   useEffect(() => {
@@ -240,13 +277,25 @@ export function CardLibraryBrowser({
     event.dataTransfer.effectAllowed = "copy"
   }
 
+  function openCardDetail(card: CardLibraryItem) {
+    const change = changeForCard(card.id)
+    markCardsSeen([card.id])
+    setSelectedChange(change)
+    setSelected(card)
+  }
+
+  const closeCardDetail = useCallback(() => {
+    setSelected(null)
+    setSelectedChange(null)
+  }, [])
+
   function onCardButtonClick(card: CardLibraryItem) {
     if (suppressClickRef.current) return
     if (onCardActivate) {
       void onCardActivate(card)
       return
     }
-    setSelected(card)
+    openCardDetail(card)
   }
 
   const pageStart = total === 0 ? 0 : offset + 1
@@ -737,11 +786,16 @@ export function CardLibraryBrowser({
       >
         {items.map((card) => {
           const art = cardFaceUrl(card)
+          const banner = bannerForCard(card.id)
+          const ariaLabel =
+            banner == null
+              ? card.card_name
+              : `${card.card_name}, ${banner}`
           return (
             <li key={card.id}>
               <button
                 type="button"
-                aria-label={card.card_name}
+                aria-label={ariaLabel}
                 title={
                   onCardActivate
                     ? `${card.card_name} — click to add · middle/right-click details${
@@ -750,10 +804,11 @@ export function CardLibraryBrowser({
                     : `${card.card_name} — click or middle-click for details`
                 }
                 className={cn(
-                  "group w-full overflow-hidden border border-cyan-500/20 bg-black/50 transition-colors hover:border-cyan-400/60",
+                  "group relative w-full overflow-hidden border border-cyan-500/20 bg-black/50 transition-colors hover:border-cyan-400/60",
                   draggable && "cursor-grab active:cursor-grabbing"
                 )}
                 draggable={draggable}
+                onPointerEnter={() => markCardsSeen([card.id])}
                 onDragStart={(event) => onLibraryDragStart(event, card)}
                 onDragEnd={() => {
                   endDeckCardDrag()
@@ -767,16 +822,22 @@ export function CardLibraryBrowser({
                   if (event.button !== 1) return
                   event.preventDefault()
                   event.stopPropagation()
-                  setSelected(card)
+                  openCardDetail(card)
                 }}
                 onAuxClick={(event) => {
                   if (event.button === 1) event.preventDefault()
                 }}
                 onContextMenu={(event) => {
                   event.preventDefault()
-                  setSelected(card)
+                  openCardDetail(card)
                 }}
               >
+                {banner ? (
+                  <CardChangeBanner
+                    kind={banner}
+                    className="absolute left-1 top-1"
+                  />
+                ) : null}
                 {art ? (
                   <img
                     src={art}
@@ -806,7 +867,11 @@ export function CardLibraryBrowser({
         {paginationBar("top")}
         {results}
         {paginationBar("bottom")}
-        <CardDetailOverlay card={selected} onClose={() => setSelected(null)} />
+        <CardDetailOverlay
+          card={selected}
+          change={selectedChange}
+          onClose={closeCardDetail}
+        />
       </div>
     )
   }
@@ -819,7 +884,11 @@ export function CardLibraryBrowser({
       {previewSizeControl}
       {results}
       {paginationBar("bottom")}
-      <CardDetailOverlay card={selected} onClose={() => setSelected(null)} />
+      <CardDetailOverlay
+        card={selected}
+        change={selectedChange}
+        onClose={closeCardDetail}
+      />
     </div>
   )
 }

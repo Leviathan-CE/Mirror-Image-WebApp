@@ -1,22 +1,33 @@
-"""Logged-in inbox: list, unread count, mark read."""
+"""Logged-in inbox: list, unread count, mark read, live pub/sub."""
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from pydantic import BaseModel
 from psycopg2 import OperationalError
 from psycopg2.errors import UndefinedTable
 
 from app.db import get_connection
 from app.features import load_granted_feature_keys
+from app.inbox_pubsub import inbox_hub
 from app.notifications import (
     allowed_kinds_from_prefs,
     can_see_preview_audience,
 )
-from app.security import get_current_user_id
+from app.play_room_limits import WS_AUTH_TIMEOUT_S
+from app.security import decode_access_token, get_current_user_id
 from app.user_preferences import normalize_user_preferences
 
 logger = logging.getLogger(__name__)
@@ -358,3 +369,80 @@ def mark_notification_read(
             detail="notification_read_failed",
         ) from e
     return MarkReadResult(read=marked)
+
+
+def _user_id_from_token(token: str) -> int:
+    payload = decode_access_token(token)
+    try:
+        return int(payload["sub"])
+    except (KeyError, TypeError, ValueError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid_token_subject",
+        ) from e
+
+
+async def _auth_first_frame(ws: WebSocket) -> int | None:
+    """JWT in the first JSON frame — never on the URL."""
+    try:
+        raw = await asyncio.wait_for(
+            ws.receive_json(),
+            timeout=WS_AUTH_TIMEOUT_S,
+        )
+    except TimeoutError:
+        await ws.close(code=4401)
+        return None
+    except WebSocketDisconnect:
+        return None
+    except Exception:
+        await ws.close(code=4401)
+        return None
+    if not isinstance(raw, dict):
+        await ws.close(code=4401)
+        return None
+    if raw.get("type") != "auth":
+        await ws.close(code=4401)
+        return None
+    token = raw.get("token")
+    if not isinstance(token, str) or not token:
+        await ws.close(code=4401)
+        return None
+    try:
+        return _user_id_from_token(token)
+    except HTTPException:
+        await ws.close(code=4401)
+        return None
+
+
+@router.websocket("/ws")
+async def notifications_socket(ws: WebSocket) -> None:
+    """
+    Subscribe to inbox pub/sub.
+
+    First frame: ``{ "type": "auth", "token": "<jwt>" }``.
+    Then the server pushes ``{ "type": "inbox.changed", ... }``
+    whenever a publisher commits a new notification_events row.
+    """
+    await ws.accept()
+    user_id = await _auth_first_frame(ws)
+    if user_id is None:
+        return
+    await inbox_hub.subscribe(ws)
+    try:
+        await ws.send_json({"type": "inbox.subscribed"})
+        while True:
+            message = await ws.receive()
+            kind = message.get("type")
+            if kind == "websocket.disconnect":
+                break
+            if kind != "websocket.receive":
+                continue
+            text = message.get("text")
+            if not isinstance(text, str):
+                continue
+            if text.strip() == "ping":
+                await ws.send_json({"type": "pong"})
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await inbox_hub.unsubscribe(ws)

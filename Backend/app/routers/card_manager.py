@@ -27,6 +27,7 @@ from app.card_publish import (
 )
 from app.cards.schemas import CardLibraryItem
 from app.media_urls import signed_media_path
+from app.inbox_pubsub import publish_inbox_changed
 from app.notifications import (
     emit_card_change,
     fetch_card_notify_state,
@@ -395,8 +396,10 @@ def create_card(
                 cur.execute(sql, insert_cols)
                 row = cur.fetchone()
                 new_state = fetch_card_notify_state(cur, int(row[0]))
-                emit_card_change(cur, old_state, new_state)
+                event_id = emit_card_change(cur, old_state, new_state)
             conn.commit()
+        if event_id is not None:
+            publish_inbox_changed(event_id=event_id)
     except UniqueViolation as e:
         logger.warning("card duplicate id: %s", e)
         raise HTTPException(status_code=409, detail="card_id_already_exists") from e

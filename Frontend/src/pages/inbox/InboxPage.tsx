@@ -7,7 +7,6 @@ import { useNavigate, useSearchParams } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
 import { useInbox } from "@/app/providers/InboxProvider"
-import { CardChangeDiff } from "@/components/inbox/CardChangeDiff"
 import { Button } from "@/components/ui/button"
 import { sharedImages } from "@/assets"
 import { ApiError } from "@/lib/api/client"
@@ -15,6 +14,7 @@ import {
   fetchNotifications,
   type NotificationItem,
 } from "@/lib/api/notifications"
+import { isCardNotificationKind } from "@/lib/cardBanner.logic"
 import { ROUTES } from "@/lib/route"
 
 const PAGE_SIZE = 30
@@ -38,19 +38,17 @@ function kindLabel(kind: string): string {
   return kind
 }
 
-function isCardKind(kind: string): boolean {
-  return (
-    kind === "card.created" ||
-    kind === "card.updated" ||
-    kind === "card.removed"
-  )
-}
-
 export function InboxPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { token } = useAuth()
-  const { unread, markAllRead, markOneRead, refresh } = useInbox()
+  const {
+    unread,
+    markAllRead,
+    markOneRead,
+    openCardEvent,
+    refresh,
+  } = useInbox()
   const [items, setItems] = useState<NotificationItem[]>([])
   const [total, setTotal] = useState(0)
   const [offset, setOffset] = useState(0)
@@ -95,6 +93,13 @@ export function InboxPage() {
     void loadPage(0)
   }, [loadPage])
 
+  useEffect(() => {
+    if (openItem == null) return
+    if (!isCardNotificationKind(openItem.kind)) return
+    void openCardEvent(openItem)
+    setSearchParams({})
+  }, [openItem, openCardEvent, setSearchParams])
+
   async function openItemRow(item: NotificationItem) {
     if (!token) return
     if (!item.read) {
@@ -116,6 +121,10 @@ export function InboxPage() {
         return
       }
       navigate(ROUTES.UPDATES)
+      return
+    }
+    if (isCardNotificationKind(item.kind)) {
+      await openCardEvent(item)
       return
     }
     setSearchParams({ event: String(item.id) })
@@ -189,40 +198,32 @@ export function InboxPage() {
         ) : null}
 
         <ul className="space-y-3">
-          {items.map((item) => {
-            const open = openItem?.id === item.id
-            return (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  className="flex w-full items-start justify-between gap-3 border border-cyan-500/25 bg-black/55 p-3 text-left hover:border-cyan-400/50"
-                  onClick={() => void openItemRow(item)}
-                  disabled={busy}
-                >
-                  <div className="min-w-0">
-                    <p className="font-buahs93 text-[11px] tracking-wide text-cyan-400/70">
-                      {kindLabel(item.kind)}
-                      {item.read ? "" : " · UNREAD"}
-                    </p>
-                    <h2 className="mt-1 font-glitch text-lg text-cyan-200">
-                      {item.title}
-                    </h2>
-                    <p className="mt-1 font-mono text-xs text-white/50">
-                      {item.summary}
-                    </p>
-                  </div>
-                  <p className="shrink-0 font-mono text-[10px] text-cyan-100/45">
-                    {postedLabel(item.created_at)}
+          {items.map((item) => (
+            <li key={item.id}>
+              <button
+                type="button"
+                className="flex w-full items-start justify-between gap-3 border border-cyan-500/25 bg-black/55 p-3 text-left hover:border-cyan-400/50"
+                onClick={() => void openItemRow(item)}
+                disabled={busy}
+              >
+                <div className="min-w-0">
+                  <p className="font-buahs93 text-[11px] tracking-wide text-cyan-400/70">
+                    {kindLabel(item.kind)}
+                    {item.read ? "" : " · UNREAD"}
                   </p>
-                </button>
-                {open && isCardKind(item.kind) ? (
-                  <div className="border border-t-0 border-cyan-500/25 bg-black/70 p-4">
-                    <CardChangeDiff payload={item.payload} />
-                  </div>
-                ) : null}
-              </li>
-            )
-          })}
+                  <h2 className="mt-1 font-glitch text-lg text-cyan-200">
+                    {item.title}
+                  </h2>
+                  <p className="mt-1 font-mono text-xs text-white/50">
+                    {item.summary}
+                  </p>
+                </div>
+                <p className="shrink-0 font-mono text-[10px] text-cyan-100/45">
+                  {postedLabel(item.created_at)}
+                </p>
+              </button>
+            </li>
+          ))}
         </ul>
 
         {total > PAGE_SIZE ? (

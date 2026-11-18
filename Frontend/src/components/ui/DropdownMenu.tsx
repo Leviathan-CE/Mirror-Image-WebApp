@@ -73,6 +73,7 @@ type DropdownMenuProps = {
   className?: string
   triggerClassName?: string
   menuClassName?: string
+  onOpenChange?: (open: boolean) => void
 }
 
 export function DropdownMenu({
@@ -84,12 +85,20 @@ export function DropdownMenu({
   className,
   triggerClassName,
   menuClassName,
+  onOpenChange,
 }: DropdownMenuProps) {
   const menuId = useId()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const [menuStyle, setMenuStyle] = useState<CSSProperties>({})
+
+  function setMenuOpen(next: boolean) {
+    setOpen(next)
+    if (onOpenChange) {
+      onOpenChange(next)
+    }
+  }
 
   useLayoutEffect(() => {
     if (!open) return
@@ -128,11 +137,11 @@ export function DropdownMenu({
       if (!(target instanceof Node)) return
       if (triggerRef.current?.contains(target)) return
       if (menuRef.current?.contains(target)) return
-      setOpen(false)
+      setMenuOpen(false)
     }
 
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false)
+      if (event.key === "Escape") setMenuOpen(false)
     }
 
     // Capture + pointerdown: a bubble mousedown misses iOS taps, and the
@@ -200,14 +209,14 @@ export function DropdownMenu({
                     event.preventDefault()
                     event.stopPropagation()
                     if (item.disabled) return
-                    setOpen(false)
+                    setMenuOpen(false)
                     queueMicrotask(() => item.onSelect?.())
                   }}
                   onClick={(event) => {
                     event.preventDefault()
                     event.stopPropagation()
                     if (item.disabled) return
-                    setOpen(false)
+                    setMenuOpen(false)
                     queueMicrotask(() => item.onSelect?.())
                   }}
                 >
@@ -240,7 +249,7 @@ export function DropdownMenu({
                       if (event.key !== "Enter") return
                       event.preventDefault()
                       if (item.disabled) return
-                      setOpen(false)
+                      setMenuOpen(false)
                       item.onSelect?.()
                     }}
                   />
@@ -267,7 +276,7 @@ export function DropdownMenu({
           "disabled:opacity-50",
           triggerClassName
         )}
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => setMenuOpen(!open)}
       >
         {trigger}
       </button>

@@ -1,24 +1,19 @@
 /**
  * Header inbox trigger: unread badge, recent items, link to /inbox.
+ * Card rows open the catalogue overlay instead of jumping to /inbox.
  */
 
-import { useCallback, useEffect, useState } from "react"
 import { Bell } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
-import { useAuth } from "@/app/providers/AuthProvider"
 import { useInbox } from "@/app/providers/InboxProvider"
 import { navButtonClassName } from "@/components/common/headerStyles"
 import { DropdownMenu } from "@/components/ui/DropdownMenu"
-import { ApiError } from "@/lib/api/client"
-import {
-  fetchNotifications,
-  type NotificationItem,
-} from "@/lib/api/notifications"
+import type { NotificationItem } from "@/lib/api/notifications"
+import { isCardNotificationKind } from "@/lib/cardBanner.logic"
 import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
 
-const POLL_MS = 60_000
 const PREVIEW_LIMIT = 8
 
 function destinationFor(item: NotificationItem): string {
@@ -34,35 +29,20 @@ function destinationFor(item: NotificationItem): string {
 
 export function InboxBell() {
   const navigate = useNavigate()
-  const { token } = useAuth()
-  const { unread, revision, markOneRead } = useInbox()
-  const [preview, setPreview] = useState<NotificationItem[]>([])
-
-  const refreshPreview = useCallback(async () => {
-    if (!token) return
-    try {
-      const result = await fetchNotifications(token, {
-        limit: PREVIEW_LIMIT,
-        offset: 0,
-      })
-      setPreview(result.items)
-    } catch (error: unknown) {
-      if (error instanceof ApiError && error.status === 401) return
-    }
-  }, [token])
-
-  useEffect(() => {
-    if (!token) return
-    void refreshPreview()
-    const timer = window.setInterval(() => {
-      void refreshPreview()
-    }, POLL_MS)
-    return () => {
-      window.clearInterval(timer)
-    }
-  }, [token, revision, refreshPreview])
+  const {
+    unread,
+    items,
+    markOneRead,
+    markCardsSeen,
+    openCardEvent,
+  } = useInbox()
+  const preview = items.slice(0, PREVIEW_LIMIT)
 
   async function openItem(item: NotificationItem) {
+    if (isCardNotificationKind(item.kind)) {
+      await openCardEvent(item)
+      return
+    }
     if (!item.read) {
       try {
         await markOneRead(item.id)
@@ -70,22 +50,31 @@ export function InboxBell() {
         /* still navigate */
       }
     }
-    void refreshPreview()
     navigate(destinationFor(item))
+  }
+
+  function onMenuOpenChange(open: boolean) {
+    if (!open) return
+    const cardIds: number[] = []
+    for (const item of preview) {
+      if (!isCardNotificationKind(item.kind)) continue
+      cardIds.push(item.subject_id)
+    }
+    markCardsSeen(cardIds)
   }
 
   const previewItems =
     preview.length === 0
       ? [{ id: "empty", label: "No notifications", disabled: true }]
       : preview.map((item) => ({
-          id: `n-${item.id}`,
-          label: item.read ? item.title : `● ${item.title}`,
-          onSelect: () => {
-            void openItem(item)
-          },
-        }))
+        id: `n-${item.id}`,
+        label: item.read ? item.title : `● ${item.title}`,
+        onSelect: () => {
+          void openItem(item)
+        },
+      }))
 
-  const items = [
+  const menuItems = [
     ...previewItems,
     { id: "sep-inbox", separator: true as const },
     {
@@ -101,6 +90,7 @@ export function InboxBell() {
     <DropdownMenu
       label="Inbox"
       align="right"
+      onOpenChange={onMenuOpenChange}
       trigger={
         <span className="relative inline-flex h-5 w-5 items-center justify-center">
           <Bell
@@ -123,7 +113,7 @@ export function InboxBell() {
       }
       triggerClassName={cn(navButtonClassName, "h-8 w-8 px-0")}
       menuClassName="min-w-[14rem] max-w-[18rem]"
-      items={items}
+      items={menuItems}
     />
   )
 }

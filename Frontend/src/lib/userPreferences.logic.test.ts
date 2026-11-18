@@ -22,15 +22,18 @@ describe("normalizeUserPreferences", () => {
     expect(out.deck_start_sections).toEqual(["Entity", "Cyberspell"])
     expect(out.notify_blog).toBe(true)
     expect(out.notify_cards).toBe(true)
+    expect(out.notify_blog_email).toBe(false)
   })
 
   it("keeps notification opt-outs", () => {
     const out = normalizeUserPreferences({
       notify_blog: false,
       notify_cards: false,
+      notify_blog_email: true,
     })
     expect(out.notify_blog).toBe(false)
     expect(out.notify_cards).toBe(false)
+    expect(out.notify_blog_email).toBe(true)
   })
 
   it("clamps sizes", () => {

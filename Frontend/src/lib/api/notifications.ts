@@ -1,8 +1,18 @@
 /**
  * Logged-in inbox API (broadcast events + read receipts).
+ * Live updates use WebSocket pub/sub — not HTTP polling.
  */
 
 import { apiBaseUrl, authHeaders, readJsonOrThrow } from "@/lib/api/client"
+
+/** Server → client pub/sub topic after a notification_events insert. */
+export const INBOX_CHANGED = "inbox.changed"
+
+export function notificationsWsUrl(): string {
+  const http = apiBaseUrl()
+  const ws = http.replace(/^http/i, "ws")
+  return `${ws}/notifications/ws`
+}
 
 export type NotificationKind =
   | "announcement.published"

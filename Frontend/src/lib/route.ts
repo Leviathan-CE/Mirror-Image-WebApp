@@ -26,6 +26,9 @@ export const ROUTES = {
   /** Public announcement board. */
   UPDATES: "/updates",
 
+  /** Public mailing-list unsubscribe (token in query). */
+  UNSUBSCRIBE: "/unsubscribe",
+
   /** Logged-in notification inbox. */
   INBOX: "/inbox",
 

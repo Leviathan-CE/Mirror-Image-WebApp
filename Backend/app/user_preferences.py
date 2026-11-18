@@ -38,6 +38,7 @@ DEFAULT_PREFERENCES: dict[str, Any] = {
     "deck_start_sections": list(DEFAULT_START_SECTIONS),
     "notify_blog": True,
     "notify_cards": True,
+    "notify_blog_email": False,
 }
 
 
@@ -116,6 +117,10 @@ def normalize_user_preferences(raw: Any) -> dict[str, Any]:
         ),
         "notify_blog": _as_bool(data.get("notify_blog"), True),
         "notify_cards": _as_bool(data.get("notify_cards"), True),
+        "notify_blog_email": _as_bool(
+            data.get("notify_blog_email"),
+            False,
+        ),
     }
 
 

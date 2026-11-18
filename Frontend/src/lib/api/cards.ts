@@ -232,3 +232,77 @@ export async function fetchCardById(
       : [],
   }
 }
+
+function asStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.map((item) => String(item))
+}
+
+function asNumber(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value
+  }
+  const parsed = Number(value)
+  if (Number.isFinite(parsed)) return parsed
+  return 0
+}
+
+/**
+ * Full catalogue row for the card-detail overlay.
+ * GET /cards/:id uses alias `ID` and illustration art as card_art_path.
+ */
+export async function fetchCatalogueCard(
+  cardId: number,
+  token?: string | null
+): Promise<CardLibraryItem> {
+  if (cardId <= 0) {
+    throw new Error("card_fetch_failed")
+  }
+  const response = await fetch(`${apiBaseUrl()}/cards/${cardId}`, {
+    headers: authHeaders(token),
+  })
+  const raw = await readJsonOrThrow<Record<string, unknown>>(
+    response,
+    "card_fetch_failed"
+  )
+  const idRaw = raw.ID ?? raw.id
+  const id = asNumber(idRaw)
+  if (id <= 0) {
+    throw new Error("card_fetch_failed")
+  }
+  const cost = asStringList(raw.cost)
+  const invokeCost = asNumber(raw.invoke_cost)
+  return {
+    id,
+    card_name: String(raw.card_name ?? `Card #${id}`),
+    card_art_path:
+      typeof raw.card_art_path === "string" ? raw.card_art_path : null,
+    card_thumbnail_path:
+      typeof raw.card_thumbnail_path === "string"
+        ? raw.card_thumbnail_path
+        : null,
+    card_set_name: String(raw.card_set_name ?? ""),
+    rarity: String(raw.rarity ?? ""),
+    description: String(raw.description ?? ""),
+    keywords: asStringList(raw.keywords),
+    show_help_text: raw.show_help_text !== false,
+    invoke_cost: invokeCost,
+    has_invoke_cost: Boolean(raw.has_invoke_cost),
+    has_tlv: Boolean(raw.has_tlv),
+    cost,
+    super_types: asStringList(raw.super_types),
+    sub_types: asStringList(raw.sub_types),
+    types_line: String(raw.types_line ?? ""),
+    threat_level: String(raw.threat_level ?? "0"),
+    is_pilot: Boolean(raw.is_pilot),
+    is_augment: Boolean(raw.is_augment),
+    hand_size: asNumber(raw.hand_size),
+    ram_capacity: asNumber(raw.ram_capacity),
+    power_capacity: asNumber(raw.power_capacity),
+    metal_capacity: asNumber(raw.metal_capacity),
+    spirit_capacity: asNumber(raw.spirit_capacity),
+    steel_capacity: asNumber(raw.steel_capacity),
+    time_capacity: asNumber(raw.time_capacity),
+    lif_capacity: asNumber(raw.lif_capacity),
+  }
+}

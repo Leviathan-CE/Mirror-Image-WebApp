@@ -2,10 +2,13 @@
  * Admin — catalogue cards DB: search, multi-select, bulk publish + lagality.
  */
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { useAuth } from "@/app/providers/AuthProvider"
+import { useInbox } from "@/app/providers/InboxProvider"
+import { CardChangeBanner } from "@/components/cards/CardChangeBanner"
 import { CardDetailOverlay } from "@/components/cards/CardDetailOverlay"
+import type { CardDetailChange } from "@/lib/cardBanner.logic"
 import { costTokenToIcon } from "@/components/cards/constants"
 import { CardSearchBar } from "@/components/cards/CardSearchBar"
 import { SearchPaginationBar } from "@/components/cards/SearchPaginationBar"
@@ -69,6 +72,11 @@ function publishTone(status: string): string {
 
 export function AdminCardsPage() {
   const { token } = useAuth()
+  const {
+    bannerForCard,
+    changeForCard,
+    markCardsSeen,
+  } = useInbox()
 
   const [facets, setFacets] = useState<CardLibraryFacets>(EMPTY_FACETS)
   const [nameQuery, setNameQuery] = useState("")
@@ -95,7 +103,11 @@ export function AdminCardsPage() {
   const [busy, setBusy] = useState(false)
   const [actionMessage, setActionMessage] = useState("")
   const [detail, setDetail] = useState<AdminCardDetail | null>(null)
+  const [detailChange, setDetailChange] =
+    useState<CardDetailChange | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const itemsRef = useRef<AdminCardItem[]>([])
+  itemsRef.current = items
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
@@ -185,6 +197,25 @@ export function AdminCardsPage() {
     subType,
     publishedFilter,
     offset,
+  ])
+
+  useEffect(() => {
+    return () => {
+      const visibleIds = itemsRef.current.map((card) => card.id)
+      markCardsSeen(visibleIds)
+    }
+  }, [
+    debouncedName,
+    debouncedDescription,
+    colors,
+    invokeMin,
+    invokeMax,
+    typesLine,
+    superType,
+    subType,
+    publishedFilter,
+    offset,
+    markCardsSeen,
   ])
 
   function toggleColor(color: string) {
@@ -301,6 +332,9 @@ export function AdminCardsPage() {
 
   async function openDetail(cardId: number) {
     if (!token || detailLoading) return
+    const change = changeForCard(cardId)
+    markCardsSeen([cardId])
+    setDetailChange(change)
     setDetailLoading(true)
     setActionMessage("")
     try {
@@ -809,6 +843,7 @@ export function AdminCardsPage() {
               const superTypes = item.super_types ?? []
               const superTypeLabel =
                 superTypes.length === 0 ? "—" : superTypes.join(" · ")
+              const banner = bannerForCard(item.id)
               return (
                 <tr
                   key={item.id}
@@ -816,6 +851,7 @@ export function AdminCardsPage() {
                     "border-b border-cyan-500/10",
                     checked ? "bg-cyan-500/10" : "hover:bg-cyan-500/5"
                   )}
+                  onPointerEnter={() => markCardsSeen([item.id])}
                 >
                   <td className="px-3 py-2 align-middle">
                     <input
@@ -849,6 +885,12 @@ export function AdminCardsPage() {
                         <p className="truncate font-buahs93 text-sm text-white underline-offset-2 hover:underline">
                           {item.card_name}
                         </p>
+                        {banner ? (
+                          <CardChangeBanner
+                            kind={banner}
+                            className="relative left-0 top-0 mt-1 inline-block"
+                          />
+                        ) : null}
                         <p className="truncate font-mono text-[10px] text-cyan-400/55">
                           #{item.id}
                           {item.is_deprecated ? " · deprecated" : ""}
@@ -903,7 +945,11 @@ export function AdminCardsPage() {
               }
             : null
         }
-        onClose={() => setDetail(null)}
+        change={detailChange}
+        onClose={() => {
+          setDetail(null)
+          setDetailChange(null)
+        }}
       />
 
       <ConfirmDialog

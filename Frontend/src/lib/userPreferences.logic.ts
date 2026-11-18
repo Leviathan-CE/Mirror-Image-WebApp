@@ -55,6 +55,7 @@ export type UserPreferences = {
   deck_start_sections: string[]
   notify_blog: boolean
   notify_cards: boolean
+  notify_blog_email: boolean
 }
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
@@ -67,6 +68,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   deck_start_sections: [...DEFAULT_DECK_CATEGORY_NAMES],
   notify_blog: true,
   notify_cards: true,
+  notify_blog_email: false,
 }
 
 export type UserPreferencesPatch = Partial<UserPreferences>
@@ -167,6 +169,7 @@ export function normalizeUserPreferences(raw: unknown): UserPreferences {
     deck_start_sections: normalizeStartSections(data.deck_start_sections),
     notify_blog: asBool(data.notify_blog, true),
     notify_cards: asBool(data.notify_cards, true),
+    notify_blog_email: asBool(data.notify_blog_email, false),
   }
 }
 

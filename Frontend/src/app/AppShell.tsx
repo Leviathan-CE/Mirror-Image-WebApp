@@ -23,11 +23,13 @@ import { AdminUpdatesPage } from "@/pages/admin/AdminUpdatesPage"
 import { UpdatesPage } from "@/pages/updates/UpdatesPage"
 import { SubscribePage } from "@/pages/billing/SubscribePage"
 import { AccountSettingsPage } from "@/pages/account/AccountSettingsPage"
+import { CardNotificationHost } from "@/components/inbox/CardNotificationHost"
 import { InboxPage } from "@/pages/inbox/InboxPage"
 import { ComunityDecksPage } from "@/pages/decks/ComunityDecksPage"
 import { ComingSoonGate } from "@/app/ComingSoonGate"
 import { ROUTES } from "@/lib/route"
 import { PlayTesterPage } from "@/pages/decks/PlayTesterPage"
+import { UnsubscribePage } from "@/pages/mailing/UnsubscribePage"
 
 export function AppShell() {
   return (
@@ -36,6 +38,7 @@ export function AppShell() {
         <PreferencesNavigationFlush />
         <ComingSoonGate>
           <AppHeader />
+          <CardNotificationHost />
           <main className="min-h-screen">
             <Routes>
               <Route path={ROUTES.HOME} element={<HomePage />} />
@@ -66,6 +69,10 @@ export function AppShell() {
               <Route
                 path={ROUTES.ACCEPT_INVITE}
                 element={<AcceptInvitePage />}
+              />
+              <Route
+                path={ROUTES.UNSUBSCRIBE}
+                element={<UnsubscribePage />}
               />
               <Route path={ROUTES.DECK_COMUNITY} element={<ComunityDecksPage />} />
               <Route path={ROUTES.PLAY_TESTER} element={<PlayTesterPage />} />

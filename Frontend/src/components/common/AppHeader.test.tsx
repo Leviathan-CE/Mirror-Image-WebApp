@@ -32,6 +32,8 @@ vi.mock("@/app/providers/ComingSoonProvider", () => ({
 }))
 
 vi.mock("@/lib/api/notifications", () => ({
+  INBOX_CHANGED: "inbox.changed",
+  notificationsWsUrl: () => "ws://localhost:8001/notifications/ws",
   fetchNotifications: vi.fn(async () => ({
     items: [],
     total: 0,
@@ -43,6 +45,19 @@ vi.mock("@/lib/api/notifications", () => ({
   markNotificationRead: vi.fn(async () => ({ read: 0 })),
   markAllNotificationsRead: vi.fn(async () => ({ read: 0 })),
 }))
+
+class FakeWebSocket {
+  static OPEN = 1
+  readyState = FakeWebSocket.OPEN
+  onopen: ((ev: Event) => void) | null = null
+  onmessage: ((ev: MessageEvent) => void) | null = null
+  onclose: ((ev: CloseEvent) => void) | null = null
+  onerror: ((ev: Event) => void) | null = null
+  send() {}
+  close() {}
+}
+
+vi.stubGlobal("WebSocket", FakeWebSocket)
 
 function renderAppHeader() {
   return render(

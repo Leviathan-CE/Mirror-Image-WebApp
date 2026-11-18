@@ -229,6 +229,9 @@ def test_normalize_notify_defaults():
     out = normalize_user_preferences({"deck_view": "list"})
     assert out["notify_blog"] is True
     assert out["notify_cards"] is True
+    assert out["notify_blog_email"] is False
     muted = normalize_user_preferences({"notify_blog": False})
     assert muted["notify_blog"] is False
     assert muted["notify_cards"] is True
+    emailed = normalize_user_preferences({"notify_blog_email": True})
+    assert emailed["notify_blog_email"] is True
