@@ -21,7 +21,9 @@ import { AdminCardsPage } from "@/pages/admin/AdminCardsPage"
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage"
 import { AdminUpdatesPage } from "@/pages/admin/AdminUpdatesPage"
 import { UpdatesPage } from "@/pages/updates/UpdatesPage"
-import { SubscribePage } from "@/pages/billing/SubscribePage"
+import { ManageSubscriptionPage } from "@/pages/billing/ManageSubscriptionPage"
+import { PlansPage } from "@/pages/billing/PlansPage"
+import { SubscribePayPage } from "@/pages/billing/SubscribePayPage"
 import { AccountSettingsPage } from "@/pages/account/AccountSettingsPage"
 import { CardNotificationHost } from "@/components/inbox/CardNotificationHost"
 import { InboxPage } from "@/pages/inbox/InboxPage"
@@ -79,10 +81,26 @@ export function AppShell() {
               <Route path={ROUTES.PLAY_TESTER_PATTERN} element={<PlayTesterPage />} />
               <Route path={ROUTES.PLAY_TESTER_VS_PATTERN} element={<PlayTesterPage />} />
               <Route
-                path={ROUTES.SUBSCRIBE}
+                path={ROUTES.PLANS}
                 element={
                   <RequireAuth>
-                    <SubscribePage />
+                    <PlansPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path={ROUTES.PLANS_PAY_PATTERN}
+                element={
+                  <RequireAuth>
+                    <SubscribePayPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path={ROUTES.SUBSCRIPTION}
+                element={
+                  <RequireAuth>
+                    <ManageSubscriptionPage />
                   </RequireAuth>
                 }
               />

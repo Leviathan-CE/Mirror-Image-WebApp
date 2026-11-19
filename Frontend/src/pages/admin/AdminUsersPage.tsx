@@ -2,7 +2,12 @@
  * Admin — user accounts: roles, feature grants, invite, disable, delete.
  */
 
-import { useCallback, useEffect, useState, type FormEvent } from "react"
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type SubmitEvent,
+} from "react"
 
 import { useAuth } from "@/app/providers/AuthProvider"
 import { Button } from "@/components/ui/button"
@@ -128,7 +133,7 @@ export function AdminUsersPage() {
     )
   }
 
-  async function onCreate(event: FormEvent) {
+  async function onCreate(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!token) return
     setError(null)
@@ -158,7 +163,7 @@ export function AdminUsersPage() {
     }
   }
 
-  async function onInvite(event: FormEvent) {
+  async function onInvite(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!token) return
     setError(null)

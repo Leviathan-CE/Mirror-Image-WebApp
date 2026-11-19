@@ -7,6 +7,14 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.roles import is_staff_role
+from app.stripe_offers import (
+    Offer,
+    offer_for_price_id,
+    primary_subscription_offer,
+    resolve_price_id,
+    resolve_subscription_offer,
+    subscription_type_label,
+)
 
 
 # Statuses that unlock paid features for normal users.
@@ -17,41 +25,62 @@ def stripe_secret_key() -> str:
     return (os.environ.get("STRIPE_SECRET_KEY") or "").strip()
 
 
+def stripe_publishable_key() -> str:
+    return (os.environ.get("STRIPE_PUBLISHABLE_KEY") or "").strip()
+
+
 def stripe_webhook_secret() -> str:
     return (os.environ.get("STRIPE_WEBHOOK_SECRET") or "").strip()
 
 
 def stripe_price_id() -> str:
-    return (os.environ.get("STRIPE_PRICE_ID") or "").strip()
+    """Primary subscription Stripe Price id (from offer catalog → env)."""
+    return resolve_price_id(primary_subscription_offer())
 
 
 def default_subscription_type() -> str:
-    """Fallback tier label when Stripe price has no nickname/metadata."""
-    return (
-        (os.environ.get("STRIPE_SUBSCRIPTION_TYPE") or "").strip()
-        or "standard supporter"
-    )
+    """Fallback tier label from ``stripe_offers`` catalog."""
+    return subscription_type_label()
 
 
-# Marketing copy for the Subscribe page (features may land later).
-PLAN_DISPLAY_NAME = "LEVEL 3 ACCESS MEMBER TIER"
-PLAN_TAGLINE = (
-    "Support Mirror Image development and unlock early-access to cards to use in play-spaces."
-)
-PLAN_FEATURES = (
-    "Access preview cards still in design, with new ones added each month to build and play with.",
-    "Create duplex print-and-play PDFs from your decks.",
-    "Helping support a solo developer and illustrator work full time on this project and bring it to life.",
-)
+def _primary_offer():
+    return primary_subscription_offer()
+
+
+# Marketing copy for the Subscribe page (sourced from the catalog).
+PLAN_DISPLAY_NAME = _primary_offer().label
+PLAN_TAGLINE = _primary_offer().tagline
+PLAN_FEATURES = _primary_offer().features
 
 
 def require_stripe_config() -> tuple[str, str]:
-    """Return (secret_key, price_id) or raise ValueError if billing is not configured."""
+    """Return (secret_key, primary price_id) or raise if billing is not configured."""
     key = stripe_secret_key()
     price = stripe_price_id()
     if not key or not price:
         raise ValueError("stripe_not_configured")
     return key, price
+
+
+def require_offer_stripe_config(
+    offer_id: str | None = None,
+) -> tuple[str, str, Offer]:
+    """
+    Return (secret_key, price_id, offer) for a subscription offer.
+
+    Defaults to the primary (Level 3) offer when ``offer_id`` is empty.
+    """
+    key = stripe_secret_key()
+    if not key:
+        raise ValueError("stripe_not_configured")
+    try:
+        offer = resolve_subscription_offer(offer_id)
+    except KeyError as exc:
+        raise ValueError(str(exc)) from exc
+    price = resolve_price_id(offer)
+    if not price:
+        raise ValueError("stripe_price_missing_for_offer")
+    return key, price, offer
 
 
 def is_subscription_entitled(
@@ -159,7 +188,7 @@ def subscription_type_from_subscription(sub: Any) -> str:
     1. price.metadata['type'] or ['tier']
     2. price.nickname
     3. product name (when expanded)
-    4. STRIPE_SUBSCRIPTION_TYPE / default ``standard``
+    4. catalog ``subscription_type_label`` for the primary sub offer
     """
     data = _as_dict(sub)
     items = _as_dict(data.get("items")).get("data") or []
@@ -169,7 +198,16 @@ def subscription_type_from_subscription(sub: Any) -> str:
 
     for item in items:
         item_data = _as_dict(item)
-        price = _as_dict(item_data.get("price"))
+        raw_price = item_data.get("price")
+        # List/retrieve without expand leaves price as an id string.
+        if isinstance(raw_price, str):
+            price_id = raw_price.strip()
+            matched = offer_for_price_id(price_id)
+            if matched is not None:
+                return subscription_type_label(matched)
+            continue
+
+        price = _as_dict(raw_price)
         meta = _as_dict(price.get("metadata"))
         for key in ("type", "tier", "subscription_type"):
             label = str(meta.get(key) or "").strip()
@@ -178,6 +216,10 @@ def subscription_type_from_subscription(sub: Any) -> str:
         nickname = str(price.get("nickname") or "").strip()
         if nickname:
             return nickname
+        price_id = str(price.get("id") or "").strip()
+        matched = offer_for_price_id(price_id)
+        if matched is not None:
+            return subscription_type_label(matched)
         product = price.get("product")
         if isinstance(product, str) and product.strip():
             pass

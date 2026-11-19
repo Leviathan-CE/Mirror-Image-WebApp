@@ -3,7 +3,7 @@
  */
 
 import { useState } from "react"
-import type { FormEvent } from "react"
+import type { SubmitEvent } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
@@ -27,7 +27,7 @@ export function ComingSoonPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  async function onSubscribe(event: FormEvent) {
+  async function onSubscribe(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     if (busy) return
     const cleaned = email.trim()
