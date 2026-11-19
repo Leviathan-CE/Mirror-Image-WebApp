@@ -1,6 +1,17 @@
 """Auth helper unit tests (no database required)."""
 
-from app.security import hash_password, verify_password, create_access_token, decode_access_token
+import jwt
+import pytest
+from fastapi import HTTPException
+
+from app.security import (
+    ALGORITHM,
+    hash_password,
+    verify_password,
+    create_access_token,
+    decode_access_token,
+    signing_secret,
+)
 
 
 def test_password_hash_roundtrip():
@@ -22,3 +33,21 @@ def test_jwt_roundtrip():
     assert payload["user_name"] == "pilot"
     assert payload["email"] == "pilot@example.com"
     assert payload["role"] == "user"
+
+
+def test_single_purpose_email_token_is_not_a_valid_session_token():
+    """
+    Mailing-list/account email-link tokens (e.g. ``blog_email_unsub``)
+    are signed with the same secret as login tokens but must never be
+    usable to impersonate a user via ``get_current_user_id``. A real
+    login token never carries a ``purpose`` claim, so any token that
+    does must be rejected here.
+    """
+    forged_session_token = jwt.encode(
+        {"purpose": "blog_email_unsub", "sub": "1234"},
+        signing_secret(),
+        algorithm=ALGORITHM,
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        decode_access_token(forged_session_token)
+    assert exc_info.value.status_code == 401
