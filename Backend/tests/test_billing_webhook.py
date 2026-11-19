@@ -638,10 +638,8 @@ def test_webhook_element_path_activates_incomplete_subscription(
 
 def test_checkout_route_still_registered(client: TestClient):
     """Dual-path plan keeps redirect Checkout alongside Payment Element."""
-    paths = {
-        getattr(route, "path", None)
-        for route in client.app.routes
-    }
+    # OpenAPI paths stay stable when Starlette nests routes under mounts.
+    paths = set(client.app.openapi()["paths"])
     assert "/billing/checkout" in paths
     assert "/billing/subscription/intent" in paths
     assert "/billing/config" in paths
