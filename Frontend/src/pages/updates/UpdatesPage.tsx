@@ -86,7 +86,7 @@ export function UpdatesPage() {
           <p className="font-mono text-sm text-white/45">No updates yet.</p>
         ) : null}
 
-        <ul className="space-y-4">
+        <ul className="rise-list space-y-4">
           {posts.map((post) => {
             const open = openSlug === post.slug
             const cover = coverSrc(post)

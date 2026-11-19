@@ -307,7 +307,7 @@ export function MainPage() {
               )}
 
             {myFetchStatus === "ready" && myDecks.length > 0 && token ? (
-              <ul className="grid auto-rows-fr gap-4 sm:grid-cols-2">
+              <ul className="rise-list grid auto-rows-fr gap-4 sm:grid-cols-2">
                 {myDecks.map((deck) => (
                   <li key={deck.id} className="h-full">
                     <DeckListCard

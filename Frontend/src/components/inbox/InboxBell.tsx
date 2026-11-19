@@ -33,6 +33,7 @@ export function InboxBell() {
     unread,
     items,
     markOneRead,
+    markAllRead,
     markCardsSeen,
     openCardEvent,
   } = useInbox()
@@ -51,6 +52,15 @@ export function InboxBell() {
       }
     }
     navigate(destinationFor(item))
+  }
+
+  async function onClearNotifications() {
+    if (unread === 0) return
+    try {
+      await markAllRead()
+    } catch {
+      /* unread count reloads from the server */
+    }
   }
 
   function onMenuOpenChange(open: boolean) {
@@ -77,6 +87,14 @@ export function InboxBell() {
   const menuItems = [
     ...previewItems,
     { id: "sep-inbox", separator: true as const },
+    {
+      id: "clear-notifications",
+      label: "Clear notifications",
+      disabled: unread === 0,
+      onSelect: () => {
+        void onClearNotifications()
+      },
+    },
     {
       id: "open-inbox",
       label: "Open inbox",

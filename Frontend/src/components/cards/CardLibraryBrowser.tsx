@@ -343,29 +343,36 @@ export function CardLibraryBrowser({
         compact ? "shrink-0" : "mb-3"
       )}
     >
-      <span className="font-buahs93 shrink-0 text-xs tracking-wide text-cyan-100">
-        CARD SIZE
-      </span>
-      <input
-        type="range"
-        min={PREVIEW_PX_MIN}
-        max={PREVIEW_PX_MAX}
-        step={4}
-        value={previewCardMinPx}
-        aria-valuemin={PREVIEW_PX_MIN}
-        aria-valuemax={PREVIEW_PX_MAX}
-        aria-valuenow={previewCardMinPx}
-        aria-label="Preview card size"
-        onChange={(event) =>
-          patchPrefs({
-            library_preview_px: clampPreviewPx(Number(event.target.value)),
-          })
+      <div
+        className={
+          "order-last flex w-full min-w-0 items-center gap-3 "
+          + "sm:order-none sm:w-auto sm:flex-1"
         }
-        className="h-2 min-w-0 flex-1 cursor-pointer accent-cyan-400"
-      />
-      <span className="w-9 shrink-0 text-right font-mono text-[11px] text-cyan-200/80">
-        {previewCardMinPx}px
-      </span>
+      >
+        <span className="font-buahs93 shrink-0 text-xs tracking-wide text-cyan-100">
+          CARD SIZE
+        </span>
+        <input
+          type="range"
+          min={PREVIEW_PX_MIN}
+          max={PREVIEW_PX_MAX}
+          step={4}
+          value={previewCardMinPx}
+          aria-valuemin={PREVIEW_PX_MIN}
+          aria-valuemax={PREVIEW_PX_MAX}
+          aria-valuenow={previewCardMinPx}
+          aria-label="Preview card size"
+          onChange={(event) =>
+            patchPrefs({
+              library_preview_px: clampPreviewPx(Number(event.target.value)),
+            })
+          }
+          className="h-2 min-w-0 flex-1 cursor-pointer accent-cyan-400"
+        />
+        <span className="w-9 shrink-0 text-right font-mono text-[11px] text-cyan-200/80">
+          {previewCardMinPx}px
+        </span>
+      </div>
       <label className="flex shrink-0 items-center gap-2 border-l border-cyan-500/25 pl-3">
         <span className="font-buahs93 text-xs tracking-wide text-cyan-100">
           SORT
@@ -780,7 +787,7 @@ export function CardLibraryBrowser({
       ) : null}
 
       <ul
-        className="grid gap-2"
+        className="rise-list grid gap-2"
         style={{
           gridTemplateColumns: `repeat(auto-fill, minmax(${previewCardMinPx}px, 1fr))`,
         }}

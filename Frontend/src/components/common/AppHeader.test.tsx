@@ -88,7 +88,7 @@ describe("AppHeader", () => {
       clearSession,
     })
     renderAppHeader()
-    expect(screen.getByRole("button", { name: "LOGIN" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "ACCOUNT" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Site menu" })).toBeInTheDocument()
     expect(
       screen.queryByRole("button", { name: "Account menu" })
@@ -108,7 +108,7 @@ describe("AppHeader", () => {
       screen.getByRole("button", { name: "Account menu" })
     ).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Inbox" })).toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "LOGIN" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "ACCOUNT" })).not.toBeInTheDocument()
   })
 
   it("calls clearSession when Sign out is chosen from the account menu", async () => {

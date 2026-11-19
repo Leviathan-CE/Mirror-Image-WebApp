@@ -65,7 +65,7 @@ export function SubscriptionTierBar({
     <div className="space-y-3">
       <div
         className={cn(
-          "mi-scrollbar flex gap-3 overflow-x-auto pb-2",
+          "rise-list mi-scrollbar flex gap-3 overflow-x-auto pb-2",
           "lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0"
         )}
       >
