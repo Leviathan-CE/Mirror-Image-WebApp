@@ -119,14 +119,19 @@ def load_user_entitlement(cur, user_id: int) -> UserEntitlement:
     role = row[0] or "user"
     sub_status = row[1] or "none"
     granted = load_granted_feature_keys(cur, user_id)
+    include_preview = user_has_feature(
+        role=role,
+        subscription_status=sub_status,
+        granted_keys=granted,
+        feature_key=FEATURE_PREVIEW_CARDS,
+    )
+    if not include_preview:
+        from app.site_settings import previews_for_logged_in_or_false
+
+        include_preview = previews_for_logged_in_or_false(cur)
     return UserEntitlement(
         is_admin=is_staff_role(role),
-        include_preview=user_has_feature(
-            role=role,
-            subscription_status=sub_status,
-            granted_keys=granted,
-            feature_key=FEATURE_PREVIEW_CARDS,
-        ),
+        include_preview=include_preview,
         include_unpublished=user_has_feature(
             role=role,
             subscription_status=sub_status,

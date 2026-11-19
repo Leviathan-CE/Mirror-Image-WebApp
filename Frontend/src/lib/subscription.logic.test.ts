@@ -71,7 +71,55 @@ describe("userHasFeature", () => {
     ).toBe(true)
   })
 
-  it("subscribers unlock deck_printout via entitlement fallback", () => {
+  it("subscribers do not unlock preview_cards via fallback", () => {
+    expect(
+      userHasFeature(
+        {
+          id: 1,
+          user_name: "a",
+          email: "a@x",
+          role: "user",
+          features: [],
+          is_subscribed: true,
+          subscription_status: "active",
+        },
+        "preview_cards"
+      )
+    ).toBe(false)
+  })
+
+  it("duplex_print requires features[] grant (no subscriber fallback)", () => {
+    expect(
+      userHasFeature(
+        {
+          id: 1,
+          user_name: "a",
+          email: "a@x",
+          role: "user",
+          features: [],
+          is_subscribed: true,
+          subscription_status: "active",
+        },
+        "duplex_print"
+      )
+    ).toBe(false)
+    expect(
+      userHasFeature(
+        {
+          id: 1,
+          user_name: "a",
+          email: "a@x",
+          role: "user",
+          features: ["duplex_print"],
+          is_subscribed: true,
+          subscription_status: "active",
+        },
+        "duplex_print"
+      )
+    ).toBe(true)
+  })
+
+    it("subscribers unlock deck_printout via entitlement fallback", () => {
     expect(
       userHasFeature(
         {

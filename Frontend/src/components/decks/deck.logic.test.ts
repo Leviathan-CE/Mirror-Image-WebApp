@@ -30,7 +30,9 @@ import {
   totalCopiesOfCard,
   withCardEntry,
   cardHasSuperType,
+  isAugmentCard,
   isObjectiveCard,
+  isObjectiveOrAugmentCard,
 } from "./deck.logic"
 import type { DeckCategoryOut, DeckDetail } from "@/lib/api/decks"
 import { deckEntry } from "@/test/deckEntry.fixture"
@@ -52,6 +54,7 @@ describe("reserved categories", () => {
     expect(isPilotCategory(cat(1, " pilot "))).toBe(true)
     expect(isAugmentCategory(cat(2, "Augments"))).toBe(true)
     expect(isAugmentCategory(cat(3, "Objectives"))).toBe(true)
+    expect(isAugmentCategory(cat(4, "Objective/Augments"))).toBe(true)
     expect(isReservedCategory(cat(1, "Pilot"))).toBe(true)
     expect(isReservedCategory(cat(2, "Augments"))).toBe(false)
     expect(isReservedCategory(cat(3, "Main"))).toBe(false)
@@ -275,9 +278,22 @@ describe("categoryCountsInDeck", () => {
 describe("quantity rules", () => {
   it("allows up to 3 copies in normal sections", () => {
     expect(maxCopiesForCategory(cat(1, "Main"))).toBe(DECK_CARD_MAX_COPIES)
-    expect(maxCopiesForCategory(cat(2, "Augments"))).toBe(DECK_CARD_MAX_COPIES)
     expect(nextCardQuantity(2, 1, DECK_CARD_MAX_COPIES)).toBe(3)
     expect(nextCardQuantity(3, 1, DECK_CARD_MAX_COPIES)).toBeNull()
+  })
+
+  it("allows unlimited cards and copies in Objective/Augments", () => {
+    expect(maxCopiesForCategory(cat(2, "Augments"))).toBe(
+      DECK_CARD_MAX_COPIES_UNLIMITED
+    )
+    expect(maxCopiesForCategory(cat(3, "Objective/Augments"))).toBe(
+      DECK_CARD_MAX_COPIES_UNLIMITED
+    )
+    expect(
+      maxCopiesForDeckCard(cat(3, "Objectives"), {
+        super_types: ["Objective"],
+      })
+    ).toBe(DECK_CARD_MAX_COPIES_UNLIMITED)
   })
 
   it("allows unlimited copies for Token super-type", () => {
@@ -295,12 +311,23 @@ describe("quantity rules", () => {
     ).toBe(DECK_CARD_MAX_COPIES_UNLIMITED)
   })
 
-  it("detects Objective super-type for the reserved Objectives section", () => {
+  it("detects Objective/Augment cards for the reserved section", () => {
     expect(
       isObjectiveCard({ super_types: ["Objective"] })
     ).toBe(true)
     expect(
       isObjectiveCard({ super_types: ["Entity", "Unit"] })
+    ).toBe(false)
+    expect(isAugmentCard({ super_types: ["Augment"] })).toBe(true)
+    expect(isAugmentCard({ is_augment: true, super_types: [] })).toBe(true)
+    expect(
+      isObjectiveOrAugmentCard({ super_types: ["Augment"] })
+    ).toBe(true)
+    expect(
+      isObjectiveOrAugmentCard({ super_types: ["Objective"] })
+    ).toBe(true)
+    expect(
+      isObjectiveOrAugmentCard({ super_types: ["Entity"] })
     ).toBe(false)
   })
 

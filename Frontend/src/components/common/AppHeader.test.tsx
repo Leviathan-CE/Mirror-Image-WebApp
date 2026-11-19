@@ -128,7 +128,7 @@ describe("AppHeader", () => {
     expect(clearSession).toHaveBeenCalledTimes(1)
   })
 
-  it("exposes Subscribe from the account menu", async () => {
+  it("exposes Manage subscription from the account menu", async () => {
     const user = userEvent.setup()
     useAuthMock.mockReturnValue({
       user: sampleUser,
@@ -141,7 +141,7 @@ describe("AppHeader", () => {
     renderAppHeader()
     await user.click(screen.getByRole("button", { name: "Account menu" }))
     expect(
-      screen.getByRole("menuitem", { name: "Subscribe" })
+      screen.getByRole("menuitem", { name: "Manage subscription" })
     ).toBeInTheDocument()
   })
 })

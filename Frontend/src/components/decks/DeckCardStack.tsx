@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 
+import { CardPreviewBanner } from "@/components/cards/CardPreviewBanner"
 import {
   ClassifiedCardFace,
   cardClassification,
@@ -412,6 +413,11 @@ export function DeckCardStack({
                       <span>{card.card.card_name}</span>
                     </div>
                   )}
+                  {!classified && card.published === "preview" ? (
+                    <CardPreviewBanner
+                      className="absolute left-1 top-1 z-[3]"
+                    />
+                  ) : null}
                   {showAdjust && onQuantityDelta ? (
                     <CopyAdjust
                       card={card}

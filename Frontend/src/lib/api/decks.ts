@@ -69,10 +69,15 @@ export const DEFAULT_DECK_CATEGORY_NAMES = [
 
 /** Visual reserved section name (created on the client when needed). */
 export const PILOT_SECTION_NAME = "Pilot"
-/** Reserved list-only section: exactly three objective cards (not in the RIG). */
-export const OBJECTIVE_SECTION_NAME = "Objectives"
-/** @deprecated Legacy name; still recognized as the Objectives section. */
+/**
+ * Reserved list-only section: Objectives and Augments (not in the RIG).
+ * Legacy names "Objectives" / "Augments" are still recognized in logic.
+ */
+export const OBJECTIVE_SECTION_NAME = "Objective/Augments"
+/** @deprecated Legacy name; still recognized as the Objective/Augments section. */
 export const AUGMENT_SECTION_NAME = "Augments"
+/** @deprecated Legacy name; still recognized as the Objective/Augments section. */
+export const LEGACY_OBJECTIVES_SECTION_NAME = "Objectives"
 
 export type DeckCategoryOut = {
   id: number
@@ -104,6 +109,8 @@ export type DeckCardEntry = {
    * - top_secret — not published (coming soon)
    */
   classification?: "classified" | "top_secret" | null
+  /** Visible publish status when not classified (PREVIEW ribbon). */
+  published?: string | null
 }
 
 export type DeckDetail = DeckSummary & {

@@ -10,6 +10,7 @@ import {
 } from "@/components/decks/deckCardDrag"
 import {
   AUGMENT_SECTION_NAME,
+  LEGACY_OBJECTIVES_SECTION_NAME,
   OBJECTIVE_SECTION_NAME,
   PILOT_SECTION_NAME,
   type DeckCardEntry,
@@ -26,6 +27,7 @@ function objectiveSectionName(name: string): boolean {
   const n = name.trim().toLowerCase()
   return (
     n === OBJECTIVE_SECTION_NAME.toLowerCase() ||
+    n === LEGACY_OBJECTIVES_SECTION_NAME.toLowerCase() ||
     n === AUGMENT_SECTION_NAME.toLowerCase()
   )
 }
@@ -227,9 +229,9 @@ export function deckCardCount(
 
 /** Anything that can expose `super_types` for copy-limit rules. */
 export type SuperTypesSource =
-  | Pick<CardSummary, "super_types">
+  | Pick<CardSummary, "super_types" | "is_augment">
   | Pick<DeckCardEntry, "card">
-  | { super_types?: string[] | null }
+  | { super_types?: string[] | null; is_augment?: boolean }
   | null
   | undefined
 
@@ -249,20 +251,42 @@ export function cardHasSuperType(
   return types.some((value) => String(value).trim().toLowerCase() === needle)
 }
 
-/** Catalogue cards with the Objective super type (reserved Objectives section). */
+/** Catalogue cards with the Objective super type. */
 export function isObjectiveCard(card: SuperTypesSource): boolean {
   return cardHasSuperType(card, "Objective")
 }
 
+/** Catalogue cards with the Augment super type (or is_augment flag). */
+export function isAugmentCard(card: SuperTypesSource): boolean {
+  if (cardHasSuperType(card, "Augment")) return true
+  if (card != null && typeof card === "object") {
+    if ("card" in card && card.card != null) {
+      const nested = card.card as { is_augment?: boolean }
+      if (nested.is_augment === true) return true
+    }
+    if ("is_augment" in card && card.is_augment === true) return true
+  }
+  return false
+}
+
+/** Cards allowed in the reserved Objective/Augments section. */
+export function isObjectiveOrAugmentCard(card: SuperTypesSource): boolean {
+  return isObjectiveCard(card) || isAugmentCard(card)
+}
+
 /**
  * Per-stack copy cap:
+ * - Objective/Augments section → unlimited
  * - Token super-type → 99
  * - else → 3
  */
 export function maxCopiesForDeckCard(
-  _category: DeckCategoryOut,
+  category: DeckCategoryOut,
   cardOrEntry?: SuperTypesSource
 ): number {
+  if (isObjectiveCategory(category)) {
+    return DECK_CARD_MAX_COPIES_UNLIMITED
+  }
   if (cardHasSuperType(cardOrEntry, "Token")) {
     return DECK_CARD_MAX_COPIES_UNLIMITED
   }

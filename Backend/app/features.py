@@ -12,15 +12,15 @@ FEATURE_PREVIEW_CARDS = "preview_cards"
 FEATURE_UNPUBLISHED_CARDS = "unpublished_cards"
 FEATURE_PLAYTESTER = "playtester"
 FEATURE_DECK_PRINTOUT = "deck_printout"
+FEATURE_DUPLEX_PRINT = "duplex_print"
 
 # Always available (no account / no grant). Kept in the catalog for /auth/me
 # but excluded from admin grant toggles.
 PUBLIC_FEATURES = frozenset({FEATURE_PLAYTESTER})
 
-# Features unlocked automatically for Stripe active/trialing (and admins via role).
-SUBSCRIBER_DEFAULT_FEATURES = frozenset(
-    {FEATURE_PREVIEW_CARDS, FEATURE_DECK_PRINTOUT}
-)
+# Baseline for any entitled Stripe sub. Tier extras (e.g. duplex_print)
+# come from the matched offer's entitlements via /auth/me.
+SUBSCRIBER_DEFAULT_FEATURES = frozenset({FEATURE_DECK_PRINTOUT})
 
 
 def is_public_feature(feature_key: str) -> bool:
@@ -159,3 +159,72 @@ def sync_user_feature_grants(
             },
         )
     return wanted
+
+
+def subscription_managed_feature_keys() -> frozenset[str]:
+    """Keys owned by Stripe tier entitlements (safe to add/remove on sync)."""
+    from app.stripe_offers import subscription_offers
+
+    keys: set[str] = set()
+    for offer in subscription_offers():
+        keys.update(offer.entitlements)
+    # Never treat preview as a paid entitlement again.
+    keys.discard(FEATURE_PREVIEW_CARDS)
+    return frozenset(keys)
+
+
+def desired_subscription_entitlements(
+    *,
+    role: str,
+    subscription_status: str,
+    subscription_type: str,
+) -> set[str]:
+    """
+    Feature keys the caller's current Stripe tier should grant.
+
+    Empty when not entitled. Unknown type → subscriber defaults only.
+    """
+    if not is_subscription_entitled(
+        role=role,
+        subscription_status=subscription_status,
+    ):
+        return set()
+
+    from app.stripe_offers import offer_for_subscription_type_label
+
+    offer = offer_for_subscription_type_label(subscription_type or "")
+    if offer is None:
+        return set(SUBSCRIBER_DEFAULT_FEATURES)
+    managed = subscription_managed_feature_keys()
+    return {key for key in offer.entitlements if key in managed}
+
+
+def sync_subscription_entitlement_grants(
+    cur,
+    *,
+    user_id: int,
+    role: str,
+    subscription_status: str,
+    subscription_type: str,
+) -> list[str]:
+    """
+    Align subscription-managed grants with the user's current tier.
+
+    Preserves unrelated admin grants (e.g. unpublished_cards, preview_cards).
+    """
+    managed = subscription_managed_feature_keys()
+    desired = desired_subscription_entitlements(
+        role=role,
+        subscription_status=subscription_status,
+        subscription_type=subscription_type,
+    )
+    current = set(load_granted_feature_keys(cur, user_id))
+    kept = current - managed
+    next_keys = sorted(kept | desired)
+    return sync_user_feature_grants(
+        cur,
+        user_id=user_id,
+        feature_keys=next_keys,
+        granted_by=None,
+    )
+

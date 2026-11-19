@@ -17,8 +17,15 @@ export const ROUTES = {
   DECK_COMUNITY: "/comunity_decks",
   PLAY_TESTER: "/play_tester",
 
-  /** Supporter / Stripe subscribe page (auth required). */
-  SUBSCRIBE: "/subscribe",
+  /** Public-ish supporter plan picker (auth required). */
+  PLANS: "/plans",
+  /** Payment step for a chosen subscription offer. */
+  plansPay: (offerId: string) => `/plans/pay/${offerId}` as const,
+  PLANS_PAY_PATTERN: "/plans/pay/:offerId",
+  /** Manage existing subscription / Stripe portal (auth required). */
+  SUBSCRIPTION: "/subscription",
+  /** @deprecated Use PLANS or SUBSCRIPTION — kept for old bookmarks. */
+  SUBSCRIBE: "/subscription",
 
   /** Logged-in account UI prefs. */
   ACCOUNT: "/account",

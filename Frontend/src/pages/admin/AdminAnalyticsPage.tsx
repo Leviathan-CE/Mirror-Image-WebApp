@@ -14,7 +14,11 @@ import {
   type AnalyticsActivityPoint,
   type AnalyticsRange,
 } from "@/lib/api/analytics_admin"
-import { patchComingSoon } from "@/lib/api/site"
+import {
+  fetchPreviewsForLoggedIn,
+  patchComingSoon,
+  patchPreviewsForLoggedIn,
+} from "@/lib/api/site"
 import { cn } from "@/lib/utils"
 import { AdminPageShell } from "@/pages/admin/AdminPageShell"
 
@@ -103,6 +107,9 @@ export function AdminAnalyticsPage() {
   )
   const [flagBusy, setFlagBusy] = useState(false)
   const [flagError, setFlagError] = useState<string | null>(null)
+  const [previewsForLoggedIn, setPreviewsForLoggedIn] = useState(false)
+  const [previewsBusy, setPreviewsBusy] = useState(false)
+  const [previewsError, setPreviewsError] = useState<string | null>(null)
 
   async function onToggleComingSoon(next: boolean) {
     if (!token || flagBusy) return
@@ -123,6 +130,41 @@ export function AdminAnalyticsPage() {
       setFlagBusy(false)
     }
   }
+
+  async function onTogglePreviewsForLoggedIn(next: boolean) {
+    if (!token || previewsBusy) return
+    setPreviewsBusy(true)
+    setPreviewsError(null)
+    try {
+      const status = await patchPreviewsForLoggedIn(token, next)
+      setPreviewsForLoggedIn(status.previews_for_logged_in)
+    } catch (err) {
+      setPreviewsError(
+        err instanceof ApiError
+          ? err.status === 503
+            ? "Run database migration 42_previews_for_logged_in, then try again."
+            : err.detail
+          : "Could not update preview access."
+      )
+    } finally {
+      setPreviewsBusy(false)
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchPreviewsForLoggedIn()
+      .then((status) => {
+        if (cancelled) return
+        setPreviewsForLoggedIn(status.previews_for_logged_in)
+      })
+      .catch(() => {
+        /* keep default off */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const load = useCallback(async () => {
     if (!token) return
@@ -207,6 +249,50 @@ export function AdminAnalyticsPage() {
                 : "border-cyan-500/30 text-cyan-100/70"
             )}
             onClick={() => void onToggleComingSoon(false)}
+          >
+            OFF
+          </button>
+        </div>
+      </section>
+
+      <section className="mb-8 border border-cyan-500/25 bg-black/50 p-5">
+        <h2 className="font-buahs93 text-sm tracking-wide text-cyan-100">
+          PREVIEWS FOR LOGGED-IN USERS
+        </h2>
+        <p className="mt-1 font-mono text-[11px] text-cyan-100/45">
+          When on, any logged-in account can see preview-status cards (with a
+          PREVIEW ribbon). Guests still only see published cards. When off,
+          preview stays a subscriber perk.
+        </p>
+        {previewsError ? (
+          <p className="mt-3 font-mono text-sm text-red-400" role="alert">
+            {previewsError}
+          </p>
+        ) : null}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={previewsBusy}
+            className={cn(
+              "font-buahs93 border px-3 py-1.5 text-[10px]",
+              previewsForLoggedIn
+                ? "border-amber-300 bg-amber-500/20 text-amber-50"
+                : "border-cyan-500/30 text-cyan-100/70"
+            )}
+            onClick={() => void onTogglePreviewsForLoggedIn(true)}
+          >
+            ON
+          </button>
+          <button
+            type="button"
+            disabled={previewsBusy}
+            className={cn(
+              "font-buahs93 border px-3 py-1.5 text-[10px]",
+              !previewsForLoggedIn
+                ? "border-cyan-300 bg-cyan-500/20 text-cyan-50"
+                : "border-cyan-500/30 text-cyan-100/70"
+            )}
+            onClick={() => void onTogglePreviewsForLoggedIn(false)}
           >
             OFF
           </button>

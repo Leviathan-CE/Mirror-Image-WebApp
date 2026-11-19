@@ -10,7 +10,9 @@ import { ThumbsUp } from "lucide-react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
-import { useCardBackSrc } from "@/app/providers/CardBackProvider"
+import {
+  useCardBackOptions,
+} from "@/app/providers/CardBackProvider"
 import { useUserPreferences } from "@/app/providers/PreferencesProvider"
 import { sharedImages } from "@/assets"
 import { GlitchFx } from "@/components/effects/GlitchFx"
@@ -19,6 +21,7 @@ import { DeckCardSearch } from "@/components/decks/DeckCardSearch"
 import { DeckDescription } from "@/components/decks/DeckDescription"
 import { collectDeckPrintoutSlots } from "@/components/decks/deckPrintout.logic"
 import { DeckPrintoutDialog } from "@/components/decks/DeckPrintoutDialog"
+import { DeckPrintPayPanel } from "@/components/decks/DeckPrintPayPanel"
 import {
   DeckCardSortControls,
 } from "@/components/decks/DeckCardSortControls"
@@ -38,6 +41,7 @@ import {
   PublicTextField,
 } from "@/components/ui/PublicTextField"
 import { ApiError } from "@/lib/api/client"
+import { redeemPrintDownload } from "@/lib/api/billing"
 import {
   isPublicTextClean,
   PROFANITY_REJECTED,
@@ -55,6 +59,7 @@ import {
 import { ROUTES, isStaffRole } from "@/lib/route"
 import {
   FEATURE_DECK_PRINTOUT,
+  FEATURE_DUPLEX_PRINT,
   userHasFeature,
 } from "@/lib/subscription.logic"
 import { cn } from "@/lib/utils"
@@ -85,7 +90,7 @@ export function DeckPage() {
   const deckId = Number(deckIdParam)
   const navigate = useNavigate()
   const { user, token, isAuthenticated } = useAuth()
-  const cardBackSrc = useCardBackSrc()
+  const cardBackOptions = useCardBackOptions()
   const { prefs, patchPrefs } = useUserPreferences()
   const browseWidth = clampDeckBrowseWidth(prefs.deck_browse_width_px)
   const cardSortMode = prefs.deck_sort
@@ -111,6 +116,7 @@ export function DeckPage() {
   const [tagDraft, setTagDraft] = useState("")
   const [printoutBusy, setPrintoutBusy] = useState(false)
   const [printDialogOpen, setPrintDialogOpen] = useState(false)
+  const [printPayOpen, setPrintPayOpen] = useState(false)
   const browseResizeRef = useRef<{
     pointerId: number
     startX: number
@@ -176,7 +182,9 @@ export function DeckPage() {
 
   const canEdit =
     Boolean(deck && user && deck.author_name === user.user_name && token)
-  const canPrintout = userHasFeature(user, FEATURE_DECK_PRINTOUT)
+  const canPrintFree = userHasFeature(user, FEATURE_DECK_PRINTOUT)
+  const canDuplexPrint = userHasFeature(user, FEATURE_DUPLEX_PRINT)
+  const canOfferPrint = Boolean(token) && isAuthenticated
   const isAdmin = isStaffRole(user?.role)
 
   const closePrintDialog = useCallback(() => {
@@ -184,10 +192,16 @@ export function DeckPage() {
     setPrintDialogOpen(false)
   }, [printoutBusy])
 
+  const closePrintPay = useCallback(() => {
+    if (printoutBusy) return
+    setPrintPayOpen(false)
+  }, [printoutBusy])
+
   async function createPrintout(options?: {
     includeBacks?: boolean
     marginMm?: number
     fileName?: string
+    cardBackUrl?: string | null
   }) {
     if (!deck || printoutBusy) return
     const slots = collectDeckPrintoutSlots(deck)
@@ -196,8 +210,11 @@ export function DeckPage() {
       return
     }
     const includeBacks = options?.includeBacks ?? false
-    if (includeBacks && !cardBackSrc) {
-      setErrorText("Card back art is not available yet — try again in a moment.")
+    const selectedBackUrl = options?.cardBackUrl ?? null
+    if (includeBacks && !selectedBackUrl) {
+      setErrorText(
+        "Card back art is not available yet — try again in a moment."
+      )
       return
     }
     setPrintoutBusy(true)
@@ -209,15 +226,17 @@ export function DeckPage() {
       const result = await generateDeckPrintoutPdf({
         deckName: deck.name ?? `Deck ${deck.id}`,
         slots,
-        cardBackUrl: includeBacks ? cardBackSrc : null,
+        cardBackUrl: includeBacks ? selectedBackUrl : null,
         includeBacks,
         marginMm: options?.marginMm,
         fileName: options?.fileName,
       })
       setPrintDialogOpen(false)
+      setPrintPayOpen(false)
       if (result.missingArt > 0) {
         setErrorText(
-          `Printout saved — ${result.missingArt} card(s) had no art and used name placeholders.`
+          `Printout saved — ${result.missingArt} card(s) had no art `
+          + "and used name placeholders."
         )
       }
     } catch {
@@ -227,18 +246,39 @@ export function DeckPage() {
     }
   }
 
-  function onCreatePrintout() {
-    if (!deck || printoutBusy) return
+  function onPrintUnlocked() {
+    setPrintPayOpen(false)
+    setPrintDialogOpen(true)
+  }
+
+  async function onCreatePrintout() {
+    if (!deck || printoutBusy || !token) return
     const slots = collectDeckPrintoutSlots(deck)
     if (slots.length === 0) {
       setErrorText("No cards marked for the deck to print.")
       return
     }
+    // Staff skip quota; everyone else redeems then opens duplex options.
     if (isAdmin) {
       setPrintDialogOpen(true)
       return
     }
-    void createPrintout({ includeBacks: false })
+    setErrorText("")
+    try {
+      // Redeem spends L1/L2 monthly quota (or allows a paid grant).
+      const access = await redeemPrintDownload(token, deck.id)
+      if (access.allowed) {
+        setPrintDialogOpen(true)
+        return
+      }
+      setPrintPayOpen(true)
+    } catch (error: unknown) {
+      if (error instanceof ApiError) {
+        setErrorText(error.detail || "Could not check print access.")
+      } else {
+        setErrorText("Could not check print access.")
+      }
+    }
   }
 
   async function onCopyDeck() {
@@ -746,14 +786,24 @@ export function DeckPage() {
                     className="font-buahs93 h-9 w-full rounded-none bg-cyan-700 px-5 hover:bg-cyan-900 md:w-auto"
                     onClick={() => navigate(ROUTES.playTester(deckId))}
                   />
-                  {canPrintout ? (
+                  {canOfferPrint ? (
                     <GlitchFx
                       type="button"
-                      label={printoutBusy ? "BUILDING PDF…" : "CREATE PRINTOUT"}
-                      disabled={printoutBusy || saving}
+                      label={
+                        printoutBusy
+                          ? "BUILDING PDF…"
+                          : canPrintFree
+                            ? "CREATE PRINTOUT"
+                            : "PRINT PDF"
+                      }
+                      disabled={printoutBusy || saving || printPayOpen}
                       fxClassName="order-2 block w-full md:w-auto"
-                      className="font-buahs93 h-9 w-full rounded-none bg-orange-600 px-4 text-white hover:bg-orange-800 disabled:opacity-60 md:w-auto"
-                      onClick={onCreatePrintout}
+                      className={
+                        "font-buahs93 h-9 w-full rounded-none bg-orange-600 "
+                        + "px-4 text-white hover:bg-orange-800 "
+                        + "disabled:opacity-60 md:w-auto"
+                      }
+                      onClick={() => void onCreatePrintout()}
                     />
                   ) : null}
                   {canEdit ? (
@@ -865,17 +915,31 @@ export function DeckPage() {
               }}
             />
 
-            {canPrintout && isAdmin ? (
+            {token ? (
               <DeckPrintoutDialog
                 open={printDialogOpen}
                 slots={collectDeckPrintoutSlots(deck)}
                 deckName={deck.name ?? `Deck ${deck.id}`}
-                cardBackSrc={cardBackSrc}
+                cardBackOptions={
+                  canDuplexPrint ? cardBackOptions : []
+                }
+                duplexEntitled={canDuplexPrint}
                 busy={printoutBusy}
                 onCancel={closePrintDialog}
                 onGenerate={(options) => {
                   void createPrintout(options)
                 }}
+              />
+            ) : null}
+
+            {token && !isAdmin ? (
+              <DeckPrintPayPanel
+                token={token}
+                deckId={deck.id}
+                open={printPayOpen}
+                busy={printoutBusy}
+                onClose={closePrintPay}
+                onUnlocked={onPrintUnlocked}
               />
             ) : null}
           </>

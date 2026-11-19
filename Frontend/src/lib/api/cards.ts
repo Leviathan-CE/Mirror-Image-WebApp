@@ -97,6 +97,8 @@ export type CardLibraryItem = CardSummary & {
   sub_types: string[]
   types_line: string
   threat_level: string
+  /** publish_cards.published — "preview" drives the PREVIEW ribbon. */
+  published?: string | null
 }
 
 export type CardLibraryResponse = {

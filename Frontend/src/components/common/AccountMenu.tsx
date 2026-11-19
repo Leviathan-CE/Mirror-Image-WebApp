@@ -1,5 +1,5 @@
 /**
- * Username account dropdown: Settings, Subscribe, then Sign out last.
+ * Username account dropdown: Preferences, Manage subscription, Sign out.
  */
 
 import { useNavigate } from "react-router-dom"
@@ -46,13 +46,13 @@ export function AccountMenu({ suffix }: AccountMenuProps) {
       items={[
         {
           id: "settings",
-          label: "Prefernces",
+          label: "Preferences",
           onSelect: () => navigate(ROUTES.ACCOUNT),
         },
         {
-          id: "subscribe",
-          label: "Subscribe",
-          onSelect: () => navigate(ROUTES.SUBSCRIBE),
+          id: "subscription",
+          label: "Manage subscription",
+          onSelect: () => navigate(ROUTES.SUBSCRIPTION),
         },
         { id: "sep-sign-out", separator: true },
         {

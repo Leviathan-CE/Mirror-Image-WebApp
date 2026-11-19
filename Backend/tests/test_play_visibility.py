@@ -50,6 +50,9 @@ class _FakeCursor:
         elif "user_has_decks" in sql:
             owner = self.deck_owners.get(int(args["deck_id"]))
             self._result = [(owner,)] if owner is not None else []
+        elif "site_settings" in sql:
+            # previews_for_logged_in defaults off in these tests.
+            self._result = [("false",)]
         else:  # pragma: no cover - guards against a silently wrong query
             raise AssertionError(f"unexpected query: {sql}")
 
@@ -149,7 +152,8 @@ def test_admin_opponent_unlocks_unpublished_cards_for_a_plain_user() -> None:
     assert pooled.bypass is True
 
 
-def test_subscriber_opponent_unlocks_preview_cards_only() -> None:
+def test_subscriber_opponent_does_not_unlock_preview_cards() -> None:
+    """Preview cards are no longer a subscription perk."""
     _seated_room()
     pooled = resolve_room_visibility(
         _cursor(host=("user", "active")),
@@ -160,7 +164,7 @@ def test_subscriber_opponent_unlocks_preview_cards_only() -> None:
 
     assert pooled is not None
     assert pooled.bypass is False
-    assert pooled.include_preview is True
+    assert pooled.include_preview is False
 
 
 def test_two_locked_players_stay_locked() -> None:

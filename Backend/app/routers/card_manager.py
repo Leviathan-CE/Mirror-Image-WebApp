@@ -287,6 +287,14 @@ def _library_row_to_item(row) -> CardLibraryItem:
     if row is None:
         raise ValueError("library_row_required")
     version = row["card_art_version"]
+    published_raw = None
+    if hasattr(row, "get"):
+        published_raw = row.get("published")
+    elif "published" in row:
+        published_raw = row["published"]
+    published = (
+        str(published_raw).strip() if published_raw is not None else None
+    )
     return CardLibraryItem(
         id=int(row["id"]),
         card_name=row["card_name"],
@@ -316,6 +324,7 @@ def _library_row_to_item(row) -> CardLibraryItem:
         lif_capacity=int(row["lif_capacity"] or 0),
         has_invoke_cost=bool(row["has_invoke_cost"]),
         has_tlv=bool(row["has_tlv"]),
+        published=published,
     )
 
 class CardAllResponse(BaseModel):
@@ -700,35 +709,39 @@ def browse_card_library(
                 cur.execute(
                     f"""
                     SELECT
-                        id,
-                        card_name,
-                        card_set_name,
-                        rarity,
-                        invoke_cost,
-                        cost,
-                        super_types,
-                        sub_types,
-                        types_line,
-                        description,
-                        keywords,
-                        show_help_text,
-                        threat_level,
-                        illustration_thumbnail_path,
-                        card_thumbnail_path,
-                        EXTRACT(EPOCH FROM updated_at)::bigint AS card_art_version,
-                        is_pilot,
-                        is_augment,
-                        hand_size,
-                        ram_capacity,
-                        power_capacity,
-                        metal_capacity,
-                        spirit_capacity,
-                        steel_capacity,
-                        time_capacity,
-                        lif_capacity,
-                        has_invoke_cost,
-                        has_tlv
+                        cards.id,
+                        cards.card_name,
+                        cards.card_set_name,
+                        cards.rarity,
+                        cards.invoke_cost,
+                        cards.cost,
+                        cards.super_types,
+                        cards.sub_types,
+                        cards.types_line,
+                        cards.description,
+                        cards.keywords,
+                        cards.show_help_text,
+                        cards.threat_level,
+                        cards.illustration_thumbnail_path,
+                        cards.card_thumbnail_path,
+                        EXTRACT(EPOCH FROM cards.updated_at)::bigint
+                            AS card_art_version,
+                        cards.is_pilot,
+                        cards.is_augment,
+                        cards.hand_size,
+                        cards.ram_capacity,
+                        cards.power_capacity,
+                        cards.metal_capacity,
+                        cards.spirit_capacity,
+                        cards.steel_capacity,
+                        cards.time_capacity,
+                        cards.lif_capacity,
+                        cards.has_invoke_cost,
+                        cards.has_tlv,
+                        pc.published
                       FROM cards
+                      LEFT JOIN publish_cards pc
+                        ON pc.card_id = cards.id
                      WHERE {where_sql}
                      ORDER BY {order_sql}
                      LIMIT %(limit)s OFFSET %(offset)s

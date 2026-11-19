@@ -72,8 +72,9 @@ def get_optional_include_preview(
     """
     True when the caller is entitled to see preview-status cards.
 
-    Admins use ``bypass`` instead; this stays False for them so SQL stays simple.
-    Looks up live role / subscription / grants (not JWT).
+    Admins use ``bypass`` instead; this stays False for them so SQL stays
+    simple. Entitlement: subscriber/grant feature, or the admin site flag
+    ``previews_for_logged_in`` for any logged-in account.
     """
     if is_admin or user_id is None:
         return False
@@ -95,15 +96,20 @@ def get_optional_include_preview(
                 role = row[0] or "user"
                 sub_status = row[1] or "none"
                 granted = load_granted_feature_keys(cur, user_id)
+                if user_has_feature(
+                    role=role,
+                    subscription_status=sub_status,
+                    granted_keys=granted,
+                    feature_key=FEATURE_PREVIEW_CARDS,
+                ):
+                    return True
+                from app.site_settings import (
+                    previews_for_logged_in_or_false,
+                )
+
+                return previews_for_logged_in_or_false(cur)
     except OperationalError:
         return False
-
-    return user_has_feature(
-        role=role,
-        subscription_status=sub_status,
-        granted_keys=granted,
-        feature_key=FEATURE_PREVIEW_CARDS,
-    )
 
 
 def get_optional_publish_bypass(

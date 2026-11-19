@@ -14,6 +14,7 @@ import {
 import { useInbox } from "@/app/providers/InboxProvider"
 import { useUserPreferences } from "@/app/providers/PreferencesProvider"
 import { CardChangeBanner } from "@/components/cards/CardChangeBanner"
+import { CardPreviewBanner } from "@/components/cards/CardPreviewBanner"
 import { CardDetailOverlay } from "@/components/cards/CardDetailOverlay"
 import type { CardDetailChange } from "@/lib/cardBanner.logic"
 import { costTokenToIcon } from "@/components/cards/constants"
@@ -837,6 +838,9 @@ export function CardLibraryBrowser({
                     kind={banner}
                     className="absolute left-1 top-1"
                   />
+                ) : null}
+                {card.published === "preview" ? (
+                  <CardPreviewBanner className="absolute right-1 top-1" />
                 ) : null}
                 {art ? (
                   <img

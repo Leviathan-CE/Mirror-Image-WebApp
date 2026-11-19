@@ -21,6 +21,8 @@ They define the full current schema. New deploys do not need migrations.
 | 16 | `16_announcements.sql` | Public announcement board + reusable media library |
 | 19 | `19_notifications.sql` | In-app inbox events + per-user read receipts |
 | 20 | `20_blog_subscribers.sql` | Public blog mailing list + unsubscribe tokens |
+| 21 | `21_print_download_grants.sql` | Paid one-time deck print download grants |
+| 22 | `22_print_quota_redemptions.sql` | Monthly free print PDF quota redemptions |
 
 Default deck section names (`Main`, `Side`, `Maybe`, `Extra`) are seeded by
 the API when a deck is created (`app/deck_defaults.py`), not by SQL.

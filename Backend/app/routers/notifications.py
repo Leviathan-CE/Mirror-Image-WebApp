@@ -99,15 +99,22 @@ def _load_inbox_context(cur, user_id: int) -> dict[str, Any] | None:
     role = row[0] or "user"
     sub_status = row[1] or "none"
     granted = load_granted_feature_keys(cur, user_id)
-    prefs = normalize_user_preferences(row[3] if isinstance(row[3], dict) else {})
+    prefs = normalize_user_preferences(
+        row[3] if isinstance(row[3], dict) else {}
+    )
+    include_preview = can_see_preview_audience(
+        role=role,
+        subscription_status=sub_status,
+        granted_keys=granted,
+    )
+    if not include_preview:
+        from app.site_settings import previews_for_logged_in_or_false
+
+        include_preview = previews_for_logged_in_or_false(cur)
     return {
         "since": row[2],
         "kinds": allowed_kinds_from_prefs(prefs),
-        "include_preview": can_see_preview_audience(
-            role=role,
-            subscription_status=sub_status,
-            granted_keys=granted,
-        ),
+        "include_preview": include_preview,
         "user_id": user_id,
     }
 

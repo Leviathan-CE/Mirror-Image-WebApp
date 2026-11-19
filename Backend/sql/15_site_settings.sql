@@ -10,5 +10,10 @@ INSERT INTO site_settings (key, value)
 VALUES ('coming_soon', 'false')
 ON CONFLICT (key) DO NOTHING;
 
+INSERT INTO site_settings (key, value)
+VALUES ('previews_for_logged_in', 'false')
+ON CONFLICT (key) DO NOTHING;
+
 COMMENT ON TABLE site_settings IS
-    'Admin-toggled site flags. coming_soon hides the public app behind a splash.';
+    'Admin-toggled site flags. coming_soon hides the public app behind a '
+    'splash. previews_for_logged_in unlocks preview cards for any login.';
