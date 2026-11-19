@@ -64,17 +64,16 @@ OFFERS: tuple[Offer, ...] = (
         kind="subscription",
         label="LEVEL 1 — ARCHIVIST",
         tagline=(
-            "Support Mirror Image at the entry tier and unlock "
-            "early-access play with a modest print allowance."
+            "Support Mirror Image at the entry tier with a "
+            "modest monthly print allowance."
         ),
         features=(
-            "Access preview cards still in design.",
             "5 free print-and-play PDF downloads per month.",
             "Helping support solo development of Mirror Image.",
         ),
         price_id_env="STRIPE_PRICE_ID_LVL_1",
         subscription_type_label="LEVEL 1 — ARCHIVIST",
-        entitlements=("preview_cards", "deck_printout"),
+        entitlements=("deck_printout",),
         print_downloads_per_month=5,
         display_amount_cents=499,
     ),
@@ -83,17 +82,17 @@ OFFERS: tuple[Offer, ...] = (
         kind="subscription",
         label="LEVEL 2 — DATAMINER",
         tagline=(
-            "More print downloads each month while you build and "
-            "play with preview cards."
+            "More print downloads each month, plus duplex card "
+            "backs for home printing."
         ),
         features=(
-            "Access preview cards still in design.",
             "15 free print-and-play PDF downloads per month.",
+            "Duplex card-back sheets for long-edge flip printing.",
             "Helping support solo development of Mirror Image.",
         ),
         price_id_env="STRIPE_PRICE_ID_LVL_2",
         subscription_type_label="LEVEL 2 — DATAMINER",
-        entitlements=("preview_cards", "deck_printout"),
+        entitlements=("deck_printout", "duplex_print"),
         print_downloads_per_month=15,
         display_amount_cents=999,
     ),
@@ -103,18 +102,17 @@ OFFERS: tuple[Offer, ...] = (
         label="LEVEL 3 — WARMACHINE",
         tagline=(
             "Full supporter tier: unlimited print downloads and "
-            "early-access cards for play-spaces."
+            "duplex card backs for your decks."
         ),
         features=(
-            "Access preview cards still in design, with new ones added "
-            "each month to build and play with.",
-            "Unlimited duplex print-and-play PDF downloads from your decks.",
+            "Unlimited print-and-play PDF downloads from your decks.",
+            "Duplex card-back sheets for long-edge flip printing.",
             "Helping support a solo developer and illustrator work full "
             "time on this project and bring it to life.",
         ),
         price_id_env="STRIPE_PRICE_ID_LVL_3",
         subscription_type_label="LEVEL 3 — WARMACHINE",
-        entitlements=("preview_cards", "deck_printout"),
+        entitlements=("deck_printout", "duplex_print"),
         print_downloads_per_month=None,
         display_amount_cents=1999,
     ),

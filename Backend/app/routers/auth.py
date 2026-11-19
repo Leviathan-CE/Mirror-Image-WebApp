@@ -208,15 +208,43 @@ def _fetch_user_by_login(cur, identifier: str) -> tuple | None:
     return cur.fetchone()
 
 
-def _features_for_user(cur, user_id: int, role: str, sub_status: str) -> list[str]:
+def _features_for_user(
+    cur,
+    user_id: int,
+    role: str,
+    sub_status: str,
+    sub_type: str = "",
+) -> list[str]:
     granted = load_granted_feature_keys(cur, user_id)
+    # Tier-specific keys (duplex on L2/L3) live on the offer catalog.
+    from app.subscription import is_subscription_entitled
+    from app.stripe_offers import offer_for_subscription_type_label
+
+    if is_subscription_entitled(
+        role=role,
+        subscription_status=sub_status,
+    ):
+        offer = offer_for_subscription_type_label(sub_type or "")
+        if offer is not None:
+            granted = list({*granted, *offer.entitlements})
+
     catalog = [key for key, _label, _desc in load_feature_catalog(cur)]
-    return effective_feature_keys(
+    features = effective_feature_keys(
         role=role,
         subscription_status=sub_status,
         granted_keys=granted,
         catalog_keys=catalog,
     )
+    # Site flag unlocks preview_cards for every logged-in account.
+    from app.features import FEATURE_PREVIEW_CARDS
+    from app.site_settings import previews_for_logged_in_or_false
+
+    if (
+        FEATURE_PREVIEW_CARDS not in features
+        and previews_for_logged_in_or_false(cur)
+    ):
+        features = sorted({*features, FEATURE_PREVIEW_CARDS})
+    return features
 
 
 def _auth_response_for_user(
@@ -372,7 +400,11 @@ def login(body: LoginRequest):
                         detail="email_not_verified",
                     )
                 features = _features_for_user(
-                    cur, int(user_id), role, sub_status or "none"
+                    cur,
+                    int(user_id),
+                    role,
+                    sub_status or "none",
+                    sub_type or "",
                 )
                 prefs = fetch_user_preferences_raw(cur, int(user_id))
     except HTTPException:
@@ -468,6 +500,7 @@ def login_with_google(body: GoogleLoginRequest):
                     int(resolved.user_id),
                     resolved.role or "user",
                     resolved.subscription_status or "none",
+                    resolved.subscription_type or "",
                 )
                 prefs = fetch_user_preferences_raw(cur, int(resolved.user_id))
             conn.commit()
@@ -539,6 +572,7 @@ def link_google_account_with_password(body: GoogleLinkWithPasswordRequest):
                     int(resolved.user_id),
                     resolved.role or "user",
                     resolved.subscription_status or "none",
+                    resolved.subscription_type or "",
                 )
                 prefs = fetch_user_preferences_raw(cur, int(resolved.user_id))
             conn.commit()
@@ -589,7 +623,11 @@ def me(user_id: int = Depends(get_current_user_id)):
                         detail="account_disabled",
                     )
                 features = _features_for_user(
-                    cur, int(row[0]), row[3], row[4] or "none"
+                    cur,
+                    int(row[0]),
+                    row[3],
+                    row[4] or "none",
+                    row[5] or "",
                 )
                 prefs = fetch_user_preferences_raw(cur, int(row[0]))
                 public = _user_public_from_row(

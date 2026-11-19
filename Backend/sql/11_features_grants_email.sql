@@ -59,9 +59,18 @@ INSERT INTO features (key, label, description)
 SELECT
     'deck_printout',
     'Deck printout',
-    'Build a duplex print-and-play PDF from a deck on the deck page.'
+    'Build a print-and-play PDF from a deck on the deck page.'
 WHERE NOT EXISTS (
     SELECT 1 FROM features WHERE key = 'deck_printout'
+);
+
+INSERT INTO features (key, label, description)
+SELECT
+    'duplex_print',
+    'Duplex print',
+    'Include mirrored card-back sheets in print-and-play PDFs (Level 2+).'
+WHERE NOT EXISTS (
+    SELECT 1 FROM features WHERE key = 'duplex_print'
 );
 
 INSERT INTO features (key, label, description)

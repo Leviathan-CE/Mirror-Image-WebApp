@@ -41,8 +41,13 @@ def test_three_subscription_tiers_exist():
     }
     lvl1 = get_offer("level1_archivist")
     lvl2 = get_offer("level2_dataminer")
+    lvl3 = get_offer("level3_warmachine")
     assert lvl1 is not None and lvl1.print_downloads_per_month == 5
     assert lvl2 is not None and lvl2.print_downloads_per_month == 15
+    assert "preview_cards" not in lvl1.entitlements
+    assert "duplex_print" not in lvl1.entitlements
+    assert "duplex_print" in lvl2.entitlements
+    assert lvl3 is not None and "duplex_print" in lvl3.entitlements
 
 
 def test_print_amount_uses_minimum_under_8_cards():

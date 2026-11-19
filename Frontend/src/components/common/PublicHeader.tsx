@@ -46,6 +46,11 @@ export function PublicHeader() {
               onSelect: () => navigate(ROUTES.LORE),
             },
             {
+              id: "plans",
+              label: "PLANS",
+              onSelect: () => navigate(ROUTES.PLANS),
+            },
+            {
               id: "updates",
               label: "UPDATES",
               onSelect: () => navigate(ROUTES.UPDATES),

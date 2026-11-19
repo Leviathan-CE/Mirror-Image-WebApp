@@ -1,5 +1,7 @@
 /**
- * Staff printout options: page preview, duplex backs, margin, file name.
+ * Printout options: page preview, duplex backs, margin, file name.
+ *
+ * Non-staff get the free public back only. Staff can pick free or original.
  */
 
 import { useCallback, useEffect, useState } from "react"
@@ -21,6 +23,7 @@ import {
 } from "@/components/decks/deckPrintout.logic"
 import { Button } from "@/components/ui/button"
 import { EditBox } from "@/components/ui/EditBox"
+import type { CardBackOption } from "@/lib/api/assets"
 import { cardFaceUrl } from "@/lib/api/decks"
 
 const PREVIEW_PAGE_W_PX = 220
@@ -29,13 +32,16 @@ export type DeckPrintoutDialogOptions = {
   includeBacks: boolean
   marginMm: number
   fileName: string
+  cardBackUrl: string | null
 }
 
 export type DeckPrintoutDialogProps = {
   open: boolean
   slots: DeckPrintoutSlot[]
   deckName: string
-  cardBackSrc: string | null
+  cardBackOptions: CardBackOption[]
+  /** False for L1 / unpaid — duplex is a Level 2+ perk. */
+  duplexEntitled?: boolean
   busy: boolean
   onCancel: () => void
   onGenerate: (options: DeckPrintoutDialogOptions) => void
@@ -105,27 +111,46 @@ function PrintoutSheetPreview({
   )
 }
 
+function resolveSelectedSrc(
+  options: CardBackOption[],
+  selectedId: string
+): string | null {
+  const match = options.find((option) => option.id === selectedId)
+  if (match) return match.src
+  if (options.length > 0) return options[0].src
+  return null
+}
+
 export function DeckPrintoutDialog({
   open,
   slots,
   deckName,
-  cardBackSrc,
+  cardBackOptions,
+  duplexEntitled = true,
   busy,
   onCancel,
   onGenerate,
 }: DeckPrintoutDialogProps) {
   const [includeBacks, setIncludeBacks] = useState(true)
+  const [selectedBackId, setSelectedBackId] = useState("")
   const [marginMm, setMarginMm] = useState(PRINTOUT_MARGIN_DEFAULT_MM)
   const [fileName, setFileName] = useState("")
   const [previewPage, setPreviewPage] = useState(0)
 
+  const hasBackOptions = cardBackOptions.length > 0
+  const cardBackSrc = resolveSelectedSrc(cardBackOptions, selectedBackId)
+  const showBackPicker = includeBacks && cardBackOptions.length > 1
+
   useEffect(() => {
     if (!open) return
-    setIncludeBacks(Boolean(cardBackSrc))
+    const defaultId =
+      cardBackOptions.length > 0 ? cardBackOptions[0].id : ""
+    setIncludeBacks(hasBackOptions)
+    setSelectedBackId(defaultId)
     setMarginMm(PRINTOUT_MARGIN_DEFAULT_MM)
     setFileName(defaultPrintoutFileName(deckName))
     setPreviewPage(0)
-  }, [open, deckName, cardBackSrc])
+  }, [open, deckName, cardBackOptions, hasBackOptions])
 
   useEffect(() => {
     if (!open) return
@@ -152,8 +177,20 @@ export function DeckPrintoutDialog({
     const name = fileName.trim()
     if (!name) return
     if (includeBacks && !cardBackSrc) return
-    onGenerate({ includeBacks, marginMm, fileName: name })
-  }, [busy, fileName, includeBacks, cardBackSrc, marginMm, onGenerate])
+    onGenerate({
+      includeBacks,
+      marginMm,
+      fileName: name,
+      cardBackUrl: includeBacks ? cardBackSrc : null,
+    })
+  }, [
+    busy,
+    fileName,
+    includeBacks,
+    cardBackSrc,
+    marginMm,
+    onGenerate,
+  ])
 
   if (!open || typeof document === "undefined") return null
   if (facePages === 0) return null
@@ -236,12 +273,16 @@ export function DeckPrintoutDialog({
                 type="checkbox"
                 className="mt-0.5"
                 checked={includeBacks}
-                disabled={busy || !cardBackSrc}
+                disabled={busy || !hasBackOptions}
                 onChange={(event) => setIncludeBacks(event.target.checked)}
               />
               <span>
                 Print card backs (duplex)
-                {!cardBackSrc ? (
+                {!duplexEntitled ? (
+                  <span className="block text-amber-200/80">
+                    Available on Level 2 and Level 3 plans.
+                  </span>
+                ) : !hasBackOptions ? (
                   <span className="block text-amber-200/80">
                     Card back art is not loaded yet.
                   </span>
@@ -253,6 +294,30 @@ export function DeckPrintoutDialog({
                 )}
               </span>
             </label>
+
+            {showBackPicker ? (
+              <fieldset className="flex flex-col gap-2 border-0 p-0">
+                <legend className="font-mono text-[11px] text-cyan-100/85">
+                  Card back art
+                </legend>
+                {cardBackOptions.map((option) => (
+                  <label
+                    key={option.id}
+                    className="flex items-center gap-2 font-mono text-[11px] text-cyan-100/80"
+                  >
+                    <input
+                      type="radio"
+                      name="printout-card-back"
+                      value={option.id}
+                      checked={selectedBackId === option.id}
+                      disabled={busy}
+                      onChange={() => setSelectedBackId(option.id)}
+                    />
+                    {option.label}
+                  </label>
+                ))}
+              </fieldset>
+            ) : null}
 
             <label className="flex flex-col gap-1 font-mono text-[11px] text-cyan-100/85">
               Card margin ({marginMm} mm)

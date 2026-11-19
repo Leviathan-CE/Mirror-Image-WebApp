@@ -7,6 +7,7 @@ import { useEffect, useState, type MouseEvent, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 
 import { CardCostIcons } from "@/components/cards/CardCostIcons"
+import { CardPreviewBanner } from "@/components/cards/CardPreviewBanner"
 import { GameIcon } from "@/components/common/GameIcon"
 import type { CardClassification } from "@/components/decks/ClassifiedCardFace"
 import { deckCardRowStyle } from "@/components/decks/deckCardColors"
@@ -90,6 +91,9 @@ export function DeckCardListRow({
       onMouseMove={trackThumb}
       onMouseLeave={() => setThumbPos(null)}
     >
+      {classified == null && card.published === "preview" ? (
+        <CardPreviewBanner className="deck-card-list__preview shrink-0" />
+      ) : null}
       {classified ? (
         <span className="deck-card-list__tag">
           {classified === "top_secret" ? "TOP SECRET" : "CLASSIFIED"}

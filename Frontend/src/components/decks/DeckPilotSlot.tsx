@@ -4,6 +4,7 @@
 
 import { useEffect, useState, type DragEvent } from "react"
 
+import { CardPreviewBanner } from "@/components/cards/CardPreviewBanner"
 import {
   ClassifiedCardFace,
   cardClassification,
@@ -165,6 +166,9 @@ export function DeckPilotSlot({
             {canEdit ? "Drop pilot card here" : "Empty"}
           </p>
         )}
+        {pilot && !classified && pilot.published === "preview" ? (
+          <CardPreviewBanner className="absolute right-1 top-1 z-[3]" />
+        ) : null}
       </div>
 
       {enlarged && pilot ? (

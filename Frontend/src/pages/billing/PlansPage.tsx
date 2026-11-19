@@ -22,8 +22,9 @@ export function PlansPage() {
             PLANS
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-white/55">
-            Fund Alpha development and unlock supporter perks — preview cards,
-            print downloads, and Playtester with friends.
+            Fund Alpha development and unlock supporter perks — print
+            downloads, duplex backs on higher tiers, and Playtester with
+            friends.
           </p>
         </header>
 

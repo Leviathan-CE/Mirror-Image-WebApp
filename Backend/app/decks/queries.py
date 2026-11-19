@@ -218,6 +218,9 @@ def fetch_deck_cards(
             has_tlv=bool(row[25]),
             has_invoke_cost=bool(row[26]),
         )
+        published = (
+            str(row[27]).strip() if row[27] is not None else None
+        )
         entry = DeckCardEntry(
             quantity=int(row[2]),
             category_id=int(row[3]),
@@ -226,6 +229,7 @@ def fetch_deck_cards(
             card=card,
             is_classified=False,
             classification=None,
+            published=published,
         )
         kind = deck_card_classification(
             row[27],
@@ -239,6 +243,7 @@ def fetch_deck_cards(
                 update={
                     **overrides,
                     "card": entry.card.model_copy(update=card_overrides),
+                    "published": None,
                 }
             )
         entries.append(entry)

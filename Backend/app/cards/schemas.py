@@ -59,3 +59,5 @@ class CardLibraryItem(CardSummary):
     description: str = ""
     keywords: list[Any] = Field(default_factory=list)
     show_help_text: bool = True
+    # publish_cards.published — used for the PREVIEW ribbon.
+    published: str | None = None

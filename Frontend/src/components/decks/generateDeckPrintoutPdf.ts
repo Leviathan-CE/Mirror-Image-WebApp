@@ -1,9 +1,8 @@
 /**
  * Build a letter-size print-and-play PDF from deck card art.
  *
- * - Subscribers: faces only (3×3 per page) — no real card backs.
- * - Staff: optional duplex — each face sheet followed by a mirrored back sheet
- *   (pass `cardBackUrl` from the auth-gated card-back asset).
+ * Optional duplex: each face sheet is followed by a mirrored back sheet
+ * (pass `cardBackUrl` — free public back for users, or staff premium).
  */
 
 import { jsPDF } from "jspdf"

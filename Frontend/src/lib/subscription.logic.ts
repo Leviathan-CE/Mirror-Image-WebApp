@@ -17,6 +17,8 @@ const PUBLIC_FEATURES = new Set(["playtester"])
 export const FEATURE_PREVIEW_CARDS = "preview_cards"
 export const FEATURE_UNPUBLISHED_CARDS = "unpublished_cards"
 export const FEATURE_DECK_PRINTOUT = "deck_printout"
+/** L2/L3 offer entitlement — duplex card backs on print PDFs. */
+export const FEATURE_DUPLEX_PRINT = "duplex_print"
 
 export function isUserSubscribed(user: AuthUser | null | undefined): boolean {
   if (!user) return false
@@ -35,10 +37,8 @@ export function userHasFeature(
   if (isStaffRole(user.role)) return true
   if (user.features?.includes(featureKey)) return true
   // Fallback when older /me payloads omit features[]:
-  if (
-    featureKey === FEATURE_PREVIEW_CARDS ||
-    featureKey === FEATURE_DECK_PRINTOUT
-  ) {
+  // preview_cards is site-flag / grant only — not a sub default.
+  if (featureKey === FEATURE_DECK_PRINTOUT) {
     return isUserSubscribed(user)
   }
   return false

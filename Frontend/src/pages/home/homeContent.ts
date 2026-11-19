@@ -22,7 +22,7 @@ export const homeCopy = {
   pathLearnBody: "How to play walks you through setup, combat, and the lock.",
   pathSupportTitle: "Fund the next drop",
   pathSupportBody:
-    "Create an account and subscribe to unlock preview cards and keep development moving.",
+    "Create an account and subscribe for print downloads and keep development moving.",
 
   supportHeadline: "Make Alpha real",
   supportWhy: [
@@ -31,8 +31,8 @@ export const homeCopy = {
     "Help Mirror Image grow from Alpha toward a real release",
   ],
   supportPerks: [
-    "Access preview cards still in design",
-    "Create duplex print-and-play PDFs from your decks",
+    "Print-and-play PDF downloads from your decks",
+    "Duplex card backs on Level 2 and Level 3 plans",
     "Play with friends in the Playtester",
   ],
 

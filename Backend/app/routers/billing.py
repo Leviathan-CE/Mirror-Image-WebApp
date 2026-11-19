@@ -17,6 +17,7 @@ from app.decks.access import require_readable_deck
 from app.features import (
     FEATURE_DECK_PRINTOUT,
     load_granted_feature_keys,
+    sync_subscription_entitlement_grants,
 )
 from app.roles import is_staff_role
 from app.security import get_current_user_id
@@ -236,6 +237,8 @@ def _apply_subscription_row(
         if user_id is not None
         else "stripe_customer_id = %(customer_id)s"
     )
+    status_value = subscription_status or "none"
+    type_value = (subscription_type or "").strip()
     cur.execute(
         f"""
         UPDATE users
@@ -251,11 +254,45 @@ def _apply_subscription_row(
             "user_id": user_id,
             "customer_id": customer_id,
             "subscription_id": subscription_id,
-            "subscription_status": subscription_status or "none",
-            "subscription_type": (subscription_type or "").strip(),
+            "subscription_status": status_value,
+            "subscription_type": type_value,
             "period_end": period_end,
             "cancel_at_period_end": bool(cancel_at_period_end),
         },
+    )
+
+    # Keep feature grants aligned with the tier (duplex on L2/L3, etc.).
+    resolved_id = user_id
+    if resolved_id is None and customer_id:
+        cur.execute(
+            """
+            SELECT id
+              FROM users
+             WHERE stripe_customer_id = %(customer_id)s
+             LIMIT 1
+            """,
+            {"customer_id": customer_id},
+        )
+        found = cur.fetchone()
+        resolved_id = int(found[0]) if found else None
+    if resolved_id is None:
+        return
+    cur.execute(
+        """
+        SELECT role
+          FROM users
+         WHERE id = %(user_id)s
+        """,
+        {"user_id": resolved_id},
+    )
+    role_row = cur.fetchone()
+    role = (role_row[0] if role_row else None) or "user"
+    sync_subscription_entitlement_grants(
+        cur,
+        user_id=int(resolved_id),
+        role=role,
+        subscription_status=status_value,
+        subscription_type=type_value,
     )
 
 

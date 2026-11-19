@@ -12,12 +12,9 @@ export const DECK_CARD_MAX_COPIES = 3
 /** Max copies for Token super-type (matches backend `le=99`). */
 export const DECK_CARD_MAX_COPIES_UNLIMITED = 99
 
-/** Exactly three objective cards per deck (not part of the 40-card RIG). */
-export const DECK_OBJECTIVE_SLOT_COUNT = 3
-
 /**
- * When false: hide reserved Objectives on the deck board and do not deal them
- * into playtester opening sessions. Flip true to restore both.
+ * When false: hide reserved Objective/Augments on the deck board and do not
+ * deal them into playtester opening sessions. Flip true to restore both.
  */
 export const SHOW_DECK_OBJECTIVE_SLOT = true
 

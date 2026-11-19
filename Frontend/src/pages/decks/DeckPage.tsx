@@ -10,7 +10,9 @@ import { ThumbsUp } from "lucide-react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { useAuth } from "@/app/providers/AuthProvider"
-import { useCardBackSrc } from "@/app/providers/CardBackProvider"
+import {
+  useCardBackOptions,
+} from "@/app/providers/CardBackProvider"
 import { useUserPreferences } from "@/app/providers/PreferencesProvider"
 import { sharedImages } from "@/assets"
 import { GlitchFx } from "@/components/effects/GlitchFx"
@@ -57,6 +59,7 @@ import {
 import { ROUTES, isStaffRole } from "@/lib/route"
 import {
   FEATURE_DECK_PRINTOUT,
+  FEATURE_DUPLEX_PRINT,
   userHasFeature,
 } from "@/lib/subscription.logic"
 import { cn } from "@/lib/utils"
@@ -87,7 +90,7 @@ export function DeckPage() {
   const deckId = Number(deckIdParam)
   const navigate = useNavigate()
   const { user, token, isAuthenticated } = useAuth()
-  const cardBackSrc = useCardBackSrc()
+  const cardBackOptions = useCardBackOptions()
   const { prefs, patchPrefs } = useUserPreferences()
   const browseWidth = clampDeckBrowseWidth(prefs.deck_browse_width_px)
   const cardSortMode = prefs.deck_sort
@@ -180,6 +183,7 @@ export function DeckPage() {
   const canEdit =
     Boolean(deck && user && deck.author_name === user.user_name && token)
   const canPrintFree = userHasFeature(user, FEATURE_DECK_PRINTOUT)
+  const canDuplexPrint = userHasFeature(user, FEATURE_DUPLEX_PRINT)
   const canOfferPrint = Boolean(token) && isAuthenticated
   const isAdmin = isStaffRole(user?.role)
 
@@ -197,6 +201,7 @@ export function DeckPage() {
     includeBacks?: boolean
     marginMm?: number
     fileName?: string
+    cardBackUrl?: string | null
   }) {
     if (!deck || printoutBusy) return
     const slots = collectDeckPrintoutSlots(deck)
@@ -205,7 +210,8 @@ export function DeckPage() {
       return
     }
     const includeBacks = options?.includeBacks ?? false
-    if (includeBacks && !cardBackSrc) {
+    const selectedBackUrl = options?.cardBackUrl ?? null
+    if (includeBacks && !selectedBackUrl) {
       setErrorText(
         "Card back art is not available yet — try again in a moment."
       )
@@ -220,7 +226,7 @@ export function DeckPage() {
       const result = await generateDeckPrintoutPdf({
         deckName: deck.name ?? `Deck ${deck.id}`,
         slots,
-        cardBackUrl: includeBacks ? cardBackSrc : null,
+        cardBackUrl: includeBacks ? selectedBackUrl : null,
         includeBacks,
         marginMm: options?.marginMm,
         fileName: options?.fileName,
@@ -242,7 +248,7 @@ export function DeckPage() {
 
   function onPrintUnlocked() {
     setPrintPayOpen(false)
-    void createPrintout({ includeBacks: false })
+    setPrintDialogOpen(true)
   }
 
   async function onCreatePrintout() {
@@ -252,7 +258,7 @@ export function DeckPage() {
       setErrorText("No cards marked for the deck to print.")
       return
     }
-    // Staff keep the duplex dialog and unlimited prints.
+    // Staff skip quota; everyone else redeems then opens duplex options.
     if (isAdmin) {
       setPrintDialogOpen(true)
       return
@@ -262,7 +268,7 @@ export function DeckPage() {
       // Redeem spends L1/L2 monthly quota (or allows a paid grant).
       const access = await redeemPrintDownload(token, deck.id)
       if (access.allowed) {
-        void createPrintout({ includeBacks: false })
+        setPrintDialogOpen(true)
         return
       }
       setPrintPayOpen(true)
@@ -909,12 +915,15 @@ export function DeckPage() {
               }}
             />
 
-            {canPrintFree && isAdmin ? (
+            {token ? (
               <DeckPrintoutDialog
                 open={printDialogOpen}
                 slots={collectDeckPrintoutSlots(deck)}
                 deckName={deck.name ?? `Deck ${deck.id}`}
-                cardBackSrc={cardBackSrc}
+                cardBackOptions={
+                  canDuplexPrint ? cardBackOptions : []
+                }
+                duplexEntitled={canDuplexPrint}
                 busy={printoutBusy}
                 onCancel={closePrintDialog}
                 onGenerate={(options) => {

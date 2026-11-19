@@ -8,7 +8,6 @@ import {
   type SetStateAction,
 } from "react"
 
-import { DECK_OBJECTIVE_SLOT_COUNT } from "@/components/decks/constants"
 import {
   cardsFromDragPayload,
   isLibraryDragPayload,
@@ -29,8 +28,7 @@ import {
   applyCardMove,
   removeCardEntry,
   totalCopiesOfCard,
-  totalObjectiveCopies,
-  isObjectiveCard,
+  isObjectiveOrAugmentCard,
   withCardEntry,
 } from "@/components/decks/deck.logic"
 import { ApiError } from "@/lib/api/client"
@@ -592,7 +590,7 @@ export function useDeckBoardMutations({
         await assignPilot(hit.id, null)
         return
       }
-      if (isObjectiveCard(detail)) {
+      if (isObjectiveOrAugmentCard(detail)) {
         await addObjective(hit.id, null)
         return
       }
@@ -646,7 +644,7 @@ export function useDeckBoardMutations({
     if (!token || !deck) return null
     const existing = objectiveCategory(deck.categories)
     if (existing) {
-      // Migrate legacy "Augments" section name to Objectives.
+      // Migrate legacy "Objectives" / "Augments" to Objective/Augments.
       if (
         existing.name.trim().toLowerCase() !==
         OBJECTIVE_SECTION_NAME.toLowerCase()
@@ -704,33 +702,39 @@ export function useDeckBoardMutations({
     if (!token || !deck || !canEdit) return
 
     const detail = await fetchCardById(cardId, token)
-    if (!isObjectiveCard(detail)) {
-      setErrorText("Only cards with the Objective super type can go in Objectives.")
+    if (!isObjectiveOrAugmentCard(detail)) {
+      setErrorText(
+        "Only Objective or Augment cards can go in Objective/Augments."
+      )
       return
     }
 
     const objectiveCatId = await ensureObjectiveCategoryId()
     if (objectiveCatId == null) {
-      setErrorText("Could not open the Objectives section.")
+      setErrorText("Could not open the Objective/Augments section.")
       return
     }
 
+    const objectiveCat =
+      deck.categories.find((c) => c.id === objectiveCatId) ?? {
+        id: objectiveCatId,
+        name: OBJECTIVE_SECTION_NAME,
+        sort_order: -2,
+        in_deck: false,
+      }
+    const maxCopies = maxCopiesForDeckCard(objectiveCat, detail)
     const already = deck.cards.find(
       (card) => card.card.id === cardId && card.category_id === objectiveCatId
     )
     if (already) {
-      setErrorText("That objective is already in the list.")
-      return
-    }
-
-    if (
-      totalObjectiveCopies(deck.cards, deck.categories) >=
-      DECK_OBJECTIVE_SLOT_COUNT
-    ) {
-      setErrorText(
-        `A deck can include exactly ${DECK_OBJECTIVE_SLOT_COUNT} objective cards.`
+      const canAdd = canAddCopyToDeck(
+        totalCopiesOfCard(deck.cards, cardId),
+        maxCopies
       )
-      return
+      if (!canAdd.ok) {
+        setErrorText(canAdd.message)
+        return
+      }
     }
 
     setSaving(true)
@@ -740,8 +744,16 @@ export function useDeckBoardMutations({
       if (fromCategoryId != null && fromCategoryId !== objectiveCatId) {
         entry = await updateDeckCard(deck.id, cardId, fromCategoryId, token, {
           category_id: objectiveCatId,
-          quantity: 1,
+          quantity: already ? already.quantity + 1 : 1,
         })
+      } else if (already) {
+        entry = await updateDeckCard(
+          deck.id,
+          cardId,
+          objectiveCatId,
+          token,
+          { quantity: already.quantity + 1 }
+        )
       } else {
         entry = await addDeckCard(deck.id, token, {
           card_id: cardId,
@@ -761,15 +773,21 @@ export function useDeckBoardMutations({
                   card.category_id === fromCategoryId
                 )
             )
-            : prev.cards
+            : prev.cards.filter(
+              (card) =>
+                !(
+                  card.card.id === cardId &&
+                  card.category_id === objectiveCatId
+                )
+            )
         return withCardEntry(
           { ...prev, cards: withoutSource },
-          { ...entry, quantity: 1 }
+          entry
         )
       })
       clearCardSelection()
     } catch {
-      setErrorText("Could not add that objective.")
+      setErrorText("Could not add that Objective/Augment.")
       await loadDeck()
     } finally {
       setSaving(false)

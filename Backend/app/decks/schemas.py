@@ -103,6 +103,8 @@ class DeckCardEntry(BaseModel):
     is_classified: bool = False
     # "classified" (preview lock) | "top_secret" (not published) | null.
     classification: str | None = None
+    # Raw publish_cards.published when visible (for PREVIEW ribbon).
+    published: str | None = None
 
 
 class DeckDetail(DeckSummary):
