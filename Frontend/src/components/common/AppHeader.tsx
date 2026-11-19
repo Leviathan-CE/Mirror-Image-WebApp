@@ -1,7 +1,7 @@
 /**
  * Top-level header switch.
  *
- * - Guest (`PublicHeader`): marketing nav + LOGIN
+ * - Guest (`PublicHeader`): marketing nav + ACCOUNT
  * - Admin on `/admin/*` (`AdminHeader`): analytics / cards db / users
  * - Authenticated (`Userheader`): decks / cards / account menu
  */

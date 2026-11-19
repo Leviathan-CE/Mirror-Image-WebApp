@@ -98,7 +98,7 @@ class UserPreferencesOut(BaseModel):
     deck_sort: str = "type"
     deck_browse_width_px: int = 352
     library_sort: str = "name"
-    library_page_size: int = 50
+    library_page_size: int = 25
     library_preview_px: int = 112
     deck_start_sections: list[str] = Field(
         default_factory=lambda: ["Entity", "Cyberspell"]

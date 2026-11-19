@@ -276,7 +276,13 @@ export function HowToPlayPage() {
             <div className="absolute inset-0 bg-black/60" aria-hidden />
             <BackToTocButton />
 
-            <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-6 xl:max-w-7xl 2xl:max-w-[110rem]">
+            <div
+                className={
+                    "rise-list relative z-10 mx-auto flex "
+                    + "w-full max-w-6xl flex-col items-center "
+                    + "gap-6 xl:max-w-7xl 2xl:max-w-[110rem]"
+                }
+            >
                 <img
                     src={howToPlayImages.BANNER}
                     alt="Mirror Image banner"

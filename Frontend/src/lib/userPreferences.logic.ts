@@ -30,7 +30,7 @@ export const BROWSE_WIDTH_MIN = 280
 export const BROWSE_WIDTH_MAX = 2400
 export const BROWSE_WIDTH_DEFAULT = 352
 export const PREVIEW_PX_MIN = 72
-export const PREVIEW_PX_MAX = 200
+export const PREVIEW_PX_MAX = 300
 export const PREVIEW_PX_DEFAULT = 112
 export const SECTION_NAME_MAX = 60
 export const SECTION_COUNT_MIN = 1
@@ -63,7 +63,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   deck_sort: "type",
   deck_browse_width_px: BROWSE_WIDTH_DEFAULT,
   library_sort: "name",
-  library_page_size: 50,
+  library_page_size: 25,
   library_preview_px: PREVIEW_PX_DEFAULT,
   deck_start_sections: [...DEFAULT_DECK_CATEGORY_NAMES],
   notify_blog: true,

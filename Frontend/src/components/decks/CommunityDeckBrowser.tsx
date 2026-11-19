@@ -431,7 +431,8 @@ export function CommunityDeckBrowser({
       {decks.length > 0 ? (
         <ul
           className={cn(
-            "mt-6 grid auto-rows-fr gap-4 transition-opacity duration-200 sm:grid-cols-2",
+            "rise-list mt-6 grid auto-rows-fr gap-4",
+            "transition-opacity duration-200 sm:grid-cols-2",
             isRefreshing && "pointer-events-none opacity-50"
           )}
           aria-busy={isRefreshing}

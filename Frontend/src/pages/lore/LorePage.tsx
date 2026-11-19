@@ -104,7 +104,7 @@ export function LorePage() {
 
 
 
-                        <div className="space-y-12">
+                        <div className="rise-list space-y-12">
                             <Section id="theatre" title="The Theatre of the 22nd Century">
                                 <p>
                                     The current year is 2196, eighty-six years into the World at the End of

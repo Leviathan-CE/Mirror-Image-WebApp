@@ -20,8 +20,8 @@ def test_normalize_drops_unknown_and_clamps():
     assert out["deck_view"] == "list"
     assert out["deck_sort"] == "type"
     assert out["deck_browse_width_px"] == 280
-    assert out["library_page_size"] == 50
-    assert out["library_preview_px"] == 200
+    assert out["library_page_size"] == 25
+    assert out["library_preview_px"] == 300
     assert "extra" not in out
 
 

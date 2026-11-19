@@ -20,7 +20,7 @@ BROWSE_WIDTH_MIN = 280
 BROWSE_WIDTH_MAX = 2400
 BROWSE_WIDTH_DEFAULT = 352
 PREVIEW_PX_MIN = 72
-PREVIEW_PX_MAX = 200
+PREVIEW_PX_MAX = 300
 PREVIEW_PX_DEFAULT = 112
 
 SECTION_NAME_MAX = 60
@@ -33,7 +33,7 @@ DEFAULT_PREFERENCES: dict[str, Any] = {
     "deck_sort": "type",
     "deck_browse_width_px": BROWSE_WIDTH_DEFAULT,
     "library_sort": "name",
-    "library_page_size": 50,
+    "library_page_size": 25,
     "library_preview_px": PREVIEW_PX_DEFAULT,
     "deck_start_sections": list(DEFAULT_START_SECTIONS),
     "notify_blog": True,
@@ -91,10 +91,11 @@ def normalize_user_preferences(raw: Any) -> dict[str, Any]:
     sort = str(data.get("deck_sort") or "").strip().lower()
     lib_sort = str(data.get("library_sort") or "").strip().lower()
     page = data.get("library_page_size")
+    default_page = int(DEFAULT_PREFERENCES["library_page_size"])
     try:
-        page_n = int(page) if page is not None else 50
+        page_n = int(page) if page is not None else default_page
     except (TypeError, ValueError):
-        page_n = 50
+        page_n = default_page
     return {
         "deck_view": view if view in DECK_VIEWS else "cards",
         "deck_sort": sort if sort in DECK_SORTS else "type",
@@ -105,7 +106,9 @@ def normalize_user_preferences(raw: Any) -> dict[str, Any]:
             BROWSE_WIDTH_DEFAULT,
         ),
         "library_sort": lib_sort if lib_sort in LIBRARY_SORTS else "name",
-        "library_page_size": page_n if page_n in LIBRARY_PAGE_SIZES else 50,
+        "library_page_size": (
+            page_n if page_n in LIBRARY_PAGE_SIZES else default_page
+        ),
         "library_preview_px": _clamp_int(
             data.get("library_preview_px"),
             PREVIEW_PX_MIN,

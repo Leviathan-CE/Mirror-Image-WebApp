@@ -38,7 +38,7 @@ describe("normalizeUserPreferences", () => {
 
   it("clamps sizes", () => {
     expect(clampBrowseWidth(10)).toBe(280)
-    expect(clampPreviewPx(900)).toBe(200)
+    expect(clampPreviewPx(900)).toBe(300)
   })
 
   it("detects unset blobs", () => {

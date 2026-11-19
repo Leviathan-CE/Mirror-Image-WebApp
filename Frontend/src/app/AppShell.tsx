@@ -29,6 +29,7 @@ import { CardNotificationHost } from "@/components/inbox/CardNotificationHost"
 import { InboxPage } from "@/pages/inbox/InboxPage"
 import { ComunityDecksPage } from "@/pages/decks/ComunityDecksPage"
 import { ComingSoonGate } from "@/app/ComingSoonGate"
+import { ScrollToTop } from "@/app/ScrollToTop"
 import { ROUTES } from "@/lib/route"
 import { PlayTesterPage } from "@/pages/decks/PlayTesterPage"
 import { UnsubscribePage } from "@/pages/mailing/UnsubscribePage"
@@ -38,6 +39,7 @@ export function AppShell() {
     <AppProviders>
       <BrowserRouter>
         <PreferencesNavigationFlush />
+        <ScrollToTop />
         <ComingSoonGate>
           <AppHeader />
           <CardNotificationHost />

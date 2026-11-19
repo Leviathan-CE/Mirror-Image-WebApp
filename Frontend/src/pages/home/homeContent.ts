@@ -1,59 +1,87 @@
 /**
- * Marketing home copy — Alpha 1.0 world-first landing.
- * Keep pitch free of removed systems (augments / weapons).
+ * Home slide copy. Keep the voice plain and the pitch short.
  */
 
 export const homeCopy = {
-  brand: "MIRROR IMAGE",
-  heroHeadline: "The war to end all wars never ended. The machine came back to finish the job for total control.",
-  heroSupport:
-    "A fantasy-punk collectible role-playing card game of pilots, units, and cyberspells on a planet at the edge of annihilation.",
+  brand: "MIRRORIMAGE",
+  productLine: "CREATIVE TRADING CARD GAME",
+  mission:
+    "Choose your mission. Build your RIG. Earn your title as a pilot.",
+  heroBody:
+    "In the Mirror Image Creative Trading Card Game, you have a "
+    + "creative print-to-play path: cheap, easy access to the cards "
+    + "you want, so you can play, get creative, and help sculpt the "
+    + "set's balance and effects before they go to print. When you "
+    + "are ready, the final printed product will be available as a "
+    + "classic trading card, with a bonus: each final card is printed "
+    + "borderless. Gear up for an intense fight for Aerathea. Manage "
+    + "your resources carefully, thwart your opponents with timely "
+    + "Quick Hacks, and set up devastating counterattacks with Units. "
+    + "Mirror Image is for trading card players, creative "
+    + "expressionists, collectors, and anyone itching for something "
+    + "new and wildly interesting, with a flavour of familiarity.",
 
-  alphaEyebrow: "ALPHA 1.0",
-  alphaHeadline: "Early access. Built in the open.",
-  alphaBody:
-    "Rules and cards will change as we playtest. We need players who are interested or care enough to break things and tell us what hurts.",
-  alphaHonesty:
-    "This is not a finished retail product — it is an incomplete Alpha, for a physical card game with a online component.",
-
-  pathBuildTitle: "Build your R.I.G.",
-  pathBuildBody: "Assemble decks in the builder and dig through the live card library.",
-  pathLearnTitle: "Learn the fight",
-  pathLearnBody: "How to play walks you through setup, combat, and the lock.",
-  pathSupportTitle: "Fund the next drop",
-  pathSupportBody:
-    "Create an account and subscribe for print downloads and keep development moving.",
-
-  supportHeadline: "Make Alpha real",
-  supportWhy: [
-    "Keep servers, builds, and the card pipeline online",
-    "Fund art, rules polish, and playtest tooling",
-    "Help Mirror Image grow from Alpha toward a real release",
+  pillarsTitle:
+    "Designed for play, creative expression, and collecting",
+  pillars: [
+    {
+      id: "play",
+      label: "Play",
+      line: "Sit down and fight for Aerathea.",
+    },
+    {
+      id: "create",
+      label: "Create",
+      line: "Print the cards you want and shape the set.",
+    },
+    {
+      id: "collect",
+      label: "Collect",
+      line: "Borderless finals, made to keep.",
+    },
   ],
-  supportPerks: [
-    "Print-and-play PDF downloads from your decks",
-    "Duplex card backs on Level 2 and Level 3 plans",
-    "Play with friends in the Playtester",
-  ],
 
-  loreHeadline: "Thaumatech under a broken sky",
+  loreKicker: "AERATHEA",
   loreBody:
-    "Pilots, rogue AI, and more than a thousand of years of war — the world is the reason this game exists. Step into the lore to find out more.",
-  loreArtTheme:
-    "Some horrors begin as machine visions — fitting, when the enemy is a rogue AI — then get painted and broken until they belong in this world.",
+    "Aerathea is under a cataclysmic threat of its own making — "
+    + "not the first, but the third. A rogue AI, once thought long "
+    + "dead, has returned for revenge. It is up to the free people "
+    + "still standing to take up the banner of liberty and fight: "
+    + "win, or die trying to end this calamity once and for all.",
 
-  /** Craft honesty — footer, not hero. */
-  artProcessNote:
-    "Art is human-finished: AI speeds early plates, then photo-bash, paint, and rework until the piece no longer reads as raw generation.",
-
+  discordTitle: "Join the community",
+  discordBody:
+    "Playtest, talk cards, and help shape the set before it prints.",
+  discordCta: "JOIN DISCORD",
   discordInviteUrl: "https://discord.gg/Gv9pyNWffg",
-  feedbackHint: "Join Discord — playtest, report bugs, and help shape the game.",
 
-  ctaCreateAccount: "CREATE ACCOUNT",
+  databaseTitle: "Exploring the database",
+  databaseBody:
+    "Search the card library by name, cost, type, and rules text.",
+  databaseCta: "OPEN THE LIBRARY",
+
+  newsKicker: "NEWSLETTER",
+  newsTitle: "Sign up for email news",
+  newsBody: "Set news, print drops, and playtest calls.",
+  newsCta: "SIGN UP",
+  newsPlaceholder: "you@email.com",
+
   ctaHowToPlay: "HOW TO PLAY",
-  ctaSendFeedback: "SEND FEEDBACK",
   ctaEnterLore: "ENTER THE LORE",
-  ctaSubscribe: "SUBSCRIBE",
-  ctaGoToDecks: "GO TO DECKS",
-  ctaLogin: "LOGIN",
+  copyright: "© 2026 Mirror Image. All rights reserved.",
 } as const
+
+export const homeShowCards = [
+  {
+    id: "evran",
+    src: "/images/home/evran_alt.png",
+  },
+  {
+    id: "zombie",
+    src: "/images/home/zombie_drone.png",
+  },
+  {
+    id: "snipe",
+    src: "/images/home/snipe.png",
+  },
+] as const
