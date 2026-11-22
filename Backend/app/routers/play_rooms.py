@@ -179,14 +179,23 @@ async def _auth_first_frame(ws: WebSocket) -> int | None:
         await ws.close(code=4401)
         return None
     token = first.get("token")
-    if not isinstance(token, str) or not token:
-        await ws.close(code=4401)
-        return None
-    try:
-        return _user_id_from_token(token)
-    except HTTPException:
-        await ws.close(code=4401)
-        return None
+    if isinstance(token, str) and token:
+        try:
+            return _user_id_from_token(token)
+        except HTTPException:
+            await ws.close(code=4401)
+            return None
+    from app.security import SESSION_COOKIE_NAME
+
+    cookie = ws.cookies.get(SESSION_COOKIE_NAME)
+    if isinstance(cookie, str) and cookie:
+        try:
+            return _user_id_from_token(cookie)
+        except HTTPException:
+            await ws.close(code=4401)
+            return None
+    await ws.close(code=4401)
+    return None
 
 
 @router.websocket("/play/ws/rooms/{code}")

@@ -193,15 +193,7 @@ def test_jwt_list_unsub_when_row_missing(
                 {"email": email.lower()},
             )
             row = cur.fetchone()
-            assert row is not None
-            assert row[0] == "unsubscribed"
-            cur.execute(
-                """
-                DELETE FROM blog_subscribers
-                 WHERE email = %(email)s
-                """,
-                {"email": email.lower()},
-            )
+            assert row is None
         conn.commit()
 
 
@@ -226,15 +218,7 @@ def test_unsubscribe_by_raw_token(
                 {"email": email.lower()},
             )
             row = cur.fetchone()
-            assert row is not None
-            assert row[0] == "unsubscribed"
-            cur.execute(
-                """
-                DELETE FROM blog_subscribers
-                 WHERE email = %(email)s
-                """,
-                {"email": email.lower()},
-            )
+            assert row is None
         conn.commit()
 
 

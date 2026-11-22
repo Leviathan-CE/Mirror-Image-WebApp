@@ -1,4 +1,7 @@
+import uuid
+
 from app.account_delete import usernames_match
+from app.db import get_connection
 
 
 def test_usernames_match_is_exact():
@@ -55,6 +58,50 @@ def test_delete_me_removes_user_and_owned_deck(
 
     deck = client.get(f"/decks/{deck_id}", headers=other_auth_headers)
     assert deck.status_code in {401, 403, 404}
+
+
+def test_delete_me_scrubs_mailing_list(
+    client, other_auth_headers, require_db
+):
+    me = client.get("/auth/me", headers=other_auth_headers)
+    assert me.status_code == 200
+    body = me.json()
+    name = body["user_name"]
+    email = str(body["email"]).lower()
+    token_hash = f"purge-{uuid.uuid4().hex}"
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO blog_subscribers (
+                    email, status, unsubscribe_token_hash
+                )
+                VALUES (%(email)s, 'active', %(token_hash)s)
+                """,
+                {"email": email, "token_hash": token_hash},
+            )
+        conn.commit()
+
+    deleted = client.request(
+        "DELETE",
+        "/auth/me",
+        headers=other_auth_headers,
+        json={"user_name": name},
+    )
+    assert deleted.status_code == 204
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT 1
+                  FROM blog_subscribers
+                 WHERE lower(email) = lower(%(email)s)
+                """,
+                {"email": email},
+            )
+            assert cur.fetchone() is None
 
 
 def test_delete_last_admin_refused(client, admin_headers, require_db):

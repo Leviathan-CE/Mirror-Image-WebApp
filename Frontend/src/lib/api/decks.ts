@@ -8,6 +8,7 @@ import {
   authHeaders,
   parseErrorDetail,
   readJsonOrThrow,
+  apiFetch,
 } from "@/lib/api/client"
 
 export type DeckSummary = {
@@ -133,7 +134,7 @@ export type DeckUpdatePayload = {
 }
 
 export async function fetchMyDecks(token: string): Promise<DeckSummary[]> {
-  const response = await fetch(`${apiBaseUrl()}/decks/me`, {
+  const response = await apiFetch(`${apiBaseUrl()}/decks/me`, {
     headers: authHeaders(token),
   })
   return readJsonOrThrow<DeckSummary[]>(response, "decks_fetch_failed")
@@ -164,7 +165,7 @@ export async function fetchPublicDecks(
   url.searchParams.set("limit", String(query.limit ?? 24))
   url.searchParams.set("offset", String(query.offset ?? 0))
 
-  const response = await fetch(url.toString(), {
+  const response = await apiFetch(url.toString(), {
     headers: authHeaders(query.token),
   })
   return readJsonOrThrow<DeckListPage>(response, "public_decks_fetch_failed")
@@ -174,7 +175,7 @@ export async function likeDeck(
   deckId: number,
   token: string
 ): Promise<DeckSummary> {
-  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}/like`, {
+  const response = await apiFetch(`${apiBaseUrl()}/decks/${deckId}/like`, {
     method: "POST",
     headers: authHeaders(token),
   })
@@ -185,7 +186,7 @@ export async function unlikeDeck(
   deckId: number,
   token: string
 ): Promise<DeckSummary> {
-  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}/like`, {
+  const response = await apiFetch(`${apiBaseUrl()}/decks/${deckId}/like`, {
     method: "DELETE",
     headers: authHeaders(token),
   })
@@ -197,7 +198,7 @@ export async function addDeckTag(
   token: string,
   tag: string
 ): Promise<DeckSummary> {
-  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}/tags`, {
+  const response = await apiFetch(`${apiBaseUrl()}/decks/${deckId}/tags`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -213,7 +214,7 @@ export async function removeDeckTag(
   token: string,
   tag: string
 ): Promise<DeckSummary> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${apiBaseUrl()}/decks/${deckId}/tags/${encodeURIComponent(tag)}`,
     {
       method: "DELETE",
@@ -240,7 +241,7 @@ export async function fetchDeckTagSuggestions(opts: {
   if (opts.exclude?.length) {
     url.searchParams.set("exclude", opts.exclude.join(","))
   }
-  const response = await fetch(url.toString())
+  const response = await apiFetch(url.toString())
   const body = await readJsonOrThrow<{ tags: DeckTagSuggestion[] }>(
     response,
     "deck_tag_suggest_failed"
@@ -252,7 +253,7 @@ export async function createDeck(
   token: string,
   payload: DeckCreatePayload
 ): Promise<DeckSummary> {
-  const response = await fetch(`${apiBaseUrl()}/decks`, {
+  const response = await apiFetch(`${apiBaseUrl()}/decks`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -268,7 +269,7 @@ export async function copyDeck(
   deckId: number,
   token: string
 ): Promise<DeckSummary> {
-  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}/copy`, {
+  const response = await apiFetch(`${apiBaseUrl()}/decks/${deckId}/copy`, {
     method: "POST",
     headers: authHeaders(token),
   })
@@ -291,7 +292,7 @@ export async function fetchDeckDetail(
   const url = new URL(`${apiBaseUrl()}/decks/${deckId}`)
   if (room) url.searchParams.set("room", room)
 
-  const response = await fetch(url, { headers: authHeaders(token) })
+  const response = await apiFetch(url, { headers: authHeaders(token) })
   return readJsonOrThrow<DeckDetail>(response, "deck_fetch_failed")
 }
 
@@ -300,7 +301,7 @@ export async function updateDeck(
   token: string,
   payload: DeckUpdatePayload
 ): Promise<DeckSummary> {
-  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}`, {
+  const response = await apiFetch(`${apiBaseUrl()}/decks/${deckId}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -315,7 +316,7 @@ export async function deleteDeck(
   deckId: number,
   token: string
 ): Promise<void> {
-  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}`, {
+  const response = await apiFetch(`${apiBaseUrl()}/decks/${deckId}`, {
     method: "DELETE",
     headers: authHeaders(token),
   })
@@ -339,7 +340,7 @@ export async function addDeckCard(
   token: string,
   payload: AddDeckCardPayload
 ): Promise<DeckCardEntry> {
-  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}/cards`, {
+  const response = await apiFetch(`${apiBaseUrl()}/decks/${deckId}/cards`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -356,7 +357,7 @@ export async function createDeckCategory(
   name: string,
   options?: { in_deck?: boolean }
 ): Promise<DeckCategoryOut> {
-  const response = await fetch(`${apiBaseUrl()}/decks/${deckId}/categories`, {
+  const response = await apiFetch(`${apiBaseUrl()}/decks/${deckId}/categories`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -376,7 +377,7 @@ export async function updateDeckCategory(
   token: string,
   payload: { name?: string; sort_order?: number; in_deck?: boolean }
 ): Promise<DeckCategoryOut> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${apiBaseUrl()}/decks/${deckId}/categories/${categoryId}`,
     {
       method: "PATCH",
@@ -395,7 +396,7 @@ export async function deleteDeckCategory(
   categoryId: number,
   token: string
 ): Promise<void> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${apiBaseUrl()}/decks/${deckId}/categories/${categoryId}`,
     {
       method: "DELETE",
@@ -426,7 +427,7 @@ export async function updateDeckCard(
 ): Promise<DeckCardEntry> {
   const url = new URL(`${apiBaseUrl()}/decks/${deckId}/cards/${cardId}`)
   url.searchParams.set("category_id", String(fromCategoryId))
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -445,7 +446,7 @@ export async function removeDeckCard(
 ): Promise<void> {
   const url = new URL(`${apiBaseUrl()}/decks/${deckId}/cards/${cardId}`)
   url.searchParams.set("category_id", String(categoryId))
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method: "DELETE",
     headers: authHeaders(token),
   })

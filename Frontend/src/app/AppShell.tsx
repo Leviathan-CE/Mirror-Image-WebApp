@@ -33,6 +33,8 @@ import { ScrollToTop } from "@/app/ScrollToTop"
 import { ROUTES } from "@/lib/route"
 import { PlayTesterPage } from "@/pages/decks/PlayTesterPage"
 import { UnsubscribePage } from "@/pages/mailing/UnsubscribePage"
+import { PrivacyPage } from "@/pages/legal/PrivacyPage"
+import { TermsPage } from "@/pages/legal/TermsPage"
 
 export function AppShell() {
   return (
@@ -59,6 +61,8 @@ export function AppShell() {
               <Route path={ROUTES.HOW_TO_PLAY} element={<HowToPlayPage />} />
               <Route path={ROUTES.LORE} element={<LorePage />} />
               <Route path={ROUTES.UPDATES} element={<UpdatesPage />} />
+              <Route path={ROUTES.PRIVACY} element={<PrivacyPage />} />
+              <Route path={ROUTES.TERMS} element={<TermsPage />} />
               <Route path={ROUTES.LOGIN} element={<LoginPage />} />
               <Route path={ROUTES.REGISTER} element={<CreateAccountPage />} />
               <Route path={ROUTES.VERIFY_EMAIL} element={<VerifyEmailPage />} />

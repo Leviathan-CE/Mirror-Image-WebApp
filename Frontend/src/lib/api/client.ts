@@ -53,7 +53,20 @@ export async function parseErrorDetail(
 }
 
 export function authHeaders(token?: string | null): HeadersInit {
-  return token ? { Authorization: `Bearer ${token}` } : {}
+  // Cookie auth replaced the Bearer header. Callers still pass token.
+  void token
+  return {}
+}
+
+/** Browser calls that should send the httpOnly session cookie. */
+export function apiFetch(
+  input: RequestInfo | URL,
+  init: RequestInit = {}
+): Promise<Response> {
+  return fetch(input, {
+    ...init,
+    credentials: "include",
+  })
 }
 
 export async function readJsonOrThrow<T>(

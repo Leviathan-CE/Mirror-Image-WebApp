@@ -6,6 +6,7 @@ import {
   apiBaseUrl,
   authHeaders,
   readJsonOrThrow,
+  apiFetch,
 } from "@/lib/api/client"
 
 export type PlayRoomCreated = {
@@ -24,7 +25,7 @@ export async function createPlayRoom(
   deckId: number,
   token: string
 ): Promise<PlayRoomCreated> {
-  const response = await fetch(`${apiBaseUrl()}/play/rooms`, {
+  const response = await apiFetch(`${apiBaseUrl()}/play/rooms`, {
     method: "POST",
     headers: {
       ...authHeaders(token),

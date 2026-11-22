@@ -32,6 +32,7 @@ import {
 import { resendVerificationRequest } from "@/lib/api/email_auth"
 import { ApiError } from "@/lib/api/client"
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton"
+import { PrivacyNotice } from "@/components/legal/PrivacyNotice"
 import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
 
@@ -40,7 +41,12 @@ function helpMessageForError(detail: string): string {
     case "invalid_credentials":
       return "Login failed — wrong username/email or password."
     case "email_not_verified":
-      return "Email not verified. Check your inbox or resend verification below."
+      return (
+        "This account still needs to be verified. "
+        + "Check the email you used for this account."
+      )
+    case "rate_limited":
+      return "Too many emails were sent. Wait a few minutes and try again."
     case "account_disabled":
       return "This account has been disabled."
     case "database_unavailable":
@@ -52,8 +58,27 @@ function helpMessageForError(detail: string): string {
       return "Google sign-in failed. Try again or use your password."
     case "password_account_exists":
       return "An account with this Google email already exists. Enter that account’s password to link Google and continue."
+    case "email_not_configured":
+      return "Email is not configured on the server. Contact an admin."
+    case "email_send_failed":
+      return "Could not send the verification email. Try again later."
     default:
       return "Login failed. Check your details and try again."
+  }
+}
+
+function resendMessage(detail: string): string {
+  switch (detail) {
+    case "rate_limited":
+      return "Too many emails were sent. Wait a few minutes and try again."
+    case "email_not_configured":
+      return "Email is not configured on the server. Contact an admin."
+    case "email_send_failed":
+      return "Could not send the verification email. Try again later."
+    case "database_unavailable":
+      return "Server database is unavailable. Try again in a moment."
+    default:
+      return "Could not send a new verification email. Try again later."
   }
 }
 
@@ -81,7 +106,7 @@ export function LoginPage() {
   const [booting, setBooting] = useState(false)
   const [bootName, setBootName] = useState("")
   const [needsVerify, setNeedsVerify] = useState(false)
-  const [resendEmail, setResendEmail] = useState("")
+  const [resending, setResending] = useState(false)
   /** Pending Google ID token waiting for password proof to link. */
   const [pendingGoogleToken, setPendingGoogleToken] = useState<string | null>(
     null
@@ -133,26 +158,29 @@ export function LoginPage() {
 
 
   async function onResendVerify() {
-    const target = resendEmail.trim() || identifier.trim()
-    if (!target.includes("@")) {
+    const target = identifier.trim()
+    if (target === "") {
       setHelpTone("error")
-      setHelpText("Enter the account email to resend verification.")
+      setHelpText("Enter the username or email, then resend.")
       return
     }
-    setSubmitting(true)
+    setResending(true)
     try {
       await resendVerificationRequest(target)
       setHelpTone("success")
-      setHelpText("If that account needs verification, a new email was sent.")
+      setHelpText(
+        "A new link was sent to the email on this account. "
+        + "Check that inbox."
+      )
     } catch (error) {
       setHelpTone("error")
       if (error instanceof ApiError) {
-        setHelpText(helpMessageForError(error.detail))
+        setHelpText(resendMessage(error.detail))
       } else {
         setHelpText("Could not reach the server.")
       }
     } finally {
-      setSubmitting(false)
+      setResending(false)
     }
   }
 
@@ -207,7 +235,6 @@ export function LoginPage() {
         setHelpText(helpMessageForError(error.detail))
         if (error.detail === "email_not_verified") {
           setNeedsVerify(true)
-          if (identifier.includes("@")) setResendEmail(identifier.trim())
         }
       } else {
         setHelpText("Could not reach the server. Is the API running?")
@@ -217,7 +244,7 @@ export function LoginPage() {
     }
   }
 
-  const formLocked = submitting || booting
+  const formLocked = submitting || resending || booting
   const linkingGoogle = Boolean(pendingGoogleToken)
 
   return (
@@ -289,6 +316,27 @@ export function LoginPage() {
               {helpText}
             </p>
 
+            {needsVerify ? (
+              <div className="border border-amber-500/30 bg-black/40 p-3">
+                <p className="text-sm leading-snug text-amber-100/90">
+                  Check the email you used for this account.
+                  A new link is sent only to that inbox.
+                </p>
+                <Button
+                  type="button"
+                  disabled={formLocked}
+                  className={
+                    "font-buahs93 mt-2 h-9 w-full rounded-none "
+                    + "bg-amber-800 px-4 text-sm text-white "
+                    + "hover:bg-amber-700 disabled:opacity-60"
+                  }
+                  onClick={() => void onResendVerify()}
+                >
+                  {resending ? "SENDING…" : "RESEND VERIFICATION LINK"}
+                </Button>
+              </div>
+            ) : null}
+
             <GlitchFx
               type="submit"
               label={
@@ -322,6 +370,11 @@ export function LoginPage() {
               </Button>
             ) : null}
 
+            <PrivacyNotice>
+              Signing in with a password or Google creates a session cookie
+              on this site.
+            </PrivacyNotice>
+
             <GoogleSignInButton
               disabled={formLocked || linkingGoogle}
               onCredential={(token) => void onGoogleCredential(token)}
@@ -351,30 +404,6 @@ export function LoginPage() {
                 </>
               )}
             </p>
-
-            {needsVerify ? (
-              <div className="border border-amber-500/30 bg-black/40 p-3">
-                <label className="flex flex-col gap-2">
-                  <span className="font-buahs93 text-xs text-amber-200/80">
-                    RESEND VERIFICATION EMAIL
-                  </span>
-                  <EditBox
-                    value={resendEmail}
-                    onChange={(e) => setResendEmail(e.target.value)}
-                    placeholder="email@example.com"
-                    disabled={formLocked}
-                  />
-                </label>
-                <Button
-                  type="button"
-                  disabled={formLocked}
-                  className="font-buahs93 mt-2 h-9 w-full rounded-none bg-amber-800 px-4 text-sm text-white hover:bg-amber-700 disabled:opacity-60"
-                  onClick={() => void onResendVerify()}
-                >
-                  RESEND
-                </Button>
-              </div>
-            ) : null}
           </form>
         </div>
       </section>

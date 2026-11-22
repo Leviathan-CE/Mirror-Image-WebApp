@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from app.deck_defaults import DEFAULT_DECK_CATEGORY_NAMES
 from app.play_rooms_state import reset_play_rooms
+from tests.session import drop_session
 
 
 @pytest.fixture
@@ -81,6 +82,7 @@ def test_create_and_list_my_decks(
 def test_private_deck_not_visible_to_anonymous(
     client: TestClient, created_deck: dict
 ):
+    drop_session(client)
     response = client.get(f"/decks/{created_deck['id']}")
     assert response.status_code == 404
     assert response.json()["detail"] == "deck_not_found"
@@ -196,6 +198,7 @@ def test_anonymous_cannot_edit_public_deck(
     deck_id = created.json()["id"]
 
     try:
+        drop_session(client)
         patch = client.patch(
             f"/decks/{deck_id}",
             json={"name": "Hacked"},

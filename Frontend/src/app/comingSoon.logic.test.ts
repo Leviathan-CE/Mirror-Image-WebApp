@@ -124,6 +124,23 @@ describe("comingSoonBlocksVisitor", () => {
         role: null,
         pathname: ROUTES.UPDATES,
       })
-    ).toBe(true)
+      ).toBe(true)
+  })
+
+  it("keeps the privacy and terms pages open", () => {
+    expect(
+      comingSoonBlocksVisitor({
+        comingSoon: true,
+        role: null,
+        pathname: ROUTES.PRIVACY,
+      })
+    ).toBe(false)
+    expect(
+      comingSoonBlocksVisitor({
+        comingSoon: true,
+        role: null,
+        pathname: ROUTES.TERMS,
+      })
+    ).toBe(false)
   })
 })

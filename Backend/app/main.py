@@ -25,6 +25,7 @@ from app.analytics import (
     LOGIN_PATHS,
     host_sampler,
     peek_user_id_from_authorization,
+    peek_user_id_from_token,
     record_http_activity,
     should_skip_path,
 )
@@ -54,6 +55,18 @@ async def lifespan(_app: FastAPI):
     #ensure_schema()
     inbox_hub.bind_loop(asyncio.get_running_loop())
     host_sampler.start()
+    try:
+        from psycopg2 import OperationalError
+
+        from app.db import get_connection
+        from app.retention import delete_expired_print_grants
+
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                delete_expired_print_grants(cur)
+            conn.commit()
+    except OperationalError:
+        pass
     yield
     host_sampler.stop()
 
@@ -107,7 +120,15 @@ async def record_app_activity(request, call_next):
     if should_skip_path(path):
         return response
     is_login = path in LOGIN_PATHS and request.method == "POST" and response.status_code < 400
-    user_id = peek_user_id_from_authorization(request.headers.get("authorization"))
+    user_id = peek_user_id_from_authorization(
+        request.headers.get("authorization")
+    )
+    if user_id is None:
+        from app.security import SESSION_COOKIE_NAME
+
+        user_id = peek_user_id_from_token(
+            request.cookies.get(SESSION_COOKIE_NAME)
+        )
     try:
         record_http_activity(user_id=user_id, is_login=is_login)
     except Exception:

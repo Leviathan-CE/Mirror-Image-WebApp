@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom"
 import { useAuth } from "@/app/providers/AuthProvider"
 import { sharedImages } from "@/assets"
 import { GlitchFx } from "@/components/effects/GlitchFx"
+import { PrivacyNotice } from "@/components/legal/PrivacyNotice"
 import { ApiError } from "@/lib/api/client"
 import { subscribeMailingList } from "@/lib/api/mailingList"
 import { ROUTES } from "@/lib/route"
@@ -23,6 +24,7 @@ export function ComingSoonPage() {
   const navigate = useNavigate()
   const { isAuthenticated, clearSession } = useAuth()
   const [email, setEmail] = useState("")
+  const [agreed, setAgreed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -33,6 +35,11 @@ export function ComingSoonPage() {
     const cleaned = email.trim()
     if (!cleaned) {
       setError("Enter an email address.")
+      setMessage(null)
+      return
+    }
+    if (!agreed) {
+      setError("Agree to the Privacy Policy before joining the list.")
       setMessage(null)
       return
     }
@@ -118,6 +125,19 @@ export function ComingSoonPage() {
               aria-label="Email for updates"
             />
           </label>
+          <label className="flex items-start gap-2 font-mono text-[11px] leading-relaxed text-cyan-100/60">
+            <input
+              type="checkbox"
+              checked={agreed}
+              disabled={busy}
+              onChange={(event) => setAgreed(event.target.checked)}
+              className="mt-1"
+            />
+            <span>
+              I agree to the Privacy Policy before joining this email list.
+            </span>
+          </label>
+          <PrivacyNotice />
           <div className="flex flex-wrap items-center gap-3">
             <GlitchFx
               type="submit"

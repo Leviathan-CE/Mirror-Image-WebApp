@@ -77,8 +77,13 @@ def test_readable_missing_deck_raises_404():
     assert exc.value.status_code == 404
 
 
+class _Request:
+    def __init__(self, cookies: dict | None = None) -> None:
+        self.cookies = cookies or {}
+
+
 def test_get_optional_user_id_none_without_credentials():
-    assert get_optional_user_id(None) is None
+    assert get_optional_user_id(_Request(), None) is None
 
 
 def test_get_optional_user_id_from_bearer():
@@ -87,9 +92,18 @@ def test_get_optional_user_id_from_bearer():
     )
     credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
-    assert get_optional_user_id(credentials) == 7
+    assert get_optional_user_id(_Request(), credentials) == 7
+
+
+def test_get_optional_user_id_from_cookie():
+    token = create_access_token(
+        user_id=8, user_name="ops", email="ops@example.com", role="user"
+    )
+    request = _Request({"mi_session": token})
+
+    assert get_optional_user_id(request, None) == 8
 
 
 def test_get_optional_user_id_rejects_bad_scheme():
     credentials = HTTPAuthorizationCredentials(scheme="Basic", credentials="x")
-    assert get_optional_user_id(credentials) is None
+    assert get_optional_user_id(_Request(), credentials) is None

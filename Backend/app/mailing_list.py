@@ -156,56 +156,19 @@ def blog_email_unsub_token(user_id: int) -> str:
 
 def _unsubscribe_list_email(cur, email: str) -> bool:
     """
-    Mark ``email`` unsubscribed.
+    Hard-delete the mailing-list row.
 
-    Valid JWT / list tokens succeed even when the row was wiped or
-    never existed — record an opt-out row so fan-out stays clear.
+    A valid token still succeeds when the row is already gone.
     """
     cleaned = normalize_email(email)
     if not is_valid_email(cleaned):
         return False
     cur.execute(
         """
-        UPDATE blog_subscribers
-           SET status = %(status)s,
-               unsubscribed_at = NOW()
-         WHERE email = %(email)s
-           AND status = %(active)s
-     RETURNING id
-        """,
-        {
-            "status": STATUS_UNSUBSCRIBED,
-            "email": cleaned,
-            "active": STATUS_ACTIVE,
-        },
-    )
-    if cur.fetchone() is not None:
-        return True
-    cur.execute(
-        """
-        SELECT status
-          FROM blog_subscribers
-         WHERE email = %(email)s
+        DELETE FROM blog_subscribers
+         WHERE lower(email) = lower(%(email)s)
         """,
         {"email": cleaned},
-    )
-    existing = cur.fetchone()
-    if existing is not None:
-        return True
-    cur.execute(
-        """
-        INSERT INTO blog_subscribers (
-            email, status, unsubscribe_token_hash, unsubscribed_at
-        )
-        VALUES (
-            %(email)s, %(status)s, %(token_hash)s, NOW()
-        )
-        """,
-        {
-            "email": cleaned,
-            "status": STATUS_UNSUBSCRIBED,
-            "token_hash": hash_token(_new_raw_token()),
-        },
     )
     return True
 
@@ -213,7 +176,7 @@ def _unsubscribe_list_email(cur, email: str) -> bool:
 def _unsubscribe_account(cur, user_id: int) -> bool:
     cur.execute(
         """
-        SELECT preferences
+        SELECT email, preferences
           FROM users
          WHERE id = %(user_id)s
         """,
@@ -222,8 +185,9 @@ def _unsubscribe_account(cur, user_id: int) -> bool:
     prefs_row = cur.fetchone()
     if prefs_row is None:
         return False
+    email = str(prefs_row[0] or "")
     merged = merge_preference_patch(
-        prefs_row[0],
+        prefs_row[1],
         {"notify_blog_email": False},
     )
     cur.execute(
@@ -238,12 +202,14 @@ def _unsubscribe_account(cur, user_id: int) -> bool:
             "preferences": Json(merged),
         },
     )
+    if email:
+        _unsubscribe_list_email(cur, email)
     return True
 
 
 def unsubscribe_by_token(cur, raw_token: str) -> str:
     """
-    Mark a mailing-list row unsubscribed, or turn off account blog email.
+    Delete a mailing-list row, or turn off account blog email.
 
     Returns ``list`` or ``account``. Raises ValueError on bad token.
     """
@@ -254,26 +220,9 @@ def unsubscribe_by_token(cur, raw_token: str) -> str:
     token_hash = hash_token(token)
     cur.execute(
         """
-        UPDATE blog_subscribers
-           SET status = %(status)s,
-               unsubscribed_at = NOW()
+        DELETE FROM blog_subscribers
          WHERE unsubscribe_token_hash = %(token_hash)s
-           AND status = %(active)s
      RETURNING email
-        """,
-        {
-            "status": STATUS_UNSUBSCRIBED,
-            "token_hash": token_hash,
-            "active": STATUS_ACTIVE,
-        },
-    )
-    if cur.fetchone() is not None:
-        return "list"
-    cur.execute(
-        """
-        SELECT 1
-          FROM blog_subscribers
-         WHERE unsubscribe_token_hash = %(token_hash)s
         """,
         {"token_hash": token_hash},
     )

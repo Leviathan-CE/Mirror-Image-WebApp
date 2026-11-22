@@ -2,7 +2,9 @@
  * Admin catalogue card API (publish status + lagality bulk tools).
  */
 
-import { apiBaseUrl, authHeaders, readJsonOrThrow } from "@/lib/api/client"
+import { apiBaseUrl, authHeaders, readJsonOrThrow,
+  apiFetch,
+} from "@/lib/api/client"
 import type { CardLibraryItem, CardLibraryQuery } from "@/lib/api/cards"
 
 export type PublishStatus = "published" | "preview" | "not published"
@@ -89,7 +91,7 @@ export async function fetchAdminCardLibrary(
   url.searchParams.set("limit", String(query.limit ?? 48))
   url.searchParams.set("offset", String(query.offset ?? 0))
 
-  const response = await fetch(url, { headers: authHeaders(token) })
+  const response = await apiFetch(url, { headers: authHeaders(token) })
   return readJsonOrThrow<AdminCardLibraryResponse>(
     response,
     "admin_card_library_failed"
@@ -107,7 +109,7 @@ export async function fetchAdminCardDetail(
   token: string,
   cardId: number
 ): Promise<AdminCardDetail> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${apiBaseUrl()}/cards/admin/library/${cardId}`,
     { headers: authHeaders(token) }
   )
@@ -119,7 +121,7 @@ export async function bulkUpdateAdminCards(
   token: string,
   body: AdminCardBulkUpdate
 ): Promise<{ updated: number }> {
-  const response = await fetch(`${apiBaseUrl()}/cards/admin/bulk`, {
+  const response = await apiFetch(`${apiBaseUrl()}/cards/admin/bulk`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -138,7 +140,7 @@ export async function deleteAdminCards(
   token: string,
   body: AdminCardDeleteRequest
 ): Promise<{ deleted: number; skipped: number }> {
-  const response = await fetch(`${apiBaseUrl()}/cards/admin/delete`, {
+  const response = await apiFetch(`${apiBaseUrl()}/cards/admin/delete`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

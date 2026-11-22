@@ -1,8 +1,9 @@
 """Self-serve and admin account purge.
 
 Stripe is cancelled before any row is removed. Decks linked only to this
-user are deleted; shared decks keep other owners. Then the user row goes,
-and FK CASCADE clears grants, tokens, oauth, and user_has_decks.
+user are deleted; shared decks keep other owners. The mailing-list row
+for this email is hard-deleted. Then the user row goes, and FK CASCADE
+clears grants, tokens, oauth, and user_has_decks.
 """
 
 from __future__ import annotations
@@ -42,11 +43,12 @@ def _count_active_admins(cur: PgCursor) -> int:
 
 def load_user_for_purge(
     cur: PgCursor, *, user_id: int
-) -> tuple[str, str, str | None, str | None] | None:
-    """Return (user_name, role, stripe_customer_id, stripe_subscription_id)."""
+) -> tuple[str, str, str | None, str | None, str] | None:
+    """Return name, role, Stripe ids, and email."""
     cur.execute(
         """
-        SELECT user_name, role, stripe_customer_id, stripe_subscription_id
+        SELECT user_name, role, stripe_customer_id,
+               stripe_subscription_id, email
           FROM users
          WHERE id = %(user_id)s
         """,
@@ -60,6 +62,21 @@ def load_user_for_purge(
         str(row[1]),
         row[2],
         row[3],
+        str(row[4] or ""),
+    )
+
+
+def scrub_mailing_list(cur: PgCursor, *, email: str) -> None:
+    """Hard-delete the mailing-list row for this account email."""
+    cleaned = (email or "").strip()
+    if not cleaned:
+        return
+    cur.execute(
+        """
+        DELETE FROM blog_subscribers
+         WHERE lower(email) = lower(%(email)s)
+        """,
+        {"email": cleaned},
     )
 
 
@@ -131,8 +148,10 @@ def purge_account(
     if loaded is None:
         raise AccountDeleteError("user_not_found")
 
-    user_name, role, customer_id, subscription_id = loaded
-    if typed_username is not None and not usernames_match(typed_username, user_name):
+    user_name, role, customer_id, subscription_id, email = loaded
+    if typed_username is not None and not usernames_match(
+        typed_username, user_name
+    ):
         raise AccountDeleteError("username_mismatch")
 
     if role == "admin" and _count_active_admins(cur) <= 1:
@@ -142,4 +161,5 @@ def purge_account(
         customer_id=customer_id, subscription_id=subscription_id
     )
     delete_owned_decks(cur, user_id=user_id)
+    scrub_mailing_list(cur, email=email)
     delete_user_row(cur, user_id=user_id)

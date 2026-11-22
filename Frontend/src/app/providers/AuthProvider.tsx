@@ -1,12 +1,8 @@
 /**
  * Client auth session for the SPA.
  *
- * - Hydrates token + user from localStorage on first paint.
- * - Refreshes user (including role) from `/auth/me` when a token exists.
- * - `setSession` / `clearSession` keep React state and localStorage in sync.
- * - `isAuthenticated` is true only when both token and user are present.
- *
- * Consumers: AppHeader (guest vs operator chrome), LoginPage, MainPage, etc.
+ * The access token lives in an httpOnly cookie. This provider only
+ * keeps a non-secret signed-in flag plus the public user snapshot.
  */
 
 import {
@@ -19,19 +15,26 @@ import {
   type PropsWithChildren,
 } from "react"
 
-import { fetchCurrentUser, isAuthUser, type AuthUser } from "@/lib/api/auth"
+import {
+  fetchCurrentUser,
+  isAuthUser,
+  logoutRequest,
+  type AuthUser,
+} from "@/lib/api/auth"
 import { safeJsonParse } from "@/lib/utils"
 
-const TOKEN_KEY = "mi_access_token"
+const LEGACY_TOKEN_KEY = "mi_access_token"
+const SIGNED_IN_KEY = "mi_signed_in"
 const USER_KEY = "mi_user"
+const SIGNED_IN_FLAG = "1"
 
 type AuthContextValue = {
   user: AuthUser | null
   token: string | null
   isAuthenticated: boolean
-  /** Persist JWT + user after a successful login/register. */
+  /** Persist the public user after login. The JWT stays in the cookie. */
   setSession: (token: string, user: AuthUser) => void
-  /** Clear JWT + user (logout). */
+  /** Ask the API to clear the cookie, then drop local state. */
   clearSession: () => void
   /** Keep cached /me preferences in sync after a Settings flush. */
   updateUserPreferences: (preferences: AuthUser["preferences"]) => void
@@ -39,7 +42,6 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-/** Best-effort parse of the stored user JSON; returns null on missing/invalid data. */
 function readStoredUser(): AuthUser | null {
   const raw = localStorage.getItem(USER_KEY)
   if (!raw) return null
@@ -47,21 +49,38 @@ function readStoredUser(): AuthUser | null {
   return isAuthUser(parsed) ? parsed : null
 }
 
+function readSignedInFlag(): string | null {
+  localStorage.removeItem(LEGACY_TOKEN_KEY)
+  if (localStorage.getItem(SIGNED_IN_KEY) !== SIGNED_IN_FLAG) {
+    return null
+  }
+  return SIGNED_IN_FLAG
+}
+
+function statusOf(error: unknown): number {
+  if (error == null || typeof error !== "object") return 0
+  if (!("status" in error)) return 0
+  return Number((error as { status?: number }).status)
+}
+
 export function AuthProvider({ children }: PropsWithChildren) {
-  const [token, setToken] = useState<string | null>(() =>
-    localStorage.getItem(TOKEN_KEY)
-  )
+  const [token, setToken] = useState<string | null>(() => readSignedInFlag())
   const [user, setUser] = useState<AuthUser | null>(() => readStoredUser())
 
-  const setSession = useCallback((nextToken: string, nextUser: AuthUser) => {
-    localStorage.setItem(TOKEN_KEY, nextToken)
+  const setSession = useCallback((_nextToken: string, nextUser: AuthUser) => {
+    localStorage.removeItem(LEGACY_TOKEN_KEY)
+    localStorage.setItem(SIGNED_IN_KEY, SIGNED_IN_FLAG)
     localStorage.setItem(USER_KEY, JSON.stringify(nextUser))
-    setToken(nextToken)
+    setToken(SIGNED_IN_FLAG)
     setUser(nextUser)
   }, [])
 
   const clearSession = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY)
+    void logoutRequest().catch(() => {
+      /* local state still drops if the network call fails */
+    })
+    localStorage.removeItem(LEGACY_TOKEN_KEY)
+    localStorage.removeItem(SIGNED_IN_KEY)
     localStorage.removeItem(USER_KEY)
     setToken(null)
     setUser(null)
@@ -79,37 +98,30 @@ export function AuthProvider({ children }: PropsWithChildren) {
     []
   )
 
-  // Keep role/profile fresh — fixes sessions saved before `role` existed.
   useEffect(() => {
-    if (!token) return
-
     let cancelled = false
-    void fetchCurrentUser(token)
+    void fetchCurrentUser()
       .then((fresh) => {
         if (cancelled) return
+        localStorage.setItem(SIGNED_IN_KEY, SIGNED_IN_FLAG)
         localStorage.setItem(USER_KEY, JSON.stringify(fresh))
+        setToken(SIGNED_IN_FLAG)
         setUser(fresh)
       })
       .catch((error: unknown) => {
         if (cancelled) return
-        // Only drop the session on real auth failures — not network blips
-        // after returning from Stripe Checkout / portal.
-        const status =
-          error && typeof error === "object" && "status" in error
-            ? Number((error as { status?: number }).status)
-            : 0
-        if (status === 401) {
-          localStorage.removeItem(TOKEN_KEY)
-          localStorage.removeItem(USER_KEY)
-          setToken(null)
-          setUser(null)
-        }
+        if (statusOf(error) !== 401) return
+        localStorage.removeItem(LEGACY_TOKEN_KEY)
+        localStorage.removeItem(SIGNED_IN_KEY)
+        localStorage.removeItem(USER_KEY)
+        setToken(null)
+        setUser(null)
       })
 
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [])
 
   const value = useMemo<AuthContextValue>(
     () => ({

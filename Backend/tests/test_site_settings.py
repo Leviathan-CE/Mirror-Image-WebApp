@@ -1,4 +1,5 @@
 from app.site_settings import parse_bool_setting
+from tests.session import drop_session
 
 
 def test_parse_bool_setting():
@@ -17,7 +18,11 @@ def test_coming_soon_get_is_public(client):
 
 
 def test_coming_soon_patch_requires_admin(client, auth_headers, require_db):
-    missing = client.patch("/admin/site/coming-soon", json={"coming_soon": True})
+    drop_session(client)
+    missing = client.patch(
+        "/admin/site/coming-soon",
+        json={"coming_soon": True},
+    )
     assert missing.status_code == 401
 
     forbidden = client.patch(

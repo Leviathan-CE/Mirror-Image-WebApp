@@ -42,7 +42,8 @@ describe("fetchDeckDetail", () => {
     expect(url.pathname).toBe("/decks/7")
     expect(url.search).toBe("")
     expect(fetchMock.mock.calls[0]?.[1]).toEqual({
-      headers: { Authorization: "Bearer jwt-token" },
+      headers: {},
+      credentials: "include",
     })
   })
 

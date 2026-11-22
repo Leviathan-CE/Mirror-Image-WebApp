@@ -6,6 +6,7 @@ import {
   apiBaseUrl,
   authHeaders,
   readJsonOrThrow,
+  apiFetch,
 } from "@/lib/api/client"
 
 export type BillingStatus = {
@@ -81,7 +82,7 @@ function returnOriginPayload(): { return_origin: string } {
 export async function fetchBillingStatus(
   token: string
 ): Promise<BillingStatus> {
-  const response = await fetch(`${apiBaseUrl()}/billing/status`, {
+  const response = await apiFetch(`${apiBaseUrl()}/billing/status`, {
     headers: authHeaders(token),
   })
   return readJsonOrThrow<BillingStatus>(response, "billing_status_failed")
@@ -90,7 +91,7 @@ export async function fetchBillingStatus(
 export async function syncBillingFromStripe(
   token: string
 ): Promise<BillingStatus> {
-  const response = await fetch(`${apiBaseUrl()}/billing/sync`, {
+  const response = await apiFetch(`${apiBaseUrl()}/billing/sync`, {
     method: "POST",
     headers: authHeaders(token),
   })
@@ -101,7 +102,7 @@ export async function createCheckoutSession(
   token: string,
   offerId?: string
 ): Promise<{ url: string }> {
-  const response = await fetch(`${apiBaseUrl()}/billing/checkout`, {
+  const response = await apiFetch(`${apiBaseUrl()}/billing/checkout`, {
     method: "POST",
     headers: {
       ...authHeaders(token),
@@ -116,19 +117,19 @@ export async function createCheckoutSession(
 }
 
 export async function fetchBillingPlan(): Promise<BillingPlan> {
-  const response = await fetch(`${apiBaseUrl()}/billing/plan`)
+  const response = await apiFetch(`${apiBaseUrl()}/billing/plan`)
   return readJsonOrThrow<BillingPlan>(response, "billing_plan_failed")
 }
 
 export async function fetchBillingPlans(): Promise<BillingPlans> {
-  const response = await fetch(`${apiBaseUrl()}/billing/plans`)
+  const response = await apiFetch(`${apiBaseUrl()}/billing/plans`)
   return readJsonOrThrow<BillingPlans>(response, "billing_plans_failed")
 }
 
 export async function createPortalSession(
   token: string
 ): Promise<{ url: string }> {
-  const response = await fetch(`${apiBaseUrl()}/billing/portal`, {
+  const response = await apiFetch(`${apiBaseUrl()}/billing/portal`, {
     method: "POST",
     headers: {
       ...authHeaders(token),
@@ -140,7 +141,7 @@ export async function createPortalSession(
 }
 
 export async function fetchBillingConfig(): Promise<BillingConfig> {
-  const response = await fetch(`${apiBaseUrl()}/billing/config`)
+  const response = await apiFetch(`${apiBaseUrl()}/billing/config`)
   return readJsonOrThrow<BillingConfig>(response, "billing_config_failed")
 }
 
@@ -148,7 +149,7 @@ export async function createSubscriptionIntent(
   token: string,
   offerId?: string
 ): Promise<SubscriptionIntent> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${apiBaseUrl()}/billing/subscription/intent`,
     {
       method: "POST",
@@ -171,7 +172,7 @@ export async function fetchPrintQuote(
   token: string,
   deckId: number
 ): Promise<PrintQuote> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${apiBaseUrl()}/billing/print/quote/${deckId}`,
     { headers: authHeaders(token) }
   )
@@ -182,7 +183,7 @@ export async function createPrintIntent(
   token: string,
   deckId: number
 ): Promise<PrintIntent> {
-  const response = await fetch(`${apiBaseUrl()}/billing/print/intent`, {
+  const response = await apiFetch(`${apiBaseUrl()}/billing/print/intent`, {
     method: "POST",
     headers: {
       ...authHeaders(token),
@@ -197,7 +198,7 @@ export async function confirmPrintPayment(
   token: string,
   paymentIntentId: string
 ): Promise<PrintAccess> {
-  const response = await fetch(`${apiBaseUrl()}/billing/print/confirm`, {
+  const response = await apiFetch(`${apiBaseUrl()}/billing/print/confirm`, {
     method: "POST",
     headers: {
       ...authHeaders(token),
@@ -212,7 +213,7 @@ export async function fetchPrintAccess(
   token: string,
   deckId: number
 ): Promise<PrintAccess> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${apiBaseUrl()}/billing/print/access/${deckId}`,
     { headers: authHeaders(token) }
   )
@@ -224,7 +225,7 @@ export async function redeemPrintDownload(
   token: string,
   deckId: number
 ): Promise<PrintAccess> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${apiBaseUrl()}/billing/print/redeem/${deckId}`,
     {
       method: "POST",

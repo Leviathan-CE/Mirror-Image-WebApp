@@ -9,6 +9,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom"
 import { useAuth } from "@/app/providers/AuthProvider"
 import { StripePaymentForm } from "@/components/billing/StripePaymentForm"
 import { StripeCtaButton } from "@/components/billing/StripeWordmark"
+import { PrivacyNotice } from "@/components/legal/PrivacyNotice"
 import { sharedImages } from "@/assets"
 import { ApiError } from "@/lib/api/client"
 import { fetchCurrentUser } from "@/lib/api/auth"
@@ -310,9 +311,13 @@ export function SubscribePayPage() {
           ) : (
             <p className="font-mono text-[11px] text-cyan-100/55">
               Pay on this site. Card details are handled by Stripe — we
-              never see your full card number.
+              never see your full card number. Billing status is stored
+              on your account.
             </p>
           )}
+          <div className="mt-2">
+            <PrivacyNotice />
+          </div>
           {intentLoading ? (
             <p className="mt-4 font-mono text-[11px] text-cyan-100/50">
               Preparing secure payment…

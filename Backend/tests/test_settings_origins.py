@@ -40,3 +40,25 @@ def test_resolve_accepts_vite_dev_port(monkeypatch: pytest.MonkeyPatch) -> None:
         settings.resolve_frontend_origin("http://localhost:5173")
         == "http://localhost:5173"
     )
+
+
+def test_dev_email_links_use_frontend_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.email_tokens import _app_public_url
+
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setenv("FRONTEND_URL", "http://127.0.0.1:3000")
+    monkeypatch.setenv("APP_PUBLIC_URL", "https://mirrorimagetcg.net")
+    assert _app_public_url() == "http://127.0.0.1:3000"
+
+
+def test_production_email_links_use_public_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.email_tokens import _app_public_url
+
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("FRONTEND_URL", "http://127.0.0.1:3000")
+    monkeypatch.setenv("APP_PUBLIC_URL", "https://mirrorimagetcg.net")
+    assert _app_public_url() == "https://mirrorimagetcg.net"

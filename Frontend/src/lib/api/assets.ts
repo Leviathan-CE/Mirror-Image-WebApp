@@ -5,7 +5,9 @@
  * Premium system back stays staff-only via a signed `/media/...` mint.
  */
 
-import { apiBaseUrl, authHeaders, readJsonOrThrow } from "@/lib/api/client"
+import { apiBaseUrl, authHeaders, readJsonOrThrow,
+  apiFetch,
+} from "@/lib/api/client"
 import { cardArtUrl } from "@/lib/api/decks"
 
 /** Public free card back for duplex print (all users). */
@@ -35,7 +37,7 @@ type CardBackResponse = {
  * Staff-only on the API — non-staff callers get 403.
  */
 export async function fetchCardBackUrl(token: string): Promise<string> {
-  const response = await fetch(`${apiBaseUrl()}/assets/card-back`, {
+  const response = await apiFetch(`${apiBaseUrl()}/assets/card-back`, {
     headers: authHeaders(token),
   })
   const body = await readJsonOrThrow<CardBackResponse>(

@@ -2,7 +2,9 @@
  * Admin users API — list/create/invite/patch/delete + feature catalog.
  */
 
-import { apiBaseUrl, authHeaders, readJsonOrThrow } from "@/lib/api/client"
+import { apiBaseUrl, authHeaders, readJsonOrThrow,
+  apiFetch,
+} from "@/lib/api/client"
 
 export type UserRole = "user" | "admin" | "distributor" | "developer" | "play_tester"
 
@@ -43,7 +45,7 @@ export type AdminUserListQuery = {
 export async function fetchAdminFeatures(
   token: string
 ): Promise<FeatureCatalogItem[]> {
-  const response = await fetch(`${apiBaseUrl()}/admin/features`, {
+  const response = await apiFetch(`${apiBaseUrl()}/admin/features`, {
     headers: authHeaders(token),
   })
   return readJsonOrThrow<FeatureCatalogItem[]>(response, "admin_features_failed")
@@ -63,7 +65,7 @@ export async function fetchAdminUsers(
   if (query.limit != null) url.searchParams.set("limit", String(query.limit))
   if (query.offset != null) url.searchParams.set("offset", String(query.offset))
 
-  const response = await fetch(url, { headers: authHeaders(token) })
+  const response = await apiFetch(url, { headers: authHeaders(token) })
   return readJsonOrThrow<AdminUserListResponse>(response, "admin_users_failed")
 }
 
@@ -77,7 +79,7 @@ export async function createAdminUser(
     feature_keys: string[]
   }
 ): Promise<AdminUserItem> {
-  const response = await fetch(`${apiBaseUrl()}/admin/users`, {
+  const response = await apiFetch(`${apiBaseUrl()}/admin/users`, {
     method: "POST",
     headers: { ...authHeaders(token), "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -94,7 +96,7 @@ export async function inviteAdminUser(
     feature_keys: string[]
   }
 ): Promise<AdminUserItem> {
-  const response = await fetch(`${apiBaseUrl()}/admin/users/invite`, {
+  const response = await apiFetch(`${apiBaseUrl()}/admin/users/invite`, {
     method: "POST",
     headers: { ...authHeaders(token), "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -112,7 +114,7 @@ export async function patchAdminUser(
     resend_verification?: boolean
   }
 ): Promise<AdminUserItem> {
-  const response = await fetch(`${apiBaseUrl()}/admin/users/${userId}`, {
+  const response = await apiFetch(`${apiBaseUrl()}/admin/users/${userId}`, {
     method: "PATCH",
     headers: { ...authHeaders(token), "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -124,7 +126,7 @@ export async function deleteAdminUser(
   token: string,
   userId: number
 ): Promise<void> {
-  const response = await fetch(`${apiBaseUrl()}/admin/users/${userId}`, {
+  const response = await apiFetch(`${apiBaseUrl()}/admin/users/${userId}`, {
     method: "DELETE",
     headers: authHeaders(token),
   })

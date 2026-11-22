@@ -1,6 +1,7 @@
 from datetime import UTC, date, datetime
 
 from app.analytics import fill_activity_points, should_skip_path
+from tests.session import drop_session
 
 
 def test_fill_week_pads_zeros():
@@ -54,6 +55,7 @@ def test_skip_analytics_path():
 
 
 def test_analytics_requires_admin(client, auth_headers, require_db):
+    drop_session(client)
     missing = client.get("/admin/analytics")
     assert missing.status_code == 401
 

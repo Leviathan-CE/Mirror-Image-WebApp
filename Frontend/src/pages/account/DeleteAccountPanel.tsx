@@ -64,7 +64,8 @@ export function DeleteAccountPanel() {
       </h2>
       <p className="mt-1 font-mono text-[11px] leading-relaxed text-red-100/70">
         Permanent. Cancels any Stripe subscription immediately, deletes decks
-        you own and their cards, and removes this login. This cannot be undone.
+        you own and their cards, removes this login, and deletes a mailing-list
+        row that uses the same email. This cannot be undone.
       </p>
       <div className="mt-4">
         <Button
@@ -99,8 +100,9 @@ export function DeleteAccountPanel() {
                 <p className="mt-2 font-mono text-[11px] leading-relaxed text-red-100/70">
                   Type your username{" "}
                   <span className="text-red-100">{actualName}</span> exactly.
-                  Stripe billing stops now. Owned decks and this account are
-                  removed. Cancel to keep everything.
+                  Stripe billing stops now. Owned decks, this account, and a
+                  matching mailing-list email are removed. Cancel to keep
+                  everything.
                 </p>
                 <label className="mt-4 flex flex-col gap-1">
                   <span className="font-mono text-[10px] uppercase text-white/45">

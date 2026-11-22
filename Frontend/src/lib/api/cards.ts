@@ -11,7 +11,9 @@
  * Playtester PlayingCardInstance stays separate (runtime instance, not catalogue).
  */
 
-import { apiBaseUrl, authHeaders, readJsonOrThrow } from "@/lib/api/client"
+import { apiBaseUrl, authHeaders, readJsonOrThrow,
+  apiFetch,
+} from "@/lib/api/client"
 
 /** Slim search/autocomplete row — not a second full card schema. */
 export type CardSearchHit = {
@@ -153,7 +155,7 @@ export async function searchCards(
   url.searchParams.set("q", q)
   url.searchParams.set("limit", String(limit))
 
-  const response = await fetch(url, { headers: authHeaders(token) })
+  const response = await apiFetch(url, { headers: authHeaders(token) })
   return readJsonOrThrow<CardSearchHit[]>(response, "card_search_failed")
 }
 
@@ -189,14 +191,14 @@ export async function fetchCardLibrary(
   url.searchParams.set("limit", String(query.limit ?? 48))
   url.searchParams.set("offset", String(query.offset ?? 0))
 
-  const response = await fetch(url, { headers: authHeaders(token) })
+  const response = await apiFetch(url, { headers: authHeaders(token) })
   return readJsonOrThrow<CardLibraryResponse>(response, "card_library_failed")
 }
 
 export async function fetchCardFacets(
   token?: string | null
 ): Promise<CardLibraryFacets> {
-  const response = await fetch(`${apiBaseUrl()}/cards/facets`, {
+  const response = await apiFetch(`${apiBaseUrl()}/cards/facets`, {
     headers: authHeaders(token),
   })
   return readJsonOrThrow<CardLibraryFacets>(response, "card_facets_failed")
@@ -207,7 +209,7 @@ export async function fetchCardById(
   cardId: number,
   token?: string | null
 ): Promise<CardDetail> {
-  const response = await fetch(`${apiBaseUrl()}/cards/${cardId}`, {
+  const response = await apiFetch(`${apiBaseUrl()}/cards/${cardId}`, {
     headers: authHeaders(token),
   })
   const raw = await readJsonOrThrow<{
@@ -260,7 +262,7 @@ export async function fetchCatalogueCard(
   if (cardId <= 0) {
     throw new Error("card_fetch_failed")
   }
-  const response = await fetch(`${apiBaseUrl()}/cards/${cardId}`, {
+  const response = await apiFetch(`${apiBaseUrl()}/cards/${cardId}`, {
     headers: authHeaders(token),
   })
   const raw = await readJsonOrThrow<Record<string, unknown>>(

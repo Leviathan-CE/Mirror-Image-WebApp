@@ -65,19 +65,34 @@ def catalogue_visibility_sql(
     return sql_card_is_published(alias)
 
 
+def _site_preview_flag() -> bool:
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                from app.site_settings import (
+                    previews_for_logged_in_or_false,
+                )
+
+                return previews_for_logged_in_or_false(cur)
+    except OperationalError:
+        return False
+
+
 def get_optional_include_preview(
     user_id: int | None = Depends(get_optional_user_id),
     is_admin: bool = Depends(get_optional_is_admin),
 ) -> bool:
     """
-    True when the caller is entitled to see preview-status cards.
+    True when the caller may see preview-status cards.
 
-    Admins use ``bypass`` instead; this stays False for them so SQL stays
-    simple. Entitlement: subscriber/grant feature, or the admin site flag
-    ``previews_for_logged_in`` for any logged-in account.
+    Admins use bypass instead, so this stays False for them.
+    A grant still unlocks one account. The admin site flag
+    opens previews for every visitor, including guests.
     """
-    if is_admin or user_id is None:
+    if is_admin:
         return False
+    if user_id is None:
+        return _site_preview_flag()
 
     try:
         with get_connection() as conn:
