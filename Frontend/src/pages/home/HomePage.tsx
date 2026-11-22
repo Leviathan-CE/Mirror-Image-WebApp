@@ -427,6 +427,11 @@ export function HomePage() {
             className="home-close__logo"
           />
           <p className="home-close__copy">{homeCopy.copyright}</p>
+          <p className="home-close__copy">
+            <Link to={ROUTES.PRIVACY}>Privacy</Link>
+            {" · "}
+            <Link to={ROUTES.TERMS}>Terms</Link>
+          </p>
         </footer>
       </section>
     </div>

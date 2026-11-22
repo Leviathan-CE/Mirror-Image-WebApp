@@ -294,7 +294,7 @@ export function usePlayNet({ token, localDeckId }: UsePlayNetArgs) {
       ws.onopen = () => {
         if (gen !== connectGenRef.current) return
         joiningRef.current = false
-        ws.send(JSON.stringify({ type: "auth", token: auth }))
+        ws.send(JSON.stringify({ type: "auth" }))
         if (PLAY_RELAY_ONLY) setTransport("relay")
       }
       ws.onclose = () => {

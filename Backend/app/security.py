@@ -8,12 +8,13 @@ from typing import Any
 
 import bcrypt
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.roles import is_admin_role, is_staff_role
 
 _bearer = HTTPBearer(auto_error=False)
+SESSION_COOKIE_NAME = "mi_session"
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = int(os.environ.get("JWT_EXPIRE_HOURS", "168"))  # 7 days
@@ -55,15 +56,112 @@ def create_access_token(
         if expires_delta is not None
         else timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
     )
+    # id + role only. Name and email stay in the user row, not the cookie.
+    del user_name
+    del email
     payload: dict[str, Any] = {
         "sub": str(user_id),
-        "user_name": user_name,
-        "email": email,
         "role": role,
         "exp": expire,
         "iat": datetime.now(UTC),
     }
     return jwt.encode(payload, signing_secret(), algorithm=ALGORITHM)
+
+
+def session_max_age_seconds(*, unity: bool = False) -> int:
+    if unity:
+        return UNITY_TOKEN_EXPIRE_MINUTES * 60
+    return ACCESS_TOKEN_EXPIRE_HOURS * 3600
+
+
+def session_cookie_secure() -> bool:
+    from app.settings import is_dev
+
+    return not is_dev()
+
+
+def apply_session_cookie(
+    response: Response,
+    token: str,
+    *,
+    unity: bool = False,
+) -> None:
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=token,
+        max_age=session_max_age_seconds(unity=unity),
+        httponly=True,
+        secure=session_cookie_secure(),
+        samesite="lax",
+        path="/",
+    )
+
+
+def clear_session_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key=SESSION_COOKIE_NAME,
+        path="/",
+        httponly=True,
+        secure=session_cookie_secure(),
+        samesite="lax",
+    )
+
+
+def _cookie_token(request: Request | None) -> str | None:
+    if request is None:
+        return None
+    raw = request.cookies.get(SESSION_COOKIE_NAME)
+    if not isinstance(raw, str):
+        return None
+    cleaned = raw.strip()
+    if not cleaned:
+        return None
+    return cleaned
+
+
+def _bearer_token(
+    credentials: HTTPAuthorizationCredentials | None,
+) -> str | None:
+    if credentials is None:
+        return None
+    if credentials.scheme.lower() != "bearer":
+        return None
+    return credentials.credentials
+
+
+def presented_session_token(
+    request: Request | None,
+    credentials: HTTPAuthorizationCredentials | None,
+) -> str | None:
+    """
+    Bearer when a client sends one, otherwise the session cookie.
+
+    The site no longer puts the token in JavaScript. Unity and tests
+    still send Authorization. A cookie must not hide that header.
+    """
+    bearer = _bearer_token(credentials)
+    if bearer:
+        return bearer
+    return _cookie_token(request)
+
+
+def user_id_from_access_token(token: str) -> int:
+    payload = decode_access_token(token)
+    try:
+        return int(payload["sub"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid_token_subject",
+        ) from exc
+
+
+def role_from_access_token(token: str) -> str | None:
+    payload = decode_access_token(token)
+    role = payload.get("role")
+    if isinstance(role, str):
+        return role
+    return None
 
 
 def decode_access_token(token: str) -> dict[str, Any]:
@@ -97,72 +195,61 @@ def decode_access_token(token: str) -> dict[str, Any]:
 
 
 def get_current_user_id(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
 ) -> int:
-    """FastAPI dependency: require Bearer JWT and return user id."""
-    if credentials is None or credentials.scheme.lower() != "bearer":
+    """Require a session cookie or Bearer JWT and return the user id."""
+    token = presented_session_token(request, credentials)
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="missing_bearer_token",
         )
-    payload = decode_access_token(credentials.credentials)
-    try:
-        return int(payload["sub"])
-    except (KeyError, TypeError, ValueError) as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="invalid_token_subject",
-        ) from e
+    return user_id_from_access_token(token)
 
 
 def get_optional_user_id(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
 ) -> int | None:
-    """Return user id when a valid Bearer token is present; otherwise None."""
-    if credentials is None or credentials.scheme.lower() != "bearer":
+    """Return user id when a valid session is present; otherwise None."""
+    token = presented_session_token(request, credentials)
+    if not token:
         return None
-    payload = decode_access_token(credentials.credentials)
-    try:
-        return int(payload["sub"])
-    except (KeyError, TypeError, ValueError):
-        return None
+    return user_id_from_access_token(token)
 
 
 def get_optional_is_admin(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
 ) -> bool:
-    """True when a valid Bearer JWT is staff (admin or developer)."""
-    if credentials is None or credentials.scheme.lower() != "bearer":
+    """True when a valid session is staff (admin or developer)."""
+    token = presented_session_token(request, credentials)
+    if not token:
         return False
-    payload = decode_access_token(credentials.credentials)
-    return is_staff_role(payload.get("role"))
+    return is_staff_role(role_from_access_token(token))
 
 
-def _require_bearer_user_id(
+def _require_session_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None,
 ) -> tuple[int, str | None]:
-    if credentials is None or credentials.scheme.lower() != "bearer":
+    token = presented_session_token(request, credentials)
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="missing_bearer_token",
         )
-    payload = decode_access_token(credentials.credentials)
-    try:
-        user_id = int(payload["sub"])
-    except (KeyError, TypeError, ValueError) as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="invalid_token_subject",
-        ) from e
-    role = payload.get("role")
-    return user_id, role if isinstance(role, str) else None
+    user_id = user_id_from_access_token(token)
+    return user_id, role_from_access_token(token)
 
 
 def get_current_admin_user_id(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
 ) -> int:
-    """Require Bearer JWT with role ``admin`` (user management)."""
-    user_id, role = _require_bearer_user_id(credentials)
+    """Require a session with role ``admin`` (user management)."""
+    user_id, role = _require_session_user(request, credentials)
     if not is_admin_role(role):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -172,10 +259,11 @@ def get_current_admin_user_id(
 
 
 def get_current_staff_user_id(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
 ) -> int:
-    """Require Bearer JWT with role ``admin`` or ``developer``."""
-    user_id, role = _require_bearer_user_id(credentials)
+    """Require a session with role ``admin`` or ``developer``."""
+    user_id, role = _require_session_user(request, credentials)
     if not is_staff_role(role):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

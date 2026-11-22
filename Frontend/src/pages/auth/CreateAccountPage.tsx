@@ -10,6 +10,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from "@/app/providers/AuthProvider"
 import { sharedImages } from "@/assets"
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton"
+import { PrivacyNotice } from "@/components/legal/PrivacyNotice"
 import { LoginBootScreen } from "@/components/auth/loginBoot"
 import {
   HELP_TONE_CLASS,
@@ -324,6 +325,11 @@ export function CreateAccountPage() {
                   CANCEL GOOGLE LINK
                 </Button>
               ) : null}
+
+              <PrivacyNotice>
+                Creating an account stores your username and email.
+                Google sign-in also shares the email Google confirms.
+              </PrivacyNotice>
 
               <GoogleSignInButton
                 disabled={formLocked || linkingGoogle}

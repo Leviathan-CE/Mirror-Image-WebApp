@@ -8,6 +8,7 @@ import {
   parseErrorDetail,
   readJsonOrThrow,
   ApiError,
+  apiFetch,
 } from "@/lib/api/client"
 import type {
   UserPreferences,
@@ -58,7 +59,7 @@ export async function loginRequest(
   identifier: string,
   password: string
 ): Promise<LoginResponse> {
-  const response = await fetch(`${apiBaseUrl()}/auth/login`, {
+  const response = await apiFetch(`${apiBaseUrl()}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ identifier, password }),
@@ -73,7 +74,7 @@ export type GoogleAuthConfig = {
 }
 
 export async function fetchGoogleAuthConfig(): Promise<GoogleAuthConfig> {
-  const response = await fetch(`${apiBaseUrl()}/auth/google/config`)
+  const response = await apiFetch(`${apiBaseUrl()}/auth/google/config`)
   return readJsonOrThrow<GoogleAuthConfig>(response, "google_config_failed")
 }
 
@@ -81,7 +82,7 @@ export async function fetchGoogleAuthConfig(): Promise<GoogleAuthConfig> {
 export async function googleLoginRequest(
   idToken: string
 ): Promise<LoginResponse> {
-  const response = await fetch(`${apiBaseUrl()}/auth/google`, {
+  const response = await apiFetch(`${apiBaseUrl()}/auth/google`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id_token: idToken }),
@@ -97,7 +98,7 @@ export async function googleLinkWithPasswordRequest(
   idToken: string,
   password: string
 ): Promise<LoginResponse> {
-  const response = await fetch(`${apiBaseUrl()}/auth/google/link-with-password`, {
+  const response = await apiFetch(`${apiBaseUrl()}/auth/google/link-with-password`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id_token: idToken, password }),
@@ -110,7 +111,7 @@ export async function createAccount(
   email: string,
   password: string
 ): Promise<RegisterResponse> {
-  const response = await fetch(`${apiBaseUrl()}/auth/register`, {
+  const response = await apiFetch(`${apiBaseUrl()}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ user_name, email, password }),
@@ -118,10 +119,12 @@ export async function createAccount(
   return readJsonOrThrow<RegisterResponse>(response, "create_account_failed")
 }
 
-/** Load the current user (includes role) from a Bearer token. */
-export async function fetchCurrentUser(token: string): Promise<AuthUser> {
-  const response = await fetch(`${apiBaseUrl()}/auth/me`, {
-    headers: authHeaders(token),
+/** Load the current user from the session cookie. */
+export async function fetchCurrentUser(
+  _token?: string | null
+): Promise<AuthUser> {
+  const response = await apiFetch(`${apiBaseUrl()}/auth/me`, {
+    headers: authHeaders(_token),
   })
   return readJsonOrThrow<AuthUser>(response, "me_fetch_failed")
 }
@@ -130,7 +133,7 @@ export async function patchUserPreferences(
   token: string,
   patch: UserPreferencesPatch
 ): Promise<UserPreferences> {
-  const response = await fetch(`${apiBaseUrl()}/auth/me/preferences`, {
+  const response = await apiFetch(`${apiBaseUrl()}/auth/me/preferences`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -141,11 +144,54 @@ export async function patchUserPreferences(
   return readJsonOrThrow<UserPreferences>(response, "preferences_update_failed")
 }
 
+export async function logoutRequest(): Promise<void> {
+  const response = await apiFetch(`${apiBaseUrl()}/auth/logout`, {
+    method: "POST",
+  })
+  if (response.status === 204 || response.ok) return
+  throw new ApiError(
+    response.status,
+    await parseErrorDetail(response, "logout_failed")
+  )
+}
+
+export async function exportAccountRequest(
+  _token?: string | null
+): Promise<AccountExport> {
+  const response = await apiFetch(`${apiBaseUrl()}/auth/me/export`, {
+    headers: authHeaders(_token),
+  })
+  return readJsonOrThrow<AccountExport>(response, "export_failed")
+}
+
+export type AccountExport = {
+  profile: {
+    user_name: string
+    email: string
+    role: string
+    is_active: boolean
+    email_verified: boolean
+    created_at: string | null
+  }
+  preferences: UserPreferences | Record<string, unknown>
+  oauth_providers: Array<{
+    provider: string
+    email_at_link: string | null
+    linked_at: string | null
+  }>
+  subscription: {
+    status: string
+    type: string
+    current_period_end: string | null
+    cancel_at_period_end: boolean
+  }
+}
+
 export async function deleteAccountRequest(
   token: string,
   user_name: string
 ): Promise<void> {
-  const response = await fetch(`${apiBaseUrl()}/auth/me`, {
+  const response = await apiFetch(`${apiBaseUrl()}/auth/me`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",

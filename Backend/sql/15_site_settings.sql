@@ -16,4 +16,4 @@ ON CONFLICT (key) DO NOTHING;
 
 COMMENT ON TABLE site_settings IS
     'Admin-toggled site flags. coming_soon hides the public app behind a '
-    'splash. previews_for_logged_in unlocks preview cards for any login.';
+    'splash. previews_for_logged_in unlocks preview cards for everyone.';

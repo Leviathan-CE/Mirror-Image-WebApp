@@ -119,7 +119,6 @@ export function InboxProvider({ children }: PropsWithChildren) {
     let socket: WebSocket | null = null
     let retryTimer: number | null = null
     let retryMs = WS_RETRY_MS
-    const authToken = token
 
     function clearRetry() {
       if (retryTimer == null) return
@@ -148,12 +147,7 @@ export function InboxProvider({ children }: PropsWithChildren) {
           return
         }
         retryMs = WS_RETRY_MS
-        ws.send(
-          JSON.stringify({
-            type: "auth",
-            token: authToken,
-          })
-        )
+        ws.send(JSON.stringify({ type: "auth" }))
       }
 
       ws.onmessage = (event) => {

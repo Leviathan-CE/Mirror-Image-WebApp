@@ -52,6 +52,13 @@ function formatBps(value: number | null | undefined): string {
   return `${formatBytes(value)}/s`
 }
 
+function barHeightPercent(value: number, max: number): number {
+  if (value <= 0) return 0
+  const share = (value / max) * 100
+  if (share < 4) return 4
+  return share
+}
+
 function ActivityChart({
   points,
   metric,
@@ -59,36 +66,47 @@ function ActivityChart({
   points: AnalyticsActivityPoint[]
   metric: "unique_users" | "requests"
 }) {
-  const values = points.map((p) => p[metric])
+  const values = points.map((point) => point[metric])
   const max = Math.max(1, ...values)
-  const barW = points.length > 0 ? 100 / points.length : 100
+  const total = values.reduce((sum, value) => sum + value, 0)
+  const noun = metric === "requests" ? "requests" : "users"
 
   return (
     <div className="mt-4">
+      <p className="mb-2 font-mono text-[11px] text-cyan-100/70">
+        {total} {noun} in this range
+      </p>
       <div
-        className="flex h-40 items-end gap-px border border-cyan-500/20 bg-black/40 px-1 pb-1 pt-2"
+        className={
+          "flex h-40 items-stretch gap-px border "
+          + "border-cyan-500/20 bg-black/40 px-1"
+        }
         role="img"
         aria-label="Activity chart"
       >
         {points.map((point) => {
           const value = point[metric]
-          const h = (value / max) * 100
+          const height = barHeightPercent(value, max)
           return (
             <div
               key={point.label}
-              className="flex min-w-0 flex-1 flex-col items-center justify-end"
+              className="flex h-full min-w-0 flex-1 items-end"
               title={`${point.label}: ${value}`}
-              style={{ width: `${barW}%` }}
             >
               <div
-                className="w-full max-w-6 bg-cyan-400/80"
-                style={{ height: `${Math.max(value > 0 ? 4 : 1, h)}%` }}
+                className="w-full bg-cyan-400/80"
+                style={{ height: `${height}%` }}
               />
             </div>
           )
         })}
       </div>
-      <div className="mt-1 flex justify-between font-mono text-[10px] text-cyan-100/40">
+      <div
+        className={
+          "mt-1 flex justify-between font-mono "
+          + "text-[10px] text-cyan-100/40"
+        }
+      >
         <span>{points[0]?.label ?? ""}</span>
         <span>{points[points.length - 1]?.label ?? ""}</span>
       </div>
@@ -103,7 +121,7 @@ export function AdminAnalyticsPage() {
   const [data, setData] = useState<AdminAnalytics | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [metric, setMetric] = useState<"unique_users" | "requests">(
-    "unique_users"
+    "requests"
   )
   const [flagBusy, setFlagBusy] = useState(false)
   const [flagError, setFlagError] = useState<string | null>(null)
@@ -257,12 +275,12 @@ export function AdminAnalyticsPage() {
 
       <section className="mb-8 border border-cyan-500/25 bg-black/50 p-5">
         <h2 className="font-buahs93 text-sm tracking-wide text-cyan-100">
-          PREVIEWS FOR LOGGED-IN USERS
+          PREVIEW CARDS
         </h2>
         <p className="mt-1 font-mono text-[11px] text-cyan-100/45">
-          When on, any logged-in account can see preview-status cards (with a
-          PREVIEW ribbon). Guests still only see published cards. When off,
-          preview stays a subscriber perk.
+          When on, preview cards are visible to everyone, including
+          visitors without an account. When off, only accounts that
+          already have preview access can see them.
         </p>
         {previewsError ? (
           <p className="mt-3 font-mono text-sm text-red-400" role="alert">

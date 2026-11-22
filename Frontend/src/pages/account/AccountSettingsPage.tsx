@@ -11,6 +11,9 @@ import { nextNewSectionName } from "@/components/decks/deck.logic"
 import { DeckCardSortControls } from "@/components/decks/DeckCardSortControls"
 import { DeckCardViewControls } from "@/components/decks/DeckCardViewControls"
 import { GlitchFx } from "@/components/effects/GlitchFx"
+import { PrivacyNotice } from "@/components/legal/PrivacyNotice"
+import { exportAccountRequest } from "@/lib/api/auth"
+import { PRIVACY_CONTACT_EMAIL } from "@/lib/privacy"
 import { DeleteAccountPanel } from "@/pages/account/DeleteAccountPanel"
 import {
   BROWSE_WIDTH_MAX,
@@ -28,6 +31,67 @@ import {
   isLibrarySortMode,
   normalizeStartSections,
 } from "@/lib/userPreferences.logic"
+
+function DataExportPanel() {
+  const [busy, setBusy] = useState(false)
+  const [errorText, setErrorText] = useState("")
+
+  async function onExport() {
+    if (busy) return
+    setBusy(true)
+    setErrorText("")
+    try {
+      const data = await exportAccountRequest()
+      const blob = new Blob(
+        [JSON.stringify(data, null, 2)],
+        { type: "application/json" }
+      )
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = "mirror-image-account.json"
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setErrorText(
+        "Could not download your data. Email "
+        + PRIVACY_CONTACT_EMAIL
+        + "."
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="mb-6 border border-cyan-500/25 bg-black/50 p-5">
+      <h2 className="font-buahs93 text-sm tracking-wide text-cyan-100">
+        YOUR DATA
+      </h2>
+      <p className="mt-1 font-mono text-[11px] leading-relaxed text-cyan-100/55">
+        Download the profile, preferences, linked sign-in providers, and
+        subscription status this site stores. Card numbers are not included.
+        To ask a question, email {PRIVACY_CONTACT_EMAIL}.
+      </p>
+      <div className="mt-3">
+        <PrivacyNotice />
+      </div>
+      <div className="mt-4">
+        <GlitchFx
+          type="button"
+          label={busy ? "PREPARING…" : "DOWNLOAD MY DATA"}
+          disabled={busy}
+          onClick={() => void onExport()}
+        />
+      </div>
+      {errorText ? (
+        <p className="mt-3 font-mono text-xs text-red-300" role="alert">
+          {errorText}
+        </p>
+      ) : null}
+    </section>
+  )
+}
 
 const fieldClassName =
   "font-buahs93 h-8 rounded-none border border-cyan-500/30 bg-black/80 px-2 text-xs tracking-wide text-cyan-100 outline-none hover:border-cyan-400/50 focus-visible:border-cyan-400"
@@ -310,6 +374,7 @@ export function AccountSettingsPage() {
           </div>
         </section>
 
+        <DataExportPanel />
         <DeleteAccountPanel />
       </div>
     </section>

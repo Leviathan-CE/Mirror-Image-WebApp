@@ -46,27 +46,36 @@ def utc_hour_start(now: datetime | None = None) -> datetime:
     return current.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
 
 
-def peek_user_id_from_authorization(header: str | None) -> int | None:
+def peek_user_id_from_token(token: str | None) -> int | None:
     """Best-effort JWT subject — never raises (analytics must not fail requests)."""
+    if not token:
+        return None
+    try:
+        from app.security import ALGORITHM, signing_secret
+
+        import jwt
+
+        payload = jwt.decode(
+            token,
+            signing_secret(),
+            algorithms=[ALGORITHM],
+            options={"verify_exp": True},
+        )
+        if "purpose" in payload:
+            return None
+        return int(payload["sub"])
+    except Exception:
+        return None
+
+
+def peek_user_id_from_authorization(header: str | None) -> int | None:
+    """Best-effort Bearer subject — never raises."""
     if not header:
         return None
     parts = header.split(None, 1)
     if len(parts) != 2 or parts[0].lower() != "bearer":
         return None
-    try:
-        from app.security import signing_secret, ALGORITHM
-
-        import jwt
-
-        payload = jwt.decode(
-            parts[1],
-            signing_secret(),
-            algorithms=[ALGORITHM],
-            options={"verify_exp": True},
-        )
-        return int(payload["sub"])
-    except Exception:
-        return None
+    return peek_user_id_from_token(parts[1])
 
 
 def should_skip_path(path: str) -> bool:

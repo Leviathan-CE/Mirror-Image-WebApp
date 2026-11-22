@@ -7,7 +7,7 @@ import re
 import time
 from collections import defaultdict
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from psycopg2 import OperationalError
 from psycopg2.errors import UniqueViolation
@@ -23,7 +23,34 @@ from app.email_tokens import (
     issue_and_send_verify,
     mark_email_verified,
 )
-from app.security import hash_password
+from app.security import (
+    apply_session_cookie,
+    create_access_token,
+    hash_password,
+)
+
+
+def _attach_session(response: Response, cur, user_id: int) -> None:
+    """Start an httpOnly session after email verify, reset, or invite."""
+    cur.execute(
+        """
+        SELECT user_name, email, role
+          FROM users
+         WHERE id = %(id)s
+           AND is_active = TRUE
+        """,
+        {"id": user_id},
+    )
+    row = cur.fetchone()
+    if row is None:
+        return
+    token = create_access_token(
+        user_id=user_id,
+        user_name=str(row[0]),
+        email=str(row[1]),
+        role=str(row[2] or "user"),
+    )
+    apply_session_cookie(response, token, unity=False)
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +117,7 @@ class OkResponse(BaseModel):
 
 
 @router.post("/verify", response_model=OkResponse)
-def verify_email(body: TokenBody):
+def verify_email(body: TokenBody, response: Response):
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
@@ -102,6 +129,7 @@ def verify_email(body: TokenBody):
                         status_code=400, detail="invalid_or_expired_token"
                     )
                 mark_email_verified(cur, user_id)
+                _attach_session(response, cur, user_id)
             conn.commit()
     except HTTPException:
         raise
@@ -199,7 +227,7 @@ def forgot_password(body: EmailBody):
 
 
 @router.post("/reset-password", response_model=OkResponse)
-def reset_password(body: ResetPasswordBody):
+def reset_password(body: ResetPasswordBody, response: Response):
     password_hash = hash_password(body.password)
     try:
         with get_connection() as conn:
@@ -222,7 +250,11 @@ def reset_password(body: ResetPasswordBody):
                     {"password": password_hash, "id": user_id},
                 )
                 if cur.rowcount != 1:
-                    raise HTTPException(status_code=400, detail="invalid_or_expired_token")
+                    raise HTTPException(
+                        status_code=400,
+                        detail="invalid_or_expired_token",
+                    )
+                _attach_session(response, cur, user_id)
             conn.commit()
     except HTTPException:
         raise
@@ -233,7 +265,7 @@ def reset_password(body: ResetPasswordBody):
 
 
 @router.post("/accept-invite", response_model=OkResponse)
-def accept_invite(body: AcceptInviteBody):
+def accept_invite(body: AcceptInviteBody, response: Response):
     password_hash = hash_password(body.password)
     try:
         with get_connection() as conn:
@@ -277,6 +309,7 @@ def accept_invite(body: AcceptInviteBody):
                         status_code=400, detail="invalid_or_expired_token"
                     )
                 mark_email_verified(cur, user_id)
+                _attach_session(response, cur, user_id)
             conn.commit()
     except UniqueViolation as e:
         raise HTTPException(

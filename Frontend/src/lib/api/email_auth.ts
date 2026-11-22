@@ -2,12 +2,16 @@
  * Email verification / invite / password-reset API client.
  */
 
-import { apiBaseUrl, readJsonOrThrow } from "@/lib/api/client"
+import {
+  apiBaseUrl,
+  apiFetch,
+  readJsonOrThrow,
+} from "@/lib/api/client"
 
 type Ok = { ok: boolean }
 
 async function postOk(path: string, body: unknown): Promise<Ok> {
-  const response = await fetch(`${apiBaseUrl()}${path}`, {
+  const response = await apiFetch(`${apiBaseUrl()}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

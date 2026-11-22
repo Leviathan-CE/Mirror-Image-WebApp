@@ -7,7 +7,7 @@ import re
 
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from psycopg2 import OperationalError
 from psycopg2.errors import UniqueViolation
@@ -31,6 +31,8 @@ from app.google_oauth import (
 from app.profanity import reject_if_profane
 from app.security import (
     UNITY_TOKEN_EXPIRE_MINUTES,
+    apply_session_cookie,
+    clear_session_cookie,
     create_access_token,
     get_current_user_id,
     hash_password,
@@ -248,6 +250,7 @@ def _features_for_user(
 
 
 def _auth_response_for_user(
+    response: Response,
     *,
     user_id: int,
     user_name: str,
@@ -269,6 +272,8 @@ def _auth_response_for_user(
             timedelta(minutes=UNITY_TOKEN_EXPIRE_MINUTES) if unity else None
         ),
     )
+    if not unity:
+        apply_session_cookie(response, token, unity=False)
     public = _user_public_from_row(
         (user_id, user_name, email, role, sub_status or "none", sub_type or ""),
         email_verified=True,
@@ -359,7 +364,7 @@ def register(body: RegisterRequest):
 
 
 @router.post("/login", response_model=AuthResponse)
-def login(body: LoginRequest):
+def login(body: LoginRequest, response: Response):
     """Authenticate with email or username + password; return a JWT."""
     try:
         with get_connection() as conn:
@@ -416,28 +421,25 @@ def login(body: LoginRequest):
             detail="database_unavailable",
         ) from e
 
+    unity = (body.client or "").strip().lower() == "unity"
     token = create_access_token(
         user_id=user_id,
         user_name=user_name,
         email=email,
         role=role,
         expires_delta=(
-            timedelta(minutes=UNITY_TOKEN_EXPIRE_MINUTES)
-            if (body.client or "").strip().lower() == "unity"
-            else None
+            timedelta(minutes=UNITY_TOKEN_EXPIRE_MINUTES) if unity else None
         ),
     )
+    if not unity:
+        apply_session_cookie(response, token, unity=False)
     public = _user_public_from_row(
         (user_id, user_name, email, role, sub_status or "none", sub_type or ""),
         email_verified=True,
         features=features,
         preferences=prefs,
     )
-    expires_in = (
-        UNITY_TOKEN_EXPIRE_MINUTES * 60
-        if (body.client or "").strip().lower() == "unity"
-        else None
-    )
+    expires_in = UNITY_TOKEN_EXPIRE_MINUTES * 60 if unity else None
     return AuthResponse(access_token=token, user=public, expires_in=expires_in)
 
 
@@ -458,7 +460,7 @@ def google_auth_config():
 
 
 @router.post("/google", response_model=AuthResponse)
-def login_with_google(body: GoogleLoginRequest):
+def login_with_google(body: GoogleLoginRequest, response: Response):
     """
     Sign in with a Google Identity Services ID token.
 
@@ -514,6 +516,7 @@ def login_with_google(body: GoogleLoginRequest):
         ) from e
 
     return _auth_response_for_user(
+        response,
         user_id=int(resolved.user_id),
         user_name=resolved.user_name or "",
         email=resolved.email or claims.email,
@@ -527,7 +530,10 @@ def login_with_google(body: GoogleLoginRequest):
 
 
 @router.post("/google/link-with-password", response_model=AuthResponse)
-def link_google_account_with_password(body: GoogleLinkWithPasswordRequest):
+def link_google_account_with_password(
+    body: GoogleLinkWithPasswordRequest,
+    response: Response,
+):
     """
     Security check: prove password ownership of the verified email account,
     then attach this Google identity and return a session JWT.
@@ -586,6 +592,7 @@ def link_google_account_with_password(body: GoogleLinkWithPasswordRequest):
         ) from e
 
     return _auth_response_for_user(
+        response,
         user_id=int(resolved.user_id),
         user_name=resolved.user_name or "",
         email=resolved.email or claims.email,
@@ -596,6 +603,13 @@ def link_google_account_with_password(body: GoogleLinkWithPasswordRequest):
         client=body.client,
         preferences=prefs,
     )
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(response: Response):
+    """Clear the httpOnly session cookie. Safe when already signed out."""
+    clear_session_cookie(response)
+    return None
 
 
 @router.get("/me", response_model=UserPublic)
@@ -672,9 +686,85 @@ def patch_my_preferences(
     return UserPreferencesOut(**saved)
 
 
+@router.get("/me/export")
+def export_my_account(user_id: int = Depends(get_current_user_id)):
+    """Account personal information. No card numbers and no password hash."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT user_name, email, role, is_active,
+                           subscription_status, subscription_type,
+                           subscription_current_period_end,
+                           subscription_cancel_at_period_end,
+                           email_verification_received,
+                           created_at, preferences
+                      FROM users
+                     WHERE id = %(user_id)s
+                    """,
+                    {"user_id": user_id},
+                )
+                row = cur.fetchone()
+                if row is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="user_not_found",
+                    )
+                cur.execute(
+                    """
+                    SELECT provider, email_at_link, linked_at
+                      FROM user_oauth_identities
+                     WHERE user_id = %(user_id)s
+                     ORDER BY provider
+                    """,
+                    {"user_id": user_id},
+                )
+                oauth_rows = cur.fetchall()
+    except HTTPException:
+        raise
+    except OperationalError as exc:
+        logger.warning("db error on /me/export: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="database_unavailable",
+        ) from exc
+
+    period_end = row[6]
+    created_at = row[9]
+    return {
+        "profile": {
+            "user_name": row[0],
+            "email": row[1],
+            "role": row[2],
+            "is_active": bool(row[3]),
+            "email_verified": bool(row[8]),
+            "created_at": created_at.isoformat() if created_at else None,
+        },
+        "preferences": row[10] if isinstance(row[10], dict) else {},
+        "oauth_providers": [
+            {
+                "provider": item[0],
+                "email_at_link": item[1],
+                "linked_at": item[2].isoformat() if item[2] else None,
+            }
+            for item in oauth_rows
+        ],
+        "subscription": {
+            "status": row[4] or "none",
+            "type": row[5] or "",
+            "current_period_end": (
+                period_end.isoformat() if period_end else None
+            ),
+            "cancel_at_period_end": bool(row[7]),
+        },
+    }
+
+
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
 def delete_my_account(
     body: DeleteAccountBody,
+    response: Response,
     user_id: int = Depends(get_current_user_id),
 ):
     """Cancel Stripe, delete owned decks, then remove this user."""
@@ -685,6 +775,7 @@ def delete_my_account(
                     cur, user_id=user_id, typed_username=body.user_name
                 )
             conn.commit()
+        clear_session_cookie(response)
     except AccountDeleteError as e:
         code = 400
         if e.detail == "user_not_found":

@@ -19,6 +19,7 @@ from app.features import (
     load_granted_feature_keys,
     sync_subscription_entitlement_grants,
 )
+from app.retention import delete_expired_print_grants
 from app.roles import is_staff_role
 from app.security import get_current_user_id
 from app.settings import resolve_frontend_origin
@@ -1332,6 +1333,8 @@ def print_access(
                     deck_id=deck_id,
                     user_id=user_id,
                 )
+                delete_expired_print_grants(cur)
+                conn.commit()
                 if _user_print_entitled_free(cur, user_id):
                     return PrintAccessResponse(
                         allowed=True,
@@ -1388,6 +1391,8 @@ def redeem_print_download(
                     deck_id=deck_id,
                     user_id=user_id,
                 )
+                delete_expired_print_grants(cur)
+                conn.commit()
                 if _redeem_print_quota(
                     cur,
                     user_id=user_id,

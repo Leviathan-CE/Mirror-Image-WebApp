@@ -30,9 +30,9 @@ def test_jwt_roundtrip():
     )
     payload = decode_access_token(token)
     assert payload["sub"] == "42"
-    assert payload["user_name"] == "pilot"
-    assert payload["email"] == "pilot@example.com"
     assert payload["role"] == "user"
+    assert "email" not in payload
+    assert "user_name" not in payload
 
 
 def test_single_purpose_email_token_is_not_a_valid_session_token():

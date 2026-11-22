@@ -2,7 +2,9 @@
  * Public + staff announcement board API.
  */
 
-import { apiBaseUrl, authHeaders, readJsonOrThrow } from "@/lib/api/client"
+import { apiBaseUrl, authHeaders, readJsonOrThrow,
+  apiFetch,
+} from "@/lib/api/client"
 
 export type AnnouncementCover = {
   kind: string
@@ -61,7 +63,7 @@ export function announcementMediaUrl(
 }
 
 export async function fetchPublishedAnnouncements(): Promise<AnnouncementPost[]> {
-  const response = await fetch(`${apiBaseUrl()}/announcements`)
+  const response = await apiFetch(`${apiBaseUrl()}/announcements`)
   return readJsonOrThrow<AnnouncementPost[]>(
     response,
     "announcements_failed"
@@ -71,7 +73,7 @@ export async function fetchPublishedAnnouncements(): Promise<AnnouncementPost[]>
 export async function fetchAdminAnnouncements(
   token: string
 ): Promise<AnnouncementPost[]> {
-  const response = await fetch(`${apiBaseUrl()}/admin/announcements`, {
+  const response = await apiFetch(`${apiBaseUrl()}/admin/announcements`, {
     headers: authHeaders(token),
   })
   return readJsonOrThrow<AnnouncementPost[]>(
@@ -84,7 +86,7 @@ export async function createAnnouncement(
   token: string,
   body: AnnouncementWrite
 ): Promise<AnnouncementSaveResult> {
-  const response = await fetch(`${apiBaseUrl()}/admin/announcements`, {
+  const response = await apiFetch(`${apiBaseUrl()}/admin/announcements`, {
     method: "POST",
     headers: { ...authHeaders(token), "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -100,7 +102,7 @@ export async function patchAnnouncement(
   id: number,
   body: Partial<AnnouncementWrite>
 ): Promise<AnnouncementSaveResult> {
-  const response = await fetch(`${apiBaseUrl()}/admin/announcements/${id}`, {
+  const response = await apiFetch(`${apiBaseUrl()}/admin/announcements/${id}`, {
     method: "PATCH",
     headers: { ...authHeaders(token), "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -115,7 +117,7 @@ export async function deleteAnnouncement(
   token: string,
   id: number
 ): Promise<void> {
-  const response = await fetch(`${apiBaseUrl()}/admin/announcements/${id}`, {
+  const response = await apiFetch(`${apiBaseUrl()}/admin/announcements/${id}`, {
     method: "DELETE",
     headers: authHeaders(token),
   })
@@ -134,7 +136,7 @@ export async function fetchAnnouncementMedia(
 ): Promise<AnnouncementMediaItem[]> {
   const url = new URL(`${apiBaseUrl()}/admin/announcement-media`)
   if (q.trim()) url.searchParams.set("q", q.trim())
-  const response = await fetch(url, { headers: authHeaders(token) })
+  const response = await apiFetch(url, { headers: authHeaders(token) })
   return readJsonOrThrow<AnnouncementMediaItem[]>(
     response,
     "announcement_media_failed"
@@ -147,7 +149,7 @@ export async function uploadAnnouncementMedia(
 ): Promise<AnnouncementMediaItem> {
   const body = new FormData()
   body.append("file", file)
-  const response = await fetch(`${apiBaseUrl()}/admin/announcement-media`, {
+  const response = await apiFetch(`${apiBaseUrl()}/admin/announcement-media`, {
     method: "POST",
     headers: authHeaders(token),
     body,

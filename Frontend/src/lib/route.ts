@@ -33,6 +33,10 @@ export const ROUTES = {
   /** Public announcement board. */
   UPDATES: "/updates",
 
+  /** Public privacy notice and terms. */
+  PRIVACY: "/privacy",
+  TERMS: "/terms",
+
   /** Public mailing-list unsubscribe (token in query). */
   UNSUBSCRIBE: "/unsubscribe",
 

@@ -32,6 +32,7 @@ import {
 import { resendVerificationRequest } from "@/lib/api/email_auth"
 import { ApiError } from "@/lib/api/client"
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton"
+import { PrivacyNotice } from "@/components/legal/PrivacyNotice"
 import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
 
@@ -321,6 +322,11 @@ export function LoginPage() {
                 CANCEL GOOGLE LINK
               </Button>
             ) : null}
+
+            <PrivacyNotice>
+              Signing in with a password or Google creates a session cookie
+              on this site.
+            </PrivacyNotice>
 
             <GoogleSignInButton
               disabled={formLocked || linkingGoogle}

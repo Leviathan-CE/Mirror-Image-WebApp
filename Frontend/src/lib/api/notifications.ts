@@ -3,7 +3,9 @@
  * Live updates use WebSocket pub/sub — not HTTP polling.
  */
 
-import { apiBaseUrl, authHeaders, readJsonOrThrow } from "@/lib/api/client"
+import { apiBaseUrl, authHeaders, readJsonOrThrow,
+  apiFetch,
+} from "@/lib/api/client"
 
 /** Server → client pub/sub topic after a notification_events insert. */
 export const INBOX_CHANGED = "inbox.changed"
@@ -49,7 +51,7 @@ export async function fetchNotifications(
   const url = new URL(`${apiBaseUrl()}/notifications`)
   url.searchParams.set("limit", String(query.limit ?? 30))
   url.searchParams.set("offset", String(query.offset ?? 0))
-  const response = await fetch(url, { headers: authHeaders(token) })
+  const response = await apiFetch(url, { headers: authHeaders(token) })
   return readJsonOrThrow<NotificationListResponse>(
     response,
     "notifications_failed"
@@ -59,7 +61,7 @@ export async function fetchNotifications(
 export async function fetchUnreadCount(
   token: string
 ): Promise<{ unread: number }> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${apiBaseUrl()}/notifications/unread-count`,
     { headers: authHeaders(token) }
   )
@@ -73,7 +75,7 @@ export async function markNotificationRead(
   token: string,
   eventId: number
 ): Promise<{ read: number }> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${apiBaseUrl()}/notifications/${eventId}/read`,
     {
       method: "POST",
@@ -89,7 +91,7 @@ export async function markNotificationRead(
 export async function markAllNotificationsRead(
   token: string
 ): Promise<{ read: number }> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${apiBaseUrl()}/notifications/read-all`,
     {
       method: "POST",

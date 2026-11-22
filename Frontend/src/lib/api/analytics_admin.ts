@@ -2,7 +2,9 @@
  * Admin-only analytics API (`GET /admin/analytics`).
  */
 
-import { apiBaseUrl, authHeaders, readJsonOrThrow } from "@/lib/api/client"
+import { apiBaseUrl, authHeaders, readJsonOrThrow,
+  apiFetch,
+} from "@/lib/api/client"
 
 export type AnalyticsRange = "hour" | "week" | "month" | "year"
 
@@ -45,6 +47,6 @@ export async function fetchAdminAnalytics(
 ): Promise<AdminAnalytics> {
   const url = new URL(`${apiBaseUrl()}/admin/analytics`)
   url.searchParams.set("range", range)
-  const response = await fetch(url, { headers: authHeaders(token) })
+  const response = await apiFetch(url, { headers: authHeaders(token) })
   return readJsonOrThrow<AdminAnalytics>(response, "admin_analytics_failed")
 }
