@@ -10,7 +10,7 @@ from typing import Any
 from urllib.parse import urlencode
 
 from app.mailer import EmailNotConfiguredError, send_email
-from app.settings import frontend_url
+from app.settings import frontend_url, is_dev
 
 PURPOSE_VERIFY = "verify_email"
 PURPOSE_RESET = "password_reset"
@@ -35,13 +35,20 @@ def hash_token(raw_token: str) -> str:
 
 
 def _app_public_url() -> str:
-    """Public site origin for email links (APP_PUBLIC_URL or FRONTEND_URL)."""
+    """
+    Origin for links inside email.
+    Development uses FRONTEND_URL so a live APP_PUBLIC_URL
+    does not send the reader to the production site.
+    """
+    if is_dev():
+        return frontend_url()
     import os
 
-    return (
-        (os.environ.get("APP_PUBLIC_URL") or "").strip().rstrip("/")
-        or frontend_url()
-    )
+    public = (os.environ.get("APP_PUBLIC_URL") or "").strip()
+    public = public.rstrip("/")
+    if public != "":
+        return public
+    return frontend_url()
 
 
 def _link(path: str, token: str) -> str:

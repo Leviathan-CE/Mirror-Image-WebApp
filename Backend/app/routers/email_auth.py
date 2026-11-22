@@ -86,6 +86,14 @@ class EmailBody(BaseModel):
     email: EmailStr
 
 
+class ResendBody(BaseModel):
+    """Login name or email. The link always goes to the stored inbox."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    email: str = Field(min_length=3, max_length=254)
+
+
 class ResetPasswordBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -140,9 +148,9 @@ def verify_email(body: TokenBody, response: Response):
 
 
 @router.post("/resend-verification", response_model=OkResponse)
-def resend_verification(body: EmailBody):
-    email = str(body.email).lower()
-    if not _rate_allow(f"resend:{email}"):
+def resend_verification(body: ResendBody):
+    identifier = body.email.strip().lower()
+    if not _rate_allow(f"resend:{identifier}"):
         raise HTTPException(status_code=429, detail="rate_limited")
 
     try:
@@ -150,21 +158,25 @@ def resend_verification(body: EmailBody):
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id, user_name, email_verification_received, is_active
+                    SELECT id, user_name, email,
+                           email_verification_received, is_active
                       FROM users
-                     WHERE lower(email) = %(email)s
+                     WHERE lower(email) = %(id)s
+                        OR lower(user_name) = %(id)s
                      LIMIT 1
                     """,
-                    {"email": email},
+                    {"id": identifier},
                 )
                 row = cur.fetchone()
                 # Always generic success when possible (no account enumeration).
-                if row and row[3] and not row[2]:
+                # Mail goes to the address stored on the account, never a
+                # different address supplied by the caller.
+                if row and row[4] and not row[3]:
                     try:
                         issue_and_send_verify(
                             cur,
                             user_id=int(row[0]),
-                            email=email,
+                            email=str(row[2]),
                             user_name=row[1],
                         )
                     except Exception as e:

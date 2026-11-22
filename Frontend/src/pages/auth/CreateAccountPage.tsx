@@ -27,6 +27,7 @@ import {
   type AuthUser,
 } from "@/lib/api/auth"
 import { ApiError } from "@/lib/api/client"
+import { resendVerificationRequest } from "@/lib/api/email_auth"
 import { isPublicTextClean } from "@/lib/profanity"
 import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
@@ -41,6 +42,8 @@ function helpMessageForError(detail: string): string {
       return "Email is not configured on the server. Contact an admin."
     case "email_send_failed":
       return "Could not send the verification email. Try again later."
+    case "rate_limited":
+      return "Too many emails were sent. Wait a few minutes and try again."
     case "database_unavailable":
       return "Server database is unavailable. Try again in a moment."
     case "google_not_configured":
@@ -70,6 +73,7 @@ export function CreateAccountPage() {
   )
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+  const [resending, setResending] = useState(false)
   const [booting, setBooting] = useState(false)
   const [bootName, setBootName] = useState("")
   const [pendingGoogleToken, setPendingGoogleToken] = useState<string | null>(
@@ -191,6 +195,31 @@ export function CreateAccountPage() {
     }
   }
 
+  async function onResendVerification() {
+    if (resending) return
+    const target = email.trim()
+    if (!target) return
+    setResending(true)
+    setHelpTone("pending")
+    setHelpText("Sending a new verification link…")
+    try {
+      await resendVerificationRequest(target)
+      setHelpTone("success")
+      setHelpText(
+        "A new verification link was sent. The previous link no longer works."
+      )
+    } catch (error) {
+      setHelpTone("error")
+      if (error instanceof ApiError) {
+        setHelpText(helpMessageForError(error.detail))
+      } else {
+        setHelpText("Could not reach the server. Is the API running?")
+      }
+    } finally {
+      setResending(false)
+    }
+  }
+
   const formLocked = submitting || booting
   const linkingGoogle = Boolean(pendingGoogleToken)
 
@@ -213,7 +242,24 @@ export function CreateAccountPage() {
 
           {done ? (
             <div className="border border-cyan-500/20 bg-black/50 p-6 text-center">
-              <p className={cn("text-sm", HELP_TONE_CLASS.success)}>{helpText}</p>
+              <p
+                role="status"
+                className={cn("text-sm", HELP_TONE_CLASS[helpTone])}
+              >
+                {helpText}
+              </p>
+              <Button
+                type="button"
+                disabled={resending}
+                className={
+                  "font-buahs93 mt-4 h-9 w-full rounded-none "
+                  + "bg-amber-800 px-4 text-sm text-white "
+                  + "hover:bg-amber-700 disabled:opacity-60"
+                }
+                onClick={() => void onResendVerification()}
+              >
+                {resending ? "SENDING…" : "RESEND VERIFICATION LINK"}
+              </Button>
               <Link
                 to={ROUTES.LOGIN}
                 className="mt-4 inline-block text-cyan-300 underline hover:text-cyan-200"
