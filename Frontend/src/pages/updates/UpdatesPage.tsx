@@ -33,12 +33,15 @@ export function UpdatesPage() {
   const slugFromUrl = searchParams.get("slug")
   const [posts, setPosts] = useState<AnnouncementPost[]>([])
   const [openSlug, setOpenSlug] = useState<string | null>(slugFromUrl)
+  const [trackedSlug, setTrackedSlug] = useState(slugFromUrl)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!slugFromUrl) return
-    setOpenSlug(slugFromUrl)
-  }, [slugFromUrl])
+  if (slugFromUrl !== trackedSlug) {
+    setTrackedSlug(slugFromUrl)
+    if (slugFromUrl) {
+      setOpenSlug(slugFromUrl)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
