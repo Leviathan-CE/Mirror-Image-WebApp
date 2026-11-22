@@ -52,7 +52,9 @@ export async function parseErrorDetail(
   }
 }
 
-export function authHeaders(_token?: string | null): HeadersInit {
+export function authHeaders(token?: string | null): HeadersInit {
+  // Cookie auth replaced the Bearer header. Callers still pass token.
+  void token
   return {}
 }
 

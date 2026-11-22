@@ -20,13 +20,14 @@ export function UnsubscribePage() {
   const token = params.get("token")?.trim() ?? ""
   const [tone, setTone] = useState<HelpTone>("pending")
   const [text, setText] = useState("Unsubscribing…")
+  const missingToken = token === ""
+  const shownTone: HelpTone = missingToken ? "error" : tone
+  const shownText = missingToken
+    ? "Missing unsubscribe token."
+    : text
 
   useEffect(() => {
-    if (!token) {
-      setTone("error")
-      setText("Missing unsubscribe token.")
-      return
-    }
+    if (missingToken) return
     let cancelled = false
     void (async () => {
       try {
@@ -58,12 +59,12 @@ export function UnsubscribePage() {
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [missingToken, token])
 
   return (
     <AuthUtilityShell title="Unsubscribe">
-      <p className={cn("font-mono text-sm", HELP_TONE_CLASS[tone])}>
-        {text}
+      <p className={cn("font-mono text-sm", HELP_TONE_CLASS[shownTone])}>
+        {shownText}
       </p>
       <p className="mt-6 font-mono text-xs text-cyan-100/60">
         <Link className="text-cyan-300 underline" to={ROUTES.HOME}>
