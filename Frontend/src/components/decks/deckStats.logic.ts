@@ -1023,7 +1023,7 @@ function splitRamp(
     out[color] = whole
     return { color, fraction: exact - whole }
   })
-  let used = colorTotal(out)
+  const used = colorTotal(out)
   let left = wholeRate - used
   rows.sort((leftRow, rightRow) => rightRow.fraction - leftRow.fraction)
   for (const row of rows) {

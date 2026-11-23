@@ -113,6 +113,7 @@ export function DeckPage() {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [isPublic, setIsPublic] = useState(false)
+  const [syncedDeckId, setSyncedDeckId] = useState<number | null>(null)
   const [searchMenuOpen, setSearchMenuOpen] = useState(false)
   const [allowPilotInDeck, setAllowPilotInDeck] = useState(false)
   const [browseOpen, setBrowseOpen] = useState(true)
@@ -402,14 +403,17 @@ export function DeckPage() {
     [reloadDeck]
   )
 
-  // Keep edit-form fields aligned when the shared hook loads/reloads this deck.
-  useEffect(() => {
-    if (status !== "ready" || !deck) return
+  // Keep edit-form fields aligned when the shared hook loads a new deck id.
+  if (
+    status === "ready" &&
+    deck != null &&
+    deck.id !== syncedDeckId
+  ) {
+    setSyncedDeckId(deck.id)
     setName(deck.name ?? "")
     setDescription(deck.description ?? "")
     setIsPublic(deck.is_public)
-  }, [status, deck?.id])
-
+  }
 
   // After re-uploading art elsewhere, refresh timestamps so ?v= updates.
   useEffect(() => {
