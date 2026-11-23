@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
+from psycopg2 import OperationalError
+from psycopg2.errors import UndefinedTable
 from starlette.websockets import WebSocketDisconnect
 
 from app.main import app
@@ -17,6 +19,36 @@ def client() -> TestClient:
     reset_play_rooms()
     reset_play_room_limits()
     return TestClient(app)
+
+
+def _delete_play_ws_users() -> None:
+    """Remove play_ws_{id} accounts this file inserts."""
+    from app.db import get_connection
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    DELETE FROM users
+                     WHERE lower(email) LIKE 'play\\_ws\\_%@example.com'
+                           ESCAPE '\\'
+                        OR lower(user_name) LIKE 'play\\_ws\\_%' ESCAPE '\\'
+                    """
+                )
+            conn.commit()
+    except OperationalError:
+        return
+    except UndefinedTable:
+        return
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _purge_play_ws_users():
+    """Drop leftovers from a crashed run, then again after this file."""
+    _delete_play_ws_users()
+    yield
+    _delete_play_ws_users()
 
 
 def _token(user_id: int) -> str:

@@ -14,7 +14,7 @@ import {
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { EditBox } from "@/components/ui/EditBox"
 import { markdownImageToken, parseYoutubeId } from "@/lib/announcement.logic"
-import { ApiError } from "@/lib/api/client"
+import { ApiError, sessionGoneText } from "@/lib/api/client"
 import {
   createAnnouncement,
   deleteAnnouncement,
@@ -220,7 +220,9 @@ export function AdminUpdatesPage() {
       await load()
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.detail : "Could not save announcement."
+        err instanceof ApiError
+          ? sessionGoneText(err.detail, err.detail)
+          : "Could not save announcement."
       )
     } finally {
       setBusy(false)

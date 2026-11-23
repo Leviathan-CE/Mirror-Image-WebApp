@@ -21,6 +21,7 @@ import {
   logoutRequest,
   type AuthUser,
 } from "@/lib/api/auth"
+import { setSessionGoneHandler } from "@/lib/api/client"
 import { safeJsonParse } from "@/lib/utils"
 
 const LEGACY_TOKEN_KEY = "mi_access_token"
@@ -97,6 +98,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     },
     []
   )
+
+  useEffect(() => {
+    setSessionGoneHandler(() => {
+      clearSession()
+    })
+  }, [clearSession])
 
   useEffect(() => {
     let cancelled = false

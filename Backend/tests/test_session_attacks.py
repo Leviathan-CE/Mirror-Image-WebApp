@@ -8,6 +8,8 @@ from datetime import UTC, datetime, timedelta
 import jwt
 import pytest
 from fastapi.testclient import TestClient
+from psycopg2 import OperationalError
+from psycopg2.errors import UndefinedTable
 
 from app.db import get_connection
 from app.email_tokens import PURPOSE_VERIFY, create_email_token
@@ -101,6 +103,61 @@ def _card() -> int:
             )
         conn.commit()
     return card_id
+
+
+def _delete_attack_rows() -> None:
+    """Remove accounts, cards, and counters this file inserts."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    DELETE FROM users
+                     WHERE lower(email) LIKE 'atk\\_%@example.com'
+                           ESCAPE '\\'
+                        OR lower(user_name) LIKE 'atk\\_%' ESCAPE '\\'
+                    """
+                )
+                cur.execute(
+                    """
+                    DELETE FROM decks AS deck
+                     WHERE deck.name = 'Private deck'
+                       AND NOT EXISTS (
+                           SELECT 1
+                             FROM user_has_decks AS link
+                            WHERE link.deck_id = deck.id
+                       )
+                    """
+                )
+                cur.execute(
+                    """
+                    DELETE FROM cards
+                     WHERE card_set_name = 'Attack Set'
+                       AND card_name LIKE 'Attack %'
+                    """
+                )
+                cur.execute(
+                    """
+                    DELETE FROM auth_rate_limits
+                     WHERE key LIKE 'atk\\_%' ESCAPE '\\'
+                        OR key LIKE 'mail\\_%@example.com' ESCAPE '\\'
+                        OR key LIKE 'reset\\_%@example.com' ESCAPE '\\'
+                        OR key LIKE 'missing\\_%' ESCAPE '\\'
+                    """
+                )
+            conn.commit()
+    except OperationalError:
+        return
+    except UndefinedTable:
+        return
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _purge_attack_rows():
+    """Drop leftovers from a crashed run, then again after this file."""
+    _delete_attack_rows()
+    yield
+    _delete_attack_rows()
 
 
 def test_random_cookie_is_rejected(client: TestClient, require_db: None):

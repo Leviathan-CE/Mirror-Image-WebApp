@@ -6,6 +6,8 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 from fastapi.testclient import TestClient
+from psycopg2 import OperationalError
+from psycopg2.errors import UndefinedTable
 
 from app.main import app
 from app.media_urls import verify_media_signature
@@ -13,6 +15,36 @@ from app.routers.assets import CARD_BACK_FILE, CARD_BACK_KEY, SYSTEM_MEDIA_DIR
 @pytest.fixture()
 def client() -> TestClient:
     return TestClient(app)
+
+
+def _delete_cardback_users() -> None:
+    """Remove cardback_{role} accounts this file inserts."""
+    from app.db import get_connection
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    DELETE FROM users
+                     WHERE lower(email) LIKE 'cardback\\_%@example.com'
+                           ESCAPE '\\'
+                        OR lower(user_name) LIKE 'cardback\\_%' ESCAPE '\\'
+                    """
+                )
+            conn.commit()
+    except OperationalError:
+        return
+    except UndefinedTable:
+        return
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _purge_cardback_users():
+    """Drop leftovers from a crashed run, then again after this file."""
+    _delete_cardback_users()
+    yield
+    _delete_cardback_users()
 
 
 def _session_for_role(role: str) -> str:

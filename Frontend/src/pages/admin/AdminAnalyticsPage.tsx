@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react"
 
 import { useAuth } from "@/app/providers/AuthProvider"
 import { useComingSoon } from "@/app/providers/ComingSoonProvider"
-import { ApiError } from "@/lib/api/client"
+import { ApiError, sessionGoneText } from "@/lib/api/client"
 import {
   fetchAdminAnalytics,
   type AdminAnalytics,
@@ -141,7 +141,7 @@ export function AdminAnalyticsPage() {
         err instanceof ApiError
           ? err.status === 503
             ? "Run database migration 31_site_settings, then try again."
-            : err.detail
+            : sessionGoneText(err.detail, err.detail)
           : "Could not update coming soon."
       )
     } finally {
@@ -161,7 +161,7 @@ export function AdminAnalyticsPage() {
         err instanceof ApiError
           ? err.status === 503
             ? "Run database migration 42_previews_for_logged_in, then try again."
-            : err.detail
+            : sessionGoneText(err.detail, err.detail)
           : "Could not update preview access."
       )
     } finally {
@@ -195,7 +195,7 @@ export function AdminAnalyticsPage() {
         err instanceof ApiError
           ? err.status === 403
             ? "Admin only."
-            : err.detail
+            : sessionGoneText(err.detail, err.detail)
           : "Could not load analytics."
       )
     }

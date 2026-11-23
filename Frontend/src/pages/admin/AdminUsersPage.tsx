@@ -12,7 +12,7 @@ import {
 import { useAuth } from "@/app/providers/AuthProvider"
 import { Button } from "@/components/ui/button"
 import { EditBox } from "@/components/ui/EditBox"
-import { ApiError } from "@/lib/api/client"
+import { ApiError, sessionGoneText } from "@/lib/api/client"
 import {
   createAdminUser,
   deleteAdminUser,
@@ -68,7 +68,7 @@ function errorText(error: unknown): string {
         return "Delete blocked (user still owns related data)."
       default:
         if (error.detail.includes("user_name")) return USERNAME_RULE
-        return error.detail
+        return sessionGoneText(error.detail, error.detail)
     }
   }
   return "Request failed."
