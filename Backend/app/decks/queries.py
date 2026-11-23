@@ -214,7 +214,8 @@ def fetch_deck_cards(
             c.is_augment,
             c.has_tlv,
             c.has_invoke_cost,
-            pc.published
+            pc.published,
+            c.keywords
         FROM deck_has_cards dhc
         JOIN cards c ON c.id = dhc.card_id
         JOIN deck_categories dc ON dc.id = dhc.category_id
@@ -254,6 +255,7 @@ def fetch_deck_cards(
             is_augment=bool(row[24]),
             has_tlv=bool(row[25]),
             has_invoke_cost=bool(row[26]),
+            keywords=list(row[28] or []),
         )
         published = (
             str(row[27]).strip() if row[27] is not None else None

@@ -50,6 +50,16 @@ class DeckTagSuggestResponse(BaseModel):
     tags: list[DeckTagSuggestion]
 
 
+class SimilarTag(BaseModel):
+    tag: str
+    decks: int = 0
+
+
+class SimilarTagsResponse(BaseModel):
+    tags: list[SimilarTag]
+    compared: int = 0
+
+
 class DeckCreateRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 

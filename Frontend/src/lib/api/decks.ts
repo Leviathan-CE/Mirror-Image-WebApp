@@ -258,6 +258,31 @@ export async function fetchDeckTagSuggestions(opts: {
   return body.tags
 }
 
+export type SimilarDeckTag = {
+  tag: string
+  decks: number
+}
+
+export type SimilarDeckTags = {
+  tags: SimilarDeckTag[]
+  compared: number
+}
+
+/** Tags on public decks with a close stat signature. */
+export async function fetchSimilarDeckTags(
+  deckId: number,
+  token: string | null
+): Promise<SimilarDeckTags> {
+  const response = await apiFetch(
+    `${apiBaseUrl()}/decks/${deckId}/similar-tags`,
+    { headers: authHeaders(token) }
+  )
+  return readJsonOrThrow<SimilarDeckTags>(
+    response,
+    "similar_deck_tags_failed"
+  )
+}
+
 export async function createDeck(
   token: string,
   payload: DeckCreatePayload

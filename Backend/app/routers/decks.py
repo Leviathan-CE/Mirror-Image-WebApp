@@ -6,6 +6,7 @@ Read (public decks — anyone; private — owner only):
   GET    /decks/tags
   GET    /decks/public
   GET    /decks/{deck_id}
+  GET    /decks/{deck_id}/similar-tags
   GET    /decks/{deck_id}/categories
   GET    /decks/{deck_id}/cards
 
@@ -79,6 +80,7 @@ from app.decks.section_types import (
     prepare_section_types,
     section_can_claim_types,
 )
+from app.decks.similar_tags import similar_tags_for_deck
 from app.decks.schemas import (
     AddCardRequest,
     DeckCardEntry,
@@ -96,6 +98,7 @@ from app.decks.schemas import (
     DeckUpdateRequest,
     DefaultCategoriesResponse,
     ReorderCardsRequest,
+    SimilarTagsResponse,
     UpdateCardRequest,
 )
 from app.media_urls import signed_media_path
@@ -531,6 +534,36 @@ def copy_deck(
         raise _db_unavailable(e) from e
 
     return summary
+
+
+@router.get(
+    "/{deck_id}/similar-tags",
+    response_model=SimilarTagsResponse,
+)
+def similar_deck_tags(
+    deck_id: int,
+    user_id: int | None = Depends(get_optional_user_id),
+    staff_reader: bool = Depends(get_optional_is_admin),
+):
+    """
+    Tags on public decks with a close stat signature.
+
+    Private decks are never read as neighbors. Opening this route does
+    not increment view_count.
+    """
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                require_readable_deck(
+                    cur,
+                    deck_id=deck_id,
+                    user_id=user_id,
+                    allow_private=staff_reader,
+                )
+                payload = similar_tags_for_deck(cur, deck_id)
+    except OperationalError as e:
+        raise _db_unavailable(e) from e
+    return payload
 
 
 @router.get("/{deck_id}", response_model=DeckDetail)

@@ -28,7 +28,9 @@ import {
 import {
   DeckCardViewControls,
 } from "@/components/decks/DeckCardViewControls"
+import { DeckPanelToggle } from "@/components/decks/DeckPanelToggle"
 import { CardLibraryBrowser } from "@/components/cards/CardLibraryBrowser"
+import { DeckStatsPanel } from "@/components/decks/DeckStatsPanel"
 import "@/components/decks/DeckCardStack.css"
 import { useCardSelection } from "@/hooks/useCardSelection"
 import { useDeckDetail } from "@/hooks/useDeckDetail"
@@ -803,6 +805,12 @@ export function DeckPage() {
                     value={cardViewMode}
                     onChange={(deck_view) => patchPrefs({ deck_view })}
                   />
+                  {canEdit ? (
+                    <DeckPanelToggle
+                      statsOn={!browseOpen}
+                      onChange={(statsOn) => setBrowseOpen(!statsOn)}
+                    />
+                  ) : null}
                 </div>
                 <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center md:justify-end">
                   <GlitchFx
@@ -840,15 +848,6 @@ export function DeckPage() {
                       onClick={() => void onCreatePrintout()}
                     />
                   ) : null}
-                  {canEdit ? (
-                    <GlitchFx
-                      type="button"
-                      label={browseOpen ? "HIDE BROWSE" : "BROWSE"}
-                      fxClassName="order-3 block w-full md:order-1 md:w-auto"
-                      className="font-buahs93 h-9 w-full rounded-none border border-cyan-500/40 bg-black/70 px-4 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10 md:w-auto"
-                      onClick={() => setBrowseOpen((prev) => !prev)}
-                    />
-                  ) : null}
                 </div>
               </div>
             </header>
@@ -862,7 +861,7 @@ export function DeckPage() {
             <div
               className={cn(
                 "flex flex-col gap-6",
-                canEdit && browseOpen && "xl:flex-row xl:items-start"
+                canEdit && "xl:flex-row xl:items-start"
               )}
             >
               <div className="min-w-0 flex-1">
@@ -890,28 +889,44 @@ export function DeckPage() {
                 />
               </div>
 
-              {canEdit && browseOpen ? (
+              {canEdit ? (
                 <aside
                   className="relative flex w-full shrink-0 flex-col overflow-visible border border-cyan-500/25 bg-black/55 p-3 xl:w-[var(--browse-w)]"
-                  style={{ ["--browse-w" as string]: `${browseWidth}px` }}
+                  style={{
+                    ["--browse-w" as string]: browseOpen
+                      ? `${browseWidth}px`
+                      : `${Math.max(browseWidth, 480)}px`,
+                  }}
                 >
-                  <CardLibraryBrowser
-                    className="min-h-0 w-full flex-1"
-                    token={token}
-                    compact
-                    draggable
-                    title="CARD LIBRARY"
-                    onCardActivate={(card) =>
-                      void onAddCardFromSearch({
-                        id: card.id,
-                        card_name: card.card_name,
-                        card_set_name: card.card_set_name,
-                        rarity: card.rarity,
-                        card_art_path: card.card_art_path,
-                        card_art_version: card.card_art_version,
-                      })
-                    }
-                  />
+                  {browseOpen ? (
+                    <CardLibraryBrowser
+                      className="min-h-0 w-full flex-1"
+                      token={token}
+                      compact
+                      draggable
+                      title="CARD LIBRARY"
+                      onCardActivate={(card) =>
+                        void onAddCardFromSearch({
+                          id: card.id,
+                          card_name: card.card_name,
+                          card_set_name: card.card_set_name,
+                          rarity: card.rarity,
+                          card_art_path: card.card_art_path,
+                          card_art_version: card.card_art_version,
+                        })
+                      }
+                    />
+                  ) : (
+                    <DeckStatsPanel
+                      key={deck.id}
+                      deck={deck}
+                      token={token}
+                      disabled={saving}
+                      onAddTag={(tag) => {
+                        void onAddTag(tag)
+                      }}
+                    />
+                  )}
                   <div
                     role="separator"
                     aria-orientation="vertical"
