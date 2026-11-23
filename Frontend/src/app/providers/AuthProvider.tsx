@@ -21,6 +21,7 @@ import {
   logoutRequest,
   type AuthUser,
 } from "@/lib/api/auth"
+import { setSessionGoneHandler } from "@/lib/api/client"
 import { safeJsonParse } from "@/lib/utils"
 
 const LEGACY_TOKEN_KEY = "mi_access_token"
@@ -32,8 +33,8 @@ type AuthContextValue = {
   user: AuthUser | null
   token: string | null
   isAuthenticated: boolean
-  /** Persist the public user after login. The JWT stays in the cookie. */
-  setSession: (token: string, user: AuthUser) => void
+  /** Persist the public user after login. The session stays in the cookie. */
+  setSession: (user: AuthUser) => void
   /** Ask the API to clear the cookie, then drop local state. */
   clearSession: () => void
   /** Keep cached /me preferences in sync after a Settings flush. */
@@ -67,7 +68,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [token, setToken] = useState<string | null>(() => readSignedInFlag())
   const [user, setUser] = useState<AuthUser | null>(() => readStoredUser())
 
-  const setSession = useCallback((_nextToken: string, nextUser: AuthUser) => {
+  const setSession = useCallback((nextUser: AuthUser) => {
     localStorage.removeItem(LEGACY_TOKEN_KEY)
     localStorage.setItem(SIGNED_IN_KEY, SIGNED_IN_FLAG)
     localStorage.setItem(USER_KEY, JSON.stringify(nextUser))
@@ -97,6 +98,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     },
     []
   )
+
+  useEffect(() => {
+    setSessionGoneHandler(() => {
+      clearSession()
+    })
+  }, [clearSession])
 
   useEffect(() => {
     let cancelled = false

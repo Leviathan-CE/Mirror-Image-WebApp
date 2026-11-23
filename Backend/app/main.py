@@ -8,6 +8,7 @@ from app.routers import health
 from app.routers import card_manager
 from app.routers import admin_analytics
 from app.routers import admin_cards
+from app.routers import admin_decks
 from app.routers import admin_users
 from app.routers import auth
 from app.routers import email_auth
@@ -30,6 +31,7 @@ from app.analytics import (
     should_skip_path,
 )
 from app.settings import frontend_origins, is_dev
+from app.security import assert_production_secret
 
 """
 Application entry point for the Mirror Image API.
@@ -41,6 +43,21 @@ Images are NOT mounted as static files: card art and deck covers are served by
 mount exposed unreleased card art to anyone who could derive its path.
 """
 
+def api_doc_urls() -> dict[str, str | None]:
+    """Public schema routes. Hidden when APP_ENV is production."""
+    if is_dev():
+        return {
+            "docs_url": "/docs",
+            "redoc_url": "/redoc",
+            "openapi_url": "/openapi.json",
+        }
+    return {
+        "docs_url": None,
+        "redoc_url": None,
+        "openapi_url": None,
+    }
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """Run startup/shutdown hooks for the API lifecycle.
@@ -48,6 +65,7 @@ async def lifespan(_app: FastAPI):
     Schema setup is intentionally disabled for now, but this is where
     startup work should run before the app begins serving requests.
     """
+    assert_production_secret()
     import asyncio
 
     from app.inbox_pubsub import inbox_hub
@@ -71,7 +89,11 @@ async def lifespan(_app: FastAPI):
     host_sampler.stop()
 
 
-app = FastAPI(title="Mirror Image API", lifespan=lifespan)
+app = FastAPI(
+    title="Mirror Image API",
+    lifespan=lifespan,
+    **api_doc_urls(),
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=frontend_origins(),
@@ -146,6 +168,7 @@ app.include_router(play_rooms.router)
 app.include_router(admin_analytics.router)
 app.include_router(admin_cards.router)
 app.include_router(admin_users.router)
+app.include_router(admin_decks.router)
 app.include_router(announcements_public.router)
 app.include_router(admin_announcements.router)
 app.include_router(notifications.router)

@@ -99,6 +99,7 @@ from app.profanity import reject_if_profane
 from app.user_preferences import fetch_user_preferences, normalize_user_preferences
 from app.security import (
     get_current_user_id,
+    get_optional_is_admin,
     get_optional_user_id,
 )
 
@@ -525,13 +526,14 @@ def get_deck(
         ),
     ),
     user_id: int | None = Depends(get_optional_user_id),
+    staff_reader: bool = Depends(get_optional_is_admin),
     publish_bypass: bool = Depends(get_optional_publish_bypass),
     include_preview: bool = Depends(get_optional_include_preview),
 ):
     """
     Deck metadata, categories, and cards.
 
-    Public decks: anyone. Private decks: owner only.
+    Public decks: anyone. Private decks: owner or staff.
     Preview / unpublished cards are classified stubs unless the viewer
     is entitled (subscriber preview, unpublished_cards grant, or admin).
     Mutations still require ownership on write routes.
@@ -545,14 +547,16 @@ def get_deck(
                 pooled = resolve_room_visibility(
                     cur, code=room, deck_id=deck_id, user_id=user_id
                 )
+                room_private = bool(pooled and pooled.allow_private)
                 row = require_readable_deck(
                     cur,
                     deck_id=deck_id,
                     user_id=user_id,
-                    allow_private=bool(pooled and pooled.allow_private),
+                    allow_private=room_private or staff_reader,
                 )
                 owner_id = int(row[7])
-                if pooled is None and (user_id is None or user_id != owner_id):
+                owner_view = user_id is not None and user_id == owner_id
+                if pooled is None and not owner_view and not staff_reader:
                     increment_deck_view(cur, deck_id)
 
                 categories = fetch_deck_categories(cur, deck_id)
@@ -567,6 +571,21 @@ def get_deck(
                 count = card_count(cur, deck_id)
                 summary = summary_with_community(
                     cur, row, count, viewer_id=user_id
+                )
+                cur.execute(
+                    """
+                    SELECT print_price_cents
+                      FROM decks
+                     WHERE id = %(deck_id)s
+                    """,
+                    {"deck_id": deck_id},
+                )
+                price_row = cur.fetchone()
+                price = None
+                if price_row is not None and price_row[0] is not None:
+                    price = int(price_row[0])
+                summary = summary.model_copy(
+                    update={"print_price_cents": price}
                 )
             conn.commit()
     except OperationalError as e:

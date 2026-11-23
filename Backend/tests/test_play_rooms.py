@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
+from psycopg2 import OperationalError
+from psycopg2.errors import UndefinedTable
 from starlette.websockets import WebSocketDisconnect
 
 from app.main import app
 from app.play_room_limits import WS_MAX_BYTES, reset_play_room_limits
 from app.play_rooms_state import reset_play_rooms
-from app.security import create_access_token
 from app import play_room_limits
 
 
@@ -20,13 +21,81 @@ def client() -> TestClient:
     return TestClient(app)
 
 
+def _delete_play_ws_users() -> None:
+    """Remove play_ws_{id} accounts this file inserts."""
+    from app.db import get_connection
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    DELETE FROM users
+                     WHERE lower(email) LIKE 'play\\_ws\\_%@example.com'
+                           ESCAPE '\\'
+                        OR lower(user_name) LIKE 'play\\_ws\\_%' ESCAPE '\\'
+                    """
+                )
+            conn.commit()
+    except OperationalError:
+        return
+    except UndefinedTable:
+        return
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _purge_play_ws_users():
+    """Drop leftovers from a crashed run, then again after this file."""
+    _delete_play_ws_users()
+    yield
+    _delete_play_ws_users()
+
+
 def _token(user_id: int) -> str:
-    return create_access_token(
-        user_id=user_id,
-        user_name=f"player{user_id}",
-        email=f"player{user_id}@example.com",
-        role="user",
-    )
+    from psycopg2 import OperationalError
+
+    from app.db import get_connection
+    from app.security import hash_password
+    from app.sessions import issue_session
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id FROM users WHERE id = %(id)s",
+                    {"id": user_id},
+                )
+                if cur.fetchone() is None:
+                    cur.execute(
+                        """
+                        INSERT INTO users (
+                            id, user_name, email, password, role,
+                            is_active, email_verification_received
+                        )
+                        VALUES (
+                            %(id)s, %(name)s, %(email)s, %(password)s,
+                            'user', TRUE, TRUE
+                        )
+                        """,
+                        {
+                            "id": user_id,
+                            "name": f"play_ws_{user_id}",
+                            "email": f"play_ws_{user_id}@example.com",
+                            "password": hash_password("testpass123"),
+                        },
+                    )
+                    cur.execute(
+                        """
+                        SELECT setval(
+                            pg_get_serial_sequence('users', 'id'),
+                            (SELECT MAX(id) FROM users)
+                        )
+                        """
+                    )
+            conn.commit()
+        return issue_session(user_id)
+    except OperationalError as exc:
+        pytest.skip(f"database unavailable: {exc}")
 
 
 def _auth(user_id: int) -> dict[str, str]:

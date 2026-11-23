@@ -1100,6 +1100,22 @@ def _upsert_print_grant(
     return int(cur.fetchone()[0])
 
 
+def _deck_print_override(cur, deck_id: int) -> int | None:
+    """NULL is the standard price. 0 is free. Else custom cents."""
+    cur.execute(
+        """
+        SELECT print_price_cents
+          FROM decks
+         WHERE id = %(deck_id)s
+        """,
+        {"deck_id": deck_id},
+    )
+    row = cur.fetchone()
+    if row is None or row[0] is None:
+        return None
+    return int(row[0])
+
+
 @router.get(
     "/print/quote/{deck_id}",
     response_model=PrintQuoteResponse,
@@ -1120,7 +1136,15 @@ def print_quote(
                 )
                 entitled = _user_print_entitled_free(cur, user_id)
                 count = _deck_print_card_count(cur, deck_id)
-                amount = 0 if entitled else print_amount_cents(count)
+                override = _deck_print_override(cur, deck_id)
+                deck_free = override == 0
+                if entitled or deck_free:
+                    amount = 0
+                elif override is not None:
+                    amount = override
+                else:
+                    amount = print_amount_cents(count)
+                entitled = entitled or deck_free
     except HTTPException:
         raise
     except OperationalError as e:
@@ -1170,6 +1194,11 @@ def create_print_intent(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="print_already_entitled",
                     )
+                if _deck_print_override(cur, body.deck_id) == 0:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="print_already_entitled",
+                    )
                 row = _fetch_user_billing(cur, user_id)
                 if row is None:
                     raise HTTPException(
@@ -1184,7 +1213,11 @@ def create_print_intent(
                         status_code=400,
                         detail="deck_empty",
                     )
-                amount = print_amount_cents(count)
+                override = _deck_print_override(cur, body.deck_id)
+                if override is None:
+                    amount = print_amount_cents(count)
+                else:
+                    amount = override
                 customer_id = _ensure_stripe_customer(
                     cur,
                     user_id=user_id,
@@ -1393,6 +1426,11 @@ def redeem_print_download(
                 )
                 delete_expired_print_grants(cur)
                 conn.commit()
+                if _deck_print_override(cur, deck_id) == 0:
+                    return PrintAccessResponse(
+                        allowed=True,
+                        entitled_free=True,
+                    )
                 if _redeem_print_quota(
                     cur,
                     user_id=user_id,

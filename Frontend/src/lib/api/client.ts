@@ -52,6 +52,34 @@ export async function parseErrorDetail(
   }
 }
 
+const SESSION_GONE = new Set([
+  "missing_bearer_token",
+  "invalid_token",
+  "token_expired",
+])
+
+let onSessionGone: (() => void) | null = null
+
+/** AuthProvider registers this so a dead cookie logs the tab out. */
+export function setSessionGoneHandler(handler: () => void): void {
+  onSessionGone = handler
+}
+
+export function sessionGoneText(
+  detail: string,
+  fallback: string
+): string {
+  if (!SESSION_GONE.has(detail)) return fallback
+  return "Session expired. Log in again."
+}
+
+function noteSessionGone(status: number, detail: string): void {
+  if (status !== 401) return
+  if (!SESSION_GONE.has(detail)) return
+  if (onSessionGone == null) return
+  onSessionGone()
+}
+
 export function authHeaders(token?: string | null): HeadersInit {
   // Cookie auth replaced the Bearer header. Callers still pass token.
   void token
@@ -73,11 +101,10 @@ export async function readJsonOrThrow<T>(
   response: Response,
   fallback: string
 ): Promise<T> {
-  if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      await parseErrorDetail(response, fallback)
-    )
+  if (response.ok) {
+    return (await response.json()) as T
   }
-  return (await response.json()) as T
+  const detail = await parseErrorDetail(response, fallback)
+  noteSessionGone(response.status, detail)
+  throw new ApiError(response.status, detail)
 }

@@ -962,9 +962,6 @@ async def _store_card_image_file(
     path_column: str,
     mime_column: str,
 ) -> tuple[str, int, int | None]:
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail=f"{kind}_must_be_image")
-
     data = await file.read()
     if not data:
         raise HTTPException(status_code=400, detail=f"empty_{kind}_file")
@@ -973,14 +970,15 @@ async def _store_card_image_file(
     if len(data) > max_size:
         raise HTTPException(status_code=413, detail=f"{kind}_too_large")
 
-    ext_map = {
-        "image/png": ".png",
-        "image/jpeg": ".jpg",
-        "image/webp": ".webp",
-    }
-    extension = ext_map.get(file.content_type)
-    if extension is None:
-        raise HTTPException(status_code=400, detail=f"unsupported_{kind}_type")
+    from app.announcement_sanitize import sniff_image
+
+    sniffed = sniff_image(data)
+    if sniffed is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"unsupported_{kind}_type",
+        )
+    extension, mime_type = sniffed
 
     allowed = {
         ("card_thumbnail_path", "card_thumbnail_mime_type"),
@@ -1034,7 +1032,7 @@ async def _store_card_image_file(
                     update_sql,
                     {
                         "stored_path": relative_path,
-                        "mime_type": file.content_type,
+                        "mime_type": mime_type,
                         "card_id": card_id,
                     },
                 )

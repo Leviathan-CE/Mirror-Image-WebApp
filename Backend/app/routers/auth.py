@@ -5,9 +5,7 @@ from __future__ import annotations
 import logging
 import re
 
-from datetime import timedelta
-
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from psycopg2 import OperationalError
 from psycopg2.errors import UniqueViolation
@@ -31,9 +29,9 @@ from app.google_oauth import (
 from app.profanity import reject_if_profane
 from app.security import (
     UNITY_TOKEN_EXPIRE_MINUTES,
+    SESSION_COOKIE_NAME,
     apply_session_cookie,
     clear_session_cookie,
-    create_access_token,
     get_current_user_id,
     hash_password,
     verify_password,
@@ -76,7 +74,7 @@ class LoginRequest(BaseModel):
     # Email or username
     identifier: str = Field(min_length=1, max_length=254)
     password: str = Field(min_length=1, max_length=128)
-    # "unity" → short-lived JWT (see JWT_UNITY_EXPIRE_MINUTES). Web clients omit this.
+    # "unity" returns the raw session id. Web clients omit this.
     client: str = Field(default="", max_length=32)
 
 
@@ -144,10 +142,10 @@ class UserPublic(BaseModel):
 
 
 class AuthResponse(BaseModel):
-    access_token: str
+    access_token: str | None = None
     token_type: str = "bearer"
     user: UserPublic
-    # Seconds until JWT expiry (handy for Unity session UI).
+    # Seconds until the Unity session expires. Omitted for the website.
     expires_in: int | None = None
 
 
@@ -249,6 +247,17 @@ def _features_for_user(
     return features
 
 
+def _fail_login(login_key: str) -> None:
+    from app.rate_limit import PURPOSE_LOGIN, allow_attempt
+
+    if allow_attempt(PURPOSE_LOGIN, login_key):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail="rate_limited",
+    )
+
+
 def _auth_response_for_user(
     response: Response,
     *,
@@ -263,25 +272,24 @@ def _auth_response_for_user(
     preferences: dict | None = None,
 ) -> AuthResponse:
     unity = (client or "").strip().lower() == "unity"
-    token = create_access_token(
-        user_id=user_id,
-        user_name=user_name,
-        email=email,
-        role=role,
-        expires_delta=(
-            timedelta(minutes=UNITY_TOKEN_EXPIRE_MINUTES) if unity else None
-        ),
-    )
+    from app.sessions import issue_session
+
+    raw = issue_session(user_id, unity=unity)
     if not unity:
-        apply_session_cookie(response, token, unity=False)
+        apply_session_cookie(response, raw, unity=False)
     public = _user_public_from_row(
         (user_id, user_name, email, role, sub_status or "none", sub_type or ""),
         email_verified=True,
         features=features,
         preferences=preferences,
     )
-    expires_in = UNITY_TOKEN_EXPIRE_MINUTES * 60 if unity else None
-    return AuthResponse(access_token=token, user=public, expires_in=expires_in)
+    if unity:
+        return AuthResponse(
+            access_token=raw,
+            user=public,
+            expires_in=UNITY_TOKEN_EXPIRE_MINUTES * 60,
+        )
+    return AuthResponse(user=public)
 
 
 def _http_for_google_token_error(exc: GoogleTokenError) -> HTTPException:
@@ -363,14 +371,32 @@ def register(body: RegisterRequest):
     )
 
 
-@router.post("/login", response_model=AuthResponse)
+@router.post(
+    "/login",
+    response_model=AuthResponse,
+    response_model_exclude_none=True,
+)
 def login(body: LoginRequest, response: Response):
-    """Authenticate with email or username + password; return a JWT."""
+    """Authenticate with email or username + password."""
+    from app.rate_limit import (
+        PURPOSE_LOGIN,
+        allow_attempt,
+        clear_attempts,
+        is_limited,
+    )
+
+    login_key = body.identifier.strip().lower()
+    if is_limited(PURPOSE_LOGIN, login_key):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="rate_limited",
+        )
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
                 row = _fetch_user_by_login(cur, body.identifier)
                 if row is None:
+                    _fail_login(login_key)
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
                         detail="invalid_credentials",
@@ -390,6 +416,7 @@ def login(body: LoginRequest, response: Response):
                 if not password_hash or not verify_password(
                     body.password, password_hash
                 ):
+                    _fail_login(login_key)
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
                         detail="invalid_credentials",
@@ -421,26 +448,19 @@ def login(body: LoginRequest, response: Response):
             detail="database_unavailable",
         ) from e
 
-    unity = (body.client or "").strip().lower() == "unity"
-    token = create_access_token(
-        user_id=user_id,
+    clear_attempts(PURPOSE_LOGIN, login_key)
+    return _auth_response_for_user(
+        response,
+        user_id=int(user_id),
         user_name=user_name,
         email=email,
         role=role,
-        expires_delta=(
-            timedelta(minutes=UNITY_TOKEN_EXPIRE_MINUTES) if unity else None
-        ),
-    )
-    if not unity:
-        apply_session_cookie(response, token, unity=False)
-    public = _user_public_from_row(
-        (user_id, user_name, email, role, sub_status or "none", sub_type or ""),
-        email_verified=True,
+        sub_status=sub_status or "none",
+        sub_type=sub_type or "",
         features=features,
+        client=body.client,
         preferences=prefs,
     )
-    expires_in = UNITY_TOKEN_EXPIRE_MINUTES * 60 if unity else None
-    return AuthResponse(access_token=token, user=public, expires_in=expires_in)
 
 
 @router.get("/google/config", response_model=GoogleAuthConfig)
@@ -459,7 +479,11 @@ def google_auth_config():
     )
 
 
-@router.post("/google", response_model=AuthResponse)
+@router.post(
+    "/google",
+    response_model=AuthResponse,
+    response_model_exclude_none=True,
+)
 def login_with_google(body: GoogleLoginRequest, response: Response):
     """
     Sign in with a Google Identity Services ID token.
@@ -529,7 +553,11 @@ def login_with_google(body: GoogleLoginRequest, response: Response):
     )
 
 
-@router.post("/google/link-with-password", response_model=AuthResponse)
+@router.post(
+    "/google/link-with-password",
+    response_model=AuthResponse,
+    response_model_exclude_none=True,
+)
 def link_google_account_with_password(
     body: GoogleLinkWithPasswordRequest,
     response: Response,
@@ -606,8 +634,15 @@ def link_google_account_with_password(
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-def logout(response: Response):
-    """Clear the httpOnly session cookie. Safe when already signed out."""
+def logout(request: Request, response: Response):
+    """Delete this session row and clear the cookie."""
+    from app.sessions import revoke_presented_session
+
+    raw = request.cookies.get(SESSION_COOKIE_NAME)
+    header = request.headers.get("authorization") or ""
+    if header.lower().startswith("bearer "):
+        raw = header.split(None, 1)[1].strip()
+    revoke_presented_session(raw)
     clear_session_cookie(response)
     return None
 

@@ -103,7 +103,7 @@ export function SubscriptionSettingsPanel() {
         }
         try {
           const fresh = await fetchCurrentUser(token)
-          if (!cancelled) setSession(token, fresh)
+          if (!cancelled) setSession(fresh)
         } catch {
           /* keep existing session */
         }

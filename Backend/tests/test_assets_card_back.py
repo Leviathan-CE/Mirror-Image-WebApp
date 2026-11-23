@@ -6,34 +6,98 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 from fastapi.testclient import TestClient
+from psycopg2 import OperationalError
+from psycopg2.errors import UndefinedTable
 
 from app.main import app
 from app.media_urls import verify_media_signature
 from app.routers.assets import CARD_BACK_FILE, CARD_BACK_KEY, SYSTEM_MEDIA_DIR
-from app.security import create_access_token
-
-
 @pytest.fixture()
 def client() -> TestClient:
     return TestClient(app)
 
 
+def _delete_cardback_users() -> None:
+    """Remove cardback_{role} accounts this file inserts."""
+    from app.db import get_connection
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    DELETE FROM users
+                     WHERE lower(email) LIKE 'cardback\\_%@example.com'
+                           ESCAPE '\\'
+                        OR lower(user_name) LIKE 'cardback\\_%' ESCAPE '\\'
+                    """
+                )
+            conn.commit()
+    except OperationalError:
+        return
+    except UndefinedTable:
+        return
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _purge_cardback_users():
+    """Drop leftovers from a crashed run, then again after this file."""
+    _delete_cardback_users()
+    yield
+    _delete_cardback_users()
+
+
+def _session_for_role(role: str) -> str:
+    from psycopg2 import OperationalError
+
+    from app.db import get_connection
+    from app.security import hash_password
+    from app.sessions import issue_session
+
+    email = f"cardback_{role}@example.com"
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO users (
+                        user_name, email, password, role, is_active,
+                        email_verification_received
+                    )
+                    VALUES (
+                        %(name)s, %(email)s, %(password)s, %(role)s,
+                        TRUE, TRUE
+                    )
+                    ON CONFLICT DO NOTHING
+                    """,
+                    {
+                        "name": f"cardback_{role}",
+                        "email": email,
+                        "password": hash_password("testpass123"),
+                        "role": role,
+                    },
+                )
+                cur.execute(
+                    """
+                    SELECT id FROM users WHERE lower(email) = lower(%(email)s)
+                    """,
+                    {"email": email},
+                )
+                row = cur.fetchone()
+            conn.commit()
+        if row is None:
+            pytest.skip("card-back user was not created")
+        return issue_session(int(row[0]))
+    except OperationalError as exc:
+        pytest.skip(f"database unavailable: {exc}")
+
+
 def _user_token() -> str:
-    return create_access_token(
-        user_id=1,
-        user_name="cardback_user",
-        email="cardback_user@example.com",
-        role="user",
-    )
+    return _session_for_role("user")
 
 
 def _staff_token() -> str:
-    return create_access_token(
-        user_id=2,
-        user_name="cardback_admin",
-        email="cardback_admin@example.com",
-        role="admin",
-    )
+    return _session_for_role("admin")
 
 
 def test_card_back_requires_auth(client: TestClient) -> None:
