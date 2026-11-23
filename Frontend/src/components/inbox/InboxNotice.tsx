@@ -24,7 +24,9 @@ type InboxNoticeProps = {
   selected: boolean
   post: AnnouncementPost | null | undefined
   deleting: boolean
-  onToggle: (event: MouseEvent<HTMLButtonElement>) => void
+  onToggle: (
+    event?: MouseEvent<HTMLButtonElement>
+  ) => void
   onDelete: () => void
 }
 

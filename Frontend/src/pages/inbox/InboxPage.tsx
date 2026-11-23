@@ -206,10 +206,13 @@ export function InboxPage() {
 
   async function toggleItem(
     item: NotificationItem,
-    event: MouseEvent<HTMLButtonElement>
+    event?: MouseEvent<HTMLButtonElement>
   ) {
     if (!token) return
-    if (event.shiftKey || event.ctrlKey || event.metaKey) {
+    if (
+      event != null &&
+      (event.shiftKey || event.ctrlKey || event.metaKey)
+    ) {
       selectItem(item, event)
       return
     }
