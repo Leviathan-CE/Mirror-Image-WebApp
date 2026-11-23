@@ -46,6 +46,7 @@ export const ROUTES = {
   /** Staff console (admin + developer). Users page is admin-only. */
   ADMIN: "/admin",
   ADMIN_CARDS: "/admin/cards",
+  ADMIN_DECKS: "/admin/decks",
   ADMIN_USERS: "/admin/users",
   ADMIN_UPDATES: "/admin/updates",
 

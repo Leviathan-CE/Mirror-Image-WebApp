@@ -18,6 +18,7 @@ import { DeckPage } from "@/pages/decks/DeckPage"
 import { LorePage } from "@/pages/lore/LorePage"
 import { AdminAnalyticsPage } from "@/pages/admin/AdminAnalyticsPage"
 import { AdminCardsPage } from "@/pages/admin/AdminCardsPage"
+import { AdminDecksPage } from "@/pages/admin/AdminDecksPage"
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage"
 import { AdminUpdatesPage } from "@/pages/admin/AdminUpdatesPage"
 import { UpdatesPage } from "@/pages/updates/UpdatesPage"
@@ -140,6 +141,14 @@ export function AppShell() {
                 element={
                   <RequireStaff>
                     <AdminCardsPage />
+                  </RequireStaff>
+                }
+              />
+              <Route
+                path={ROUTES.ADMIN_DECKS}
+                element={
+                  <RequireStaff>
+                    <AdminDecksPage />
                   </RequireStaff>
                 }
               />

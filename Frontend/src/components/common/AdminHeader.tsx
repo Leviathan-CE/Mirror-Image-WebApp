@@ -37,6 +37,11 @@ export function AdminHeader() {
                 label: "CARDS DB",
                 onSelect: () => navigate(ROUTES.ADMIN_CARDS),
               },
+              {
+                id: "manage-decks",
+                label: "MANAGE DECKS",
+                onSelect: () => navigate(ROUTES.ADMIN_DECKS),
+              },
               ...(canManageUsers
                 ? [
                   {

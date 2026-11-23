@@ -8,6 +8,7 @@ from app.routers import health
 from app.routers import card_manager
 from app.routers import admin_analytics
 from app.routers import admin_cards
+from app.routers import admin_decks
 from app.routers import admin_users
 from app.routers import auth
 from app.routers import email_auth
@@ -167,6 +168,7 @@ app.include_router(play_rooms.router)
 app.include_router(admin_analytics.router)
 app.include_router(admin_cards.router)
 app.include_router(admin_users.router)
+app.include_router(admin_decks.router)
 app.include_router(announcements_public.router)
 app.include_router(admin_announcements.router)
 app.include_router(notifications.router)

@@ -114,10 +114,18 @@ def require_session_user(raw: str) -> tuple[int, str]:
     """
     Return (user id, role) for a live active session.
 
-    Missing, expired, and disabled sessions are 401.
+    A blank value, or a JWT (it contains a dot), is 401 and
+    does not touch the database. Missing, expired, and
+    disabled sessions are 401.
     """
+    cleaned = raw.strip()
+    if cleaned == "" or "." in cleaned:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid_token",
+        )
     try:
-        row = _load_row(raw)
+        row = _load_row(cleaned)
     except OperationalError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -134,7 +142,7 @@ def require_session_user(raw: str) -> tuple[int, str]:
 
 def peek_session_user_id(raw: str | None) -> int | None:
     """Analytics lookup. Never raises."""
-    if raw is None or raw.strip() == "":
+    if raw is None or raw.strip() == "" or "." in raw:
         return None
     try:
         row = _load_row(raw)

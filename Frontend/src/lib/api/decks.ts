@@ -27,6 +27,8 @@ export type DeckSummary = {
   card_art_version?: number | null
   /** Pilot invoke-cost pips (deck colour identity). */
   identity_cost?: string[]
+  /** Null = standard price, 0 = free, else custom cents. */
+  print_price_cents?: number | null
 }
 
 export type DeckListPage = {

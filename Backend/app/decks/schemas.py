@@ -24,6 +24,8 @@ class DeckSummary(BaseModel):
     card_art_version: int | None = None
     # Pilot invoke cost pips (deck-building identity).
     identity_cost: list[str] = Field(default_factory=list)
+    # NULL = standard price, 0 = free, else custom cents.
+    print_price_cents: int | None = None
 
 
 class DeckListPage(BaseModel):

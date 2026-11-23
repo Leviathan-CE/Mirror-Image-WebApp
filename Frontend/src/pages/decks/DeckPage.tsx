@@ -183,6 +183,7 @@ export function DeckPage() {
   const canEdit =
     Boolean(deck && user && deck.author_name === user.user_name && token)
   const canPrintFree = userHasFeature(user, FEATURE_DECK_PRINTOUT)
+  const deckPrintFree = deck?.print_price_cents === 0
   const canDuplexPrint = userHasFeature(user, FEATURE_DUPLEX_PRINT)
   const canOfferPrint = Boolean(token) && isAuthenticated
   const isAdmin = isStaffRole(user?.role)
@@ -792,16 +793,24 @@ export function DeckPage() {
                       label={
                         printoutBusy
                           ? "BUILDING PDF…"
-                          : canPrintFree
-                            ? "CREATE PRINTOUT"
-                            : "PRINT PDF"
+                          : deckPrintFree
+                            ? "PRINT FREE"
+                            : canPrintFree
+                              ? "CREATE PRINTOUT"
+                              : "PRINT PDF"
                       }
                       disabled={printoutBusy || saving || printPayOpen}
                       fxClassName="order-2 block w-full md:w-auto"
                       className={
-                        "font-buahs93 h-9 w-full rounded-none bg-orange-600 "
-                        + "px-4 text-white hover:bg-orange-800 "
-                        + "disabled:opacity-60 md:w-auto"
+                        deckPrintFree
+                          ? "font-buahs93 h-9 w-full rounded-none "
+                            + "bg-emerald-600 px-4 text-white "
+                            + "hover:bg-emerald-800 disabled:opacity-60 "
+                            + "md:w-auto"
+                          : "font-buahs93 h-9 w-full rounded-none "
+                            + "bg-orange-600 px-4 text-white "
+                            + "hover:bg-orange-800 disabled:opacity-60 "
+                            + "md:w-auto"
                       }
                       onClick={() => void onCreatePrintout()}
                     />
