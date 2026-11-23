@@ -47,23 +47,13 @@ def utc_hour_start(now: datetime | None = None) -> datetime:
 
 
 def peek_user_id_from_token(token: str | None) -> int | None:
-    """Best-effort JWT subject — never raises (analytics must not fail requests)."""
+    """Best-effort session subject. Never raises."""
     if not token:
         return None
     try:
-        from app.security import ALGORITHM, signing_secret
+        from app.sessions import peek_session_user_id
 
-        import jwt
-
-        payload = jwt.decode(
-            token,
-            signing_secret(),
-            algorithms=[ALGORITHM],
-            options={"verify_exp": True},
-        )
-        if "purpose" in payload:
-            return None
-        return int(payload["sub"])
+        return peek_session_user_id(token)
     except Exception:
         return None
 

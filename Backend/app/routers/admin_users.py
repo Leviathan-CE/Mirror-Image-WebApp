@@ -436,6 +436,12 @@ def patch_user(
                         "id": user_id,
                     },
                 )
+                role_changed = new_role != current_role
+                disabled = new_active is False
+                if role_changed or disabled:
+                    from app.sessions import delete_user_sessions
+
+                    delete_user_sessions(cur, user_id)
 
                 grants = load_granted_feature_keys(cur, user_id)
                 if body.feature_keys is not None:

@@ -27,7 +27,7 @@ from app.notifications import (
     can_see_preview_audience,
 )
 from app.play_room_limits import WS_AUTH_TIMEOUT_S
-from app.security import decode_access_token, get_current_user_id
+from app.security import get_current_user_id
 from app.user_preferences import normalize_user_preferences
 
 logger = logging.getLogger(__name__)
@@ -379,14 +379,10 @@ def mark_notification_read(
 
 
 def _user_id_from_token(token: str) -> int:
-    payload = decode_access_token(token)
-    try:
-        return int(payload["sub"])
-    except (KeyError, TypeError, ValueError) as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="invalid_token_subject",
-        ) from e
+    from app.sessions import require_session_user
+
+    user_id, _role = require_session_user(token)
+    return user_id
 
 
 async def _auth_first_frame(ws: WebSocket) -> int | None:

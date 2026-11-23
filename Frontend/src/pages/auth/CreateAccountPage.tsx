@@ -85,8 +85,8 @@ export function CreateAccountPage() {
   }, [navigate])
 
   const beginSession = useCallback(
-    (accessToken: string, user: AuthUser) => {
-      setSession(accessToken, user)
+    (user: AuthUser) => {
+      setSession(user)
       setBootName(user.user_name)
       setBooting(true)
       setPendingGoogleToken(null)
@@ -101,7 +101,7 @@ export function CreateAccountPage() {
       setHelpText("Continuing with Google…")
       try {
         const result = await googleLoginRequest(idToken)
-        beginSession(result.access_token, result.user)
+        beginSession(result.user)
       } catch (error) {
         setHelpTone("error")
         if (error instanceof ApiError) {
@@ -137,7 +137,7 @@ export function CreateAccountPage() {
           pendingGoogleToken,
           password
         )
-        beginSession(result.access_token, result.user)
+        beginSession(result.user)
       } catch (error) {
         setHelpTone("error")
         if (error instanceof ApiError) {

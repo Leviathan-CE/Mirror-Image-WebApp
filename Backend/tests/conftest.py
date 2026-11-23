@@ -42,7 +42,11 @@ def user_token(client: TestClient, require_db: None) -> str:
     """JWT for the seeded user@localhost account."""
     response = client.post(
         "/auth/login",
-        json={"identifier": "user@localhost", "password": "user123"},
+        json={
+            "identifier": "user@localhost",
+            "password": "user123",
+            "client": "unity",
+        },
     )
     if response.status_code != 200:
         pytest.skip(f"seed login failed: {response.status_code} {response.text}")
@@ -145,7 +149,11 @@ def other_auth_headers(client: TestClient, require_db: None):
 
     login = client.post(
         "/auth/login",
-        json={"identifier": email, "password": password},
+        json={
+            "identifier": email,
+            "password": password,
+            "client": "unity",
+        },
     )
     if login.status_code != 200:
         pytest.skip(f"could not create other test user: {register.text} / {login.text}")
@@ -174,7 +182,11 @@ def admin_token(client: TestClient, require_db: None) -> str:
     """JWT for the seeded admin@localhost account."""
     response = client.post(
         "/auth/login",
-        json={"identifier": "admin@localhost", "password": "admin123"},
+        json={
+            "identifier": "admin@localhost",
+            "password": "admin123",
+            "client": "unity",
+        },
     )
     if response.status_code != 200:
         pytest.skip(f"admin login failed: {response.status_code} {response.text}")
@@ -222,7 +234,11 @@ def developer_headers(client: TestClient, require_db: None) -> dict[str, str]:
 
     login = client.post(
         "/auth/login",
-        json={"identifier": email, "password": password},
+        json={
+            "identifier": email,
+            "password": password,
+            "client": "unity",
+        },
     )
     if login.status_code != 200:
         pytest.skip(f"developer login failed: {login.status_code} {login.text}")

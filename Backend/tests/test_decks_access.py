@@ -86,22 +86,26 @@ def test_get_optional_user_id_none_without_credentials():
     assert get_optional_user_id(_Request(), None) is None
 
 
-def test_get_optional_user_id_from_bearer():
+def test_get_optional_user_id_rejects_jwt_bearer():
     token = create_access_token(
         user_id=7, user_name="ops", email="ops@example.com", role="user"
     )
     credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
-    assert get_optional_user_id(_Request(), credentials) == 7
+    with pytest.raises(HTTPException) as exc:
+        get_optional_user_id(_Request(), credentials)
+    assert exc.value.status_code == 401
 
 
-def test_get_optional_user_id_from_cookie():
+def test_get_optional_user_id_rejects_jwt_cookie():
     token = create_access_token(
         user_id=8, user_name="ops", email="ops@example.com", role="user"
     )
     request = _Request({"mi_session": token})
 
-    assert get_optional_user_id(request, None) == 8
+    with pytest.raises(HTTPException) as exc:
+        get_optional_user_id(request, None)
+    assert exc.value.status_code == 401
 
 
 def test_get_optional_user_id_rejects_bad_scheme():

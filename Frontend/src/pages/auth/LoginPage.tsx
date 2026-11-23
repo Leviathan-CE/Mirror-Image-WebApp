@@ -117,8 +117,8 @@ export function LoginPage() {
   }, [navigate, redirectTo])
 
   const beginSession = useCallback(
-    (accessToken: string, user: AuthUser) => {
-      setSession(accessToken, user)
+    (user: AuthUser) => {
+      setSession(user)
       setHelpTone("success")
       setHelpText(`Welcome back, ${user.user_name}. Login successful.`)
       setBootName(user.user_name)
@@ -137,7 +137,7 @@ export function LoginPage() {
 
       try {
         const result = await googleLoginRequest(idToken)
-        beginSession(result.access_token, result.user)
+        beginSession(result.user)
       } catch (error) {
         setHelpTone("error")
         if (error instanceof ApiError) {
@@ -201,7 +201,7 @@ export function LoginPage() {
           pendingGoogleToken,
           password
         )
-        beginSession(result.access_token, result.user)
+        beginSession(result.user)
       } catch (error) {
         setHelpTone("error")
         if (error instanceof ApiError) {
@@ -228,7 +228,7 @@ export function LoginPage() {
 
     try {
       const result = await loginRequest(identifier.trim(), password)
-      beginSession(result.access_token, result.user)
+      beginSession(result.user)
     } catch (error) {
       setHelpTone("error")
       if (error instanceof ApiError) {
@@ -324,7 +324,7 @@ export function LoginPage() {
                 </p>
                 <Button
                   type="button"
-                  disabled={formLocked}
+                  disabled={formLocked || !identifier.includes("@")}
                   className={
                     "font-buahs93 mt-2 h-9 w-full rounded-none "
                     + "bg-amber-800 px-4 text-sm text-white "

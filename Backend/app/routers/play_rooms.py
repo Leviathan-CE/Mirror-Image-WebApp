@@ -36,7 +36,7 @@ from app.play_rooms_state import (
     remember_user,
     room_for_user,
 )
-from app.security import decode_access_token, get_current_user_id
+from app.security import get_current_user_id
 
 router = APIRouter(tags=["play_rooms"])
 
@@ -46,14 +46,10 @@ class CreateRoomBody(BaseModel):
 
 
 def _user_id_from_token(token: str) -> int:
-    payload = decode_access_token(token)
-    try:
-        return int(payload["sub"])
-    except (KeyError, TypeError, ValueError) as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="invalid_token_subject",
-        ) from e
+    from app.sessions import require_session_user
+
+    user_id, _role = require_session_user(token)
+    return user_id
 
 
 @router.post("/play/rooms")

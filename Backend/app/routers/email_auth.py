@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import logging
 import re
-import time
-from collections import defaultdict
 
 from fastapi import APIRouter, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
@@ -25,9 +23,9 @@ from app.email_tokens import (
 )
 from app.security import (
     apply_session_cookie,
-    create_access_token,
     hash_password,
 )
+from app.sessions import delete_user_sessions, insert_session
 
 
 def _attach_session(response: Response, cur, user_id: int) -> None:
@@ -44,35 +42,14 @@ def _attach_session(response: Response, cur, user_id: int) -> None:
     row = cur.fetchone()
     if row is None:
         return
-    token = create_access_token(
-        user_id=user_id,
-        user_name=str(row[0]),
-        email=str(row[1]),
-        role=str(row[2] or "user"),
-    )
-    apply_session_cookie(response, token, unity=False)
+    raw = insert_session(cur, user_id, unity=False)
+    apply_session_cookie(response, raw, unity=False)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth/email", tags=["email-auth"])
 
 _USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{3,32}$")
-
-# Simple in-memory rate limit: email → timestamps (per process).
-_RATE_BUCKETS: dict[str, list[float]] = defaultdict(list)
-_RATE_WINDOW_S = 600
-_RATE_MAX = 5
-
-
-def _rate_allow(key: str) -> bool:
-    now = time.monotonic()
-    bucket = _RATE_BUCKETS[key]
-    _RATE_BUCKETS[key] = [t for t in bucket if now - t < _RATE_WINDOW_S]
-    if len(_RATE_BUCKETS[key]) >= _RATE_MAX:
-        return False
-    _RATE_BUCKETS[key].append(now)
-    return True
-
 
 class TokenBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
@@ -149,8 +126,10 @@ def verify_email(body: TokenBody, response: Response):
 
 @router.post("/resend-verification", response_model=OkResponse)
 def resend_verification(body: ResendBody):
+    from app.rate_limit import PURPOSE_RESEND, allow_attempt
+
     identifier = body.email.strip().lower()
-    if not _rate_allow(f"resend:{identifier}"):
+    if not allow_attempt(PURPOSE_RESEND, identifier):
         raise HTTPException(status_code=429, detail="rate_limited")
 
     try:
@@ -162,7 +141,6 @@ def resend_verification(body: ResendBody):
                            email_verification_received, is_active
                       FROM users
                      WHERE lower(email) = %(id)s
-                        OR lower(user_name) = %(id)s
                      LIMIT 1
                     """,
                     {"id": identifier},
@@ -197,8 +175,10 @@ def resend_verification(body: ResendBody):
 
 @router.post("/forgot-password", response_model=OkResponse)
 def forgot_password(body: EmailBody):
+    from app.rate_limit import PURPOSE_RESET, allow_attempt
+
     email = str(body.email).lower()
-    if not _rate_allow(f"forgot:{email}"):
+    if not allow_attempt(PURPOSE_RESET, email):
         raise HTTPException(status_code=429, detail="rate_limited")
 
     try:
@@ -251,6 +231,7 @@ def reset_password(body: ResetPasswordBody, response: Response):
                     raise HTTPException(
                         status_code=400, detail="invalid_or_expired_token"
                     )
+                delete_user_sessions(cur, user_id)
                 cur.execute(
                     """
                     UPDATE users
@@ -289,6 +270,7 @@ def accept_invite(body: AcceptInviteBody, response: Response):
                     raise HTTPException(
                         status_code=400, detail="invalid_or_expired_token"
                     )
+                delete_user_sessions(cur, user_id)
                 if body.user_name:
                     cur.execute(
                         """

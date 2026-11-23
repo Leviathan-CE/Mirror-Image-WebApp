@@ -42,7 +42,7 @@ export function isAuthUser(value: unknown): value is AuthUser {
 }
 
 export type LoginResponse = {
-  access_token: string
+  access_token?: string
   token_type: string
   user: AuthUser
 }

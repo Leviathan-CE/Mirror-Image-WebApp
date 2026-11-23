@@ -22,13 +22,28 @@ ACCESS_TOKEN_EXPIRE_HOURS = int(os.environ.get("JWT_EXPIRE_HOURS", "168"))  # 7 
 UNITY_TOKEN_EXPIRE_MINUTES = int(os.environ.get("JWT_UNITY_EXPIRE_MINUTES", "10"))
 
 
+DEV_SIGNING_SECRET = "dev-only-change-me-mirror-image"
+
+
 def signing_secret() -> str:
-    """Shared HMAC secret for tokens and signed media URLs."""
+    """HMAC secret for image URLs and one-purpose unsubscribe links."""
     secret = (os.environ.get("JWT_SECRET") or "").strip()
     if not secret:
-        # Dev fallback — set JWT_SECRET in .env for real deployments.
-        return "dev-only-change-me-mirror-image"
+        return DEV_SIGNING_SECRET
     return secret
+
+
+def assert_production_secret() -> None:
+    """Refuse to serve production traffic with a missing or example secret."""
+    from app.settings import is_dev
+
+    if is_dev():
+        return
+    secret = (os.environ.get("JWT_SECRET") or "").strip()
+    if secret == "" or secret == DEV_SIGNING_SECRET:
+        raise RuntimeError(
+            "JWT_SECRET must be set to a unique value when APP_ENV is production"
+        )
 
 
 def hash_password(plain: str) -> str:
@@ -194,18 +209,33 @@ def decode_access_token(token: str) -> dict[str, Any]:
     return payload
 
 
-def get_current_user_id(
+def _presented_or_401(
     request: Request,
-    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
-) -> int:
-    """Require a session cookie or Bearer JWT and return the user id."""
+    credentials: HTTPAuthorizationCredentials | None,
+) -> str:
     token = presented_session_token(request, credentials)
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="missing_bearer_token",
         )
-    return user_id_from_access_token(token)
+    return token
+
+
+def _session_user_or_401(raw: str) -> tuple[int, str]:
+    from app.sessions import require_session_user
+
+    return require_session_user(raw)
+
+
+def get_current_user_id(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+) -> int:
+    """Require a live session cookie or bearer id and return the user id."""
+    raw = _presented_or_401(request, credentials)
+    user_id, _role = _session_user_or_401(raw)
+    return user_id
 
 
 def get_optional_user_id(
@@ -216,7 +246,8 @@ def get_optional_user_id(
     token = presented_session_token(request, credentials)
     if not token:
         return None
-    return user_id_from_access_token(token)
+    user_id, _role = _session_user_or_401(token)
+    return user_id
 
 
 def get_optional_is_admin(
@@ -227,21 +258,16 @@ def get_optional_is_admin(
     token = presented_session_token(request, credentials)
     if not token:
         return False
-    return is_staff_role(role_from_access_token(token))
+    _user_id, role = _session_user_or_401(token)
+    return is_staff_role(role)
 
 
 def _require_session_user(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None,
 ) -> tuple[int, str | None]:
-    token = presented_session_token(request, credentials)
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="missing_bearer_token",
-        )
-    user_id = user_id_from_access_token(token)
-    return user_id, role_from_access_token(token)
+    raw = _presented_or_401(request, credentials)
+    return _session_user_or_401(raw)
 
 
 def get_current_admin_user_id(

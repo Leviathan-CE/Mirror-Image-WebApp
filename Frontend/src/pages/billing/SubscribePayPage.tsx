@@ -101,7 +101,7 @@ export function SubscribePayPage() {
         if (cancelled) return
         try {
           const me = await fetchCurrentUser(token)
-          setSession(token, me)
+          setSession(me)
         } catch {
           /* keep session */
         }
@@ -184,7 +184,7 @@ export function SubscribePayPage() {
             await syncBillingFromStripe(token)
             const me = await fetchCurrentUser(token)
             if (intentRequestId.current !== requestId) return
-            setSession(token, me)
+            setSession(me)
           } catch {
             /* keep session — status may still be stale */
           }
@@ -199,7 +199,7 @@ export function SubscribePayPage() {
             const next = await syncUntilEntitled(token)
             const me = await fetchCurrentUser(token)
             if (intentRequestId.current !== requestId) return
-            setSession(token, me)
+            setSession(me)
             setInfoText(
               next.is_subscribed
                 ? "Plan updated. Your new tier is active."
@@ -259,7 +259,7 @@ export function SubscribePayPage() {
     try {
       const next = await syncUntilEntitled(token)
       const me = await fetchCurrentUser(token)
-      setSession(token, me)
+      setSession(me)
       if (next.is_subscribed) {
         setInfoText("Subscription active. Thank you for the support.")
       }
