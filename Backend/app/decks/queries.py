@@ -55,28 +55,45 @@ def card_count(cur, deck_id: int) -> int:
 
 
 def category_out(row) -> DeckCategoryOut:
+    raw_types = row[4] if len(row) > 4 else []
     return DeckCategoryOut(
         id=row[0],
         name=row[1],
         sort_order=int(row[2]),
         in_deck=bool(row[3]),
+        accept_types=[str(item) for item in (raw_types or [])],
     )
 
 
 def seed_default_categories(
-    cur, deck_id: int, names: list[str] | None = None
+    cur,
+    deck_id: int,
+    names: list[str] | None = None,
+    section_types: dict[str, list[str]] | None = None,
 ) -> None:
     """Seed starting sections. `names` overrides the stock Entity/Cyberspell pair."""
+    from app.user_preferences import DEFAULT_SECTION_TYPES
+
     pairs: list[tuple[str, bool]]
     if names:
         pairs = [(name, category_in_deck_default(name)) for name in names]
     else:
         pairs = list(DEFAULT_DECK_CATEGORIES)
     for sort_order, (name, in_deck) in enumerate(pairs):
+        key = name.strip().casefold()
+        if section_types is None:
+            accept_types = list(DEFAULT_SECTION_TYPES.get(key, []))
+        else:
+            accept_types = list(section_types.get(key, []))
         cur.execute(
             """
-            INSERT INTO deck_categories (deck_id, name, sort_order, in_deck)
-            VALUES (%(deck_id)s, %(name)s, %(sort_order)s, %(in_deck)s)
+            INSERT INTO deck_categories (
+                deck_id, name, sort_order, in_deck, accept_types
+            )
+            VALUES (
+                %(deck_id)s, %(name)s, %(sort_order)s,
+                %(in_deck)s, %(accept_types)s
+            )
             ON CONFLICT (deck_id, name) DO NOTHING
             """,
             {
@@ -84,6 +101,7 @@ def seed_default_categories(
                 "name": name,
                 "sort_order": sort_order,
                 "in_deck": in_deck,
+                "accept_types": accept_types,
             },
         )
 
@@ -91,7 +109,7 @@ def seed_default_categories(
 def fetch_deck_categories(cur, deck_id: int) -> list[DeckCategoryOut]:
     cur.execute(
         """
-        SELECT id, name, sort_order, in_deck
+        SELECT id, name, sort_order, in_deck, accept_types
         FROM deck_categories
         WHERE deck_id = %(deck_id)s
         ORDER BY sort_order ASC, id ASC
@@ -117,6 +135,25 @@ def require_category_on_deck(
     if row is None:
         raise HTTPException(status_code=404, detail="category_not_found")
     return int(row[0]), row[1], int(row[2])
+
+
+def other_accept_types(
+    cur, deck_id: int, category_id: int
+) -> list[list[str]]:
+    """Type lists on every other section of this deck."""
+    cur.execute(
+        """
+        SELECT accept_types
+          FROM deck_categories
+         WHERE deck_id = %(deck_id)s
+           AND id <> %(category_id)s
+        """,
+        {"deck_id": deck_id, "category_id": category_id},
+    )
+    found: list[list[str]] = []
+    for row in cur.fetchall():
+        found.append([str(item) for item in (row[0] or [])])
+    return found
 
 
 def default_category_id(cur, deck_id: int) -> int:
@@ -301,6 +338,7 @@ def next_category_sort_order(cur, deck_id: int) -> int:
 
 
 # Correlated subselects for list endpoints (alias the decks table as `d`).
+# Art only. The full-card thumbnail includes the frame and costs.
 PILOT_ART_SELECT = """
             (
                 SELECT c.illustration_thumbnail_path
@@ -326,10 +364,12 @@ PILOT_ART_SELECT = """
 
 
 def fetch_pilot_card_art(cur, deck_id: int) -> tuple[str | None, int | None]:
-    """Pilot illustration for list cards (illustration_thumbnail_path)."""
+    """Pilot illustration for a deck tile. Not the full card."""
     cur.execute(
         """
-        SELECT c.illustration_thumbnail_path, EXTRACT(EPOCH FROM c.updated_at)::bigint
+        SELECT
+            c.illustration_thumbnail_path,
+            EXTRACT(EPOCH FROM c.updated_at)::bigint
           FROM deck_has_cards dhc
           JOIN deck_categories dc ON dc.id = dhc.category_id
           JOIN cards c ON c.id = dhc.card_id

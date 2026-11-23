@@ -116,12 +116,13 @@ export function MainPage() {
       // Push any pending Settings prefs, then seed from this device's local copy
       // (do not wait on React state — localStorage is the runtime source of truth).
       await flushServerPrefs()
-      const startSections = readLocalPreferences().deck_start_sections
+      const localPrefs = readLocalPreferences()
       const created = await createDeck(token, {
         name,
         description: newDescription.trim() || null,
         is_public: newIsPublic,
-        start_sections: startSections,
+        start_sections: localPrefs.deck_start_sections,
+        start_section_types: localPrefs.deck_section_types,
       })
       setMyDecks((prev) => [created, ...prev])
       setMyStatus("ready")

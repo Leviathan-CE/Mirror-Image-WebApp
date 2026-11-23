@@ -61,6 +61,27 @@ def test_patch_preferences_clamps_and_merges(client, auth_headers, require_db):
     assert me.json()["preferences"]["deck_view"] == "list"
 
 
+def test_missing_section_types_default_to_entity_and_cyberspell():
+    out = normalize_user_preferences({})
+    assert out["deck_section_types"]["entity"] == ["Entity"]
+    assert out["deck_section_types"]["cyberspell"] == ["CyberSpell"]
+
+
+def test_cleared_section_types_stay_empty():
+    out = normalize_user_preferences(
+        {
+            "deck_start_sections": ["Entity", "Cyberspell", "Tech"],
+            "deck_section_types": {
+                "entity": [],
+                "cyberspell": ["CyberSpell", "CyberSpell"],
+            },
+        }
+    )
+    assert out["deck_section_types"]["entity"] == []
+    assert out["deck_section_types"]["cyberspell"] == ["CyberSpell"]
+    assert out["deck_section_types"]["tech"] == []
+
+
 def test_normalize_start_sections_rules():
     out = normalize_user_preferences(
         {

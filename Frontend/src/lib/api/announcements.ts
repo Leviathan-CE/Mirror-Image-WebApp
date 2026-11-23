@@ -62,6 +62,18 @@ export function announcementMediaUrl(
   return `${apiBaseUrl()}/${path.replace(/^\//, "")}`
 }
 
+export async function fetchPublishedAnnouncement(
+  slug: string
+): Promise<AnnouncementPost> {
+  const response = await apiFetch(
+    `${apiBaseUrl()}/announcements/${encodeURIComponent(slug)}`
+  )
+  return readJsonOrThrow<AnnouncementPost>(
+    response,
+    "announcement_failed"
+  )
+}
+
 export async function fetchPublishedAnnouncements(): Promise<AnnouncementPost[]> {
   const response = await apiFetch(`${apiBaseUrl()}/announcements`)
   return readJsonOrThrow<AnnouncementPost[]>(

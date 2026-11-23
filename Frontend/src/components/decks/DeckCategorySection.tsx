@@ -31,6 +31,8 @@ type DeckCategorySectionProps = {
   onRename: (name: string) => Promise<void>
   onDelete: () => Promise<void>
   onSetInDeck?: (inDeck: boolean) => Promise<void>
+  onSetTypes?: (types: string[]) => Promise<void>
+  onLoadTypeChoices?: () => Promise<string[]>
   onCardDrop?: (payload: DeckCardDragPayload) => void | Promise<void>
   onQuantityDelta?: (card: DeckCardEntry, delta: 1 | -1) => void
   selectedKeys?: ReadonlySet<string>
@@ -52,6 +54,8 @@ export function DeckCategorySection({
   onRename,
   onDelete,
   onSetInDeck,
+  onSetTypes,
+  onLoadTypeChoices,
   onCardDrop,
   onQuantityDelta,
   selectedKeys,
@@ -61,6 +65,10 @@ export function DeckCategorySection({
 }: DeckCategorySectionProps) {
   const [renaming, setRenaming] = useState(false)
   const [draftName, setDraftName] = useState(category.name)
+  const [editingTypes, setEditingTypes] = useState(false)
+  const [draftTypes, setDraftTypes] = useState<string[]>([])
+  const [typeChoices, setTypeChoices] = useState<string[]>([])
+  const [typePick, setTypePick] = useState("")
   const [busy, setBusy] = useState(false)
   const [dropActive, setDropActive] = useState(false)
 
@@ -84,6 +92,39 @@ export function DeckCategorySection({
     try {
       await onRename(next)
       setRenaming(false)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function openTypes() {
+    setDraftTypes([...(category.accept_types ?? [])])
+    setTypePick("")
+    setEditingTypes(true)
+    if (!onLoadTypeChoices) return
+    try {
+      const choices = await onLoadTypeChoices()
+      setTypeChoices(choices)
+    } catch {
+      setTypeChoices([])
+    }
+  }
+
+  function addDraftType() {
+    const next = typePick.trim()
+    if (next === "") return
+    setDraftTypes((current) => [...current, next])
+    setTypePick("")
+  }
+
+  async function commitTypes() {
+    if (!onSetTypes) return
+    setBusy(true)
+    try {
+      await onSetTypes(draftTypes)
+      setEditingTypes(false)
+    } catch {
+      // The page shows the reason. Keep the editor open.
     } finally {
       setBusy(false)
     }
@@ -209,6 +250,11 @@ export function DeckCategorySection({
             >
               {category.name}
             </h2>
+            {(category.accept_types ?? []).length > 0 ? (
+              <p className="basis-full font-mono text-[10px] text-cyan-300/80">
+                {(category.accept_types ?? []).join(" + ")}
+              </p>
+            ) : null}
             {reserved ? null : canEdit && onSetInDeck && !locked ? (
               <button
                 type="button"
@@ -255,6 +301,17 @@ export function DeckCategorySection({
                       setRenaming(true)
                     },
                   },
+                  ...(onSetTypes
+                    ? [
+                        {
+                          id: "types",
+                          label: "Types",
+                          onSelect: () => {
+                            void openTypes()
+                          },
+                        },
+                      ]
+                    : []),
                   {
                     id: "in-deck",
                     label: (
@@ -283,6 +340,85 @@ export function DeckCategorySection({
           </>
         )}
       </div>
+
+      {editingTypes && canEdit && !reserved ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <p className="basis-full font-mono text-[10px] text-white/45">
+            A card lands here when it has every type. The longer set wins.
+          </p>
+          {draftTypes.map((typeName) => (
+            <button
+              key={typeName}
+              type="button"
+              className="font-mono text-[10px] text-cyan-200 hover:text-white"
+              disabled={locked}
+              onClick={() => {
+                setDraftTypes((current) =>
+                  current.filter((item) => item !== typeName)
+                )
+              }}
+            >
+              {typeName} ✕
+            </button>
+          ))}
+          <select
+            aria-label="Section type"
+            className="h-8 bg-black font-mono text-[10px] text-cyan-100"
+            disabled={locked}
+            value={typePick}
+            onChange={(event) => setTypePick(event.target.value)}
+          >
+            <option value="">Add a type…</option>
+            {typeChoices
+              .filter((choice) => {
+                const key = choice.trim().toLowerCase()
+                return !draftTypes.some(
+                  (item) => item.trim().toLowerCase() === key
+                )
+              })
+              .map((choice) => (
+                <option key={choice} value={choice}>
+                  {choice}
+                </option>
+              ))}
+          </select>
+          <Button
+            type="button"
+            variant="ghost"
+            className={
+              "font-buahs93 h-8 rounded-none px-3 text-xs " +
+              "text-cyan-200/80"
+            }
+            disabled={locked || typePick.trim() === ""}
+            onClick={addDraftType}
+          >
+            ADD
+          </Button>
+          <Button
+            type="button"
+            className={
+              "font-buahs93 h-8 rounded-none bg-cyan-800 px-3 " +
+              "text-xs text-white hover:bg-cyan-900"
+            }
+            disabled={locked}
+            onClick={() => void commitTypes()}
+          >
+            SAVE
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            className={
+              "font-buahs93 h-8 rounded-none px-3 text-xs " +
+              "text-cyan-200/80"
+            }
+            disabled={locked}
+            onClick={() => setEditingTypes(false)}
+          >
+            CANCEL
+          </Button>
+        </div>
+      ) : null}
 
       <div
         className={cn(

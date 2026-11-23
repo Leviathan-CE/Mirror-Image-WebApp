@@ -18,7 +18,6 @@ import {
   canAddCopyToDeck,
   clampQuantityToMax,
   deckCardCount,
-  mainCategoryId,
   maxCopiesForDeckCard,
   maxQuantityForStackEntry,
   nextCardQuantity,
@@ -31,13 +30,21 @@ import {
   isObjectiveOrAugmentCard,
   withCardEntry,
 } from "@/components/decks/deck.logic"
+import {
+  sectionForAddedCard,
+  sectionTypeProblem,
+} from "@/components/decks/sectionTypes.logic"
 import { ApiError } from "@/lib/api/client"
 import {
   isPublicTextClean,
   PROFANITY_REJECTED,
   PUBLIC_TEXT_BLOCKED_MESSAGE,
 } from "@/lib/profanity"
-import { fetchCardById, type CardSearchHit } from "@/lib/api/cards"
+import {
+  fetchCardById,
+  fetchCardFacets,
+  type CardSearchHit,
+} from "@/lib/api/cards"
 import {
   addDeckCard,
   OBJECTIVE_SECTION_NAME,
@@ -67,6 +74,11 @@ export type UseDeckBoardMutationsResult = {
   onCreateSectionFromDrop: (payload: DeckCardDragPayload) => Promise<void>
   onRenameCategory: (categoryId: number, nextName: string) => Promise<void>
   onSetCategoryInDeck: (categoryId: number, inDeck: boolean) => Promise<void>
+  onSetCategoryTypes: (
+    categoryId: number,
+    types: string[]
+  ) => Promise<void>
+  loadSectionTypeChoices: () => Promise<string[]>
   onDeleteCategory: (categoryId: number) => Promise<void>
   onDropCardsToCategory: (
     payload: DeckCardDragPayload,
@@ -200,6 +212,74 @@ export function useDeckBoardMutations({
           : "Could not rename category."
       )
       throw new Error("rename_failed", { cause: error })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function loadSectionTypeChoices(): Promise<string[]> {
+    const facets = await fetchCardFacets(token)
+    const names = [...facets.super_types, ...facets.sub_types]
+    const seen = new Set<string>()
+    const choices: string[] = []
+    for (const name of names) {
+      const key = name.trim().toLowerCase()
+      if (key === "" || seen.has(key)) continue
+      seen.add(key)
+      choices.push(name.trim())
+    }
+    choices.sort((a, b) => a.localeCompare(b))
+    return choices
+  }
+
+  async function onSetCategoryTypes(categoryId: number, types: string[]) {
+    if (!token || !deck || !canEdit) return
+    const problem = sectionTypeProblem(deck.categories, categoryId, types)
+    if (problem === "repeated") {
+      setErrorText("A section cannot list the same type twice.")
+      throw new Error("section_type_repeated")
+    }
+    if (problem === "taken") {
+      setErrorText("Another section already uses that type set.")
+      throw new Error("section_types_taken")
+    }
+
+    setSaving(true)
+    setErrorText("")
+    try {
+      const updated = await updateDeckCategory(deck.id, categoryId, token, {
+        accept_types: types,
+      })
+      setDeck((prev) =>
+        prev
+          ? {
+            ...prev,
+            categories: prev.categories.map((category) =>
+              category.id === categoryId ? updated : category
+            ),
+          }
+          : prev
+      )
+    } catch (error) {
+      const taken =
+        error instanceof ApiError &&
+        error.detail === "section_types_taken"
+      if (taken) {
+        setErrorText("Another section already uses that type set.")
+      } else if (
+        error instanceof ApiError &&
+        error.detail === "section_type_repeated"
+      ) {
+        setErrorText("A section cannot list the same type twice.")
+      } else if (
+        error instanceof ApiError &&
+        error.detail === "section_types_reserved"
+      ) {
+        setErrorText("Pilot and objective sections cannot claim types.")
+      } else {
+        setErrorText("Could not update section types.")
+      }
+      throw new Error("section_types_failed", { cause: error })
     } finally {
       setSaving(false)
     }
@@ -595,7 +675,15 @@ export function useDeckBoardMutations({
         return
       }
 
-      const categoryId = mainCategoryId(deck.categories)
+      const choice = sectionForAddedCard(deck.categories, detail)
+      if (choice.kind === "ambiguous") {
+        setErrorText(
+          "That card matches more than one section. " +
+            "Make one type set more specific."
+        )
+        return
+      }
+      const categoryId = choice.categoryId
       if (categoryId == null) {
         setErrorText("No in-deck section found on this deck.")
         return
@@ -934,6 +1022,8 @@ export function useDeckBoardMutations({
     onCreateSectionFromDrop,
     onRenameCategory,
     onSetCategoryInDeck,
+    onSetCategoryTypes,
+    loadSectionTypeChoices,
     onDeleteCategory,
     onDropCardsToCategory,
     onQuantityDelta,

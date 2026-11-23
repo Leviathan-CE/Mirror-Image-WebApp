@@ -88,6 +88,11 @@ export type DeckCategoryOut = {
   sort_order: number
   /** False = list-only pile (not shuffled into the RIG). */
   in_deck?: boolean
+  /**
+   * Types this section claims. A new card lands here when it has
+   * every one of them. Empty means the section does not auto-file.
+   */
+  accept_types?: string[]
 }
 
 /** Shared catalogue projection — defined with the card domain. */
@@ -127,6 +132,8 @@ export type DeckCreatePayload = {
   is_public?: boolean
   /** Starting section names from local account prefs. */
   start_sections?: string[]
+  /** Types for those sections, keyed by section name. */
+  start_section_types?: Record<string, string[]>
 }
 
 export type DeckUpdatePayload = {
@@ -377,7 +384,12 @@ export async function updateDeckCategory(
   deckId: number,
   categoryId: number,
   token: string,
-  payload: { name?: string; sort_order?: number; in_deck?: boolean }
+  payload: {
+    name?: string
+    sort_order?: number
+    in_deck?: boolean
+    accept_types?: string[]
+  }
 ): Promise<DeckCategoryOut> {
   const response = await apiFetch(
     `${apiBaseUrl()}/decks/${deckId}/categories/${categoryId}`,

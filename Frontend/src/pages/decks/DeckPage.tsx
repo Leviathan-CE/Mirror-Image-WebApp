@@ -426,6 +426,8 @@ export function DeckPage() {
     onCreateSectionFromDrop,
     onRenameCategory,
     onSetCategoryInDeck,
+    onSetCategoryTypes,
+    loadSectionTypeChoices,
     onDeleteCategory,
     onDropCardsToCategory,
     onQuantityDelta,
@@ -854,6 +856,8 @@ export function DeckPage() {
                   onRenameCategory={onRenameCategory}
                   onDeleteCategory={onDeleteCategory}
                   onSetCategoryInDeck={onSetCategoryInDeck}
+                  onSetCategoryTypes={onSetCategoryTypes}
+                  loadSectionTypeChoices={loadSectionTypeChoices}
                   onDropToCategory={onDropCardsToCategory}
                   onQuantityDelta={onQuantityDelta}
                   onAssignPilot={assignPilot}

@@ -223,6 +223,137 @@ def test_card_publish_update_and_remove_notify(
         conn.commit()
 
 
+def _inbox_user(client) -> tuple[dict[str, str], str]:
+    from app.security import hash_password
+
+    suffix = uuid.uuid4().hex[:8]
+    email = f"inboxdel_{suffix}@example.com"
+    user_name = f"inboxdel_{suffix}"
+    password = "testpass123"
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO users (
+                    user_name, email, password, role, is_active,
+                    email_verification_sent, email_verification_received,
+                    email_verified_at
+                )
+                VALUES (
+                    %(user_name)s, %(email)s, %(password)s, 'user',
+                    TRUE, TRUE, TRUE, NOW()
+                )
+                """,
+                {
+                    "user_name": user_name,
+                    "email": email,
+                    "password": hash_password(password),
+                },
+            )
+        conn.commit()
+    login = client.post(
+        "/auth/login",
+        json={
+            "identifier": email,
+            "password": password,
+            "client": "unity",
+        },
+    )
+    assert login.status_code == 200
+    token = login.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}, email
+
+
+def _delete_inbox_users(emails: list[str]) -> None:
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM users
+                 WHERE email = ANY(%(emails)s)
+                """,
+                {"emails": emails},
+            )
+        conn.commit()
+
+
+def test_dismiss_hides_notice_for_that_user_only(
+    client, require_db
+):
+    reader, reader_email = _inbox_user(client)
+    other, other_email = _inbox_user(client)
+    event_id = None
+    try:
+        subject_id = 800_000_000 + (uuid.uuid4().int % 90_000_000)
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO notification_events (
+                        kind, subject_type, subject_id, title, summary
+                    )
+                    VALUES (
+                        'announcement.published', 'announcement',
+                        %(subject_id)s, 'Dismiss me',
+                        'A notice to hide.'
+                    )
+                    RETURNING id
+                    """,
+                    {"subject_id": subject_id},
+                )
+                row = cur.fetchone()
+            conn.commit()
+        assert row is not None
+        event_id = int(row[0])
+
+        listed = client.get("/notifications", headers=reader)
+        if _skip_if_schema_missing(listed):
+            return
+        assert listed.status_code == 200
+        assert any(
+            item["id"] == event_id
+            for item in listed.json()["items"]
+        )
+
+        removed = client.delete(
+            f"/notifications/{event_id}",
+            headers=reader,
+        )
+        assert removed.status_code == 200
+        assert removed.json()["dismissed"] == 1
+
+        after = client.get("/notifications", headers=reader)
+        assert after.status_code == 200
+        assert all(
+            item["id"] != event_id
+            for item in after.json()["items"]
+        )
+        still = client.get("/notifications", headers=other)
+        assert still.status_code == 200
+        assert any(
+            item["id"] == event_id
+            for item in still.json()["items"]
+        )
+        again = client.delete(
+            f"/notifications/{event_id}",
+            headers=reader,
+        )
+        assert again.status_code == 404
+    finally:
+        if event_id is not None:
+            with get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        DELETE FROM notification_events
+                         WHERE id = %(event_id)s
+                        """,
+                        {"event_id": event_id},
+                    )
+                conn.commit()
+        _delete_inbox_users([reader_email, other_email])
+
+
 def test_normalize_notify_defaults():
     from app.user_preferences import normalize_user_preferences
 
@@ -235,3 +366,86 @@ def test_normalize_notify_defaults():
     assert muted["notify_cards"] is True
     emailed = normalize_user_preferences({"notify_blog_email": True})
     assert emailed["notify_blog_email"] is True
+
+
+def _insert_notice(title: str) -> int:
+    subject_id = 800_000_000 + (uuid.uuid4().int % 90_000_000)
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO notification_events (
+                    kind, subject_type, subject_id, title, summary
+                )
+                VALUES (
+                    'announcement.published', 'announcement',
+                    %(subject_id)s, %(title)s, 'Batch notice.'
+                )
+                RETURNING id
+                """,
+                {"subject_id": subject_id, "title": title},
+            )
+            row = cur.fetchone()
+        conn.commit()
+    assert row is not None
+    return int(row[0])
+
+
+def _delete_notice(event_id: int) -> None:
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM notification_events
+                 WHERE id = %(event_id)s
+                """,
+                {"event_id": event_id},
+            )
+        conn.commit()
+
+
+def test_dismiss_selected_and_clear_all(client, require_db):
+    reader, reader_email = _inbox_user(client)
+    other, other_email = _inbox_user(client)
+    first = _insert_notice("Batch one")
+    second = _insert_notice("Batch two")
+    third = _insert_notice("Batch three")
+    try:
+        picked = client.post(
+            "/notifications/dismiss",
+            headers=reader,
+            json={"event_ids": [first, second]},
+        )
+        if _skip_if_schema_missing(picked):
+            return
+        assert picked.status_code == 200
+        assert picked.json()["dismissed"] == 2
+
+        left = client.get("/notifications", headers=reader)
+        assert left.status_code == 200
+        left_ids = [item["id"] for item in left.json()["items"]]
+        assert first not in left_ids
+        assert second not in left_ids
+        assert third in left_ids
+
+        cleared = client.post(
+            "/notifications/dismiss-all",
+            headers=reader,
+        )
+        assert cleared.status_code == 200
+        assert cleared.json()["dismissed"] >= 1
+        empty = client.get("/notifications", headers=reader)
+        assert empty.status_code == 200
+        empty_ids = [item["id"] for item in empty.json()["items"]]
+        assert third not in empty_ids
+
+        still = client.get("/notifications", headers=other)
+        assert still.status_code == 200
+        still_ids = [item["id"] for item in still.json()["items"]]
+        assert first in still_ids
+        assert third in still_ids
+    finally:
+        _delete_notice(first)
+        _delete_notice(second)
+        _delete_notice(third)
+        _delete_inbox_users([reader_email, other_email])

@@ -80,6 +80,8 @@ export type CardDetail = Required<
     | "is_augment"
     | "card_art_path"
     | "super_types"
+    | "sub_types"
+    | "types_line"
   >
 >
 
@@ -220,6 +222,8 @@ export async function fetchCardById(
     is_augment: boolean
     card_art_path: string | null
     super_types?: string[] | null
+    sub_types?: string[] | null
+    types_line?: string | null
   }>(response, "card_fetch_failed")
 
   const id = raw.ID ?? raw.id
@@ -234,6 +238,10 @@ export async function fetchCardById(
     super_types: Array.isArray(raw.super_types)
       ? raw.super_types.map(String)
       : [],
+    sub_types: Array.isArray(raw.sub_types)
+      ? raw.sub_types.map(String)
+      : [],
+    types_line: typeof raw.types_line === "string" ? raw.types_line : "",
   }
 }
 

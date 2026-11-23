@@ -64,6 +64,14 @@ class MarkReadResult(BaseModel):
     read: int
 
 
+class DismissResult(BaseModel):
+    dismissed: int
+
+
+class DismissManyRequest(BaseModel):
+    event_ids: list[int]
+
+
 def _iso(value: Any) -> str | None:
     if value is None:
         return None
@@ -79,6 +87,12 @@ def _visible_where() -> str:
         AND (
             e.audience = 'all'
             OR (%(include_preview)s AND e.audience = 'preview')
+        )
+        AND NOT EXISTS (
+            SELECT 1
+              FROM user_notification_dismissals d
+             WHERE d.event_id = e.id
+               AND d.user_id = %(user_id)s
         )
     """
 
@@ -376,6 +390,169 @@ def mark_notification_read(
             detail="notification_read_failed",
         ) from e
     return MarkReadResult(read=marked)
+
+
+def _dismiss_visible(
+    cur,
+    ctx: dict[str, Any],
+    event_ids: list[int] | None,
+) -> int:
+    id_clause = ""
+    params = dict(ctx)
+    if event_ids is not None:
+        id_clause = "AND e.id = ANY(%(event_ids)s)"
+        params["event_ids"] = event_ids
+    cur.execute(
+        f"""
+        INSERT INTO user_notification_dismissals (user_id, event_id)
+        SELECT %(user_id)s, e.id
+          FROM notification_events e
+         WHERE {_visible_where()}
+           {id_clause}
+        ON CONFLICT (user_id, event_id) DO NOTHING
+        """,
+        params,
+    )
+    return int(cur.rowcount or 0)
+
+
+@router.post("/dismiss", response_model=DismissResult)
+def dismiss_notifications(
+    body: DismissManyRequest,
+    user_id: int = Depends(get_current_user_id),
+):
+    """Hide the chosen inbox rows for this user."""
+    event_ids = []
+    for event_id in body.event_ids:
+        if event_id <= 0:
+            continue
+        if event_id in event_ids:
+            continue
+        event_ids.append(event_id)
+        if len(event_ids) >= 200:
+            break
+    if len(event_ids) == 0:
+        return DismissResult(dismissed=0)
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                ctx = _load_inbox_context(cur, user_id)
+                if ctx is None:
+                    raise HTTPException(
+                        status_code=401,
+                        detail="invalid_token_subject",
+                    )
+                if not ctx["kinds"]:
+                    return DismissResult(dismissed=0)
+                dismissed = _dismiss_visible(cur, ctx, event_ids)
+            conn.commit()
+    except HTTPException:
+        raise
+    except (UndefinedTable, OperationalError) as e:
+        raise _db_error(e) from e
+    except Exception as e:
+        logger.exception("unexpected error on dismiss many: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="notification_dismiss_failed",
+        ) from e
+    return DismissResult(dismissed=dismissed)
+
+
+@router.post("/dismiss-all", response_model=DismissResult)
+def dismiss_all_notifications(
+    user_id: int = Depends(get_current_user_id),
+):
+    """Hide every visible inbox row for this user."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                ctx = _load_inbox_context(cur, user_id)
+                if ctx is None:
+                    raise HTTPException(
+                        status_code=401,
+                        detail="invalid_token_subject",
+                    )
+                if not ctx["kinds"]:
+                    return DismissResult(dismissed=0)
+                dismissed = _dismiss_visible(cur, ctx, None)
+            conn.commit()
+    except HTTPException:
+        raise
+    except (UndefinedTable, OperationalError) as e:
+        raise _db_error(e) from e
+    except Exception as e:
+        logger.exception("unexpected error on dismiss all: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="notification_dismiss_failed",
+        ) from e
+    return DismissResult(dismissed=dismissed)
+
+
+@router.delete("/{event_id}", response_model=DismissResult)
+def dismiss_notification(
+    event_id: int,
+    user_id: int = Depends(get_current_user_id),
+):
+    """Hide one inbox row for this user. The broadcast stays."""
+    if event_id <= 0:
+        raise HTTPException(
+            status_code=404,
+            detail="notification_not_found",
+        )
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                ctx = _load_inbox_context(cur, user_id)
+                if ctx is None:
+                    raise HTTPException(
+                        status_code=401,
+                        detail="invalid_token_subject",
+                    )
+                if not ctx["kinds"]:
+                    raise HTTPException(
+                        status_code=404,
+                        detail="notification_not_found",
+                    )
+                cur.execute(
+                    f"""
+                    SELECT e.id
+                      FROM notification_events e
+                     WHERE e.id = %(event_id)s
+                       AND {_visible_where()}
+                    """,
+                    {**ctx, "event_id": event_id},
+                )
+                row = cur.fetchone()
+                if row is None:
+                    raise HTTPException(
+                        status_code=404,
+                        detail="notification_not_found",
+                    )
+                cur.execute(
+                    """
+                    INSERT INTO user_notification_dismissals (
+                        user_id, event_id
+                    )
+                    VALUES (%(user_id)s, %(event_id)s)
+                    ON CONFLICT (user_id, event_id) DO NOTHING
+                    """,
+                    {"user_id": user_id, "event_id": event_id},
+                )
+                dismissed = int(cur.rowcount or 0)
+            conn.commit()
+    except HTTPException:
+        raise
+    except (UndefinedTable, OperationalError) as e:
+        raise _db_error(e) from e
+    except Exception as e:
+        logger.exception("unexpected error on dismiss: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="notification_dismiss_failed",
+        ) from e
+    return DismissResult(dismissed=dismissed)
 
 
 def _user_id_from_token(token: str) -> int:

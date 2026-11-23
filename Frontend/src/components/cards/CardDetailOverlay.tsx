@@ -10,7 +10,11 @@ import { createPortal } from "react-dom"
 import { CardChangeBanner } from "@/components/cards/CardChangeBanner"
 import { CardCostIcons } from "@/components/cards/CardCostIcons"
 import { CardRulesText } from "@/components/cards/CardRulesText"
-import { parseKeyword } from "@/components/cards/keywordHelp.logic"
+import {
+  parseKeyword,
+  splitHelpAtX,
+  type ParsedKeyword,
+} from "@/components/cards/keywordHelp.logic"
 import { GameIcon } from "@/components/common/GameIcon"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import type { CardLibraryItem } from "@/lib/api/cards"
@@ -20,6 +24,29 @@ import {
   type CardDetailChange,
 } from "@/lib/cardBanner.logic"
 import type { CardDiffRow } from "@/lib/inboxCardDiff.logic"
+
+const helpClassName = "mt-0.5 block italic text-white/60"
+
+function KeywordHelp({ keyword }: { keyword: ParsedKeyword }) {
+  const help = keyword.help
+  if (help == null) return null
+  const split =
+    keyword.helpKey === "STEALTH X" ? splitHelpAtX(help) : null
+  if (split == null || keyword.paramTokens.length === 0) {
+    return <span className={helpClassName}>{help}</span>
+  }
+  return (
+    <span className={helpClassName}>
+      {split.before}
+      <CardCostIcons
+        cost={keyword.paramTokens}
+        className="inline-flex items-center align-middle"
+        iconClassName="h-5 w-auto lg:h-6"
+      />
+      {split.after}
+    </span>
+  )
+}
 
 const closeButtonClassName =
   "font-buahs93 h-9 rounded-none border border-cyan-500/35 bg-black/70 px-3 text-sm text-cyan-100 hover:border-cyan-400/60 hover:bg-cyan-500/10 hover:text-white"
@@ -34,6 +61,8 @@ type CardDetailOverlayProps = {
   onClose: () => void
   /** Inbox/catalogue change callout. Omit when browsing a plain card. */
   change?: CardDetailChange | null
+  /** Render in the parent instead of a full-screen dialog. */
+  embedded?: boolean
 }
 
 function WasLine({ row }: { row: CardDiffRow | null }) {
@@ -50,17 +79,19 @@ export function CardDetailOverlay({
   card,
   onClose,
   change = null,
+  embedded = false,
 }: CardDetailOverlayProps) {
   useEffect(() => {
     if (!card) return
+    if (embedded) return
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose()
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [card, onClose])
+  }, [card, embedded, onClose])
 
-  if (!card || typeof document === "undefined") return null
+  if (!card) return null
 
   const art = cardFaceUrl(card)
   const threat = (card.threat_level ?? "0").trim()
@@ -87,16 +118,22 @@ export function CardDetailOverlay({
   const setRow = changedRow(rows, "card_set_name")
   const rarityRow = changedRow(rows, "rarity")
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/85 p-2 sm:p-4 md:p-6"
-      role="dialog"
-      aria-modal="true"
-      aria-label={card.card_name}
-      onClick={onClose}
-    >
+  const frameClass = embedded
+    ? "grid max-h-[min(96vh,100%)] w-full gap-4 overflow-y-auto " +
+      "border border-cyan-500/30 bg-black/95 p-3 sm:gap-6 sm:p-5 " +
+      "md:grid-cols-[minmax(14rem,42%)_minmax(0,1fr)] " +
+      "md:gap-8 md:p-6 " +
+      "lg:grid-cols-[minmax(18rem,46%)_minmax(0,1fr)]"
+    : "grid max-h-[min(96vh,100%)] w-full " +
+      "max-w-[min(96vw,90rem)] gap-4 overflow-y-auto " +
+      "border border-cyan-500/30 bg-black/95 p-3 sm:gap-6 sm:p-5 " +
+      "md:grid-cols-[minmax(14rem,42%)_minmax(0,1fr)] " +
+      "md:gap-8 md:p-6 " +
+      "lg:grid-cols-[minmax(18rem,46%)_minmax(0,1fr)]"
+
+  const panel = (
       <div
-        className="grid max-h-[min(96vh,100%)] w-full max-w-[min(96vw,90rem)] gap-4 overflow-y-auto border border-cyan-500/30 bg-black/95 p-3 sm:gap-6 sm:p-5 md:grid-cols-[minmax(14rem,42%)_minmax(0,1fr)] md:gap-8 md:p-6 lg:grid-cols-[minmax(18rem,46%)_minmax(0,1fr)]"
+        className={frameClass}
         onClick={(event) => event.stopPropagation()}
       >
         {art ? (
@@ -220,14 +257,22 @@ export function CardDetailOverlay({
                   const kw = parseKeyword(raw)
                   return (
                     <li key={raw} className="text-sm sm:text-base">
-                      <span className="font-buahs93 text-cyan-100">
-                        {kw.label}
+                      <span
+                        className={
+                          "inline-flex flex-wrap items-center gap-1 " +
+                          "font-buahs93 text-cyan-100"
+                        }
+                      >
+                        {kw.name}
+                        {kw.paramTokens.length === 0 ? null : (
+                          <CardCostIcons
+                            cost={kw.paramTokens}
+                            className="inline-flex items-center"
+                            iconClassName="h-5 w-auto lg:h-6"
+                          />
+                        )}
                       </span>
-                      {kw.help ? (
-                        <span className="mt-0.5 block italic text-white/60">
-                          {kw.help}
-                        </span>
-                      ) : null}
+                      <KeywordHelp keyword={kw} />
                     </li>
                   )
                 })}
@@ -256,6 +301,23 @@ export function CardDetailOverlay({
           </div>
         </div>
       </div>
+  )
+
+  if (embedded) return panel
+  if (typeof document === "undefined") return null
+
+  return createPortal(
+    <div
+      className={
+        "fixed inset-0 z-[10000] flex items-center justify-center " +
+        "bg-black/85 p-2 sm:p-4 md:p-6"
+      }
+      role="dialog"
+      aria-modal="true"
+      aria-label={card.card_name}
+      onClick={onClose}
+    >
+      {panel}
     </div>,
     document.body
   )
