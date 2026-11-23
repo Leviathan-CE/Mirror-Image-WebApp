@@ -5,6 +5,7 @@
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useRef,
   useState,
   type MouseEvent,
@@ -54,7 +55,7 @@ export function InboxPage() {
   const [total, setTotal] = useState(0)
   const [offset, setOffset] = useState(0)
   const [errorText, setErrorText] = useState("")
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState(() => token != null)
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
@@ -67,10 +68,6 @@ export function InboxPage() {
     openEventParam == null ? null : Number.parseInt(openEventParam, 10)
   const [trackedEvent, setTrackedEvent] = useState(openEventParam)
   const postsRef = useRef(posts)
-  postsRef.current = posts
-  const deleteSelectedRef = useRef<() => Promise<void>>(
-    async () => {}
-  )
   const [trackedEpoch, setTrackedEpoch] = useState(listEpoch)
   if (openEventParam !== trackedEvent) {
     setTrackedEvent(openEventParam)
@@ -86,7 +83,15 @@ export function InboxPage() {
     setSelectedIds([])
     setAnchorId(null)
     setExpandedId(null)
+    setErrorText("")
+    if (token != null) {
+      setBusy(true)
+    }
   }
+
+  useEffect(() => {
+    postsRef.current = posts
+  }, [posts])
 
   const loadPage = useCallback(
     async (pageOffset: number) => {
@@ -116,8 +121,33 @@ export function InboxPage() {
   )
 
   useEffect(() => {
-    void loadPage(0)
-  }, [loadPage, listEpoch])
+    if (!token) return
+    let cancelled = false
+    void fetchNotifications(token, {
+      limit: PAGE_SIZE,
+      offset: 0,
+    })
+      .then((result) => {
+        if (cancelled) return
+        setItems(result.items)
+        setTotal(result.total)
+        setOffset(0)
+        setBusy(false)
+        void refresh()
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return
+        setErrorText(
+          error instanceof ApiError
+            ? "Could not load your inbox."
+            : "Could not reach the server."
+        )
+        setBusy(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [token, listEpoch, refresh])
 
   useEffect(() => {
     if (selectedIds.length === 0) return
@@ -134,28 +164,6 @@ export function InboxPage() {
     document.addEventListener("mousedown", onPointerDown)
     return () => {
       document.removeEventListener("mousedown", onPointerDown)
-    }
-  }, [selectedIds.length])
-
-  useEffect(() => {
-    if (selectedIds.length === 0) return
-
-    function onKeyDown(event: globalThis.KeyboardEvent) {
-      if (event.key !== "Backspace" && event.key !== "Delete") {
-        return
-      }
-      const target = event.target
-      if (!(target instanceof HTMLElement)) return
-      const tag = target.tagName
-      if (tag === "INPUT" || tag === "TEXTAREA") return
-      if (target.isContentEditable) return
-      event.preventDefault()
-      void deleteSelectedRef.current()
-    }
-
-    document.addEventListener("keydown", onKeyDown)
-    return () => {
-      document.removeEventListener("keydown", onKeyDown)
     }
   }, [selectedIds.length])
 
@@ -287,7 +295,31 @@ export function InboxPage() {
     void refresh()
   }
 
-  deleteSelectedRef.current = onDeleteSelected
+  const onDeleteSelectedKey = useEffectEvent(() => {
+    void onDeleteSelected()
+  })
+
+  useEffect(() => {
+    if (selectedIds.length === 0) return
+
+    function onKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Backspace" && event.key !== "Delete") {
+        return
+      }
+      const target = event.target
+      if (!(target instanceof HTMLElement)) return
+      const tag = target.tagName
+      if (tag === "INPUT" || tag === "TEXTAREA") return
+      if (target.isContentEditable) return
+      event.preventDefault()
+      onDeleteSelectedKey()
+    }
+
+    document.addEventListener("keydown", onKeyDown)
+    return () => {
+      document.removeEventListener("keydown", onKeyDown)
+    }
+  }, [selectedIds.length])
 
   async function onClearAll() {
     if (!token) return
