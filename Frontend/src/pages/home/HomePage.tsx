@@ -14,6 +14,7 @@ import { Link } from "react-router-dom"
 
 import { sharedImages } from "@/assets"
 import { GlitchFx } from "@/components/effects/GlitchFx"
+import { MailingConsent } from "@/components/legal/MailingConsent"
 import { subscribeMailingList } from "@/lib/api/mailingList"
 import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
@@ -182,6 +183,7 @@ function looksLikeEmail(value: string): boolean {
 
 function NewsletterForm() {
   const [email, setEmail] = useState("")
+  const [agreed, setAgreed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState("")
   const [tone, setTone] = useState<"ok" | "bad" | "idle">("idle")
@@ -192,6 +194,13 @@ function NewsletterForm() {
     if (!looksLikeEmail(email)) {
       setTone("bad")
       setMessage("Enter a valid email address.")
+      return
+    }
+    if (!agreed) {
+      setTone("bad")
+      setMessage(
+        "Agree to the privacy policy and terms of service."
+      )
       return
     }
 
@@ -242,6 +251,11 @@ function NewsletterForm() {
           onChange={(event) => setEmail(event.target.value)}
         />
       </label>
+      <MailingConsent
+        checked={agreed}
+        disabled={busy}
+        onChecked={setAgreed}
+      />
       <GlitchFx
         type="submit"
         label={busy ? "SENDING…" : homeCopy.newsCta}
