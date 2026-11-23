@@ -68,6 +68,8 @@ export type UseDeckBoardMutationsArgs = {
   setErrorText: Dispatch<SetStateAction<string>>
   loadDeck: (opts?: { silent?: boolean }) => Promise<unknown>
   clearCardSelection: () => void
+  /** When on, a pilot can be filed into a section like any other card. */
+  allowPilotInDeck?: boolean
 }
 
 export type UseDeckBoardMutationsResult = {
@@ -111,6 +113,7 @@ export function useDeckBoardMutations({
   setErrorText,
   loadDeck,
   clearCardSelection,
+  allowPilotInDeck = false,
 }: UseDeckBoardMutationsArgs): UseDeckBoardMutationsResult {
 
   async function onCreateSectionFromDrop(payload: DeckCardDragPayload) {
@@ -492,6 +495,10 @@ export function useDeckBoardMutations({
       setErrorText("That section no longer exists.")
       return
     }
+    if (!allowPilotInDeck && (await cardIsPilot(cardId))) {
+      await assignPilot(cardId, null)
+      return
+    }
 
     const existing = deck.cards.find(
       (card) => card.card.id === cardId && card.category_id === toCategoryId
@@ -666,7 +673,7 @@ export function useDeckBoardMutations({
     setErrorText("")
     try {
       const detail = await fetchCardById(hit.id, token)
-      if (detail.is_pilot) {
+      if (detail.is_pilot && !allowPilotInDeck) {
         await assignPilot(hit.id, null)
         return
       }
@@ -902,6 +909,19 @@ export function useDeckBoardMutations({
         : prev
     )
     return created.id
+  }
+
+  async function cardIsPilot(cardId: number): Promise<boolean> {
+    if (!token || !deck) return false
+    const known = deck.cards.find((card) => card.card.id === cardId)
+    if (known?.card.is_pilot === true) return true
+    if (known?.card.is_pilot === false) return false
+    try {
+      const detail = await fetchCardById(cardId, token)
+      return detail.is_pilot
+    } catch {
+      return false
+    }
   }
 
   async function assignPilot(
