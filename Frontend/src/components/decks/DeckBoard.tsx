@@ -40,6 +40,8 @@ export type DeckBoardProps = {
   onRenameCategory: (categoryId: number, name: string) => Promise<void>
   onDeleteCategory: (categoryId: number) => Promise<void>
   onSetCategoryInDeck?: (categoryId: number, inDeck: boolean) => Promise<void>
+  onSetCategoryTypes?: (categoryId: number, types: string[]) => Promise<void>
+  loadSectionTypeChoices?: () => Promise<string[]>
   onDropToCategory: (
     payload: DeckCardDragPayload,
     categoryId: number
@@ -70,6 +72,8 @@ export function DeckBoard({
   onRenameCategory,
   onDeleteCategory,
   onSetCategoryInDeck,
+  onSetCategoryTypes,
+  loadSectionTypeChoices,
   onDropToCategory,
   onQuantityDelta,
   onAssignPilot,
@@ -172,6 +176,12 @@ export function DeckBoard({
                 ? (inDeck) => onSetCategoryInDeck(category.id, inDeck)
                 : undefined
             }
+            onSetTypes={
+              onSetCategoryTypes
+                ? (types) => onSetCategoryTypes(category.id, types)
+                : undefined
+            }
+            onLoadTypeChoices={loadSectionTypeChoices}
             onCardDrop={(payload) => onDropToCategory(payload, category.id)}
             onQuantityDelta={onQuantityDelta}
           />

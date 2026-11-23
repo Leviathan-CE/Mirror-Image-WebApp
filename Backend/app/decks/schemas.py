@@ -19,7 +19,7 @@ class DeckSummary(BaseModel):
     view_count: int = 0
     tags: list[str] = Field(default_factory=list)
     liked_by_me: bool = False
-    # Pilot slot illustration (DB: illustration_thumbnail_path; same JSON as CardSummary).
+    # Pilot illustration on the deck tile (no frame or costs).
     card_art_path: str | None = None
     card_art_version: int | None = None
     # Pilot invoke cost pips (deck-building identity).
@@ -58,6 +58,8 @@ class DeckCreateRequest(BaseModel):
     is_public: bool = True
     # Optional starting section names (from client local prefs).
     start_sections: list[str] | None = Field(default=None, max_length=12)
+    # Types for those sections, keyed by name. Missing uses account prefs.
+    start_section_types: dict[str, list[str]] | None = None
 
 
 class DeckUpdateRequest(BaseModel):
@@ -79,6 +81,8 @@ class DeckCategoryOut(BaseModel):
     name: str
     sort_order: int
     in_deck: bool = True
+    # Types this section claims. Empty means it does not auto-file cards.
+    accept_types: list[str] = Field(default_factory=list)
 
 
 class DeckCategoryCreate(BaseModel):
@@ -91,6 +95,7 @@ class DeckCategoryUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=60)
     sort_order: int | None = Field(default=None, ge=0)
     in_deck: bool | None = None
+    accept_types: list[str] | None = Field(default=None, max_length=12)
 
 
 class DeckCardEntry(BaseModel):

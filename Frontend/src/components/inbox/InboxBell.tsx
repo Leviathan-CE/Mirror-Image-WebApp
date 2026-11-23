@@ -6,10 +6,14 @@
 import { Bell } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
+import { useAuth } from "@/app/providers/AuthProvider"
 import { useInbox } from "@/app/providers/InboxProvider"
 import { navButtonClassName } from "@/components/common/headerStyles"
 import { DropdownMenu } from "@/components/ui/DropdownMenu"
-import type { NotificationItem } from "@/lib/api/notifications"
+import {
+  dismissAllNotifications,
+  type NotificationItem,
+} from "@/lib/api/notifications"
 import { isCardNotificationKind } from "@/lib/cardBanner.logic"
 import { ROUTES } from "@/lib/route"
 import { cn } from "@/lib/utils"
@@ -29,6 +33,7 @@ function destinationFor(item: NotificationItem): string {
 
 export function InboxBell() {
   const navigate = useNavigate()
+  const { token } = useAuth()
   const {
     unread,
     items,
@@ -36,6 +41,8 @@ export function InboxBell() {
     markAllRead,
     markCardsSeen,
     openCardEvent,
+    refresh,
+    noteDismissed,
   } = useInbox()
   const preview = items.slice(0, PREVIEW_LIMIT)
 
@@ -55,11 +62,14 @@ export function InboxBell() {
   }
 
   async function onClearNotifications() {
-    if (unread === 0) return
+    if (!token) return
+    if (items.length === 0 && unread === 0) return
     try {
-      await markAllRead()
+      await dismissAllNotifications(token)
+      await refresh()
+      noteDismissed()
     } catch {
-      /* unread count reloads from the server */
+      await refresh()
     }
   }
 
@@ -88,9 +98,19 @@ export function InboxBell() {
     ...previewItems,
     { id: "sep-inbox", separator: true as const },
     {
+      id: "mark-all-read",
+      label: "Mark all as read",
+      disabled: unread === 0,
+      onSelect: () => {
+        void markAllRead().catch(() => {
+          /* unread count reloads from the server */
+        })
+      },
+    },
+    {
       id: "clear-notifications",
       label: "Clear notifications",
-      disabled: unread === 0,
+      disabled: items.length === 0 && unread === 0,
       onSelect: () => {
         void onClearNotifications()
       },

@@ -12,6 +12,7 @@ import { nextNewSectionName } from "@/components/decks/deck.logic"
 import type { DeckCardSortMode } from "@/components/decks/DeckCardSortControls"
 import type { DeckCardViewMode } from "@/components/decks/DeckCardViewControls"
 import { containsProfanity } from "@/lib/profanity"
+import { typeKey, typeToken } from "@/components/decks/sectionTypes.logic"
 
 export const PREF_STORAGE = {
   deckView: "mi-deck-card-view-mode",
@@ -21,6 +22,7 @@ export const PREF_STORAGE = {
   libraryPageSize: "mi-library-page-size",
   libraryPreviewPx: "mi-library-preview-card-min-px",
   deckStartSections: "mi-deck-start-sections",
+  deckSectionTypes: "mi-deck-section-types",
 } as const
 
 export const LIBRARY_PAGE_SIZES = [5, 10, 25, 50, 100, 150, 200] as const
@@ -35,6 +37,13 @@ export const PREVIEW_PX_DEFAULT = 112
 export const SECTION_NAME_MAX = 60
 export const SECTION_COUNT_MIN = 1
 export const SECTION_COUNT_MAX = 12
+export const SECTION_TYPE_MAX = 12
+
+/** Catalogue spellings. Matching ignores case. */
+export const DEFAULT_SECTION_TYPES: Record<string, string[]> = {
+  entity: ["Entity"],
+  cyberspell: ["CyberSpell"],
+}
 
 export const LIBRARY_SORT_OPTIONS: { id: CardLibrarySortMode; label: string }[] =
   [
@@ -53,6 +62,8 @@ export type UserPreferences = {
   library_page_size: LibraryPageSize
   library_preview_px: number
   deck_start_sections: string[]
+  /** Types for each starting section, keyed by the lowercased name. */
+  deck_section_types: Record<string, string[]>
   notify_blog: boolean
   notify_cards: boolean
   notify_blog_email: boolean
@@ -66,6 +77,10 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   library_page_size: 25,
   library_preview_px: PREVIEW_PX_DEFAULT,
   deck_start_sections: [...DEFAULT_DECK_CATEGORY_NAMES],
+  deck_section_types: {
+    entity: [...DEFAULT_SECTION_TYPES.entity],
+    cyberspell: [...DEFAULT_SECTION_TYPES.cyberspell],
+  },
   notify_blog: true,
   notify_cards: true,
   notify_blog_email: false,
@@ -134,6 +149,55 @@ export function normalizeStartSections(raw: unknown): string[] {
     : [...DEFAULT_DECK_CATEGORY_NAMES]
 }
 
+function cleanTypeList(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const item of raw) {
+    const token = typeToken(String(item ?? "")).slice(0, SECTION_NAME_MAX)
+    if (token === "") continue
+    const key = typeKey(token)
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(token)
+    if (out.length >= SECTION_TYPE_MAX) break
+  }
+  return out
+}
+
+function storedTypeList(
+  stored: Record<string, unknown>,
+  sectionKey: string
+): unknown {
+  if (sectionKey in stored) return stored[sectionKey]
+  for (const [rawKey, value] of Object.entries(stored)) {
+    if (typeKey(rawKey) === sectionKey) return value
+  }
+  return undefined
+}
+
+export function normalizeSectionTypes(
+  raw: unknown,
+  sectionNames: string[],
+  present: boolean
+): Record<string, string[]> {
+  const stored =
+    raw != null && typeof raw === "object"
+      ? (raw as Record<string, unknown>)
+      : {}
+  const out: Record<string, string[]> = {}
+  for (const name of sectionNames) {
+    const key = name.trim().toLowerCase()
+    const source = present
+      ? storedTypeList(stored, key)
+      : DEFAULT_SECTION_TYPES[key] ?? []
+    out[key] = cleanTypeList(
+      source === undefined ? [] : source
+    )
+  }
+  return out
+}
+
 export function resizeStartSections(current: string[], count: number): string[] {
   const n = clampInt(count, SECTION_COUNT_MIN, SECTION_COUNT_MAX, current.length)
   const next = [...normalizeStartSections(current)]
@@ -153,6 +217,7 @@ export function normalizeUserPreferences(raw: unknown): UserPreferences {
   const sort = String(data.deck_sort ?? "")
   const libSort = String(data.library_sort ?? "")
   const page = Number(data.library_page_size)
+  const startSections = normalizeStartSections(data.deck_start_sections)
   return {
     deck_view: isDeckView(view) ? view : DEFAULT_USER_PREFERENCES.deck_view,
     deck_sort: isDeckSort(sort) ? sort : DEFAULT_USER_PREFERENCES.deck_sort,
@@ -166,7 +231,12 @@ export function normalizeUserPreferences(raw: unknown): UserPreferences {
       ? page
       : DEFAULT_USER_PREFERENCES.library_page_size,
     library_preview_px: clampPreviewPx(Number(data.library_preview_px)),
-    deck_start_sections: normalizeStartSections(data.deck_start_sections),
+    deck_start_sections: startSections,
+    deck_section_types: normalizeSectionTypes(
+      data.deck_section_types,
+      startSections,
+      "deck_section_types" in data
+    ),
     notify_blog: asBool(data.notify_blog, true),
     notify_cards: asBool(data.notify_cards, true),
     notify_blog_email: asBool(data.notify_blog_email, false),
@@ -219,6 +289,17 @@ export function readLocalPreferencePatch(): UserPreferencesPatch {
       /* ignore bad JSON */
     }
   }
+  const sectionTypes = readLocalRaw(PREF_STORAGE.deckSectionTypes)
+  if (sectionTypes != null) {
+    try {
+      const parsed = JSON.parse(sectionTypes)
+      if (parsed != null && typeof parsed === "object") {
+        patch.deck_section_types = parsed as Record<string, string[]>
+      }
+    } catch {
+      /* ignore bad JSON */
+    }
+  }
   return patch
 }
 
@@ -239,5 +320,9 @@ export function writeLocalPreferences(prefs: UserPreferences): void {
   writeLocalRaw(
     PREF_STORAGE.deckStartSections,
     JSON.stringify(prefs.deck_start_sections)
+  )
+  writeLocalRaw(
+    PREF_STORAGE.deckSectionTypes,
+    JSON.stringify(prefs.deck_section_types)
   )
 }

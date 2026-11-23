@@ -112,6 +112,7 @@ export function DeckPage() {
   const [description, setDescription] = useState("")
   const [isPublic, setIsPublic] = useState(false)
   const [searchMenuOpen, setSearchMenuOpen] = useState(false)
+  const [allowPilotInDeck, setAllowPilotInDeck] = useState(false)
   const [browseOpen, setBrowseOpen] = useState(true)
   const [tagDraft, setTagDraft] = useState("")
   const [printoutBusy, setPrintoutBusy] = useState(false)
@@ -426,6 +427,8 @@ export function DeckPage() {
     onCreateSectionFromDrop,
     onRenameCategory,
     onSetCategoryInDeck,
+    onSetCategoryTypes,
+    loadSectionTypeChoices,
     onDeleteCategory,
     onDropCardsToCategory,
     onQuantityDelta,
@@ -443,6 +446,7 @@ export function DeckPage() {
     setErrorText,
     loadDeck,
     clearCardSelection,
+    allowPilotInDeck,
   })
 
   async function onSaveMeta() {
@@ -761,6 +765,7 @@ export function DeckPage() {
               <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
                   {canEdit ? (
+                    <>
                     <div className="min-w-[12rem] flex-1 basis-48 max-w-xl">
                       <DeckCardSearch
                         disabled={saving}
@@ -769,6 +774,26 @@ export function DeckPage() {
                         onOpenChange={setSearchMenuOpen}
                       />
                     </div>
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={allowPilotInDeck}
+                        disabled={saving}
+                        className="accent-cyan-400"
+                        onChange={(event) =>
+                          setAllowPilotInDeck(event.target.checked)
+                        }
+                      />
+                      <span
+                        className={
+                          "font-mono text-[10px] tracking-wide " +
+                          "text-cyan-200/80"
+                        }
+                      >
+                        ALLOW PILOT IN DECK
+                      </span>
+                    </label>
+                    </>
                   ) : null}
                   <DeckCardSortControls
                     value={cardSortMode}
@@ -854,6 +879,8 @@ export function DeckPage() {
                   onRenameCategory={onRenameCategory}
                   onDeleteCategory={onDeleteCategory}
                   onSetCategoryInDeck={onSetCategoryInDeck}
+                  onSetCategoryTypes={onSetCategoryTypes}
+                  loadSectionTypeChoices={loadSectionTypeChoices}
                   onDropToCategory={onDropCardsToCategory}
                   onQuantityDelta={onQuantityDelta}
                   onAssignPilot={assignPilot}

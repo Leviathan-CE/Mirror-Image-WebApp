@@ -69,10 +69,15 @@ from app.decks.queries import (
     next_card_sort_order,
     next_category_sort_order,
     normalize_category_name,
+    other_accept_types,
     require_category_on_deck,
     seed_default_categories,
     slugify,
     summary_with_community,
+)
+from app.decks.section_types import (
+    prepare_section_types,
+    section_can_claim_types,
 )
 from app.decks.schemas import (
     AddCardRequest,
@@ -457,14 +462,29 @@ def create_deck(
                         "is_public": body.is_public,
                     },
                 )
+                prefs = fetch_user_preferences(cur, user_id)
                 if body.start_sections is not None:
                     seed_names = normalize_user_preferences(
                         {"deck_start_sections": body.start_sections}
                     )["deck_start_sections"]
                 else:
-                    prefs = fetch_user_preferences(cur, user_id)
                     seed_names = prefs["deck_start_sections"]
-                seed_default_categories(cur, deck_id, names=seed_names)
+                if body.start_section_types is not None:
+                    type_source = body.start_section_types
+                else:
+                    type_source = prefs["deck_section_types"]
+                section_types = normalize_user_preferences(
+                    {
+                        "deck_start_sections": seed_names,
+                        "deck_section_types": type_source,
+                    }
+                )["deck_section_types"]
+                seed_default_categories(
+                    cur,
+                    deck_id,
+                    names=seed_names,
+                    section_types=section_types,
+                )
                 cur.execute(
                     "SELECT user_name FROM users WHERE id = %(user_id)s",
                     {"user_id": user_id},
@@ -889,7 +909,7 @@ def create_deck_category(
                     """
                     INSERT INTO deck_categories (deck_id, name, sort_order, in_deck)
                     VALUES (%(deck_id)s, %(name)s, %(sort_order)s, %(in_deck)s)
-                    RETURNING id, name, sort_order, in_deck
+                    RETURNING id, name, sort_order, in_deck, accept_types
                     """,
                     {
                         "deck_id": deck_id,
@@ -916,7 +936,12 @@ def update_deck_category(
     user_id: int = Depends(get_current_user_id),
 ):
     """Rename, reorder, or set whether a category is part of the RIG."""
-    if body.name is None and body.sort_order is None and body.in_deck is None:
+    if (
+        body.name is None
+        and body.sort_order is None
+        and body.in_deck is None
+        and body.accept_types is None
+    ):
         raise HTTPException(status_code=400, detail="no_fields_to_update")
 
     name = normalize_category_name(body.name) if body.name is not None else None
@@ -934,20 +959,49 @@ def update_deck_category(
                 if not category_in_deck_default(check_name):
                     in_deck = False
 
+                cleaned_types = None
+                if body.accept_types is not None:
+                    if (
+                        len(body.accept_types) > 0
+                        and not section_can_claim_types(check_name)
+                    ):
+                        raise HTTPException(
+                            status_code=400,
+                            detail="section_types_reserved",
+                        )
+                    cleaned_types, problem = prepare_section_types(
+                        body.accept_types,
+                        other_accept_types(cur, deck_id, category_id),
+                    )
+                    if problem == "repeated":
+                        raise HTTPException(
+                            status_code=400,
+                            detail="section_type_repeated",
+                        )
+                    if problem == "taken":
+                        raise HTTPException(
+                            status_code=409,
+                            detail="section_types_taken",
+                        )
+
                 cur.execute(
                     """
                     UPDATE deck_categories
                        SET name = COALESCE(%(name)s, name),
                            sort_order = COALESCE(%(sort_order)s, sort_order),
-                           in_deck = COALESCE(%(in_deck)s, in_deck)
+                           in_deck = COALESCE(%(in_deck)s, in_deck),
+                           accept_types = COALESCE(
+                               %(accept_types)s, accept_types
+                           )
                      WHERE deck_id = %(deck_id)s
                        AND id = %(category_id)s
-                    RETURNING id, name, sort_order, in_deck
+                    RETURNING id, name, sort_order, in_deck, accept_types
                     """,
                     {
                         "name": name,
                         "sort_order": body.sort_order,
                         "in_deck": in_deck,
+                        "accept_types": cleaned_types,
                         "deck_id": deck_id,
                         "category_id": category_id,
                     },

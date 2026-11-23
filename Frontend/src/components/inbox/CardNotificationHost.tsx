@@ -19,7 +19,7 @@ import {
   type CardDetailChange,
 } from "@/lib/cardBanner.logic"
 
-async function loadLiveCard(
+export async function loadLiveCard(
   cardId: number,
   cardName: string,
   token?: string | null

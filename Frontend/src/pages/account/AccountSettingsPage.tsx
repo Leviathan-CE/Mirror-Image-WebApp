@@ -13,6 +13,7 @@ import { DeckCardViewControls } from "@/components/decks/DeckCardViewControls"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { PrivacyNotice } from "@/components/legal/PrivacyNotice"
 import { exportAccountRequest } from "@/lib/api/auth"
+import { fetchCardFacets } from "@/lib/api/cards"
 import { PRIVACY_CONTACT_EMAIL } from "@/lib/privacy"
 import { DeleteAccountPanel } from "@/pages/account/DeleteAccountPanel"
 import {
@@ -29,8 +30,31 @@ import {
   clampPreviewPx,
   isLibraryPageSize,
   isLibrarySortMode,
-  normalizeStartSections,
+  normalizeUserPreferences,
+  type UserPreferences,
 } from "@/lib/userPreferences.logic"
+
+type SectionRow = { name: string; types: string[] }
+
+function rowsFromPrefs(prefs: UserPreferences): SectionRow[] {
+  return prefs.deck_start_sections.map((name) => ({
+    name,
+    types: prefs.deck_section_types[name.trim().toLowerCase()] ?? [],
+  }))
+}
+
+function typeChoicesFrom(superTypes: string[], subTypes: string[]): string[] {
+  const seen = new Set<string>()
+  const choices: string[] = []
+  for (const name of [...superTypes, ...subTypes]) {
+    const key = name.trim().toLowerCase()
+    if (key === "" || seen.has(key)) continue
+    seen.add(key)
+    choices.push(name.trim())
+  }
+  choices.sort((left, right) => left.localeCompare(right))
+  return choices
+}
 
 function DataExportPanel() {
   const [busy, setBusy] = useState(false)
@@ -97,22 +121,54 @@ const fieldClassName =
   "font-buahs93 h-8 rounded-none border border-cyan-500/30 bg-black/80 px-2 text-xs tracking-wide text-cyan-100 outline-none hover:border-cyan-400/50 focus-visible:border-cyan-400"
 
 export function AccountSettingsPage() {
-  const { user } = useAuth()
+  const { user, token } = useAuth()
   const { prefs, patchPrefs } = useUserPreferences()
-  const [sectionDraft, setSectionDraft] = useState(prefs.deck_start_sections)
+  const [sectionDraft, setSectionDraft] = useState<SectionRow[]>(() =>
+    rowsFromPrefs(prefs)
+  )
+  const [typeChoices, setTypeChoices] = useState<string[]>([])
 
   useEffect(() => {
-    setSectionDraft(prefs.deck_start_sections)
-  }, [prefs.deck_start_sections])
+    setSectionDraft(rowsFromPrefs(prefs))
+  }, [prefs])
+
+  useEffect(() => {
+    let gone = false
+    void fetchCardFacets(token)
+      .then((facets) => {
+        if (gone) return
+        setTypeChoices(
+          typeChoicesFrom(facets.super_types, facets.sub_types)
+        )
+      })
+      .catch(() => {
+        if (!gone) setTypeChoices([])
+      })
+    return () => {
+      gone = true
+    }
+  }, [token])
 
   function patchSettings(patch: Parameters<typeof patchPrefs>[0]) {
     patchPrefs(patch, { syncToServer: true })
   }
 
-  function commitSections(next: string[]) {
-    const cleaned = normalizeStartSections(next)
-    setSectionDraft(cleaned)
-    patchSettings({ deck_start_sections: cleaned })
+  function commitRows(next: SectionRow[]) {
+    const types: Record<string, string[]> = {}
+    for (const row of next) {
+      const key = row.name.trim().toLowerCase()
+      if (key === "") continue
+      types[key] = row.types
+    }
+    const normalized = normalizeUserPreferences({
+      deck_start_sections: next.map((row) => row.name),
+      deck_section_types: types,
+    })
+    setSectionDraft(rowsFromPrefs(normalized))
+    patchSettings({
+      deck_start_sections: normalized.deck_start_sections,
+      deck_section_types: normalized.deck_section_types,
+    })
   }
 
   return (
@@ -183,9 +239,9 @@ export function AccountSettingsPage() {
                   STARTING SECTIONS
                 </h3>
                 <p className="mt-1 font-mono text-[11px] text-cyan-100/45">
-                  Names used when you create a new deck. Pilot is always its own
-                  reserved slot — do not add it here. You can still add or rename
-                  sections on a deck after it exists.
+                  Names and types used when you create a new deck. Entity starts
+                  as Entity, and Cyberspell starts as CyberSpell. Pilot stays a
+                  reserved slot. You can still change a deck after it exists.
                 </p>
               </div>
               <GlitchFx
@@ -194,15 +250,20 @@ export function AccountSettingsPage() {
                 disabled={sectionDraft.length >= SECTION_COUNT_MAX}
                 className="font-buahs93 h-9 shrink-0 rounded-none bg-cyan-700 px-5 hover:bg-cyan-900 disabled:opacity-60"
                 onClick={() =>
-                  commitSections([
+                  commitRows([
                     ...sectionDraft,
-                    nextNewSectionName(sectionDraft),
+                    {
+                      name: nextNewSectionName(
+                        sectionDraft.map((row) => row.name)
+                      ),
+                      types: [],
+                    },
                   ])
                 }
               />
             </div>
             <ul className="mt-3 space-y-2">
-              {sectionDraft.map((name, index) => (
+              {sectionDraft.map((row, index) => (
                 <li
                   key={`section-row-${index}`}
                   className="flex flex-wrap items-center gap-2"
@@ -214,28 +275,87 @@ export function AccountSettingsPage() {
                     <input
                       type="text"
                       maxLength={SECTION_NAME_MAX}
-                      value={name}
+                      value={row.name}
                       aria-label={`Starting section ${index + 1} name`}
                       className={`${fieldClassName} min-w-0 flex-1`}
                       onChange={(event) => {
-                        const next = [...sectionDraft]
-                        next[index] = event.target.value
+                        const next = sectionDraft.map((item) => ({ ...item }))
+                        next[index] = {
+                          ...next[index],
+                          name: event.target.value,
+                        }
                         setSectionDraft(next)
                       }}
                       onBlur={(event) => {
-                        const next = [...sectionDraft]
-                        next[index] = event.currentTarget.value
-                        commitSections(next)
+                        const next = sectionDraft.map((item) => ({ ...item }))
+                        next[index] = {
+                          ...next[index],
+                          name: event.currentTarget.value,
+                        }
+                        commitRows(next)
                       }}
                     />
                   </label>
+                  <select
+                    aria-label={`Type for ${row.name || "section"}`}
+                    className={fieldClassName}
+                    value=""
+                    onChange={(event) => {
+                      const picked = event.target.value
+                      if (picked === "") return
+                      const next = sectionDraft.map((item) => ({
+                        ...item,
+                        types: [...item.types],
+                      }))
+                      next[index] = {
+                        ...next[index],
+                        types: [...next[index].types, picked],
+                      }
+                      commitRows(next)
+                    }}
+                  >
+                    <option value="">Add type…</option>
+                    {typeChoices
+                      .filter((choice) => {
+                        const key = choice.trim().toLowerCase()
+                        return !row.types.some(
+                          (item) => item.trim().toLowerCase() === key
+                        )
+                      })
+                      .map((choice) => (
+                        <option key={choice} value={choice}>
+                          {choice}
+                        </option>
+                      ))}
+                  </select>
+                  {row.types.map((typeName) => (
+                    <button
+                      key={typeName}
+                      type="button"
+                      className="font-mono text-[10px] text-cyan-200"
+                      onClick={() => {
+                        const next = sectionDraft.map((item, rowIndex) => {
+                          if (rowIndex !== index) return item
+                          return {
+                            ...item,
+                            types: item.types.filter(
+                              (itemType) => itemType !== typeName
+                            ),
+                          }
+                        })
+                        commitRows(next)
+                      }}
+                    >
+                      {typeName} ✕
+                    </button>
+                  ))}
                   {sectionDraft.length > SECTION_COUNT_MIN ? (
                     <GlitchFx
                       type="button"
                       label="REMOVE"
                       className="font-buahs93 h-8 shrink-0 rounded-none border border-cyan-500/40 bg-black/70 px-3 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10"
                       onClick={() =>
-                        commitSections(
+                        commitRows(
                           sectionDraft.filter((_, i) => i !== index)
                         )
                       }

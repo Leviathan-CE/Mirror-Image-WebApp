@@ -94,6 +94,9 @@ export {
   fetchUnreadCount,
   markNotificationRead,
   markAllNotificationsRead,
+  dismissNotification,
+  dismissNotifications,
+  dismissAllNotifications,
   type NotificationItem,
   type NotificationListResponse,
 } from "@/lib/api/notifications"

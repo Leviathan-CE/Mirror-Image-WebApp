@@ -44,6 +44,9 @@ vi.mock("@/lib/api/notifications", () => ({
   fetchUnreadCount: vi.fn(async () => ({ unread: 0 })),
   markNotificationRead: vi.fn(async () => ({ read: 0 })),
   markAllNotificationsRead: vi.fn(async () => ({ read: 0 })),
+  dismissAllNotifications: vi.fn(async () => ({ dismissed: 0 })),
+  dismissNotifications: vi.fn(async () => ({ dismissed: 0 })),
+  dismissNotification: vi.fn(async () => ({ dismissed: 0 })),
 }))
 
 class FakeWebSocket {

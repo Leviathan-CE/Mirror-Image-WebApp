@@ -812,7 +812,8 @@ export function CardLibraryBrowser({
                     : `${card.card_name} — click or middle-click for details`
                 }
                 className={cn(
-                  "group relative w-full overflow-hidden border border-cyan-500/20 bg-black/50 transition-colors hover:border-cyan-400/60",
+                  "group relative w-full",
+                  "drop-shadow-[0_0_18px_rgba(125,249,255,0.45)]",
                   draggable && "cursor-grab active:cursor-grabbing"
                 )}
                 draggable={draggable}
@@ -840,27 +841,46 @@ export function CardLibraryBrowser({
                   openCardDetail(card)
                 }}
               >
-                {banner ? (
-                  <CardChangeBanner
-                    kind={banner}
-                    className="absolute left-1 top-1"
-                  />
-                ) : null}
-                {card.published === "preview" ? (
-                  <CardPreviewBanner className="absolute right-1 top-1" />
-                ) : null}
-                {art ? (
-                  <img
-                    src={art}
-                    alt=""
-                    draggable={false}
-                    className="aspect-[2/3] w-full object-cover transition-transform group-hover:scale-[1.02]"
-                  />
-                ) : (
-                  <div className="flex aspect-[2/3] w-full items-center justify-center border border-dashed border-cyan-500/20 font-mono text-[10px] text-cyan-500/40">
-                    NO ART
-                  </div>
-                )}
+                <span
+                  className={
+                    "clip-angled [--angle:12px] relative block " +
+                    "overflow-hidden border border-cyan-500/20 " +
+                    "bg-black/50 transition-colors " +
+                    "group-hover:border-cyan-400/60"
+                  }
+                >
+                  {banner ? (
+                    <CardChangeBanner
+                      kind={banner}
+                      className="absolute left-1 top-1"
+                    />
+                  ) : null}
+                  {card.published === "preview" ? (
+                    <CardPreviewBanner className="absolute right-1 top-1" />
+                  ) : null}
+                  {art ? (
+                    <img
+                      src={art}
+                      alt=""
+                      draggable={false}
+                      className={
+                        "aspect-[2/3] w-full object-cover " +
+                        "transition-transform " +
+                        "group-hover:scale-[1.02]"
+                      }
+                    />
+                  ) : (
+                    <div
+                      className={
+                        "flex aspect-[2/3] w-full items-center " +
+                        "justify-center font-mono text-[10px] " +
+                        "text-cyan-500/40"
+                      }
+                    >
+                      NO ART
+                    </div>
+                  )}
+                </span>
               </button>
             </li>
           )

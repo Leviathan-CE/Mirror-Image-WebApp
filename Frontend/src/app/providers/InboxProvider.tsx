@@ -46,6 +46,9 @@ type InboxContextValue = {
   items: NotificationItem[]
   /** Bumps when reads change so lists can refetch. */
   revision: number
+  /** Bumps when notices are removed, so the inbox page reloads. */
+  listEpoch: number
+  noteDismissed: () => void
   activeCardEvent: NotificationItem | null
   refresh: () => Promise<void>
   markAllRead: () => Promise<void>
@@ -64,6 +67,7 @@ export function InboxProvider({ children }: PropsWithChildren) {
   const [unread, setUnread] = useState(0)
   const [items, setItems] = useState<NotificationItem[]>([])
   const [revision, setRevision] = useState(0)
+  const [listEpoch, setListEpoch] = useState(0)
   const [seenIds, setSeenIds] = useState<Set<number>>(() => new Set())
   const [activeCardEvent, setActiveCardEvent] =
     useState<NotificationItem | null>(null)
@@ -71,6 +75,10 @@ export function InboxProvider({ children }: PropsWithChildren) {
 
   const bump = useCallback(() => {
     setRevision((n) => n + 1)
+  }, [])
+
+  const noteDismissed = useCallback(() => {
+    setListEpoch((n) => n + 1)
   }, [])
 
   useEffect(() => {
@@ -292,6 +300,8 @@ export function InboxProvider({ children }: PropsWithChildren) {
       unread,
       items,
       revision,
+      listEpoch,
+      noteDismissed,
       activeCardEvent,
       refresh,
       markAllRead,
@@ -306,6 +316,8 @@ export function InboxProvider({ children }: PropsWithChildren) {
       unread,
       items,
       revision,
+      listEpoch,
+      noteDismissed,
       activeCardEvent,
       refresh,
       markAllRead,

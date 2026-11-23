@@ -7,6 +7,7 @@ from typing import Any
 from psycopg2.extras import Json
 
 from app.deck_defaults import DEFAULT_DECK_CATEGORY_NAMES, RESERVED_CATEGORY_NAMES
+from app.decks.section_types import type_key, type_token
 from app.profanity import contains_profanity
 
 DECK_VIEWS = frozenset({"cards", "list"})
@@ -27,6 +28,12 @@ SECTION_NAME_MAX = 60
 SECTION_COUNT_MIN = 1
 SECTION_COUNT_MAX = 12
 DEFAULT_START_SECTIONS = list(DEFAULT_DECK_CATEGORY_NAMES)
+SECTION_TYPE_MAX = 12
+# Catalogue spellings. Matching ignores case, so "Cyberspell" still hits.
+DEFAULT_SECTION_TYPES: dict[str, list[str]] = {
+    "entity": ["Entity"],
+    "cyberspell": ["CyberSpell"],
+}
 
 DEFAULT_PREFERENCES: dict[str, Any] = {
     "deck_view": "cards",
@@ -36,6 +43,9 @@ DEFAULT_PREFERENCES: dict[str, Any] = {
     "library_page_size": 25,
     "library_preview_px": PREVIEW_PX_DEFAULT,
     "deck_start_sections": list(DEFAULT_START_SECTIONS),
+    "deck_section_types": {
+        key: list(types) for key, types in DEFAULT_SECTION_TYPES.items()
+    },
     "notify_blog": True,
     "notify_cards": True,
     "notify_blog_email": False,
@@ -84,6 +94,53 @@ def _normalize_start_sections(raw: Any) -> list[str]:
     return out
 
 
+def _clean_type_list(raw: Any) -> list[str]:
+    if not isinstance(raw, list):
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in raw:
+        token = type_token(str(item))[:SECTION_NAME_MAX]
+        if token == "":
+            continue
+        key = type_key(token)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(token)
+        if len(out) >= SECTION_TYPE_MAX:
+            break
+    return out
+
+
+def _stored_type_list(stored: dict[str, Any], section_key: str) -> Any:
+    if section_key in stored:
+        return stored[section_key]
+    for raw_key, value in stored.items():
+        if type_key(str(raw_key)) == section_key:
+            return value
+    return None
+
+
+def _normalize_section_types(
+    raw: Any,
+    section_names: list[str],
+    present: bool,
+) -> dict[str, list[str]]:
+    """Types per starting section. Missing prefs use the built-in pair."""
+    stored = raw if isinstance(raw, dict) else {}
+    out: dict[str, list[str]] = {}
+    for name in section_names:
+        key = name.strip().casefold()
+        if not present:
+            source = DEFAULT_SECTION_TYPES.get(key, [])
+        else:
+            found = _stored_type_list(stored, key)
+            source = [] if found is None else found
+        out[key] = _clean_type_list(source)
+    return out
+
+
 def normalize_user_preferences(raw: Any) -> dict[str, Any]:
     """Allowlisted keys only; missing / invalid fields fall back to defaults."""
     data = raw if isinstance(raw, dict) else {}
@@ -96,6 +153,7 @@ def normalize_user_preferences(raw: Any) -> dict[str, Any]:
         page_n = int(page) if page is not None else default_page
     except (TypeError, ValueError):
         page_n = default_page
+    start_sections = _normalize_start_sections(data.get("deck_start_sections"))
     return {
         "deck_view": view if view in DECK_VIEWS else "cards",
         "deck_sort": sort if sort in DECK_SORTS else "type",
@@ -115,8 +173,11 @@ def normalize_user_preferences(raw: Any) -> dict[str, Any]:
             PREVIEW_PX_MAX,
             PREVIEW_PX_DEFAULT,
         ),
-        "deck_start_sections": _normalize_start_sections(
-            data.get("deck_start_sections")
+        "deck_start_sections": start_sections,
+        "deck_section_types": _normalize_section_types(
+            data.get("deck_section_types"),
+            start_sections,
+            "deck_section_types" in data,
         ),
         "notify_blog": _as_bool(data.get("notify_blog"), True),
         "notify_cards": _as_bool(data.get("notify_cards"), True),

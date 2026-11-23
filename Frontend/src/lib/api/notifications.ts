@@ -88,6 +88,60 @@ export async function markNotificationRead(
   )
 }
 
+export async function dismissNotifications(
+  token: string,
+  eventIds: number[]
+): Promise<{ dismissed: number }> {
+  const response = await apiFetch(
+    `${apiBaseUrl()}/notifications/dismiss`,
+    {
+      method: "POST",
+      headers: {
+        ...authHeaders(token),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ event_ids: eventIds }),
+    }
+  )
+  return readJsonOrThrow<{ dismissed: number }>(
+    response,
+    "notification_dismiss_failed"
+  )
+}
+
+export async function dismissAllNotifications(
+  token: string
+): Promise<{ dismissed: number }> {
+  const response = await apiFetch(
+    `${apiBaseUrl()}/notifications/dismiss-all`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+    }
+  )
+  return readJsonOrThrow<{ dismissed: number }>(
+    response,
+    "notification_dismiss_failed"
+  )
+}
+
+export async function dismissNotification(
+  token: string,
+  eventId: number
+): Promise<{ dismissed: number }> {
+  const response = await apiFetch(
+    `${apiBaseUrl()}/notifications/${eventId}`,
+    {
+      method: "DELETE",
+      headers: authHeaders(token),
+    }
+  )
+  return readJsonOrThrow<{ dismissed: number }>(
+    response,
+    "notification_dismiss_failed"
+  )
+}
+
 export async function markAllNotificationsRead(
   token: string
 ): Promise<{ read: number }> {
