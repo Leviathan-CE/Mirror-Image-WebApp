@@ -44,6 +44,8 @@ class CardSummary(BaseModel):
     time_capacity: int = 0
     # Starting life total on pilots (not a resource token).
     lif_capacity: int = 0
+    # Printed keyword abilities (Blitz, Stealth, …).
+    keywords: list[Any] = Field(default_factory=list)
 
 
 class CardLibraryItem(CardSummary):

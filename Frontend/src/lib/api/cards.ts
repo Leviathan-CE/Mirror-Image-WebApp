@@ -65,6 +65,8 @@ export type CardSummary = {
   time_capacity?: number
   /** Starting life total on pilots (not a resource token). */
   lif_capacity?: number
+  /** Printed keyword abilities (Blitz, Stealth, and the rest). */
+  keywords?: string[]
 }
 
 /**

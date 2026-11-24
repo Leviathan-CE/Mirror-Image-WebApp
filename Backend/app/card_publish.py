@@ -243,5 +243,6 @@ def classified_deck_card_overrides(classification: str = "classified") -> dict:
             "steel_capacity": 0,
             "time_capacity": 0,
             "lif_capacity": 0,
+            "keywords": [],
         },
     }

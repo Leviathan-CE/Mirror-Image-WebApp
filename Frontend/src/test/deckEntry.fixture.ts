@@ -32,6 +32,7 @@ export type DeckEntryFixtureOverrides = Partial<
   steel_capacity?: number
   time_capacity?: number
   lif_capacity?: number
+  keywords?: string[]
 }
 
 export function deckEntry(
@@ -61,6 +62,7 @@ export function deckEntry(
     steel_capacity,
     time_capacity,
     lif_capacity,
+    keywords,
     quantity,
     category_id,
     category_name,
@@ -94,6 +96,7 @@ export function deckEntry(
     steel_capacity: cardPartial?.steel_capacity ?? steel_capacity,
     time_capacity: cardPartial?.time_capacity ?? time_capacity,
     lif_capacity: cardPartial?.lif_capacity ?? lif_capacity,
+    keywords: cardPartial?.keywords ?? keywords,
   }
 
   if (cardPartial) {
