@@ -633,6 +633,13 @@ def browse_card_library(
     types_line: str | None = Query(default=None, max_length=80),
     super_type: str | None = Query(default=None, max_length=60),
     sub_type: str | None = Query(default=None, max_length=60),
+    card_printing: list[str] | None = Query(
+        default=None,
+        description=(
+            "Finish filter (OR). Repeat param. Names: standard, full_art, "
+            "alt_art, alt_art_bordered, alt_art_stamped — or codes 1/4/7/8/10."
+        ),
+    ),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     sort: str = Query(
@@ -675,6 +682,7 @@ def browse_card_library(
         types_line=types_line,
         super_type=super_type,
         sub_type=sub_type,
+        card_printing=card_printing,
     )
 
     try:

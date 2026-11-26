@@ -151,7 +151,71 @@ Also:
 3. Cloudflare DNS → VPS; enable proxy (orange cloud) for HTTPS.  
 4. Use a real SMTP provider for app email (keep Cloudflare for DNS + inbound if you want).  
 5. Start with Stripe **test** mode on the live domain until checkout is verified, then switch to live keys.  
-6. Add automated DB backups before you care about real users.
+6. Add automated DB backups before you care about real users
+   (see **Database backups** below).
+
+---
+
+## Database backups
+
+Use `scripts/backup-db.sh`. It runs `pg_dump` inside the Compose `db`
+service and writes a dated `.sql.gz` under `backups/postgres/` (gitignored).
+
+### One-time setup on the VPS
+
+```bash
+cd /path/to/Mirror-Image-WebApp
+chmod +x scripts/backup-db.sh
+docker compose up -d db
+./scripts/backup-db.sh
+ls -lh backups/postgres/
+```
+
+Optional env vars:
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `BACKUP_DIR` | `<repo>/backups/postgres` | Where dumps are stored |
+| `KEEP_DAYS` | `14` | Delete older `mirror_image_*.sql.gz` |
+| `COMPOSE_DB_SERVICE` | `db` | Compose service name |
+
+Example: keep dumps outside the repo:
+
+```bash
+BACKUP_DIR=/home/ubuntu/db-backups KEEP_DAYS=30 ./scripts/backup-db.sh
+```
+
+### Schedule with cron
+
+```bash
+crontab -e
+```
+
+Add (adjust the repo path):
+
+```text
+15 3 * * * cd /path/to/Mirror-Image-WebApp && ./scripts/backup-db.sh >> backups/postgres/backup.log 2>&1
+```
+
+Check later:
+
+```bash
+ls -lh backups/postgres/
+tail -n 20 backups/postgres/backup.log
+```
+
+### Restore (disaster only)
+
+Prefer restoring into an empty/new database. Example:
+
+```bash
+gunzip -c backups/postgres/mirror_image_YYYY-MM-DD_HHMM.sql.gz \
+  | docker compose exec -T db \
+    sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+```
+
+Dumps on the same VPS are not enough if the disk dies. Copy
+`backups/postgres/` off-box periodically (`scp`, `rclone`, object storage).
 
 ---
 

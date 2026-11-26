@@ -168,6 +168,28 @@ def test_sub_type_matches_declared_or_types_line():
     assert params["sub_type_types_line_prefix"] == "Soldier%"
 
 
+def test_card_printing_filter_is_or_and_maps_codes():
+    from app.card_library_query import normalize_card_printings
+
+    assert normalize_card_printings(["1", "full_art", "7", "nope"]) == [
+        "standard",
+        "full_art",
+        "alt_art",
+    ]
+
+    where: list[str] = []
+    params: dict = {}
+    apply_catalogue_filters(
+        where,
+        params,
+        card_printing=["standard", "4", "standard"],
+    )
+    assert len(where) == 1
+    assert "card_printing" in where[0]
+    assert "ANY(%(card_printings)s)" in where[0]
+    assert params["card_printings"] == ["standard", "full_art"]
+
+
 def test_catalogue_order_sub_type_prefix_rank():
     from app.card_library_query import catalogue_order_sql
 

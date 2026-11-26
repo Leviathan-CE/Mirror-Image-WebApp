@@ -139,6 +139,12 @@ export type CardLibraryQuery = {
   typesLine?: string
   superType?: string
   subType?: string
+  /**
+   * Card finishes (`card_printing`). Multi-select is OR on the server.
+   * Use ids: standard | full_art | alt_art | alt_art_bordered |
+   * alt_art_stamped (or numeric codes 1/4/7/8/10).
+   */
+  printings?: string[]
   /** Result order: A–Z, Z–A, invoke ↑/↓, or name-search relevance. */
   sort?: CardLibrarySortMode
   limit?: number
@@ -189,6 +195,12 @@ export async function fetchCardLibrary(
   if (superType) url.searchParams.set("super_type", superType)
   const subType = query.subType?.trim()
   if (subType) url.searchParams.set("sub_type", subType)
+  for (const printing of query.printings ?? []) {
+    const printingToken = printing.trim()
+    if (printingToken) {
+      url.searchParams.append("card_printing", printingToken)
+    }
+  }
   if (query.sort) url.searchParams.set("sort", query.sort)
   const room = query.room?.trim()
   if (room) url.searchParams.set("room", room)

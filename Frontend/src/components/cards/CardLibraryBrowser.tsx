@@ -20,6 +20,7 @@ import type { CardDetailChange } from "@/lib/cardBanner.logic"
 import { costTokenToIcon } from "@/components/cards/constants"
 import { CardSearchBar } from "@/components/cards/CardSearchBar"
 import { SearchPaginationBar } from "@/components/cards/SearchPaginationBar"
+import { CARD_PRINTING_OPTIONS } from "@/lib/cardPrinting"
 import { GameIcon } from "@/components/common/GameIcon"
 import {
   beginDeckCardDrag,
@@ -109,6 +110,7 @@ export function CardLibraryBrowser({
   const [invokeMax, setInvokeMax] = useState("")
   const [superType, setSuperType] = useState("")
   const [subType, setSubType] = useState("")
+  const [printings, setPrintings] = useState<string[]>([])
   const [offset, setOffset] = useState(0)
   const [selected, setSelected] = useState<CardLibraryItem | null>(null)
   const [selectedChange, setSelectedChange] =
@@ -156,6 +158,7 @@ export function CardLibraryBrowser({
     invokeMax,
     superType,
     subType,
+    printings,
     pageSize,
     sortMode,
   ])
@@ -173,6 +176,7 @@ export function CardLibraryBrowser({
     invokeMax,
     superType,
     subType,
+    printings,
     pageSize,
     sortMode,
     offset,
@@ -198,6 +202,7 @@ export function CardLibraryBrowser({
         invokeCostMax: Number.isFinite(max) ? max : null,
         superType: superType || undefined,
         subType: subType || undefined,
+        printings,
         sort: sortMode,
         limit: pageSize,
         offset,
@@ -233,6 +238,7 @@ export function CardLibraryBrowser({
     invokeMax,
     superType,
     subType,
+    printings,
     sortMode,
     offset,
     token,
@@ -242,6 +248,14 @@ export function CardLibraryBrowser({
   function toggleColor(color: string) {
     setColors((prev) =>
       prev.includes(color) ? prev.filter((c) => c !== color) : [...prev, color]
+    )
+  }
+
+  function togglePrinting(printing: string) {
+    setPrintings((prev) =>
+      prev.includes(printing)
+        ? prev.filter((value) => value !== printing)
+        : [...prev, printing]
     )
   }
 
@@ -255,6 +269,7 @@ export function CardLibraryBrowser({
     setInvokeMax("")
     setSuperType("")
     setSubType("")
+    setPrintings([])
     setOffset(0)
   }
 
@@ -315,10 +330,39 @@ export function CardLibraryBrowser({
     invokeMin.trim() !== "" ||
     invokeMax.trim() !== "" ||
     superType !== "" ||
-    subType !== ""
+    subType !== "" ||
+    printings.length > 0
 
   const filtersActive =
     nameQuery.trim() !== "" || colors.length > 0 || advancedActive
+
+  const printingFilters = (
+    <div className="flex flex-wrap gap-2">
+      {CARD_PRINTING_OPTIONS.map((option) => {
+        const on = printings.includes(option.id)
+        return (
+          <Button
+            key={option.id}
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-pressed={on}
+            aria-label={`Filter ${option.label}`}
+            title={option.label}
+            className={cn(
+              "rounded-none border font-buahs93 text-[10px] tracking-wide",
+              on
+                ? "border-cyan-400 bg-cyan-700 text-cyan-50 hover:bg-cyan-800"
+                : "border-cyan-500/40 bg-black/70 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10"
+            )}
+            onClick={() => togglePrinting(option.id)}
+          >
+            {option.label}
+          </Button>
+        )
+      })}
+    </div>
+  )
 
   const paginationBar = (placement: "top" | "bottom") => (
     <SearchPaginationBar
@@ -629,6 +673,16 @@ export function CardLibraryBrowser({
                   ))}
                 </select>
               </label>
+
+              <div className={cn("block", !compact && "sm:col-span-2")}>
+                <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                  PRINTING
+                </span>
+                <p className="mb-2 font-mono text-[10px] text-cyan-300/50">
+                  Multi-select matches any selected finish.
+                </p>
+                {printingFilters}
+              </div>
             </div>
           ) : null}
         </div>
@@ -758,6 +812,15 @@ export function CardLibraryBrowser({
                 ))}
               </select>
             </label>
+            <div className="block">
+              <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                PRINTING
+              </span>
+              <p className="mb-2 font-mono text-[10px] text-cyan-300/50">
+                Multi-select matches any selected finish.
+              </p>
+              {printingFilters}
+            </div>
           </div>
           </div>
         ) : null}

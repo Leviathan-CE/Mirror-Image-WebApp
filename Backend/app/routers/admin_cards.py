@@ -128,6 +128,13 @@ def admin_browse_cards(
     types_line: str | None = Query(default=None, max_length=80),
     super_type: str | None = Query(default=None, max_length=60),
     sub_type: str | None = Query(default=None, max_length=60),
+    card_printing: list[str] | None = Query(
+        default=None,
+        description=(
+            "Finish filter (OR). Repeat param. Names: standard, full_art, "
+            "alt_art, alt_art_bordered, alt_art_stamped — or codes 1/4/7/8/10."
+        ),
+    ),
     published: str | None = Query(
         default=None,
         description="Filter by publish status: published | preview | not published",
@@ -144,8 +151,9 @@ def admin_browse_cards(
     Admin catalogue browse.
 
     Same filter surface as `/cards/library` (name, description, colours,
-    invoke cost, type line, super/sub types), plus optional publish status.
-    Includes deprecated cards and publish/lagality fields; no publish gate.
+    invoke cost, type line, super/sub types, printing), plus optional
+    publish status. Includes deprecated cards and publish/lagality fields;
+    no publish gate.
     """
     if published is not None and published not in PUBLISH_STATUSES:
         raise HTTPException(status_code=400, detail="invalid_published_status")
@@ -165,6 +173,7 @@ def admin_browse_cards(
         types_line=types_line,
         super_type=super_type,
         sub_type=sub_type,
+        card_printing=card_printing,
     )
 
     if published is not None:

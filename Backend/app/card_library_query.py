@@ -95,6 +95,48 @@ def sql_card_matches_stl(
     """
 
 
+# Stored on cards.card_printing (TEXT). Codes mirror the game CardPrinting enum.
+CARD_PRINTING_VALUES: tuple[str, ...] = (
+    "standard",
+    "full_art",
+    "alt_art",
+    "alt_art_bordered",
+    "alt_art_stamped",
+)
+_CARD_PRINTING_CODES: dict[str, str] = {
+    "1": "standard",
+    "4": "full_art",
+    "7": "alt_art",
+    "8": "alt_art_bordered",
+    "10": "alt_art_stamped",
+}
+_CARD_PRINTING_SET = frozenset(CARD_PRINTING_VALUES)
+
+
+def normalize_card_printings(
+    card_printing: list[str] | None,
+) -> list[str]:
+    """
+    Unique printing keys in first-seen order.
+
+    Accepts enum names (``standard``) or numeric codes (``1`` / ``4`` / …).
+    Unknown tokens are dropped.
+    """
+    printings: list[str] = []
+    for raw in card_printing or []:
+        token = (raw or "").strip().lower()
+        if not token:
+            continue
+        if token in _CARD_PRINTING_CODES:
+            token = _CARD_PRINTING_CODES[token]
+        if token not in _CARD_PRINTING_SET:
+            continue
+        if token in printings:
+            continue
+        printings.append(token)
+    return printings
+
+
 def apply_catalogue_filters(
     where: list[str],
     params: dict[str, Any],
@@ -108,6 +150,7 @@ def apply_catalogue_filters(
     types_line: str | None = None,
     super_type: str | None = None,
     sub_type: str | None = None,
+    card_printing: list[str] | None = None,
 ) -> CatalogueFilterState:
     """Append library filter clauses."""
     needle = (q or "").strip()
@@ -181,6 +224,15 @@ def apply_catalogue_filters(
         params["sub_type_json"] = Json([sub_val])
         params["sub_type_types_line_pattern"] = f"%{escaped_sub}%"
         params["sub_type_types_line_prefix"] = f"{escaped_sub}%"
+
+    printings = normalize_card_printings(card_printing)
+    if printings:
+        # Multi-select is OR: any selected finish matches.
+        where.append(
+            f"LOWER(BTRIM({alias}.card_printing))"
+            f" = ANY(%(card_printings)s)"
+        )
+        params["card_printings"] = printings
 
     return CatalogueFilterState(bool(needle), bool(sub_val))
 
