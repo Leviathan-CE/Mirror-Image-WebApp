@@ -84,6 +84,12 @@ export async function fetchAdminCardLibrary(
   if (superType) url.searchParams.set("super_type", superType)
   const subType = query.subType?.trim()
   if (subType) url.searchParams.set("sub_type", subType)
+  for (const printing of query.printings ?? []) {
+    const printingToken = printing.trim()
+    if (printingToken) {
+      url.searchParams.append("card_printing", printingToken)
+    }
+  }
   if (query.published) {
     url.searchParams.set("published", query.published)
   }

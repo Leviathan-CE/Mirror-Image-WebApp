@@ -12,6 +12,7 @@ import type { CardDetailChange } from "@/lib/cardBanner.logic"
 import { costTokenToIcon } from "@/components/cards/constants"
 import { CardSearchBar } from "@/components/cards/CardSearchBar"
 import { SearchPaginationBar } from "@/components/cards/SearchPaginationBar"
+import { CARD_PRINTING_OPTIONS } from "@/lib/cardPrinting"
 import { GameIcon } from "@/components/common/GameIcon"
 import { GlitchFx } from "@/components/effects/GlitchFx"
 import { Button } from "@/components/ui/button"
@@ -89,6 +90,7 @@ export function AdminCardsPage() {
   const [typesLine, setTypesLine] = useState("")
   const [superType, setSuperType] = useState("")
   const [subType, setSubType] = useState("")
+  const [printings, setPrintings] = useState<string[]>([])
   const [publishedFilter, setPublishedFilter] = useState<PublishStatus | "">(
     ""
   )
@@ -151,6 +153,7 @@ export function AdminCardsPage() {
     typesLine,
     superType,
     subType,
+    printings,
     publishedFilter,
   ])
 
@@ -195,6 +198,7 @@ export function AdminCardsPage() {
     typesLine,
     superType,
     subType,
+    printings,
     publishedFilter,
     offset,
   ])
@@ -213,6 +217,7 @@ export function AdminCardsPage() {
     typesLine,
     superType,
     subType,
+    printings,
     publishedFilter,
     offset,
     markCardsSeen,
@@ -221,6 +226,14 @@ export function AdminCardsPage() {
   function toggleColor(color: string) {
     setColors((prev) =>
       prev.includes(color) ? prev.filter((c) => c !== color) : [...prev, color]
+    )
+  }
+
+  function togglePrinting(printing: string) {
+    setPrintings((prev) =>
+      prev.includes(printing)
+        ? prev.filter((value) => value !== printing)
+        : [...prev, printing]
     )
   }
 
@@ -233,6 +246,7 @@ export function AdminCardsPage() {
     setTypesLine("")
     setSuperType("")
     setSubType("")
+    setPrintings([])
     setPublishedFilter("")
     setOffset(0)
   }
@@ -251,6 +265,7 @@ export function AdminCardsPage() {
       typesLine: typesLine || undefined,
       superType: superType || undefined,
       subType: subType || undefined,
+      printings,
       published: publishedFilter || undefined,
       limit,
       offset: pageOffset,
@@ -450,6 +465,7 @@ export function AdminCardsPage() {
     typesLine !== "" ||
     superType !== "" ||
     subType !== "" ||
+    printings.length > 0 ||
     publishedFilter !== ""
 
   const colorCostFilters = (
@@ -639,6 +655,40 @@ export function AdminCardsPage() {
                     ))}
                   </select>
                 </label>
+
+                <div className="block sm:col-span-2">
+                  <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">
+                    PRINTING
+                  </span>
+                  <p className="mb-2 font-mono text-[10px] text-cyan-300/50">
+                    Multi-select matches any selected finish.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {CARD_PRINTING_OPTIONS.map((option) => {
+                      const on = printings.includes(option.id)
+                      return (
+                        <Button
+                          key={option.id}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          aria-pressed={on}
+                          aria-label={`Filter ${option.label}`}
+                          title={option.label}
+                          className={cn(
+                            "rounded-none border font-buahs93 text-[10px] tracking-wide",
+                            on
+                              ? "border-cyan-400 bg-cyan-700 text-cyan-50 hover:bg-cyan-800"
+                              : "border-cyan-500/40 bg-black/70 text-cyan-100 hover:border-cyan-400/70 hover:bg-cyan-500/10"
+                          )}
+                          onClick={() => togglePrinting(option.id)}
+                        >
+                          {option.label}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                </div>
 
                 <label className="block sm:col-span-2">
                   <span className="mb-1 block font-buahs93 text-xs text-cyan-200/70">

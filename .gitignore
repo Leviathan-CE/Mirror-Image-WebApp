@@ -1,5 +1,8 @@
 .env
 .venv/
+
+# Local / server DB dumps from scripts/backup-db.sh
+backups/
 __pycache__/
 *.py[cod]
 *.egg-info/
