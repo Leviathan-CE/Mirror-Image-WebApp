@@ -14,9 +14,11 @@
 
 > 100.4.1. Each pilot has its own victory number.
 >
-> 100.4.2. The last `[VP]` needed to win can be gained only by Hold, at the start of that player's turn (see rules 250.7.2 and 400.2.2.4). Conquer and any other `[VP]` gain cannot award that point. If a gain other than Hold would meet or exceed that player's victory number, that player gains `[VP]` only until they are one below it, and that gain does not win the game.
+> 100.4.2. **Casual / multiplayer (default).** The last `[VP]` needed to win can be gained only by Hold, at the start of that player's turn (see rules 250.7.2 and 400.2.2.3). Conquer and any other `[VP]` gain cannot award that point. If a gain other than Hold would meet or exceed that player's victory number, that player gains `[VP]` only until they are one below it, and that gain does not win the game.
+>
+> 100.4.3. **Competitive.** In competitive play (including competitive 1v1 and other competitive events unless the event rules say otherwise), rule 100.4.2 does not apply. The first player whose `[VP]` is greater than or equal to their victory number wins, regardless of how that `[VP]` was gained (Hold, Conquer, or a card effect). Check win whenever a player gains `[VP]` (see rule 100.4).
 
-100.5. Players score `[VP]` by controlling **objectives**: Conquer when you gain control of one, and Hold at the start of your turn (see section 250). A card effect may also give or take `[VP]`. A gain from such an effect follows rule 100.4.2.
+100.5. Players score `[VP]` by controlling **objectives**: Conquer when you gain control of one, and Hold at the start of your turn (see section 250). A card effect may also give or take `[VP]`. In casual / multiplayer play, a gain from such an effect follows rule 100.4.2. In competitive play, see rule 100.4.3.
 
 100.6. **`[TLV]` (Threat Level).** Only cards with the Unit supertype have a `[TLV]` on the card.
 
@@ -96,7 +98,7 @@
 
 200.10. **Queue**: Holds overflow effects while the lock is full (see rule 700.3).
 
-200.11. **Objective**: Shared area of the **battlefield** for **objective cards** and the units on them. Units on an objective are on the battlefield. You still control those units. They ready as entities you control (see rule 400.2.2.1). Units on an objective skip the start-of-turn heal step (see rule 400.2.2.2).
+200.11. **Objective**: Shared area of the **battlefield** for **objective cards** and the units on them. Units on an objective are on the battlefield. You still control those units. They ready as entities you control (see rule 400.2.2.1).
 
 ---
 
@@ -116,7 +118,7 @@
 
 ### 250.7. Scoring
 
-250.7.1. **Conquer.** When you gain control of an objective, gain 2 `[VP]`. Conquer cannot award the winning `[VP]` (see rule 100.4.2).
+250.7.1. **Conquer.** When you gain control of an objective, gain 2 `[VP]`. Then check win (see rule 100.4). In casual / multiplayer play, Conquer cannot award the winning `[VP]` (see rule 100.4.2). In competitive play, Conquer can win the game (see rule 100.4.3).
 
 > 250.7.1.1. You gain control when you have at least one unit on it and no opponent does, and you did not already control it.
 >
@@ -126,7 +128,7 @@
 >
 > 250.7.1.4. Entering an objective another player still occupies does not cause Conquer until you are the only player with a unit on it.
 
-250.7.2. **Hold.** At the start of your turn, after start-of-turn abilities resolve (see rule 400.2.2.4), gain 2 `[VP]` per objective you control. Then check win (see rule 100.4). This is the only `[VP]` gain that can win the game (see rule 100.4.2). Objectives you do not control score 0.
+250.7.2. **Hold.** At the start of your turn, after start-of-turn abilities resolve (see rule 400.2.2.2), gain 2 `[VP]` per objective you control. Then check win (see rule 100.4). In casual / multiplayer play, this is the only `[VP]` gain that can win the game (see rule 100.4.2). In competitive play, any legal `[VP]` gain can win (see rule 100.4.3). Objectives you do not control score 0.
 
 ### 250.8. Objective cards
 
@@ -244,7 +246,7 @@
 >
 > 350.3.2. **Hybrid pips** show two colors on one symbol (for example `[LIF-MET]`). Pay one resource that matches either color shown.
 >
-> 350.3.3. Colored pips may be gained when you accumulate resources (see rule 601.1).
+> 350.3.3. Colored pips may be gained when you convert resources (see rule 601.1).
 
 ### 350.4. Generic pips
 
@@ -252,7 +254,7 @@
 >
 > 350.4.2. Each generic pip may be paid with one resource of **any** color from your pool (see rule 500.6).
 >
-> 350.4.3. Generic pips are not colored pips. They are ignored when accumulating resources (see rule 601.1).
+> 350.4.3. Generic pips are not colored pips. They are ignored when converting resources (see rule 601.1).
 >
 > 350.4.4. Time counters may reduce generic pip costs only (see rule 700.4).
 
@@ -284,13 +286,11 @@
 
 > 400.2.2.1. Ready all entities you control.
 >
-> 400.2.2.2. **Heal.** Remove 1 marked damage (not below 0) from each unit you control on the battlefield that is **not** on an objective. Units on an objective skip this step. Opponent units do not heal on your turn.
+> 400.2.2.2. Trigger all abilities with the start-of-turn tag.
 >
-> 400.2.2.3. Trigger all abilities with the start-of-turn tag.
+> 400.2.2.3. **Hold `[VP]`.** Gain 2 `[VP]` for each objective you control. Then check win (see rule 100.4). In casual / multiplayer play, this is the only `[VP]` gain that can win the game (see rule 100.4.2). In competitive play, see rule 100.4.3. Objectives you do not control score 0.
 >
-> 400.2.2.4. **Hold `[VP]`.** Gain 2 `[VP]` for each objective you control. Then check win (see rule 100.4). This is the only `[VP]` gain that can win the game (see rule 100.4.2). Objectives you do not control score 0.
->
-> 400.2.2.5. Remove one time counter from each card you control in play; resolve effects when the last counter is removed from a stockpile card.
+> 400.2.2.4. Remove one time counter from each card you control in play; resolve effects when the last counter is removed from a stockpile card.
 
 #### 400.2.3. Draw phase
 
@@ -300,7 +300,7 @@
 
 #### 400.2.4. Main phase
 
-> 400.2.4.1. You may play cards, activate abilities, make attacks, move units onto or off objectives, or accumulate resources, in any order where timing allows.
+> 400.2.4.1. You may play cards, activate abilities, make attacks, move units onto or off objectives, or convert resources, in any order where timing allows.
 >
 > 400.2.4.2. See sections 600–605 for default game actions.
 
@@ -363,9 +363,9 @@
 
 ## 600. Default Game Actions
 
-### 601. Accumulate resources
+### 601. Convert resources
 
-601.1. Once per turn during your main phase, reveal a card from hand and gain up to two resource tokens from its colored pips (ignore generic pips; see section 350).
+601.1. Once per turn during your main phase, reveal a card from hand and gain up to two resource tokens from its colored pips (ignore generic pips; see section 350). This action is called **Convert**.
 
 601.2. Put gained resources readied into stockpile; put the revealed card on the bottom of your deck.
 
@@ -377,7 +377,7 @@
 
 ### 602. Attack
 
-602.1. To attack, declare an attack at an objective. Marked damage on units persists until healed (see rule 400.2.2.2).
+602.1. To attack, declare an attack at an objective. Marked damage on units persists until healed by cards or effects that say to heal.
 
 602.2. **Declare attackers**: Choose unit(s) you control that are legal attackers: units on the battlefield (not including units already on an  objective). Multiple attackers are one attack. A unit may attack if it has the Unit supertype, including when it also has a type that otherwise cannot attack (see rules 100.7 and 100.7.2).
 
@@ -485,9 +485,9 @@
 
 > 700.3.1. While the lock is full, overflow effects go to queues. The turn does not return to free play until lock and all queues are empty.
 >
-> 700.3.2. **Active batch**: Active player adds legal overflow to their queue, then resolves their entire queue in chosen order.
+> 700.3.2. **Non-active batch**: The non-active player (the player who put the current lock occupant into the lock) adds legal overflow to their queue, then resolves their entire queue in chosen order.
 >
-> 700.3.3. **Non-active batch**: Non-active player does the same.
+> 700.3.3. **Active batch**: Active player does the same.
 >
 > 700.3.4. **Alternate**: Starting with the active player, each player either adds one queue effect and resolves it, or passes; when both pass in succession, stop.
 >

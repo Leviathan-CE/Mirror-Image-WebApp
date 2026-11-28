@@ -92,11 +92,11 @@ export function AccumulatePipChooser({
     <div
       className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4"
       role="dialog"
-      aria-label="Accumulate resources"
+      aria-label="Convert resources"
     >
       <div className="w-full max-w-md border border-cyan-500/35 bg-black/95 p-4 shadow-xl">
         <h2 className="font-buahs93 text-sm tracking-wide text-cyan-100">
-          Accumulate Resources
+          Convert Resources
         </h2>
         <p className="mt-1 font-mono text-[11px] text-cyan-100/60">
           {cardName} — choose {needAll ? `all ${pips.length}` : `exactly ${limit}`}{" "}

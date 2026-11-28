@@ -479,11 +479,11 @@ export function usePlayContextMenu({
       }
       return availableResourceColors.size > 0
     })
-    let label = "Accumulate Resources"
-    if (animBusy) label = "Accumulate Resources (busy)"
-    else if (pips.length === 0) label = "Accumulate Resources (no colour pips)"
+    let label = "Convert Resources"
+    if (animBusy) label = "Convert Resources (busy)"
+    else if (pips.length === 0) label = "Convert Resources (no colour pips)"
     else if (!hasCatalog) {
-      label = "Accumulate Resources (no token cards loaded)"
+      label = "Convert Resources (no token cards loaded)"
     }
     return [
       {

@@ -49,7 +49,7 @@ const SECTIONS: TocEntry[] = [
         id: "how-to-play-actions",
         label: "Core Actions",
         children: [
-            { id: "accumulate-resources", label: "Accumulate Resources" },
+            { id: "convert-resources", label: "Convert Resources" },
             { id: "how-to-play-card", label: "How to Play a Card" },
             { id: "objectives", label: "Objectives" },
             { id: "how-to-attack", label: "How to Attack" },
@@ -384,8 +384,17 @@ export function HowToPlayPage() {
                                 victory numbers.
                             </p>
                             <Important>
-                                Inorder to gain the last victory point to win the match you can only do
-                                so by holding it.
+                                <strong className="text-cyan-100">Casual / multiplayer:</strong>{" "}
+                                the last <GameIcon name="vp" /> needed to win can be gained only by{" "}
+                                <Term>Hold</Term>. Conquer and other gains stop one short of your
+                                victory number until you Hold.
+                            </Important>
+                            <Important>
+                                <strong className="text-cyan-100">Competitive:</strong> the first
+                                player to reach their pilot&apos;s victory number wins, no matter
+                                how that last <GameIcon name="vp" /> was gained (Hold, Conquer, or
+                                a card effect). Use this for competitive 1v1 and other competitive
+                                events unless the event says otherwise.
                             </Important>
                             <p>
                                 You score by controlling <Term>objectives</Term>:
@@ -512,13 +521,6 @@ export function HowToPlayPage() {
                                         <ol className="list-decimal space-y-1 pl-6">
                                             <li>Ready all entities you control.</li>
                                             <li>
-                                                <Term>Heal.</Term> Remove 1 marked damage (not below 0)
-                                                from each unit you control on the battlefield that is{" "}
-                                                <strong>not</strong> on an objective. Units on an
-                                                objective do not heal. Opponent units do not heal on your
-                                                turn.
-                                            </li>
-                                            <li>
                                                 Trigger all abilities with the{" "}
                                                 <GameIcon name="start" /> tag.
                                             </li>
@@ -554,7 +556,7 @@ export function HowToPlayPage() {
                                     <div className="space-y-1 border-l-2 border-cyan-500/0 pl-4">
                                         <p>
                                             You may play cards, activate abilities, make attacks, move
-                                            units onto or off objectives, or accumulate resources, in
+                                            units onto or off objectives, or convert resources, in
                                             any order where timing allows.
                                         </p>
                                         <p>To contest an objective, in brief:</p>
@@ -789,14 +791,15 @@ export function HowToPlayPage() {
                         </Section>
 
                         <Section id="how-to-play-actions" title="Core Actions">
-                            <Subsection id="accumulate-resources" title="Accumulate Resources">
+                            <Subsection id="convert-resources" title="Convert Resources">
                                 <p>
-                                    You may accumulate resources only once on your turn in your main phase, To do so, choose a card in hand, reveal it, and then "gain"
-                                    (grab) up to two resource tokens from its listed invoke cost
-                                    (ignoring the grey numbered costs) and add them to your stockpile
-                                    readied. Then put the revealed card on the bottom of your deck. If you gained
-                                    one or fewer resources this way, draw a card.
-                                    This action does not use the lock.
+                                    You may convert resources only once on your turn in your main
+                                    phase. To do so, choose a card in hand, reveal it, and then
+                                    &quot;gain&quot; (grab) up to two resource tokens from its listed
+                                    invoke cost (ignoring the grey numbered costs) and add them to
+                                    your stockpile readied. Then put the revealed card on the bottom
+                                    of your deck. If you gained one or fewer resources this way,
+                                    draw a card. This action does not use the lock.
                                 </p>
 
                                 <div className="space-y-3 rounded-md border border-cyan-500/20 bg-black/40 p-4">
@@ -950,8 +953,7 @@ export function HowToPlayPage() {
                                 <p>
                                     You control an objective if you have at least one unit on it and no
                                     opponent does. Your pilot is a unit and counts. Units on an objective
-                                    are still on the battlefield: they ready normally, and they skip the
-                                    start-of-turn heal step.
+                                    are still on the battlefield and ready normally.
                                 </p>
                                 <p>
                                     <Term>Scoring:</Term> <Term>Conquer</Term> when you gain control of
@@ -1027,8 +1029,7 @@ export function HowToPlayPage() {
                                 </p>
                                 <Important>
                                     NOTE: Damage stays marked on a unit turn after turn. You can heal
-                                    it with cards and effects that say to heal, and units not on
-                                    an objective also heal 1 at the start of your turn.
+                                    it with cards and effects that say to heal.
                                 </Important>
                                 <ol className="list-decimal space-y-1 pl-6">
                                     <li>
@@ -1195,19 +1196,22 @@ export function HowToPlayPage() {
                                 <p>Then, with the lock still occupied:</p>
                                 <ol className="list-decimal space-y-2 pl-6">
                                     <li>
-                                        <strong className="text-cyan-100">Active batch.</strong> The
-                                        active player may add any legal overflow effects to their queue.
-                                        They then resolve their entire queue, one effect at a time, in an
-                                        order they choose. Each effect fully resolves before the next. If
-                                        a resolved effect would go to the lock, it goes to its
-                                        controller's queue instead. Effects that land on the active
-                                        player's queue during this batch are still part of this batch.
-                                        Effects that land on the non-active player's queue wait.
+                                        <strong className="text-cyan-100">Non-active batch.</strong>{" "}
+                                        The non-active player (the player who put the current lock
+                                        occupant into the lock) may add any legal overflow effects to
+                                        their queue. They then resolve their entire queue, one effect
+                                        at a time, in an order they choose. Each effect fully resolves
+                                        before the next. If a resolved effect would go to the lock, it
+                                        goes to its controller&apos;s queue instead. Effects that land
+                                        on the non-active player&apos;s queue during this batch are
+                                        still part of this batch. Effects that land on the active
+                                        player&apos;s queue wait.
                                     </li>
                                     <li>
-                                        <strong className="text-cyan-100">Non-active batch.</strong> The
-                                        non-active player does the same: add, then resolve their entire
-                                        queue, one at a time, in an order they choose. Same overflow rule.
+                                        <strong className="text-cyan-100">Active batch.</strong> The
+                                        active player does the same: add, then resolve their entire
+                                        queue, one at a time, in an order they choose. Same overflow
+                                        rule.
                                     </li>
                                     <li>
                                         <strong className="text-cyan-100">Alternate.</strong> Starting
@@ -1236,7 +1240,7 @@ export function HowToPlayPage() {
                                 </p>
                                 <p>
                                     While the lock is full, the player who is currently adding effects
-                                    (active batch, non-active batch, or their Alternate turn) may:
+                                    (non-active batch, active batch, or their Alternate turn) may:
                                 </p>
                                 <ol className="list-decimal space-y-1 pl-6">
                                     <li>Pay costs and use resource abilities (those abilities do not use the lock).</li>
@@ -1475,7 +1479,7 @@ export function HowToPlayPage() {
                                 A few guidelines for building a functional deck: include enough resources
                                 and low-cost cards so you can pay invoke costs consistently. If you rely
                                 on colors outside your pilot&apos;s starting resources, you will likely need
-                                to accumulate a card of that color before you can play others in it.
+                                to convert a card of that color before you can play others in it.
                             </p>
                             <p>
                                 There is no sideboard in this game; whatever you decide to put into the
